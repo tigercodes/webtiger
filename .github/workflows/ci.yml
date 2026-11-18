@@ -43,7 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode
-        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_27*.app | sort -V | tail -1)" && xcodebuild -version
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_27*.app | sort -V | tail -1)" && xcodebuild -version && sw_vers
       - name: Cache tools, SwiftPM and the Rust build
         uses: actions/cache@v4
         with:
@@ -58,6 +58,18 @@ jobs:
       - run: Tools/test.sh lint
       - run: Tools/test.sh unit
       - run: Tools/test.sh build
+      # A snapshot that does not match (docs/features/004) leaves what was drawn and the
+      # difference beside the picture checked in. Nobody can look at this machine's screen.
+      - name: Keep the pictures that did not match
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshots-macos
+          path: |
+            Packages/Tests/WTUITests/__Snapshots__/**/*.actual.png
+            Packages/Tests/WTUITests/__Snapshots__/**/*.diff.png
+          if-no-files-found: ignore
+          retention-days: 7
 
   simulators:
     name: Apple shell (iOS simulator, UI)
@@ -67,7 +79,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode
-        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_27*.app | sort -V | tail -1)" && xcodebuild -version
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_27*.app | sort -V | tail -1)" && xcodebuild -version && sw_vers
+      - name: The screen the UI tests will draw on
+        run: system_profiler SPDisplaysDataType | grep -E "Resolution|Retina|Display Type" || true
       - run: Tools/bootstrap.sh
       - run: Tools/test.sh ios
       - run: Tools/test.sh ui
+      # A UI test that fails here and passes on a developer's Mac is failing because of
+      # something on this machine's screen. Its result bundle has the screenshot.
+      - name: Keep the tests' results and pictures when one fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-test-results
+          path: |
+            .build/DerivedData/Logs/Test/*.xcresult
+            Packages/Tests/WTUITests/__Snapshots__/**/*.actual.png
+            Packages/Tests/WTUITests/__Snapshots__/**/*.diff.png
+          if-no-files-found: ignore
+          retention-days: 7
