@@ -77,8 +77,15 @@ A pixel differs when any of its channels differs by more than 24 of 255; two pic
 | `testEveryStateOfTheWindow` (light, dark) | Each state of §2, drawn by the real window |
 | `testStartFailed` | The start failure |
 | `testTheComparisonSeesAChange` | The comparison itself: the same view is the same picture; with one swatch recoloured, exactly the swatch's share of the pixels differs; another size is another picture |
+| `testAFailedPageAtTheLargestTextSize` (iPhone), `aFailedPageAtTwiceTheTextSize` (Android) | The words of a failure at the largest text size on a narrow screen: they wrap, and none is cut short (§5.1) |
 
 The app's UI tests open the catalogue (`WEBTIGER_CATALOGUE=1`), check that each state in it is the window itself, and run Apple's accessibility audit over it (`testTheDesignCatalogueOpensAndPassesTheAccessibilityAudit`, on macOS and the iPhone simulator). The audit found one thing: a token's row had been one element, drawing and all, and a faint token (a hairline) drawn faintly was faulted as text of poor contrast. The row's words are now the element. It also faulted a row that the window's edge cut in two; a contrast finding on an element not wholly in the window is now passed over, since what is not drawn cannot be measured.
+
+### 5.1 What the largest text size showed
+
+Apple's audit, run over the window's states on the iPhone Duo's simulator, said of the failed page that its words "may be clipped at larger Dynamic Type sizes". Drawn at the largest size on a screen 320 points wide, they were: "The site's address c…". The words that say why a page failed were the ones cut. On Android at twice the text size they ran off both ends of the space they had.
+
+The empty tab, the failed page and the start failure now keep their words in the middle of the space they have and scroll when it is too small for them, on both shells; a picture of the failed page at the largest text size is among the snapshots. **The toolbar is not mended**: at that size on that screen the address field has room for an ellipsis and nothing else. That is a layout question for the phone's window (000 §6.4), not one a scroll answers.
 
 ## 6. Decisions
 
@@ -93,7 +100,8 @@ The app's UI tests open the catalogue (`WEBTIGER_CATALOGUE=1`), check that each 
 ## 7. What is not done, and not verified
 
 - **Windows.** Its catalogue comes with its shell.
-- **Contrast themes, text sizes, size classes, fold postures** (000 §8.6). The pictures are light and dark at the default text size, at one size for each platform.
+- **Contrast themes, text sizes, size classes, fold postures** (000 §8.6). The pictures are light and dark at the default text size, at one size for each platform, but for the failed page at the largest text size (§5.1).
+- **The toolbar at the largest text sizes** (§5.1).
 - **The Android pictures on a device.** They are Robolectric's Android, by design (§3.1); how the catalogue looks on a phone is seen by opening it there.
 - **Other machines, so far.** The pictures matched on GitHub's runners at their first run there: the Mac's and the iPhone simulator's on its Mac (macOS 27.0.1, an older system than the one that drew them, on a screen of one pixel a point), and Android's on Linux. That is three machines, not every machine: when a picture does not match there, the workflow keeps what was drawn and the difference. The catalogue's accessibility audit did differ on that Mac, for the reason in 001 F19.
 - **The tint on the iPhone.** The pictures show the toolbar's reload and stop buttons in the system's blue, where the Mac draws them grey. Nobody chose that: no accent is set on the window. Left as found, for whoever settles the palette (001 F10).
@@ -104,7 +112,7 @@ The app's UI tests open the catalogue (`WEBTIGER_CATALOGUE=1`), check that each 
 - [x] Tokens by name from `Tools/design/tokens.py`; `--check` covers them.
 - [x] `CatalogueView` with the token sections and the window's states.
 - [x] `WEBTIGER_CATALOGUE=1` opens it; the UI tests audit it.
-- [x] Snapshot helper and tests; pictures recorded for macOS 27 and iOS 27 (36 pictures), each looked at.
+- [x] Snapshot helper and tests; pictures recorded for macOS 27 and iOS 27 (38 pictures), each looked at.
 - [x] `Tools/test.sh all` green.
-- [x] Android catalogue: the screen, `--ez webtiger.catalogue true`, 18 pictures drawn on the JVM, each looked at; a device test opens it.
+- [x] Android catalogue: the screen, `--ez webtiger.catalogue true`, 19 pictures drawn on the JVM, each looked at; a device test opens it.
 - [ ] Windows catalogue.

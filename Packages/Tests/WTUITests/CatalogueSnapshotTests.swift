@@ -42,6 +42,17 @@ final class CatalogueSnapshotTests: XCTestCase {
         await verify(StartFailedView(code: "store.open"), size: Self.windowSize, named: "start-failed")
     }
 
+    #if os(iOS)
+        /// The words of a failure at the largest text size, on a screen as narrow as any: they
+        /// wrap and scroll, and none is cut short. (Found by Apple's audit on the iPhone Duo's
+        /// simulator, where the message read "The site's address c…".)
+        func testAFailedPageAtTheLargestTextSize() async throws {
+            try skipWithoutPictures()
+            let page = FailedPageView(code: "net.dns") {}.environment(\.dynamicTypeSize, .accessibility5)
+            await verify(page, size: CGSize(width: 320, height: 568), named: "failed-largest-text")
+        }
+    #endif
+
     // MARK: The catalogue's lists, and the comparison itself
 
     /// The repository's Design/tokens.json, found from this file.

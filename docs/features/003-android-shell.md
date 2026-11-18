@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built, and **run on an emulator** (Android 16, System WebView 133): the app starts, a page loads through the core, and 44 tests pass on the device, among them the adapter suite against the real WebView and isolation between login sets. 115 more pass on the JVM, 28 of them driving the real core through JNI. **Not yet run on a physical device, on any other WebView version, or folded** (§8) |
+| **Status** | Built, and **run on an emulator** (Android 16, System WebView 133): the app starts, a page loads through the core, and 44 tests pass on the device, among them the adapter suite against the real WebView and isolation between login sets. 116 more pass on the JVM, 28 of them driving the real core through JNI. **Not yet run on a physical device, on any other WebView version, or folded** (§8) |
 | **Phase** | W0 of [000](000-master-plan.md) §9; item 1 of [001](001-foundations.md) §12 |
 | **Stack** | 000 §5.1: Kotlin, Jetpack Compose, Material 3, `androidx.webkit`, Wire, JNI through `wt-ffi` |
 | **Last updated** | 2026-11-18 (run on an emulator; the device suite) |
@@ -276,7 +276,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | `cd Core && cargo test --workspace --locked` | 139 passed |
 | `Tools/test.sh android`, from nothing | OK, 48 s |
 | … `:core-engine:testDebugUnitTest` | 28 passed |
-| … `:app:testDebugUnitTest` | 87 passed |
+| … `:app:testDebugUnitTest` | 88 passed |
 | … `:app:assembleDebug` | `app-debug.apk`, with `libwebtiger_core.so` for `arm64-v8a` and `x86_64` |
 | `Tools/strings/strings.py --check`, `Tools/design/tokens.py --check` | up to date; the Apple outputs' checksums unchanged |
 | `./gradlew :app:lintDebug` | no errors. Apart from notices that newer versions exist, two warnings are left on purpose: no launcher icon (the brand is not settled, 001 F10), and `toolbar_open_location` unused (it is the Mac's ⌘L) |
@@ -292,7 +292,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | `BrowserModelTest` | 11 | The window's model against `ScriptedCore` |
 | `BrowserWindowTest` | 9 | The window drawn (Robolectric): its states, its controls, what they send |
 | `WordsTest`, `LaunchOptionsTest` | 3, 5 | Codes into words; fake mode's and the catalogue's extras |
-| `CatalogueSnapshotTest` | 8 | The design catalogue as pictures, drawn on the JVM (004) |
+| `CatalogueSnapshotTest` | 9 | The design catalogue as pictures, drawn on the JVM, and the failed page at twice the text size (004) |
 | `ThroughTheCoreTest` | 6 | The model, the session, the engine and the tracker over the **real core**: a page loads in the Space's login set; a page cannot put an address in the field it has not become; a failure by its code; fake mode; no profiles |
 
 ## 9. Decisions taken while building

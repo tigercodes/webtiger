@@ -18,12 +18,12 @@ W0 proves the stack before any feature is built on it: one Rust core that every 
 | Repository layout, licence, contributor documents | Done | — |
 | Core skeleton: `wt-core`, `wt-store`, `wt-app`, `wt-proto`, `wt-testkit` | Done | 82 Rust tests |
 | The contract (1.0) and `wt-ffi`: C ABI, core thread, fast path | Done | 21 Rust tests through the C functions; 8 Swift tests through the real library |
-| Apple shell loads a page through the core, in the Space's login set | **Done on macOS and the iPhone simulator** | 28 tests against real WKWebView (macOS 27.2, iOS 27 simulator; one is skipped on iOS, where a test process has no service workers); 5 UI tests on macOS and the iPhone 17 simulator; the first 3 also ran on the iPhone Duo simulator |
-| Android shell loads a page through the core, in the Space's login set | **Done on an emulator** (Android 16, System WebView 133). Not run on a physical device ([003](003-android-shell.md)) | 115 JVM tests, 28 of them driving the real core through JNI; 44 on the emulator: the adapter suite against the real WebView (19), isolation (12), sleep and wake (3), and the app's window in fake mode (10) |
+| Apple shell loads a page through the core, in the Space's login set | **Done on macOS and the iPhone simulator** | 28 tests against real WKWebView (macOS 27.2, iOS 27 simulator; one is skipped on iOS, where a test process has no service workers); 5 UI tests on macOS and on the iPhone 17, iPhone Duo and iPad Air simulators |
+| Android shell loads a page through the core, in the Space's login set | **Done on an emulator** (Android 16, System WebView 133). Not run on a physical device ([003](003-android-shell.md)) | 116 JVM tests, 28 of them driving the real core through JNI; 44 on the emulator: the adapter suite against the real WebView (19), isolation (12), sleep and wake (3), and the app's window in fake mode (10) |
 | Windows shell | **Not started.** It cannot be built on this Mac; it needs the Windows PC | — |
 | Fake mode | Done (core, Apple and Android shells) | The Apple apps' UI tests and the Android device suite's window tests run in it |
 | Design tokens and strings, one source for every shell | Done for Apple (Swift, String Catalog) and Android (Kotlin, `strings.xml`) | `lint` fails when the generated files are stale |
-| Design catalogue | **Done for Apple and Android** ([004](004-design-catalogue.md)); Windows not started | Apple: 5 snapshot tests over 36 pictures (macOS, iPhone simulator; light and dark), and a UI test that opens it and runs the accessibility audit. Android: 8 snapshot tests over 18 pictures drawn on the JVM, and a device test that opens it |
+| Design catalogue | **Done for Apple and Android** ([004](004-design-catalogue.md)); Windows not started | Apple: 5 snapshot tests on macOS and 6 on the iPhone simulator, over 38 pictures (light and dark), and a UI test that opens it and runs the accessibility audit. Android: 9 snapshot tests over 19 pictures drawn on the JVM, and device tests that open it and run Android's accessibility checks over it |
 | `Tools/test.sh` | Done for the core, the Apple shell and the Android shell (`android`, which `all` runs where its tools are, and `android-device`) | Run in full on a Mac; `android-device` on the Mac with an emulator |
 | CI | **Green**: four jobs on GitHub, all passing (run 44419083409, 2026-11-18). The core (Linux); the Android shell's JVM tests and APK (Linux, its first build off a Mac); the Apple shell's lint, unit tests and build; the package's tests on the iPhone simulator and the apps' UI tests. The Apple jobs run on the one image that has Xcode 27 (`xcode-27`, a preview, macOS 27.0.1, a screen of 1024 × 768 at one pixel a point: F19). The Android device suite is not run on GitHub | GitHub Actions; a failing UI test's screen recording and any picture that did not match are kept |
 | Arc importer | Built, against published shapes and a synthetic folder. **Not run against a real Arc folder** | 36 Rust tests |
@@ -142,7 +142,7 @@ Two rules every adapter keeps, found while building the first (and now in `engin
 - **`BrowserWindowView`**: back, forward, reload or stop, the address field with its security mark, a progress line, and the page, an empty tab, or a failed page in words. ⌘L goes to the address field.
 - The package builds **without** the Rust core too (`ScriptedCore`), so a screen can be worked on first.
 
-**Verified:** the package's 54 tests on macOS and on the iPhone 17 simulator; the app's 5 UI tests on macOS and the iPhone 17 simulator, the first 3 of them also on the iPhone Duo simulator (not run again there since). **Not yet looked at:** iPad layouts, Stage Manager, multiple windows.
+**Verified:** the package's tests on macOS (54) and on the iPhone 17 simulator (55); the app's 5 UI tests on macOS and on the iPhone 17, iPhone Duo and iPad Air 11-inch simulators. The Duo's run is where the audit found the failed page's words cut short at the largest text sizes (004 §5.1). **Not yet looked at:** what the iPad's window should be (it is the phone's, larger), Stage Manager, multiple windows, the Duo folded.
 
 ## 7. Fake mode
 
@@ -164,8 +164,8 @@ Tools/test.sh lint | core | unit | ios | build | ui | all
 | `wt-ffi` | 21 | The header matches the exports; the core through its C functions, from many threads |
 | `wt-proto` | 3 | The contract's version is the same in three places |
 | `wt-import`, `wt-cli` | 36 | 002 |
-| Swift package | 54 | The real core through Swift (8); the WebKit adapter, isolation and restore (28); the window's model (9); the design catalogue as pictures (5); `ScriptedCore` (4) |
-| Android (JVM) | 115 | The real core through JNI from Kotlin (28); the adapter's rules, the error codes, the window's model; the design catalogue as pictures (8) |
+| Swift package | 54 (55 on the iPhone simulator) | The real core through Swift (8); the WebKit adapter, isolation and restore (28); the window's model (9); the design catalogue as pictures (5, and one more on the iPhone for the largest text size); `ScriptedCore` (4) |
+| Android (JVM) | 116 | The real core through JNI from Kotlin (28); the adapter's rules, the error codes, the window's model; the design catalogue as pictures (9) |
 | Android (on an emulator) | 44 | The adapter suite against the real System WebView (19); isolation between login sets (12); sleep and wake (3); the app's window in fake mode (10), with Android's accessibility checks. `Tools/test.sh android-device`, not part of `all` |
 | App UI tests | 5 × 2 | A page loads through the core; typing an address; a failure in words; Apple's accessibility audit over the empty tab and the failed page; the design catalogue opens and passes the audit |
 
@@ -214,7 +214,7 @@ Small ones, each made where the plan was silent or wrong. None changes a decisio
 | Q7 | QuickJS size and memory | **Answered for macOS and the iOS simulator** | §11.2. Not yet: Android, Windows Arm64, a WebAssembly wall |
 | Q8 | Passwords and AutoFill | Not started; needs a person at the Mac, and the entitlements | One fact recorded on the way: in a Mac process **without** the browser entitlement, a WKWebView page on a secure context has service workers, the Notification interface, the Credential Management interface and storage estimates, and has **no** `PushManager` and no WebUSB (macOS 27.2). That confirms 000 §4.7's "no web push" for the Mac. **On the iOS 27 simulator the same page has no service workers and no Notification interface either.** On iPhone and iPad, WebKit gives service workers only to an app that holds Apple's browser entitlement, so that entitlement is not a nicety for being the default browser: without it a large part of the modern web does not work (§13) |
 | Q9 | WinUI 3 with WebView2 profiles | Not started; needs the Windows PC | — |
-| Q10 | iPhone Duo | **Started** | The app runs on the iPhone Duo simulator and its UI tests pass (§11). Custom chrome with reserved regions and vertical bars is not built |
+| Q10 | iPhone Duo | **Started** | The app runs on the iPhone Duo simulator and its five UI tests pass there, the accessibility audit among them (§11). Custom chrome with reserved regions and vertical bars is not built |
 | Q11 | DRM video; WebUSB and friends | **Started**: what each engine offers a page is recorded; nothing was played | §11.4. Not yet: a protected video actually playing in WKWebView; Widevine in the System WebView on a real device; WebUSB, WebSerial and WebHID in WebView2 (the Windows PC) |
 
 ## 11. First measurements
@@ -298,7 +298,7 @@ Asked of a page on the loopback address (a secure context) in each adapter's web
 
 **What it says.** 000 §4.7's rows hold where they could be checked: no web push in either engine, none of the device interfaces in either, and no web notifications at all on Android. **FairPlay is offered to a page in a WKWebView of an ordinary app**, which is the first half of 000 §4.4's "DRM video: FairPlay (W0 verifies)"; the second half, a protected stream playing, needs a stream and its licence server and was not tried. **Widevine on Android is not answered**: the WebView asks the app before it grants a page protected media (`onPermissionRequest`), the adapter does not answer permission requests yet (W1), and an emulator image may have no Widevine to offer in any case.
 
-**iPhone Duo.** The app builds for the iPhone Duo simulator and its three UI tests pass there, on the display the simulator starts with. Nothing in the app yet adapts to the fold, and no test folds the device: that is W5.
+**iPhone Duo.** The app builds for the iPhone Duo simulator and its five UI tests pass there, on the display the simulator starts with. Nothing in the app yet adapts to the fold, and no test folds the device: that is W5.
 
 ## 12. What is not done, in order
 

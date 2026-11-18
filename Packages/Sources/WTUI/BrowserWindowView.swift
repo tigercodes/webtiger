@@ -190,17 +190,37 @@ public struct BrowserWindowView: View {
     }
 }
 
+/// Words in the middle of the space they are given, which scroll when that space is too small
+/// for them. At the largest text sizes on a narrow screen they do not fit, and words that do
+/// not fit are otherwise cut short: "The site's address c…" tells nobody why a page failed.
+struct CenteredWords<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        GeometryReader { space in
+            ScrollView {
+                content
+                    .frame(maxWidth: .infinity, minHeight: space.size.height)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+    }
+}
+
 /// A tab with no page yet.
 struct EmptyTabView: View {
     var body: some View {
-        VStack(spacing: Tokens.Space.s) {
-            Text("tab.empty.title", bundle: .module)
-                .font(.largeTitle.weight(.semibold))
-            Text("tab.empty.hint", bundle: .module)
+        CenteredWords {
+            VStack(spacing: Tokens.Space.s) {
+                Text("tab.empty.title", bundle: .module)
+                    .font(.largeTitle.weight(.semibold))
+                Text("tab.empty.hint", bundle: .module)
+            }
+            .multilineTextAlignment(.center)
+            .padding(Tokens.Space.xl)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("empty-tab")
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("empty-tab")
     }
 }
 
@@ -210,28 +230,29 @@ struct FailedPageView: View {
     let retry: () -> Void
 
     var body: some View {
-        VStack(spacing: Tokens.Space.m) {
-            Image(systemName: "exclamationmark.icloud")
-                .font(.system(size: 44))
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
-            Text("error.title", bundle: .module)
-                .font(.title2.weight(.semibold))
-            Text(Self.words(for: code))
-                .multilineTextAlignment(.center)
-            // A neutral button with its words in the primary colour: readable in both
-            // appearances, where a tinted label is not.
-            Button(action: retry) { Text("error.retry", bundle: .module) }
-                .buttonStyle(.bordered)
-                .tint(.primary)
-                .accessibilityIdentifier("retry")
+        CenteredWords {
+            VStack(spacing: Tokens.Space.m) {
+                Image(systemName: "exclamationmark.icloud")
+                    .font(.system(size: 44))
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                Text("error.title", bundle: .module)
+                    .font(.title2.weight(.semibold))
+                Text(Self.words(for: code))
+                // A neutral button with its words in the primary colour: readable in both
+                // appearances, where a tinted label is not.
+                Button(action: retry) { Text("error.retry", bundle: .module) }
+                    .buttonStyle(.bordered)
+                    .tint(.primary)
+                    .accessibilityIdentifier("retry")
+            }
+            .multilineTextAlignment(.center)
+            .padding(Tokens.Space.xl)
+            // A container that is an element of its own: without this the identifier is handed
+            // down to the children and replaces theirs.
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("failed-page")
         }
-        .padding(Tokens.Space.xl)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // A container that is an element of its own: without this the identifier is handed
-        // down to the children and replaces theirs.
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("failed-page")
     }
 
     /// The words for a core error code: the string keyed `error.<code>`, or the general ones
@@ -255,15 +276,17 @@ public struct StartFailedView: View {
     }
 
     public var body: some View {
-        VStack(spacing: Tokens.Space.m) {
-            Text("error.start.title", bundle: .module)
-                .font(.title2.weight(.semibold))
-            Text(String(format: Bundle.module.localizedString(forKey: "error.start.detail", value: nil, table: nil), code))
-                .textSelection(.enabled)
+        CenteredWords {
+            VStack(spacing: Tokens.Space.m) {
+                Text("error.start.title", bundle: .module)
+                    .font(.title2.weight(.semibold))
+                Text(String(format: Bundle.module.localizedString(forKey: "error.start.detail", value: nil, table: nil), code))
+                    .textSelection(.enabled)
+            }
+            .multilineTextAlignment(.center)
+            .padding(Tokens.Space.xl)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("start-failed")
         }
-        .padding(Tokens.Space.xl)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("start-failed")
     }
 }

@@ -90,6 +90,17 @@ class CatalogueSnapshotTest {
     @Test @Config(qualifiers = DARK)
     fun startFailedInTheDarkTheme() = startFailed("dark")
 
+    /**
+     * The words of a failure at twice the text size, on a screen as narrow as any: they wrap and
+     * scroll, and none runs off the screen. (Apple's audit found the same page's words cut short
+     * on the iPhone Duo's simulator; here they ran off both ends of the space they had.)
+     */
+    @Test @Config(qualifiers = "w320dp-h480dp-notnight-xhdpi", fontScale = 2f)
+    fun aFailedPageAtTwiceTheTextSize() {
+        show { FailedPage(code = "net.dns", onRetry = {}) }
+        verify("failed-largest-text-light")
+    }
+
     // The catalogue's lists, and the comparison itself
 
     @Test

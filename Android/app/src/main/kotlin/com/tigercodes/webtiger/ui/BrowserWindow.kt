@@ -22,10 +22,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -285,7 +287,9 @@ private fun ProgressLine(model: BrowserModel) {
 @Composable
 internal fun EmptyTab() {
     Column(
-        modifier = Modifier.fillMaxSize().padding(Tokens.Space.xl).testTag("empty-tab"),
+        // Words in the middle of the space they have, which scroll when it is too small for
+        // them: at the largest text sizes they would otherwise run off both ends of it.
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Tokens.Space.xl).testTag("empty-tab"),
         verticalArrangement = Arrangement.spacedBy(Tokens.Space.s, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -309,7 +313,7 @@ internal fun FailedPage(code: String, onRetry: () -> Unit) {
     val resources = LocalResources.current
     val packageName = LocalContext.current.packageName
     Column(
-        modifier = Modifier.fillMaxSize().padding(Tokens.Space.xl).testTag("failed-page"),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Tokens.Space.xl).testTag("failed-page"),
         verticalArrangement = Arrangement.spacedBy(Tokens.Space.m, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -342,7 +346,13 @@ internal fun FailedPage(code: String, onRetry: () -> Unit) {
 fun StartFailed(code: String) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
-            modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(Tokens.Space.xl).testTag("start-failed"),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .verticalScroll(rememberScrollState())
+                    .padding(Tokens.Space.xl)
+                    .testTag("start-failed"),
             verticalArrangement = Arrangement.spacedBy(Tokens.Space.m, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
