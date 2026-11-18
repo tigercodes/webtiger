@@ -113,6 +113,30 @@ class BrowserModelTest {
         }
 
     @Test
+    fun aFieldWithTheKeyboardFollowsThePageUntilSomethingIsTyped() =
+        runTest {
+            val core = ScriptedCore(::windowScript)
+            val model = BrowserModel(session(core))
+            model.open()
+
+            // The field has the keyboard before any page is there, and nothing is typed: as when
+            // it takes the focus by itself at launch, on a device with a keyboard.
+            model.isEditingAddress = true
+            assertEquals("", model.addressText)
+            assertFalse(model.hasTypedAddress)
+            core.emit(snapshot(url = "https://example.com/", display = "example.com", title = "Example"), subscription = 3)
+            assertEquals("an untouched field shows the page that arrived, whole", "https://example.com/", model.addressText)
+
+            core.emit(snapshot(url = "https://example.com/inbox", display = "example.com/inbox", title = "Inbox"), subscription = 3)
+            assertEquals("and goes on following it", "https://example.com/inbox", model.addressText)
+
+            model.addressText = "exam"
+            assertTrue(model.hasTypedAddress)
+            core.emit(snapshot(url = "https://example.com/sent", display = "example.com/sent", title = "Sent"), subscription = 3)
+            assertEquals("until something is typed", "exam", model.addressText)
+        }
+
+    @Test
     fun editingAnEmptyTabStartsFromNothing() =
         runTest {
             val model = BrowserModel(session(ScriptedCore(::windowScript)))

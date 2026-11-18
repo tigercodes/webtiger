@@ -196,6 +196,15 @@ class BrowserWindowTest {
     }
 
     @Test
+    fun atRestTheFieldShowsTheStartOfTheAddress() {
+        show()
+        publish(url = "https://example.com/a/path/longer/than/the/field/is/wide", display = "example.com/a/path/longer/than/the/field/is/wide", webView = 4)
+        // A field scrolls to its caret: at the start, the site is what stays in view.
+        val selection = compose.onNodeWithTag("address-field").fetchSemanticsNode().config.getOrNull(SemanticsProperties.TextSelectionRange)
+        assertEquals("an address too long for the field loses its tail, never its site", TextRange.Zero, selection)
+    }
+
+    @Test
     fun aStartThatFailedSaysItsCode() {
         compose.setContent { WebTigerTheme { StartFailed("store.open") } }
         compose.onNodeWithTag("start-failed").assertIsDisplayed()

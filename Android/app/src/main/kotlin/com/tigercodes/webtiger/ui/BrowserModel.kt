@@ -20,8 +20,11 @@ class BrowserModel(private val session: BrowserSession) {
     var tab by mutableStateOf(TabView())
         private set
 
-    /** What is in the address field. While the field is not being edited it follows the core. */
+    /** What is in the address field. It follows the core until the user types in it. */
     var addressText by mutableStateOf("")
+
+    /** What the model last put in the field. While the field still holds it, nothing was typed. */
+    private var shownText = ""
 
     private var editing by mutableStateOf(false)
 
@@ -30,9 +33,11 @@ class BrowserModel(private val session: BrowserSession) {
         get() = editing
         set(value) {
             editing = value
-            // Editing starts from the whole address; at rest the field shows the short form.
-            addressText = if (value && address.url.isNotEmpty()) address.url else address.display
+            show()
         }
+
+    /** The user has changed what the field was given. */
+    val hasTypedAddress: Boolean get() = addressText != shownText
 
     private var window: OpenedWindow? = null
     private var opening = false
@@ -80,6 +85,14 @@ class BrowserModel(private val session: BrowserSession) {
 
     private fun apply(snapshot: WindowSnapshot) {
         tab = snapshot.tab ?: TabView()
-        if (!editing) addressText = address.display
+        // A field with the keyboard still follows the page until something is typed in it: one
+        // that took the focus by itself, at launch, must not go on showing what was there then.
+        if (!editing || !hasTypedAddress) show()
+    }
+
+    /** Puts the page's address in the field: whole while it is edited, the short form at rest. */
+    private fun show() {
+        shownText = if (editing && address.url.isNotEmpty()) address.url else address.display
+        addressText = shownText
     }
 }

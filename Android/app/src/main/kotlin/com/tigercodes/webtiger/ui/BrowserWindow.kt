@@ -75,6 +75,12 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
     BackHandler(enabled = model.tab.can_go_back) { model.perform(NavigationCommand.NAVIGATION_COMMAND_BACK) }
     // Where the keyboard's focus goes when an address has been submitted: to the page.
     val page = remember { FocusRequester() }
+    // A window that opens on a page gives the page the keyboard. Out of touch mode the system
+    // hands a new window's focus to its first control that can take it, which is the address
+    // field; with nothing typed in it, the field lets go when the page arrives.
+    LaunchedEffect(model.hasPage) {
+        if (model.hasPage && model.isEditingAddress && !model.hasTypedAddress) page.requestFocus()
+    }
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         // The window draws edge to edge; its content keeps clear of the system's bars, the
         // cutout and the keyboard.
@@ -135,8 +141,25 @@ private fun AddressField(model: BrowserModel, onSubmitted: () -> Unit, modifier:
     // The text is the model's; the selection and what the keyboard is composing are the field's.
     var field by remember { mutableStateOf(TextFieldValue(model.addressText)) }
     val text = model.addressText
-    val shown = if (field.text == text) field else TextFieldValue(text, TextRange(text.length))
-    SideEffect { if (field != shown) field = shown }
+    val shown =
+        when {
+            // A field scrolls to its caret. At rest the caret is at the start, so what stays in
+            // view of an address too long for the field is its site, and what is cut is its tail.
+            !model.isEditingAddress -> TextFieldValue(text, TextRange.Zero)
+            field.text == text -> field
+            // The page moved on under a field nobody has typed in: its whole address, selected,
+            // as when the keyboard came.
+            !model.hasTypedAddress -> TextFieldValue(text, TextRange(0, text.length))
+            else -> TextFieldValue(text, TextRange(text.length))
+        }
+    // The tap that gives the field the keyboard also places a caret where it fell, in the text
+    // the field showed until then. That caret is dropped: the whole address stays selected.
+    val tap = remember { FocusingTap() }
+    SideEffect {
+        if (field != shown) field = shown
+        // Drawn again since the focus came: whatever arrives now is the user's own.
+        tap.restText = null
+    }
 
     Row(
         modifier =
@@ -161,10 +184,14 @@ private fun AddressField(model: BrowserModel, onSubmitted: () -> Unit, modifier:
             BasicTextField(
                 value = shown,
                 onValueChange = { changed ->
-                    // Typing is editing, wherever the focus was last said to be.
-                    if (!model.isEditingAddress) model.isEditingAddress = true
-                    field = changed
-                    model.addressText = changed.text
+                    if (changed.text == tap.restText && changed.selection.collapsed) {
+                        tap.restText = null
+                    } else {
+                        // Typing is editing, wherever the focus was last said to be.
+                        if (!model.isEditingAddress) model.isEditingAddress = true
+                        field = changed
+                        model.addressText = changed.text
+                    }
                 },
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
@@ -188,11 +215,13 @@ private fun AddressField(model: BrowserModel, onSubmitted: () -> Unit, modifier:
                         .fillMaxWidth()
                         .onFocusChanged { state ->
                             if (state.isFocused == model.isEditingAddress) return@onFocusChanged
+                            val atRest = model.addressText
                             model.isEditingAddress = state.isFocused
                             if (state.isFocused) {
                                 // As every browser does: the whole address, selected.
                                 val whole = model.addressText
                                 field = TextFieldValue(whole, TextRange(0, whole.length))
+                                tap.restText = atRest
                             }
                         }
                         .testTag("address-field")
@@ -200,6 +229,11 @@ private fun AddressField(model: BrowserModel, onSubmitted: () -> Unit, modifier:
             )
         }
     }
+}
+
+/** What the address field showed when the keyboard's focus came to it, until it is drawn again. */
+private class FocusingTap {
+    var restText: String? = null
 }
 
 @Composable

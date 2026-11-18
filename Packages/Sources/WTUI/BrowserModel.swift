@@ -8,14 +8,19 @@ import WTCoreClient
 public final class BrowserModel {
     /// The tab as the core last published it.
     public private(set) var tab = WTTabView()
-    /// What is in the address field. While the field is not being edited it follows the core.
+    /// What is in the address field. It follows the core until the user types in it.
     public var addressText = ""
     /// The address field has the keyboard: what the user types is not overwritten.
     public var isEditingAddress = false {
-        didSet {
-            // Editing starts from the whole address; at rest the field shows the short form.
-            addressText = isEditingAddress && !tab.address.url.isEmpty ? tab.address.url : tab.address.display
-        }
+        didSet { show() }
+    }
+
+    /// What the model last put in the field. While the field still holds it, nothing was typed.
+    @ObservationIgnored private var shownText = ""
+
+    /// The user has changed what the field was given.
+    public var hasTypedAddress: Bool {
+        addressText != shownText
     }
 
     private let session: BrowserSession
@@ -71,9 +76,17 @@ public final class BrowserModel {
 
     private func apply(_ snapshot: WTWindowSnapshot) {
         tab = snapshot.tab
-        if !isEditingAddress {
-            addressText = tab.address.display
+        // A field with the keyboard still follows the page until something is typed in it: one
+        // that was given the focus and left alone must not go on showing what was there then.
+        if !isEditingAddress || !hasTypedAddress {
+            show()
         }
+    }
+
+    /// Puts the page's address in the field: whole while it is edited, the short form at rest.
+    private func show() {
+        shownText = isEditingAddress && !tab.address.url.isEmpty ? tab.address.url : tab.address.display
+        addressText = shownText
     }
 
     private func send(_ request: WTRequest.OneOf_Kind) {

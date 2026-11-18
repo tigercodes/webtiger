@@ -91,6 +91,28 @@ final class BrowserModelTests: XCTestCase {
         XCTAssertEqual(model.addressText, "example.com/inbox", "leaving the field shows the page again")
     }
 
+    func testAFieldWithTheKeyboardFollowsThePageUntilSomethingIsTyped() async {
+        let (session, core) = session()
+        let model = BrowserModel(session: session)
+        await model.open()
+
+        // The field has the keyboard before any page is there, and nothing is typed.
+        model.isEditingAddress = true
+        XCTAssertEqual(model.addressText, "")
+        core.emit(snapshot(url: "https://example.com/", display: "example.com", title: "Example"), subscription: 3)
+        await settle { model.tab.title == "Example" }
+        XCTAssertEqual(model.addressText, "https://example.com/", "an untouched field shows the page that arrived, whole")
+
+        core.emit(snapshot(url: "https://example.com/inbox", display: "example.com/inbox", title: "Inbox"), subscription: 3)
+        await settle { model.tab.title == "Inbox" }
+        XCTAssertEqual(model.addressText, "https://example.com/inbox", "and goes on following it")
+
+        model.addressText = "exam"
+        core.emit(snapshot(url: "https://example.com/sent", display: "example.com/sent", title: "Sent"), subscription: 3)
+        await settle { model.tab.title == "Sent" }
+        XCTAssertEqual(model.addressText, "exam", "until something is typed")
+    }
+
     func testSnapshotsForAnotherSubscriptionAreIgnored() async {
         let (session, core) = session()
         let model = BrowserModel(session: session)

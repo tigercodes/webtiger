@@ -23,8 +23,16 @@ public struct BrowserWindowView: View {
         }
         .task { await model.open() }
         .onDisappear { model.close() }
+        // A window that opens on a page gives the page the keyboard. A new window's first
+        // responder is its address field; with nothing typed in it, the field lets go when the
+        // page arrives. An empty tab keeps the keyboard in the field, ready for an address.
+        .onChange(of: model.hasPage) { _, hasPage in
+            if hasPage, addressFocused, !model.hasTypedAddress {
+                addressFocused = false
+            }
+        }
         #if os(macOS)
-            .navigationTitle(windowTitle)
+        .navigationTitle(windowTitle)
         #endif
     }
 
