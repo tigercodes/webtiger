@@ -46,6 +46,19 @@ def swift(tokens: dict) -> str:
         for name, value in tokens[group].items():
             out.append(f"        public static let {name}: CGFloat = {value}")
         out.append("    }")
+    # Every token again, by name: what the design catalogue draws (004). A token added to
+    # tokens.json is in the catalogue without anyone remembering to put it there.
+    out += ["", "    /// Every token by name, for the design catalogue.", "    public enum Catalogue {"]
+    out.append("        public static let colors: [(name: String, color: Color)] = [")
+    for name in tokens["color"]:
+        out.append(f'            ("{name}", Palette.{name}),')
+    out.append("        ]")
+    for group in ("space", "radius", "size"):
+        out += ["", f"        public static let {group}: [(name: String, value: CGFloat)] = ["]
+        for name in tokens[group]:
+            out.append(f'            ("{name}", {group.capitalize()}.{name}),')
+        out.append("        ]")
+    out.append("    }")
     out += ["}", ""]
     return "\n".join(out)
 

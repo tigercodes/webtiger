@@ -112,6 +112,11 @@ final class LaunchTests: XCTestCase {
                    kind == .group || kind == .other, element?.identifier.isEmpty ?? true {
                     return true
                 }
+                // An element cut by the window's edge is not drawn whole, and what is not drawn
+                // has no contrast to measure. (A long screen that scrolls has one at its foot.)
+                if issue.auditType == .contrast, let frame = element?.frame, !app.windows.firstMatch.frame.contains(frame) {
+                    return true
+                }
                 #if !os(macOS)
                     // A one-line text field scrolls what does not fit: that is not clipped text.
                     if issue.auditType == .textClipped, element?.elementType == .textField {
@@ -130,6 +135,21 @@ final class LaunchTests: XCTestCase {
             faults.append("the audit could not run: \(error.localizedDescription)")
         }
         XCTAssertTrue(faults.isEmpty, "\(state): \(faults.joined(separator: "; "))", file: file, line: line)
+    }
+
+    /// The design catalogue opens in place of a browser, shows its sections, and passes
+    /// Apple's accessibility audit (004).
+    func testTheDesignCatalogueOpensAndPassesTheAccessibilityAudit() {
+        continueAfterFailure = true
+        let app = XCUIApplication()
+        app.launchEnvironment["WEBTIGER_CATALOGUE"] = "1"
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Design Catalogue"].waitForExistence(timeout: 30), "the catalogue opened")
+        XCTAssertTrue(app.staticTexts["Colours"].exists)
+        XCTAssertTrue(app.staticTexts["The Window"].exists, "the window's states are in it")
+        let fields = app.textFields.matching(identifier: "address-field")
+        XCTAssertGreaterThan(fields.count, 1, "each state is the window itself, with an address field of its own")
+        audit(app, "the design catalogue")
     }
 
     /// Apple's accessibility audit over each state of the window (000 §8.6): labels, contrast,

@@ -31,4 +31,36 @@ public enum Tokens {
         public static let minimumHit: CGFloat = 44
         public static let pointerHit: CGFloat = 28
     }
+
+    /// Every token by name, for the design catalogue.
+    public enum Catalogue {
+        public static let colors: [(name: String, color: Color)] = [
+            ("accent", Palette.accent),
+            ("secure", Palette.secure),
+            ("insecure", Palette.insecure),
+            ("fieldFill", Palette.fieldFill),
+            ("hairline", Palette.hairline),
+        ]
+
+        public static let space: [(name: String, value: CGFloat)] = [
+            ("xs", Space.xs),
+            ("s", Space.s),
+            ("m", Space.m),
+            ("l", Space.l),
+            ("xl", Space.xl),
+        ]
+
+        public static let radius: [(name: String, value: CGFloat)] = [
+            ("field", Radius.field),
+            ("tile", Radius.tile),
+        ]
+
+        public static let size: [(name: String, value: CGFloat)] = [
+            ("toolbarHeight", Size.toolbarHeight),
+            ("fieldHeight", Size.fieldHeight),
+            ("progressHeight", Size.progressHeight),
+            ("minimumHit", Size.minimumHit),
+            ("pointerHit", Size.pointerHit),
+        ]
+    }
 }

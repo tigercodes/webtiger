@@ -30,8 +30,9 @@ Windows/obj/
 Windows/packages/
 Windows/.vs/
 *.vcxproj.user
-# Snapshot failures
+# Snapshot failures: what was drawn, and where it differs from the picture checked in
 **/__Snapshots__/**/*.diff.png
+**/__Snapshots__/**/*.actual.png
 # Secrets
 *.pem
 .env

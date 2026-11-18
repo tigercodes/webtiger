@@ -61,6 +61,174 @@
         }
       }
     },
+    "catalogue.colours": {
+      "comment": "Design catalogue: heading of the colour tokens.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Colours"
+          }
+        }
+      }
+    },
+    "catalogue.radius": {
+      "comment": "Design catalogue: heading of the corner-radius tokens.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Radius"
+          }
+        }
+      }
+    },
+    "catalogue.size": {
+      "comment": "Design catalogue: heading of the size tokens.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Size"
+          }
+        }
+      }
+    },
+    "catalogue.space": {
+      "comment": "Design catalogue: heading of the spacing tokens.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Space"
+          }
+        }
+      }
+    },
+    "catalogue.start_failed": {
+      "comment": "Design catalogue: heading of what is shown instead of a window when the core refuses to start.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The core would not start"
+          }
+        }
+      }
+    },
+    "catalogue.state.empty": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An empty tab"
+          }
+        }
+      }
+    },
+    "catalogue.state.failed": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A page that failed"
+          }
+        }
+      }
+    },
+    "catalogue.state.history": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back and forward offered"
+          }
+        }
+      }
+    },
+    "catalogue.state.insecure": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A page that is not secure"
+          }
+        }
+      }
+    },
+    "catalogue.state.loading": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A page loading"
+          }
+        }
+      }
+    },
+    "catalogue.state.long": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An address too long for its field"
+          }
+        }
+      }
+    },
+    "catalogue.state.secure": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A secure page"
+          }
+        }
+      }
+    },
+    "catalogue.states": {
+      "comment": "Design catalogue: heading of the browser window's states.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Window"
+          }
+        }
+      }
+    },
+    "catalogue.title": {
+      "comment": "Title of the design catalogue: a screen for designers that shows every design token and every state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Design Catalogue"
+          }
+        }
+      }
+    },
     "error.engine.no_private": {
       "comment": "The engine cannot make a login set that is kept in memory only.",
       "extractionState": "manual",

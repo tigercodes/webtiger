@@ -15,6 +15,8 @@ struct WebTigerApp: App {
                 BrowserWindowView(session: session)
             case let .refused(code):
                 StartFailedView(code: code)
+            case .catalogue:
+                CatalogueView()
             }
         }
         #if os(macOS)
@@ -30,11 +32,18 @@ final class Launch {
     enum Outcome {
         case started(BrowserSession)
         case refused(code: String)
+        /// The design catalogue was asked for instead of a browser (004).
+        case catalogue
     }
 
     let outcome: Outcome
 
     init() {
+        // `WEBTIGER_CATALOGUE=1`: the design catalogue, which needs no core.
+        guard ProcessInfo.processInfo.environment["WEBTIGER_CATALOGUE"] != "1" else {
+            outcome = .catalogue
+            return
+        }
         do {
             outcome = try .started(BrowserSession.live())
         } catch let CoreError.startRefused(code) {

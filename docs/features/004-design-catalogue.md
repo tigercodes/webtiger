@@ -1,0 +1,96 @@
+# 004 — The design catalogue (W0)
+
+| | |
+|---|---|
+| **Status** | Apple: built and snapshot-tested on macOS and the iPhone simulator. Android: not started. Windows: not started (§7) |
+| **Phase** | W0 of [000](000-master-plan.md) §9; item 4 of [001](001-foundations.md) §12 |
+| **Plan** | 000 §6.7 (one token file, three shells), §8.6 (the catalogue is snapshot-tested) |
+| **Last updated** | 2026-11-18 |
+
+## 1. What it is for
+
+Someone changing a colour, a spacing or a component should see every place it shows, in both appearances, before the change is merged, and a change nobody meant should fail a test. The catalogue is that one screen: every design token, and every component the window is built from, in each of its states. It is a screen of the app, so a designer can open it; and it is a set of pictures in the repository, so a reviewer can see a change as a picture that changed.
+
+It is also where a shell proves it draws the *shared* design. The tokens are one file (`Design/tokens.json`); each shell's catalogue shows the same names with the values that file gives.
+
+## 2. What it shows
+
+| Section | What |
+|---|---|
+| Colours | Each palette token, by name, as a swatch on the window's background |
+| Space, radius, size | Each token, by name, drawn to scale with its value |
+| The window's states | The real window, over a scripted core (no Rust core, no page): an empty tab; a page loading; a secure page; a page that is not secure; an address too long for its field; a page that failed; back and forward offered |
+| Start failed | What is shown instead of a window when the core will not start |
+
+The states are not drawings of the window. They are `BrowserWindowView` itself, given a `ScriptedCore` that publishes the snapshot for the state (001 §6: a screen is tested without the core). So the catalogue cannot drift from the app: a state that the window draws differently is drawn differently here. Where the page would be there is nothing: the catalogue has no web engine in it.
+
+## 3. How it is built (Apple)
+
+```
+Packages/Sources/WTUI/Catalogue/
+  CatalogueView.swift     the screen: the token sections and the states
+  CatalogueStates.swift   each state of the window, as the snapshot a core would publish
+Packages/Tests/WTUITests/
+  Snapshot.swift          draws a view into a picture, and compares it with the one checked in
+  CatalogueSnapshotTests.swift
+  __Snapshots__/          the pictures, one folder for each system they were drawn on
+```
+
+- **Opening it.** `WEBTIGER_CATALOGUE=1` in the app's environment shows the catalogue instead of a browser window. Nothing else in the app leads to it yet; a menu command arrives with the app's menus (W2).
+- **A state is a snapshot.** `CatalogueState` names a state and builds the `WTWindowSnapshot` for it. `CatalogueWindow` hosts `BrowserWindowView` over a `ScriptedCore` that answers a window's opening and then publishes that snapshot.
+- **Tokens by name.** The token sections are generated lists: `Tools/design/tokens.py` writes, beside the tokens themselves, a list of each group's names and values (`Tokens.catalogue`), so a token added to `Design/tokens.json` is in the catalogue without anyone remembering to put it there.
+
+## 4. Snapshot tests
+
+`Tools/test.sh unit` (macOS) and `Tools/test.sh ios` run them with the package's other tests.
+
+- **How a picture is taken.** The view is put in a window that is never shown and drawn into a bitmap at twice its points, in the sRGB colour space, in the light and in the dark appearance. This draws what the app draws, text fields included, which SwiftUI's `ImageRenderer` does not. A view that waits for something (the window's model, for its first snapshot) is drawn until two pictures in a row are the same. Nothing is animated: a window on no screen has no frames for an animation to run through, and the first iPhone pictures showed a loading page's progress at its start.
+- **On the iPhone simulator** the package's tests run in a process with no scene, and UIKit has deprecated a window without one. The helper makes it by its class's name, so the warning (an error here) is not tripped: a window that is never shown is exactly what the deprecation says it is, and what a test wants.
+- **How it is compared.** Against the picture checked in under `__Snapshots__/<system>/`, where `<system>` names the platform and the system's major version (`macOS-27`, `iOS-27`). Two pictures match when no more than a small share of their pixels differ by more than a small amount (§4.1): text is not drawn identically on every machine, and a test that fails on a rounding of grey teaches people to ignore it.
+- **When it fails**, the picture that was drawn and a picture of the difference are written beside the one checked in (`.actual.png`, `.diff.png`; neither is committed), and the failure names them.
+- **Recording.** `WEBTIGER_RECORD_SNAPSHOTS=1 Tools/test.sh unit` (and `… ios`) writes the pictures instead of comparing them. A picture that does not exist is written and the test fails, so a new state cannot pass unseen. **A recorded picture is looked at before it is committed**: the first iPhone set was blank, every one of them, and would have matched itself for ever. `testTheComparisonSeesAChange` is the test that caught it.
+- **On a system with no pictures** (another major version), the tests are skipped and say so. They do not pass.
+
+### 4.1 Tolerance
+
+A pixel differs when any of its channels differs by more than 24 of 255; two pictures match when fewer than 1 % of their pixels differ. On the Mac that recorded them the pictures compared equal, run after run, on macOS and on the iPhone simulator; the tolerance is there for another machine's text. It is too wide to catch a colour token changing by a few units; the token's own value is tested for that (`CatalogueSnapshotTests.testEveryTokenIsInTheCatalogue`).
+
+## 5. Tests
+
+| Test | What it shows |
+|---|---|
+| `testEveryTokenIsInTheCatalogue` | The catalogue's lists are the token file's: every name, every value |
+| `testTheTokenSections` (light, dark) | The swatches and the scales |
+| `testEveryStateOfTheWindow` (light, dark) | Each state of §2, drawn by the real window |
+| `testStartFailed` | The start failure |
+| `testTheComparisonSeesAChange` | The comparison itself: the same view is the same picture; with one swatch recoloured, exactly the swatch's share of the pixels differs; another size is another picture |
+
+The app's UI tests open the catalogue (`WEBTIGER_CATALOGUE=1`), check that each state in it is the window itself, and run Apple's accessibility audit over it (`testTheDesignCatalogueOpensAndPassesTheAccessibilityAudit`, on macOS and the iPhone simulator). The audit found one thing: a token's row had been one element, drawing and all, and a faint token (a hairline) drawn faintly was faulted as text of poor contrast. The row's words are now the element. It also faulted a row that the window's edge cut in two; a contrast finding on an element not wholly in the window is now passed over, since what is not drawn cannot be measured.
+
+## 6. Decisions
+
+| # | Decision | Why |
+|---|---|---|
+| C1 | The states are the real window over a scripted core, not drawings | A catalogue that is drawn separately is a second implementation, and drifts |
+| C2 | No snapshot library; a helper of about a hundred lines | A dependency is a decision (CLAUDE.md), and this one would be for one function: draw, compare, write |
+| C3 | Pictures are per platform and system major version, and other systems skip | A system update redraws text and controls. Failing on that would be noise; passing would be a lie |
+| C4 | A tolerance, stated | §4.1 |
+| C5 | The catalogue ships in the app, behind an environment variable | A designer can open what the tests draw. It costs a few kilobytes |
+
+## 7. What is not done, and not verified
+
+- **Android and Windows.** The Android catalogue (Compose, with Roborazzi or pictures taken on the emulator) and the Windows one are not started.
+- **Contrast themes, text sizes, size classes, fold postures** (000 §8.6). The pictures are light and dark at the default text size, at one size for each platform.
+- **GitHub's runner.** Whether the pictures match on its Mac is not known until it has run them; its accessibility audit already differs from both Macs here (001). When a picture does not match there, the workflow keeps what was drawn and the difference.
+- **The tint on the iPhone.** The pictures show the toolbar's reload and stop buttons in the system's blue, where the Mac draws them grey. Nobody chose that: no accent is set on the window. Left as found, for whoever settles the palette (001 F10).
+- **The page.** No state shows a web page: the catalogue has no engine.
+
+## 8. Done checklist
+
+- [x] Tokens by name from `Tools/design/tokens.py`; `--check` covers them.
+- [x] `CatalogueView` with the token sections and the window's states.
+- [x] `WEBTIGER_CATALOGUE=1` opens it; the UI tests audit it.
+- [x] Snapshot helper and tests; pictures recorded for macOS 27 and iOS 27 (36 pictures), each looked at.
+- [x] `Tools/test.sh all` green.
+- [ ] Android catalogue.
+- [ ] Windows catalogue.

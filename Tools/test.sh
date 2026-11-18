@@ -91,6 +91,11 @@ run_unit() {
 run_ios() {
   ensure_tools
   ensure_core
+  # xcodebuild hands a test's process only the variables it is told to: recording the
+  # snapshots (004 §4) is asked of the simulator's tests the same way as of the Mac's.
+  if [[ -n "${WEBTIGER_RECORD_SNAPSHOTS:-}" ]]; then
+    export TEST_RUNNER_WEBTIGER_RECORD_SNAPSHOTS="$WEBTIGER_RECORD_SNAPSHOTS"
+  fi
   step "package tests on $IOS_SIM"
   (cd Packages && xcodebuild -scheme WebTiger-Package -destination "platform=iOS Simulator,name=$IOS_SIM" \
     -derivedDataPath "$DD-ios" -skipPackagePluginValidation "${DIAG[@]}" test 2>&1 | xcbeautify --quiet)

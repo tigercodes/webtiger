@@ -1,6 +1,6 @@
 # WebTiger
 
-An open-source browser: one Rust core, native shells (Swift on Apple, C++/WinRT on Windows, Kotlin on Android), each system's own web engine. The plan is `docs/features/000-master-plan.md`; what is built so far is `docs/features/001-foundations.md`. **This repository is public: its documents and comments must stand alone and never point into a private repository.**
+An open-source browser: one Rust core, native shells (Swift on Apple, C++/WinRT on Windows, Kotlin on Android), each system's own web engine. The plan is `docs/features/000-master-plan.md`; what is built so far is `docs/features/001-foundations.md` (and 002 the Arc importer, 003 the Android shell, 004 the design catalogue). **This repository is public: its documents and comments must stand alone and never point into a private repository.**
 
 Two words, kept apart everywhere: the **core** is the Rust side; an **engine** is a web engine (WebKit, Chromium).
 
@@ -62,6 +62,7 @@ Android/app              the System WebView adapter, the Compose window; src/and
 - Core behaviour is tested headless through `wt-testkit`'s `FakeShell`: it drives the whole contract in process against a scripted engine. Prefer that to mocking pieces.
 - Engine adapters are tested by the **adapter suite** against a real engine and the test site, served from inside the test's process (`Packages/Tests/WTWebKitTests`; `Android/app/src/androidTest`, on a device). A new page goes in `Fixtures/testsite/site.json`, never in one shell's server. The same behaviours are the bar for every adapter; isolation between login sets is tested as a security property.
 - Screens are tested against `ScriptedCore`, without the Rust core.
+- **Snapshots** (`Packages/Tests/WTUITests/__Snapshots__/<system>/`, 004): a screen's states as pictures, compared within a stated tolerance. `WEBTIGER_RECORD_SNAPSHOTS=1 Tools/test.sh unit` (or `ios`) records them. Look at every picture you record before committing it: a blank one matches itself for ever.
 - **Fake mode**: `WEBTIGER_FAKE=1` keeps the store in memory and makes ids deterministic; `WEBTIGER_FAKE_START=<address>` is opened in every new window. UI suites run in it.
 - Test hostnames must sit under a real public suffix (`shop.example.com`, not `shop.example`): the address fix-up treats an unknown suffix as a search.
 - Never dump a whole macOS accessibility tree in a UI test (`app.debugDescription`): it includes the system menu bar and its recent items. Query the app's own window.

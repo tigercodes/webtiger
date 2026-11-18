@@ -11,6 +11,34 @@
     <string name="address_secure">Secure connection</string>
     <!-- The app's name. Not translated. -->
     <string name="app_name">WebTiger</string>
+    <!-- Design catalogue: heading of the colour tokens. -->
+    <string name="catalogue_colours">Colours</string>
+    <!-- Design catalogue: heading of the corner-radius tokens. -->
+    <string name="catalogue_radius">Radius</string>
+    <!-- Design catalogue: heading of the size tokens. -->
+    <string name="catalogue_size">Size</string>
+    <!-- Design catalogue: heading of the spacing tokens. -->
+    <string name="catalogue_space">Space</string>
+    <!-- Design catalogue: heading of what is shown instead of a window when the core refuses to start. -->
+    <string name="catalogue_start_failed">The core would not start</string>
+    <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_empty">An empty tab</string>
+    <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_failed">A page that failed</string>
+    <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_history">Back and forward offered</string>
+    <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_insecure">A page that is not secure</string>
+    <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_loading">A page loading</string>
+    <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_long">An address too long for its field</string>
+    <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_secure">A secure page</string>
+    <!-- Design catalogue: heading of the browser window's states. -->
+    <string name="catalogue_states">The Window</string>
+    <!-- Title of the design catalogue: a screen for designers that shows every design token and every state of the window. -->
+    <string name="catalogue_title">Design Catalogue</string>
     <!-- The engine cannot make a login set that is kept in memory only. -->
     <string name="error_engine_no_private">Private windows aren’t available on this device yet.</string>
     <!-- Android: the System WebView is too old to give each login set a profile of its own. -->

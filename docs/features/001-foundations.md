@@ -23,7 +23,7 @@ W0 proves the stack before any feature is built on it: one Rust core that every 
 | Windows shell | **Not started.** It cannot be built on this Mac; it needs the Windows PC | — |
 | Fake mode | Done (core and Apple shell) | The UI tests run in it |
 | Design tokens and strings, one source for every shell | Done for Apple (Swift, String Catalog) | `lint` fails when the generated files are stale |
-| Design catalogue | **Not started** | — |
+| Design catalogue | **Done for Apple** ([004](004-design-catalogue.md)); Android and Windows not started | 5 snapshot tests over 36 pictures (macOS, iPhone simulator; light and dark); a UI test opens it and runs the accessibility audit |
 | `Tools/test.sh` | Done for the core and the Apple shell | Run in full on this Mac |
 | CI | The core job (Linux) passes on GitHub. The two Apple jobs need Xcode 27, which GitHub has only on a preview image (`xcode-27`); they were moved to it after the first run failed for want of Xcode 27, and their first full run is not yet in | GitHub Actions |
 | Arc importer | Built, against published shapes and a synthetic folder. **Not run against a real Arc folder** | 36 Rust tests |
@@ -51,7 +51,7 @@ Packages/                 the Apple shell, one Swift package
   WTCoreClient            NativeCore (the real core) and ScriptedCore (for tests)
   WTWebKit                the WebKit engine adapter
   WTDesign                design tokens (generated)
-  WTUI                    the window, its model, the strings
+  WTUI                    the window, its model, the strings, the design catalogue
 Apps/WebTiger             the app targets and their UI tests
 Design/tokens.json        → Tools/design/tokens.py
 Localization/strings.json → Tools/strings/strings.py
@@ -142,7 +142,7 @@ Two rules every adapter keeps, found while building the first (and now in `engin
 - **`BrowserWindowView`**: back, forward, reload or stop, the address field with its security mark, a progress line, and the page, an empty tab, or a failed page in words. ⌘L goes to the address field.
 - The package builds **without** the Rust core too (`ScriptedCore`), so a screen can be worked on first.
 
-**Verified:** the package's 49 tests on macOS and on the iPhone 17 simulator; the app's 4 UI tests on macOS and the iPhone 17 simulator, the first 3 of them also on the iPhone Duo simulator. **Not yet looked at:** iPad layouts, Stage Manager, multiple windows.
+**Verified:** the package's 54 tests on macOS and on the iPhone 17 simulator; the app's 5 UI tests on macOS and the iPhone 17 simulator, the first 3 of them also on the iPhone Duo simulator (not run again there since). **Not yet looked at:** iPad layouts, Stage Manager, multiple windows.
 
 ## 7. Fake mode
 
@@ -164,16 +164,16 @@ Tools/test.sh lint | core | unit | ios | build | ui | all
 | `wt-ffi` | 21 | The header matches the exports; the core through its C functions, from many threads |
 | `wt-proto` | 3 | The contract's version is the same in three places |
 | `wt-import`, `wt-cli` | 36 | 002 |
-| Swift package | 49 | The real core through Swift (8); the WebKit adapter, isolation and restore (28); the window's model (9); `ScriptedCore` (4) |
+| Swift package | 54 | The real core through Swift (8); the WebKit adapter, isolation and restore (28); the window's model (9); the design catalogue as pictures (5); `ScriptedCore` (4) |
 | Android (JVM) | 106 | The real core through JNI from Kotlin (28); the adapter's rules, the error codes, the window's model |
 | Android (on an emulator) | 42 | The adapter suite against the real System WebView (19); isolation between login sets (12); sleep and wake (3); the app's window in fake mode (8). `Tools/test.sh android-device`, not part of `all` |
-| App UI tests | 4 × 2 | A page loads through the core; typing an address; a failure in words; Apple's accessibility audit over the empty tab and the failed page |
+| App UI tests | 5 × 2 | A page loads through the core; typing an address; a failure in words; Apple's accessibility audit over the empty tab and the failed page; the design catalogue opens and passes the audit |
 
 **The adapter suite** (`Packages/Tests/WTWebKitTests`) is the bar every engine adapter must clear (000 §8.3): event order, redirects, address changes, history, failures as codes, the navigation policy, host requests for web views that do not exist, release on destroy, and **isolation**: sign in under one login set and another sees no cookie, no local storage, no database, no cache, no service worker and no copy in the HTTP cache; the web views of one private login set share it, and it is forgotten with the last of them; a sign-in for the session outlives the last web view of its login set; a deleted login set leaves nothing.
 
 `lint` also runs `buf lint` and `buf format` over the contract and `cargo deny check` over the core's dependencies (`Core/deny.toml`: permissive licences and MPL-2.0 only, crates.io only, no known advisories). Both tools are pinned by checksum in `Tools/bootstrap.sh` and both pass.
 
-**Not yet in place:** fuzzing, performance tests and snapshot tests, which are later phases'.
+**Not yet in place:** fuzzing and performance tests, which are later phases'. Snapshot tests began with the design catalogue (004).
 
 ## 9. Decisions taken while building
 
@@ -304,7 +304,7 @@ Asked of a page on the loopback address (a secure context) in each adapter's web
 1. ~~The Android shell on a device.~~ Done on an emulator: the first launch, the adapter suite against a real WebView, and isolation between profiles (003 §8.1). **A physical device, a foldable and other WebView versions** are still to come (003 §8.2).
 2. **The Windows shell**, on the Windows PC: C++/WinRT, WinUI 3, WebView2 with a profile per login set, nanopb, the adapter suite, `Tools/test.ps1`.
 3. ~~`Tools/testsite`, shared by all three adapter suites.~~ Done for the two that exist (F12); the Windows suite will read the same definition. The plan's longer list (000 §8.2: several hostnames, third-party trackers, downloads, uploads, permissions, media) arrives with the features that need each page.
-4. **The design catalogue**, snapshot-tested.
+4. ~~The design catalogue, snapshot-tested.~~ Done for the Apple shell (004). **The Android catalogue** is next of its kind; the Windows one comes with that shell.
 5. **The spikes**, starting with those a Mac can answer alone. Q2 and Q5 are answered for WebKit and for the System WebView as far as §10 says; Q1 is next.
 6. **The Arc importer against a real Arc folder** (002 §8).
 
@@ -330,7 +330,8 @@ Asked of a page on the loopback address (a secure context) in each adapter's web
 - [x] Android shell run on an emulator, with the adapter suite and isolation (003 §8.1).
 - [ ] Android shell on a physical device.
 - [ ] Windows shell.
-- [ ] Design catalogue.
+- [x] Design catalogue for the Apple shell, snapshot-tested (004).
+- [ ] Design catalogue for Android and Windows.
 - [x] Spikes Q2 and Q5 for WebKit and the System WebView (§10, §11.3), but for permissions, the cost of a store, and session cookies across a restart.
 - [ ] Spikes Q1, Q4, Q8, Q9, Q11; the rest of Q3, Q6, Q7, Q10; Q2 and Q5 for WebView2 and CEF.
 - [ ] CI green on GitHub.
