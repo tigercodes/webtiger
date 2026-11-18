@@ -37,6 +37,8 @@ Windows/.vs/
 .env
 .env.*
 Config.xcconfig
+# Python's byte code, left beside the generators
+__pycache__/
 # OS / IDE
 .DS_Store
 .idea/
