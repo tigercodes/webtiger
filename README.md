@@ -4,8 +4,6 @@ An open-source web browser that is light, private and organised, with native app
 
 **Status: early development (phase W0).** Nothing here is ready to use as a browser yet. The plan is in [`docs/features/000-master-plan.md`](docs/features/000-master-plan.md); what exists today is described in [`docs/features/001-foundations.md`](docs/features/001-foundations.md).
 
-(The documents under `docs/features/` are being reviewed and are published here shortly; until then links into them do not resolve.)
-
 ## What it is meant to be
 
 - **Light.** Tabs you are not looking at sleep, and cost almost nothing. Memory and start-up budgets are tests that fail the build.
