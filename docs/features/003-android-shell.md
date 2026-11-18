@@ -306,7 +306,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | A8 | The core is built in release for debug apps too | One library, the one that ships, and measurements that mean something |
 | A9 | Compose BOM 2026.06.01, not the newest | The newest needs a platform this Mac does not have |
 | A10 | No launcher icon | The brand is not settled (001 F10) |
-| A12 | The device suite's site is in the test's own process, on the device's `127.0.0.1` | Its pages must be a secure context for the Cache API and service workers, which the Mac's address as an emulator sees it is not; and a suite then needs nothing running beside it. `Tools/testsite` (001 §12) will give the three shells' sites one definition |
+| A12 | The device suite's site is in the test's own process, on the device's `127.0.0.1` | Its pages must be a secure context for the Cache API and service workers, which the Mac's address as an emulator sees it is not; and a suite then needs nothing running beside it. Its pages are the one definition every shell's suite serves (`Fixtures/testsite/site.json`, 001 F12) |
 | A13 | The device suite leaves its login sets' profiles behind | The WebView deletes none that was used since the app started (§5.2). They go with the app's data when the runner uninstalls it |
 | A11 | The WebView's activity lifecycle (`onPause`, `onResume`), downloads, file choosers, permission prompts, full screen, new windows as tabs, opening external addresses in the system | Not W0: they arrive with the host services that own them (000 §5.5) |
 
@@ -327,7 +327,7 @@ Found while the shell was built. Items 1, 2, 4 and the first half of 8 were deal
 ## 11. Follow-ups, in order
 
 1. ~~Run it.~~ Done on an emulator (§8.1). **A physical device** is still to come, and a foldable or its emulator image for 000 §6.5.
-2. ~~The adapter suite for the System WebView, isolation first.~~ Done, with a site of its own; `Tools/testsite` (001 §12) is still to give the shells' sites one definition.
+2. ~~The adapter suite for the System WebView, isolation first.~~ Done, serving the one test site every shell's suite serves (001 F12).
 3. Q2 for Android: the lowest WebView with profiles, and what to do below it; the HTTP cache and permissions between profiles.
 4. The LoginSets host service for Android as §5.2 found it must be: clear at once, delete at the next start.
 5. `NavigationListener` as the source of navigation events where the WebView has it.

@@ -20,7 +20,7 @@ Tools/test.sh android-device  # the Android shell on a device: adapter suite, is
 
 - Fast loop for core work: `cd Core && cargo test -p <crate>`.
 - After changing anything under `Core/crates` that the Apple shell uses: `Tools/apple/xcframework.sh` (`--mac` is quicker). `Tools/test.sh` rebuilds it when the core's sources are newer.
-- After changing `Core/proto`: `Tools/proto/generate.sh`. After `Design/tokens.json`: `Tools/design/tokens.py` (Swift and Kotlin). After `Localization/strings.json`: `Tools/strings/strings.py` (the Apple String Catalog and Android's `strings.xml`). Generated files are checked in and `lint` fails when they are stale.
+- After changing `Core/proto`: `Tools/proto/generate.sh`. After `Design/tokens.json`: `Tools/design/tokens.py` (Swift and Kotlin). After `Localization/strings.json`: `Tools/strings/strings.py` (the Apple String Catalog and Android's `strings.xml`). After `Fixtures/testsite/site.json` (the pages every shell's suite loads): `Tools/testsite/site.py` (Swift and Kotlin). Generated files are checked in and `lint` fails when they are stale.
 - The Xcode project is generated: `Tools/bin/xcodegen generate`. Never edit `WebTiger.xcodeproj`; edit `project.yml`.
 - The Windows shell builds only on the Windows PC (`Tools/test.ps1`, not yet written). Do not write Windows code that has not been built there.
 - The Android shell builds on a Mac with a JDK (21 or later; Android Studio's will do) and the Android SDK and NDK; `Tools/test.sh android` finds them. `Tools/test.sh android-device` needs a device: one that is attached, or an emulator, which `Tools/android/emulator.sh start` boots from a system image that is already installed (it downloads nothing). Without either, nothing that needs a device may be claimed as tested; and what ran on an emulator is not thereby tested on a phone.
@@ -60,7 +60,7 @@ Android/app              the System WebView adapter, the Compose window; src/and
 ## Testing
 
 - Core behaviour is tested headless through `wt-testkit`'s `FakeShell`: it drives the whole contract in process against a scripted engine. Prefer that to mocking pieces.
-- Engine adapters are tested by the **adapter suite** against a real engine and a loopback site (`Packages/Tests/WTWebKitTests`; `Android/app/src/androidTest`, on a device). The same behaviours are the bar for every adapter; isolation between login sets is tested as a security property.
+- Engine adapters are tested by the **adapter suite** against a real engine and the test site, served from inside the test's process (`Packages/Tests/WTWebKitTests`; `Android/app/src/androidTest`, on a device). A new page goes in `Fixtures/testsite/site.json`, never in one shell's server. The same behaviours are the bar for every adapter; isolation between login sets is tested as a security property.
 - Screens are tested against `ScriptedCore`, without the Rust core.
 - **Fake mode**: `WEBTIGER_FAKE=1` keeps the store in memory and makes ids deterministic; `WEBTIGER_FAKE_START=<address>` is opened in every new window. UI suites run in it.
 - Test hostnames must sit under a real public suffix (`shop.example.com`, not `shop.example`): the address fix-up treats an unknown suffix as a search.

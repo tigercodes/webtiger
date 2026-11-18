@@ -56,7 +56,9 @@ Apps/WebTiger             the app targets and their UI tests
 Design/tokens.json        → Tools/design/tokens.py
 Localization/strings.json → Tools/strings/strings.py
 Fixtures/import/arc       a synthetic Arc folder and its expected import
-Tools/                    bootstrap, proto, apple (xcframework), design, strings, test.sh
+Fixtures/testsite         the test site's pages, once for every shell → Tools/testsite/site.py
+Tools/                    bootstrap, proto, apple (xcframework), android (emulator), design,
+                          strings, testsite, test.sh
 ```
 
 ## 4. The core
@@ -190,7 +192,7 @@ Small ones, each made where the plan was silent or wrong. None changes a decisio
 | F9 | Debug builds of the Mac app are unsandboxed and ad-hoc signed | Entitlements and the sandbox are settled with distribution (WT-D14) and the Chromium pack (Q1) |
 | F10 | The design tokens' palette is provisional | The brand is not settled |
 | F11 | On the Mac, clicking the address field places the caret; ⌘L selects the whole address | A SwiftUI text field cannot select on click. The Mac's address field becomes AppKit in W1 (000 §5.1) |
-| F12 | The loopback test site is Swift, inside the test process | `Tools/testsite`, shared by every shell's suite, arrives with the second shell |
+| F12 | The test site is one definition, served by each suite from inside its own process | The pages are `Fixtures/testsite/site.json`; `Tools/testsite/site.py` writes them into the Swift and the Kotlin suite's loopback server (checked in, and checked by `lint`) and can serve them by hand. A server beside the suites was the plan (000 §8.2) and would not do: the Mac's UI-test runner is sandboxed, and an emulator sees the Mac at an address that is not a secure context, so the Cache API and service workers would be missing from the very pages that test them |
 | F13 | WKWebView's default user agent is kept | Sites that sniff for Safari are a W1 matter |
 | F15 | A finish reported after a failure does not clear the failure | Android's WebView finishes an error page of its own after a load fails; found while building the Android adapter, fixed in the core with a test |
 | F16 | An address field that has the keyboard still follows the page until something is typed in it; and a window that opens on a page gives the page the keyboard | Found on Android, where a new window's field takes the focus by itself when a keyboard was used last, and then showed nothing over a loaded page (003 §6). The same happened to the Mac app on GitHub's runner, where its UI test failed on an empty field. Both rules are in both shells |
@@ -268,7 +270,7 @@ EasyList and EasyPrivacy as published on 2026-11-18 (135,478 lines), converted w
 
 1. ~~The Android shell on a device.~~ Done on an emulator: the first launch, the adapter suite against a real WebView, and isolation between profiles (003 §8.1). **A physical device, a foldable and other WebView versions** are still to come (003 §8.2).
 2. **The Windows shell**, on the Windows PC: C++/WinRT, WinUI 3, WebView2 with a profile per login set, nanopb, the adapter suite, `Tools/test.ps1`.
-3. **`Tools/testsite`**, shared by all three adapter suites.
+3. ~~`Tools/testsite`, shared by all three adapter suites.~~ Done for the two that exist (F12); the Windows suite will read the same definition. The plan's longer list (000 §8.2: several hostnames, third-party trackers, downloads, uploads, permissions, media) arrives with the features that need each page.
 4. **The design catalogue**, snapshot-tested.
 5. **The spikes**, starting with those this Mac can answer alone: the rest of Q2 and Q5 for WebKit, then Q1.
 6. **The Arc importer against a real Arc folder** (002 §8).

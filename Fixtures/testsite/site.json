@@ -1,0 +1,84 @@
+{
+  "comment": "The test site: the pages every shell's adapter suite and UI tests load, defined once. Tools/testsite/site.py writes them into each suite's own loopback server (Swift, Kotlin) and can serve them itself. A page with a 'title' is an HTML page with that title, a heading saying the same, and 'body' after it; a page with 'content' is that text, as 'type'. 'status' is '200 OK' unless given. 'body' and 'content' may be a list of lines. In a title, a header or a body, {query:NAME|DEFAULT} is the request's query value NAME and {cookie:NAME|DEFAULT} its cookie NAME, or DEFAULT when the request has none. Every answer says Cache-Control: no-store and closes the connection.",
+  "pages": [
+    {
+      "path": "/",
+      "title": "Home",
+      "body": "<a id=\"next\" href=\"/landed\">next</a>",
+      "note": "Where a suite starts. Its link leads to /landed."
+    },
+    {
+      "path": "/set",
+      "title": "Set",
+      "headers": ["Set-Cookie: who={query:v|someone}; Path=/; Max-Age=3600"],
+      "note": "Signs in: remembers ?v= in a cookie."
+    },
+    {
+      "path": "/whoami",
+      "title": "who={cookie:who|none}",
+      "note": "Says, in its title, who the cookie says is signed in."
+    },
+    {
+      "path": "/redirect",
+      "status": "302 Found",
+      "headers": ["Location: /landed"],
+      "content": "",
+      "note": "Redirects to /landed."
+    },
+    {
+      "path": "/landed",
+      "title": "Landed"
+    },
+    {
+      "path": "/push",
+      "title": "Push",
+      "body": "<script>history.pushState({}, '', '/pushed')</script>",
+      "note": "Changes its own address to /pushed without a load."
+    },
+    {
+      "path": "/worker.js",
+      "type": "text/javascript",
+      "content": "self.addEventListener('install', () => self.skipWaiting());",
+      "note": "A service worker that does nothing but exist."
+    },
+    {
+      "path": "/tall",
+      "title": "Tall",
+      "body": "<input id=\"note\"><div style=\"height: 6000px\"></div><p id=\"end\">end</p>",
+      "note": "Taller than any window, with a field to type in: for scroll and form restoration."
+    },
+    {
+      "path": "/storage",
+      "title": "Storage",
+      "body": [
+        "<script>",
+        "const v = new URLSearchParams(location.search).get('v');",
+        "if (v) localStorage.setItem('who', v);",
+        "document.title = 'stored=' + (localStorage.getItem('who') || 'none');",
+        "</script>"
+      ],
+      "note": "Remembers ?v= in localStorage, or says in its title what was remembered."
+    },
+    {
+      "path": "/tracked",
+      "title": "Tracked",
+      "body": "<img src=\"/pixel\" alt=\"\">",
+      "note": "A page that fetches something of its own: for the request callback."
+    },
+    {
+      "path": "/pixel",
+      "type": "image/svg+xml",
+      "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>"
+    },
+    {
+      "path": "/slow",
+      "title": "Slow",
+      "delay_ms": 3000,
+      "note": "Answers after three seconds: a load that is still going when a test stops it."
+    }
+  ],
+  "not_found": {
+    "status": "404 Not Found",
+    "content": "<title>Not found</title>"
+  }
+}

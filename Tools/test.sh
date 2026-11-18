@@ -57,6 +57,8 @@ run_lint() {
   Tools/proto/generate.sh --check
   python3 -I Tools/design/tokens.py --check
   python3 -I Tools/strings/strings.py --check
+  python3 -I Tools/testsite/site.py --check
+  python3 -I Tools/testsite/site.py self-test
   step "lint: Rust"
   (cd Core && cargo fmt --all --check && cargo clippy --workspace --all-targets --locked -- -D warnings)
   (cd Core/tools/proto-gen && cargo fmt --check)

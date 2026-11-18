@@ -101,8 +101,9 @@ targets:
     platform: macOS
     sources:
       - path: Apps/WebTiger/UITests
-      # The loopback site the package's adapter suite uses.
+      # The loopback site the package's adapter suite uses, and its pages.
       - path: Packages/Tests/WTWebKitTests/TestSite.swift
+      - path: Packages/Tests/WTWebKitTests/TestSitePages.generated.swift
     dependencies:
       - target: WebTiger-macOS
     # The Mac's UI test runner is sandboxed. Its loopback site has to listen, and the
@@ -123,6 +124,7 @@ targets:
     sources:
       - path: Apps/WebTiger/UITests
       - path: Packages/Tests/WTWebKitTests/TestSite.swift
+      - path: Packages/Tests/WTWebKitTests/TestSitePages.generated.swift
     dependencies:
       - target: WebTiger-iOS
     settings:
