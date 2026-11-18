@@ -13,8 +13,8 @@ Tools/test.sh unit     # Swift package tests on macOS: the real core, real WKWeb
 Tools/test.sh ios      # the same on the iOS simulator
 Tools/test.sh build    # the apps, macOS and iOS simulator
 Tools/test.sh ui       # the apps' UI tests in fake mode
-Tools/test.sh all      # everything above
-Tools/test.sh android  # the Android shell: JVM tests against the real core, and the debug APK (not in `all`)
+Tools/test.sh all      # everything above, and `android` where a JDK and the Android SDK are found
+Tools/test.sh android  # the Android shell: JVM tests against the real core, its pictures, and the debug APK
 Tools/test.sh android-device  # the Android shell on a device: adapter suite, isolation, the window (not in `all`)
 ```
 

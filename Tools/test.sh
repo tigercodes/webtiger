@@ -10,13 +10,13 @@
 #   Tools/test.sh android  the Android shell: its JVM tests against the real core, and the debug APK
 #   Tools/test.sh android-device  the Android shell on a device: the adapter suite against the
 #                          real WebView, isolation, and the app's window
-#   Tools/test.sh all      lint, core, unit, build, ios, ui
+#   Tools/test.sh all      lint, core, unit, build, ios, ui, and android where its tools are
 #
 # Exits non-zero on the first failing step. Set IOS_SIM to pick a simulator.
-# The Windows shell's checks are Tools/test.ps1's, on the Windows PC. `android` and
-# `android-device` are not part of `all` yet: they need a JDK, the Android SDK and the NDK, and
-# the second an attached device or an emulator's system image (Tools/android/emulator.sh;
-# docs/features/003-android-shell.md §8).
+# The Windows shell's checks are Tools/test.ps1's, on the Windows PC. `android` needs a JDK,
+# the Android SDK and the NDK: `all` runs it where they are found and says so where they are
+# not. `android-device` is not part of `all`: it needs an attached device or an emulator's
+# system image (Tools/android/emulator.sh; docs/features/003-android-shell.md §8).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -176,6 +176,18 @@ for path in glob.glob("Android/app/build/outputs/androidTest-results/connected/d
 PY
 }
 
+# The Android shell's part of `all`: run where its tools are, and said to be left out where
+# they are not, with what is missing.
+run_android_if_possible() {
+  local missing
+  if missing="$( (ensure_android) 2>&1 )"; then
+    run_android
+  else
+    step "android: left out of this run"
+    echo "$missing"
+  fi
+}
+
 case "${1:-all}" in
   lint) ensure_tools; run_lint ;;
   core) run_core ;;
@@ -185,7 +197,7 @@ case "${1:-all}" in
   ui) run_ui ;;
   android) run_android ;;
   android-device) run_android_device ;;
-  all) ensure_tools; run_lint; run_core; run_unit; run_build; run_ios; run_ui ;;
+  all) ensure_tools; run_lint; run_core; run_unit; run_build; run_ios; run_ui; run_android_if_possible ;;
   *) echo "usage: Tools/test.sh [lint|core|unit|ios|build|ui|android|android-device|all]" >&2; exit 2 ;;
 esac
 printf '\n\033[1;32mOK: %s\033[0m\n' "${1:-all}"

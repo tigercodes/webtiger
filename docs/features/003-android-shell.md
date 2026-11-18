@@ -28,7 +28,7 @@ The Mac that first built it had the Android SDK and NDK and **no emulator, no sy
 | Compose window: address field, back, forward, reload or stop, progress, three content states | Done | 9 tests drawn on Robolectric; 11 of its model; 8 on the emulator's screen with the real core and WebView. Three faults showed only on a device and are fixed (§6) |
 | Strings and tokens from the shared sources | Done | `--check` covers them; the Apple outputs are byte for byte what they were |
 | Fake mode | Done | 6 JVM tests; the device's window tests start the app in it |
-| `Tools/test.sh android` | Done, not yet part of `all` | Run in full on both Macs |
+| `Tools/test.sh android` | Done; part of `all` where a JDK and the Android SDK are found | Run in full on both Macs |
 | `Tools/test.sh android-device` | Done, not part of `all` | Run in full on the Mac with the emulator, from a cold emulator and a warm one |
 
 ## 3. How it is built
@@ -334,7 +334,7 @@ Found while the shell was built. Items 1, 2, 4 and the first half of 8 were deal
 3. Q2 for Android: the lowest WebView with profiles, and what to do below it; permissions between profiles.
 4. The LoginSets host service for Android as §5.2 found it must be: clear at once, delete at the next start.
 5. `NavigationListener` as the source of navigation events where the WebView has it.
-6. `android` in `Tools/test.sh all`, and a CI job for the device suite (GitHub's Linux runners can run an x86_64 emulator, which would also load the `x86_64` library for the first time). The JVM tests and the APK have a job, to be seen green.
+6. ~~`android` in `Tools/test.sh all`.~~ Done: `all` runs it where its tools are, and says so where they are not. A CI job for the device suite (GitHub's Linux runners can run an x86_64 emulator, which would also load the `x86_64` library for the first time). The JVM tests and the APK have a job, to be seen green.
 7. ~~The accessibility audit in the device's window tests, as the Apple apps have.~~ Done (§8.1).
 
 ## 12. Done checklist
@@ -357,4 +357,5 @@ Found while the shell was built. Items 1, 2, 4 and the first half of 8 were deal
 - [x] `Tools/test.sh android-device`, and `Tools/android/emulator.sh` for a device to run it on.
 - [ ] A physical device; a foldable; other WebView versions (§8.2).
 - [ ] CI for `Tools/test.sh android`, on Linux: the job is written; its first run is not in yet.
-- [ ] `android` in `Tools/test.sh all`; CI for the device suite.
+- [x] `android` in `Tools/test.sh all`, where its tools are.
+- [ ] CI for the device suite.

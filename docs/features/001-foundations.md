@@ -18,16 +18,16 @@ W0 proves the stack before any feature is built on it: one Rust core that every 
 | Repository layout, licence, contributor documents | Done | — |
 | Core skeleton: `wt-core`, `wt-store`, `wt-app`, `wt-proto`, `wt-testkit` | Done | 82 Rust tests |
 | The contract (1.0) and `wt-ffi`: C ABI, core thread, fast path | Done | 21 Rust tests through the C functions; 8 Swift tests through the real library |
-| Apple shell loads a page through the core, in the Space's login set | **Done on macOS and the iPhone simulator** | 28 tests against real WKWebView (macOS 27.2, iOS 27 simulator; one is skipped on iOS, where a test process has no service workers); 4 UI tests on macOS and the iPhone 17 simulator; the first 3 also on the iPhone Duo simulator |
+| Apple shell loads a page through the core, in the Space's login set | **Done on macOS and the iPhone simulator** | 28 tests against real WKWebView (macOS 27.2, iOS 27 simulator; one is skipped on iOS, where a test process has no service workers); 5 UI tests on macOS and the iPhone 17 simulator; the first 3 also ran on the iPhone Duo simulator |
 | Android shell loads a page through the core, in the Space's login set | **Done on an emulator** (Android 16, System WebView 133). Not run on a physical device ([003](003-android-shell.md)) | 115 JVM tests, 28 of them driving the real core through JNI; 44 on the emulator: the adapter suite against the real WebView (19), isolation (12), sleep and wake (3), and the app's window in fake mode (10) |
 | Windows shell | **Not started.** It cannot be built on this Mac; it needs the Windows PC | — |
-| Fake mode | Done (core and Apple shell) | The UI tests run in it |
-| Design tokens and strings, one source for every shell | Done for Apple (Swift, String Catalog) | `lint` fails when the generated files are stale |
+| Fake mode | Done (core, Apple and Android shells) | The Apple apps' UI tests and the Android device suite's window tests run in it |
+| Design tokens and strings, one source for every shell | Done for Apple (Swift, String Catalog) and Android (Kotlin, `strings.xml`) | `lint` fails when the generated files are stale |
 | Design catalogue | **Done for Apple and Android** ([004](004-design-catalogue.md)); Windows not started | Apple: 5 snapshot tests over 36 pictures (macOS, iPhone simulator; light and dark), and a UI test that opens it and runs the accessibility audit. Android: 8 snapshot tests over 18 pictures drawn on the JVM, and a device test that opens it |
-| `Tools/test.sh` | Done for the core and the Apple shell | Run in full on this Mac |
+| `Tools/test.sh` | Done for the core, the Apple shell and the Android shell (`android`, which `all` runs where its tools are, and `android-device`) | Run in full on a Mac; `android-device` on the Mac with an emulator |
 | CI | The core job (Linux) passes on GitHub. The two Apple jobs need Xcode 27, which GitHub has only on a preview image (`xcode-27`); they were moved to it after the first run failed for want of Xcode 27, and their first full run is not yet in | GitHub Actions |
 | Arc importer | Built, against published shapes and a synthetic folder. **Not run against a real Arc folder** | 36 Rust tests |
-| Spikes Q1 to Q11 | Q2 and Q5 answered for WebKit; Q3 and Q7 answered as far as this Mac can; Q1, Q6 and Q10 started; Q4, Q8, Q9, Q11 not started (§10) | — |
+| Spikes Q1 to Q11 | Q2 and Q5 answered for WebKit and the System WebView; Q3 and Q7 answered as far as a Mac can; Q1, Q6, Q10 and Q11 started; Q4, Q8, Q9 not started (§10) | The answers that could be put to an engine are tests (§11.3, §11.4) |
 
 **W0's exit** (000 §9) is: `Tools/test all` green, each app loads a page through the core, every question answered. Today that is met for the Mac and the iPhone, and for Android on an emulator; Windows is not started.
 
