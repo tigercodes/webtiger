@@ -262,7 +262,7 @@ Faults found by running it, all fixed with tests: the refused navigation's progr
 - **Performance** (Q4, Q6): the cost of the request callback and of the JNI crossings; start-up; memory. The emulator's debug build started cold in 0.6 to 0.9 s by `am start -W`, which says nothing about the budget.
 - A release build: R8, shrinking (the keep rules are written, never exercised), signing.
 - The Android build on Windows or Linux: the Gradle tasks choose the NDK's toolchain for each, and only the Mac's was run.
-- **CI.** The device suite runs where there is an emulator; GitHub's workflow has no Android job yet.
+- **CI.** GitHub's workflow has a job for `Tools/test.sh android` on Linux (the JVM tests and the APK); **its first run is not in yet**, and it will be the first build of the Android shell on Linux. The device suite runs only where there is an emulator, which is not there.
 
 ### 8.3 What was run without a device
 
@@ -334,7 +334,7 @@ Found while the shell was built. Items 1, 2, 4 and the first half of 8 were deal
 3. Q2 for Android: the lowest WebView with profiles, and what to do below it; permissions between profiles.
 4. The LoginSets host service for Android as §5.2 found it must be: clear at once, delete at the next start.
 5. `NavigationListener` as the source of navigation events where the WebView has it.
-6. `android` in `Tools/test.sh all`, and CI jobs for it and for the device suite (GitHub's Linux runners can run an x86_64 emulator, which would also load the `x86_64` library for the first time).
+6. `android` in `Tools/test.sh all`, and a CI job for the device suite (GitHub's Linux runners can run an x86_64 emulator, which would also load the `x86_64` library for the first time). The JVM tests and the APK have a job, to be seen green.
 7. ~~The accessibility audit in the device's window tests, as the Apple apps have.~~ Done (§8.1).
 
 ## 12. Done checklist
@@ -356,4 +356,5 @@ Found while the shell was built. Items 1, 2, 4 and the first half of 8 were deal
 - [x] The adapter suite and isolation, against a real WebView; a UI test of the window on the device.
 - [x] `Tools/test.sh android-device`, and `Tools/android/emulator.sh` for a device to run it on.
 - [ ] A physical device; a foldable; other WebView versions (§8.2).
-- [ ] `android` in `Tools/test.sh all`; CI.
+- [ ] CI for `Tools/test.sh android`, on Linux: the job is written; its first run is not in yet.
+- [ ] `android` in `Tools/test.sh all`; CI for the device suite.

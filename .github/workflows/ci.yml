@@ -34,6 +34,40 @@ jobs:
         run: cargo clippy -p wt-ffi --features jni --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
 
+  # The Android shell without a device (docs/features/003): the JNI glue, the JVM tests against
+  # the real core, the design catalogue's pictures, and the debug APK with the core for both
+  # ABIs. The tests that need a device (Tools/test.sh android-device) are not run here yet.
+  android:
+    name: Android shell (JVM tests, APK)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: A JDK 21, and the SDK packages the build names
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+          version() { grep "^$1 = " Android/gradle/libs.versions.toml | cut -d'"' -f2; }
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install \
+            "ndk;$(version ndk)" "platforms;android-$(version compile-sdk)" "build-tools;$(version build-tools)" > /dev/null
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            Core/target
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-android-${{ hashFiles('Core/Cargo.lock', 'Core/rust-toolchain.toml', 'Android/gradle/libs.versions.toml', 'Android/gradle/wrapper/gradle-wrapper.properties') }}
+      - run: Tools/test.sh android
+      - name: Keep the pictures that did not match
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshots-android
+          path: Android/app/build/snapshots
+          if-no-files-found: ignore
+          retention-days: 7
+
   # The Apple shell builds with Xcode 27. GitHub has it on one image, a preview, labelled
   # `xcode-27` (macOS 27); the `macos-26` image stops at Xcode 26.
   apple:
