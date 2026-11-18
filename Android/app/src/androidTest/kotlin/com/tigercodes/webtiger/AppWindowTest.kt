@@ -15,6 +15,10 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.junit4.accessibility.disableAccessibilityChecks
+import androidx.compose.ui.test.junit4.accessibility.enableAccessibilityChecks
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.tryPerformAccessibilityChecks
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -197,6 +201,33 @@ internal class AppWindowTest {
         // page: not what it held when the focus came, which was nothing.
         awaitAddress(shown("/"))
         compose.onNodeWithTag("address-field").assertIsNotFocused()
+    }
+
+    /**
+     * Android's accessibility checks over each state of the window and over the catalogue
+     * (000 §8.6): labels, contrast, the size of what can be touched. What the Apple apps' audit
+     * is for them.
+     */
+    @Test
+    fun everyStateOfTheWindowPassesTheAccessibilityChecks() {
+        compose.enableAccessibilityChecks()
+        try {
+            // A page.
+            awaitPage("Home")
+            awaitAddress(shown("/"))
+            compose.onRoot().tryPerformAccessibilityChecks()
+            // A failed page.
+            type("http://127.0.0.1:${TestSite.unusedPort()}/")
+            compose.waitUntil(15_000) { compose.onAllNodesWithTag("failed-page").fetchSemanticsNodes().isNotEmpty() }
+            compose.onRoot().tryPerformAccessibilityChecks()
+            // The design catalogue, which has every state the window has.
+            scenario.close()
+            scenario = ActivityScenario.launch(Intent(ApplicationProvider.getApplicationContext(), MainActivity::class.java).putExtra(MainActivity.EXTRA_CATALOGUE, true))
+            compose.waitUntil(15_000) { compose.onAllNodesWithTag("address-field").fetchSemanticsNodes().size > 1 }
+            compose.onRoot().tryPerformAccessibilityChecks()
+        } finally {
+            compose.disableAccessibilityChecks()
+        }
     }
 
     @Test

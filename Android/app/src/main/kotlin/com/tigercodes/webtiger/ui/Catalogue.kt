@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -255,7 +256,9 @@ private fun TokenRow(name: String, value: Dp? = null, drawn: @Composable () -> U
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Tokens.Space.m)) {
         // A token's name is its identifier in Design/tokens.json: not words, so not translated.
         Text(text = name, fontFamily = FontFamily.Monospace, modifier = Modifier.width(150.dp))
-        Text(text = value?.value?.toInt()?.toString().orEmpty(), modifier = Modifier.width(36.dp))
+        // A colour has no number. Its place is kept empty, with nothing in it for a screen reader
+        // to stop at.
+        if (value != null) Text(text = value.value.toInt().toString(), modifier = Modifier.width(36.dp)) else Spacer(Modifier.width(36.dp))
         // The drawing is not part of what is read out: a faint token is drawn faintly on purpose.
         Box(modifier = Modifier.clearAndSetSemantics {}) { drawn() }
     }

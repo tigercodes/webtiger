@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built, and **run on an emulator** (Android 16, System WebView 133): the app starts, a page loads through the core, and 43 tests pass on the device, among them the adapter suite against the real WebView and isolation between login sets. 115 more pass on the JVM, 28 of them driving the real core through JNI. **Not yet run on a physical device, on any other WebView version, or folded** (§8) |
+| **Status** | Built, and **run on an emulator** (Android 16, System WebView 133): the app starts, a page loads through the core, and 44 tests pass on the device, among them the adapter suite against the real WebView and isolation between login sets. 115 more pass on the JVM, 28 of them driving the real core through JNI. **Not yet run on a physical device, on any other WebView version, or folded** (§8) |
 | **Phase** | W0 of [000](000-master-plan.md) §9; item 1 of [001](001-foundations.md) §12 |
 | **Stack** | 000 §5.1: Kotlin, Jetpack Compose, Material 3, `androidx.webkit`, Wire, JNI through `wt-ffi` |
 | **Last updated** | 2026-11-18 (run on an emulator; the device suite) |
@@ -68,6 +68,7 @@ Gradle needs `JAVA_HOME` (a JDK 21 or later) and `ANDROID_HOME`, or `Android/loc
 | Wire | 7.1.2 | Generates at build time (001 §9, F8): no generated Kotlin is checked in |
 | JUnit, Robolectric, AndroidX Test core | 4.13.2, 4.17, 1.7.0 | Test only |
 | AndroidX Test runner, JUnit extension | 1.7.0, 1.3.0 | The device suite only |
+| Compose's accessibility checks (`ui-test-junit4-accessibility`) | The BOM's (1.11.4) | The device suite only. It brings Google's Accessibility Test Framework |
 | compileSdk, targetSdk / minSdk | 36 / 29 (Android 10) | |
 | NDK | 28.2.13676358 | Its clang builds the core for API 29 |
 
@@ -234,14 +235,14 @@ The line above was run against the emulator, with a page served from the Mac (`1
 
 An emulator without a window, made by `Tools/android/emulator.sh` from the Google APIs image for Android 16 (API 36, `arm64-v8a`, revision 7) with the Pixel 8 profile, on a Mac with Apple silicon; its System WebView is **133.0.6943.137**. 2026-11-18.
 
-`Tools/test.sh android-device` runs the tests in `Android/app/src/androidTest` there: 43 pass. From a cold emulator the whole step took 40 s, the boot included.
+`Tools/test.sh android-device` runs the tests in `Android/app/src/androidTest` there: 44 pass. From a cold emulator the whole step took 40 s, the boot included.
 
 | Suite | Count | What it shows |
 |---|---|---|
 | `SystemWebViewAdapterTest` | 19 | The adapter suite (001 §8) against the real WebView and a site on the device's loopback address, with a scripted core: started, committed, finished in that order; a redirect commits where it landed; a pushed address is an address change, not a page; back and forward; a link the page follows; a refused connection and a name that does not resolve, as codes, with the engine's error page reported neither as finished nor by its title; trying again after a failure; stop; the navigation policy for a link, a redirect and an external address; a `javascript:` address never given to the WebView; no address reported before it commits; **every request put to the core** (a request the core blocks never reaches the site); **a renderer that is killed** is reported, and the next load makes another web view; the host service's codes |
 | `SystemWebViewIsolationTest` | 12 | Isolation as a security property (000 §8.4): two login sets share no cookie, no stored value, no IndexedDB database, no Cache API cache, no service worker and no copy in the HTTP cache, and two web views in one login set share them all; nothing a login set stores reaches the default profile; a sign-in for the session outlives the last web view of its login set; a private login set is refused; deleting and clearing, as §5.2; and a record of what the WebView offers a page (001 §11.4) |
 | `SystemWebViewRestoreTest` | 3 | What a sleeping tab keeps (Q5; 001 §11.3): `saveState` is one small byte array, and a new web view in the same profile wakes from it with the page, its history, its login set, and, once the engine has had a second to record them, the scroll position and the text typed into a form |
-| `AppWindowTest` | 9 | The app, started in fake mode, with the real core and the real WebView in its window: a page loads through the core; a typed address loads, and the window's Back and the system's Back go back; a failure is shown in words, over the engine's own error page; the address field at rest, tapped, and when it took the focus by itself (§6); **turning the device reloads nothing**: the same activity, the same web view, no second request; the design catalogue opens in place of a browser (004) |
+| `AppWindowTest` | 10 | The app, started in fake mode, with the real core and the real WebView in its window: a page loads through the core; a typed address loads, and the window's Back and the system's Back go back; a failure is shown in words, over the engine's own error page; the address field at rest, tapped, and when it took the focus by itself (§6); **turning the device reloads nothing**: the same activity, the same web view, no second request; the design catalogue opens in place of a browser (004); **Android's accessibility checks** (Google's Accessibility Test Framework, through Compose's test rule) pass over a page, a failed page and the catalogue, which has every state the window has |
 
 Also done by hand there, and looked at in screenshots: the app started with the `am start` line of §7 and a page served from the Mac; a link, back and forward; the keyboard that comes up is the address one, with Go; a load that timed out (the emulator's network was not up yet, seconds after its boot) showed the failed page in words, and Try Again loaded the page; `example.com` typed into the field loaded over https with the padlock and the short form of the address; the dark theme, switched while the app ran, redrew the window without making the activity again.
 
@@ -253,7 +254,7 @@ Faults found by running it, all fixed with tests: the refused navigation's progr
 - **Any other WebView.** Only 133. Which older WebViews call `onPageStarted` at the start of a load rather than at its commit is still known only from the source; the lowest WebView with profiles (Q2) is not established; nothing was run on a WebView without `DELETE_BROWSING_DATA`.
 - **The `x86_64` library**, on anything.
 - **Folding, tablets, several windows.** The fold-continuity rule (000 §6.5) is tested here only as a rotation.
-- **TalkBack and the accessibility audit.** The Apple apps run Apple's audit in their UI tests; the Android window has none yet.
+- **TalkBack itself.** The accessibility checks run (§8.1) and found one fault, in the catalogue: an empty text for a screen reader to stop at in every colour's row. Nobody has used the app with TalkBack.
 - **The keyboard after a page takes the focus**: whether a page's own form gets the keyboard once the focus was sent to the page. A tapped address field shows the whole address selected, with one caret handle where two selection handles would be expected.
 - `net.offline`: the system's answer about the network was never asked with the network off. `net.tls`: no site with a bad certificate was loaded.
 - Site permissions between login sets (as for WebKit, 001 §10 Q2); what an extra profile costs.
@@ -334,7 +335,7 @@ Found while the shell was built. Items 1, 2, 4 and the first half of 8 were deal
 4. The LoginSets host service for Android as §5.2 found it must be: clear at once, delete at the next start.
 5. `NavigationListener` as the source of navigation events where the WebView has it.
 6. `android` in `Tools/test.sh all`, and CI jobs for it and for the device suite (GitHub's Linux runners can run an x86_64 emulator, which would also load the `x86_64` library for the first time).
-7. The accessibility audit in the device's window tests, as the Apple apps have.
+7. ~~The accessibility audit in the device's window tests, as the Apple apps have.~~ Done (§8.1).
 
 ## 12. Done checklist
 
