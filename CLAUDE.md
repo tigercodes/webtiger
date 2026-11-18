@@ -15,6 +15,7 @@ Tools/test.sh build    # the apps, macOS and iOS simulator
 Tools/test.sh ui       # the apps' UI tests in fake mode
 Tools/test.sh all      # everything above
 Tools/test.sh android  # the Android shell: JVM tests against the real core, and the debug APK (not in `all`)
+Tools/test.sh android-device  # the Android shell on a device: adapter suite, isolation, the window (not in `all`)
 ```
 
 - Fast loop for core work: `cd Core && cargo test -p <crate>`.
@@ -22,7 +23,7 @@ Tools/test.sh android  # the Android shell: JVM tests against the real core, and
 - After changing `Core/proto`: `Tools/proto/generate.sh`. After `Design/tokens.json`: `Tools/design/tokens.py` (Swift and Kotlin). After `Localization/strings.json`: `Tools/strings/strings.py` (the Apple String Catalog and Android's `strings.xml`). Generated files are checked in and `lint` fails when they are stale.
 - The Xcode project is generated: `Tools/bin/xcodegen generate`. Never edit `WebTiger.xcodeproj`; edit `project.yml`.
 - The Windows shell builds only on the Windows PC (`Tools/test.ps1`, not yet written). Do not write Windows code that has not been built there.
-- The Android shell builds here (JDK 21 and the Android SDK and NDK; `Tools/test.sh android` finds them). This Mac has no emulator: the Android app has never run on a device, and nothing that needs one may be claimed as tested.
+- The Android shell builds on a Mac with a JDK (21 or later; Android Studio's will do) and the Android SDK and NDK; `Tools/test.sh android` finds them. `Tools/test.sh android-device` needs a device: one that is attached, or an emulator, which `Tools/android/emulator.sh start` boots from a system image that is already installed (it downloads nothing). Without either, nothing that needs a device may be claimed as tested; and what ran on an emulator is not thereby tested on a phone.
 
 ## Layout
 
@@ -39,7 +40,7 @@ Core/proto               the contract. One Envelope; Request/Response/Event/Host
 Packages/                the Apple shell: WTContract (generated) → WTCoreClient → WTWebKit → WTUI; WTDesign
 Apps/WebTiger            app targets: almost nothing in them
 Android/core-engine      the contract (Wire, generated at build time), the core's library through JNI, CoreClient
-Android/app              the System WebView adapter, the Compose window
+Android/app              the System WebView adapter, the Compose window; src/androidTest runs on a device
 ```
 
 ## Rules
@@ -59,7 +60,7 @@ Android/app              the System WebView adapter, the Compose window
 ## Testing
 
 - Core behaviour is tested headless through `wt-testkit`'s `FakeShell`: it drives the whole contract in process against a scripted engine. Prefer that to mocking pieces.
-- Engine adapters are tested by the **adapter suite** against a real engine and a loopback site (`Packages/Tests/WTWebKitTests`). The same behaviours are the bar for every adapter; isolation between login sets is tested as a security property.
+- Engine adapters are tested by the **adapter suite** against a real engine and a loopback site (`Packages/Tests/WTWebKitTests`; `Android/app/src/androidTest`, on a device). The same behaviours are the bar for every adapter; isolation between login sets is tested as a security property.
 - Screens are tested against `ScriptedCore`, without the Rust core.
 - **Fake mode**: `WEBTIGER_FAKE=1` keeps the store in memory and makes ids deterministic; `WEBTIGER_FAKE_START=<address>` is opened in every new window. UI suites run in it.
 - Test hostnames must sit under a real public suffix (`shop.example.com`, not `shop.example`): the address fix-up treats an unknown suffix as a search.

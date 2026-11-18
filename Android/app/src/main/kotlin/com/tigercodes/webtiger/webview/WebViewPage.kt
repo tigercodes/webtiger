@@ -1,8 +1,7 @@
 // One Android WebView, and the clients that hand its callbacks to PageTracker.
 //
-// Nothing in this file has run on a device or an emulator (003 §8): it is written from the
-// platform's documentation and the WebView's source, and its rules live in PageTracker,
-// which is tested.
+// Its rules live in PageTracker, which is tested on the JVM; this file itself runs only on a
+// device, where the adapter suite (src/androidTest) drives it against the real WebView.
 package com.tigercodes.webtiger.webview
 
 import android.annotation.SuppressLint

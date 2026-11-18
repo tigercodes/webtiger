@@ -17,6 +17,8 @@ android {
         targetSdk = libs.versions.compile.sdk.get().toInt()
         versionCode = 1
         versionName = "0.1.0"
+        // The tests in src/androidTest run on a device or an emulator, inside the app's process.
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // The ABIs the core is built for. Without this a library's own 32-bit builds would put
         // the app on 32-bit devices, where the core has none.
         ndk {
@@ -59,6 +61,14 @@ dependencies {
     testImplementation(libs.compose.ui.test.junit4)
     // The empty activity Compose's test rule draws in.
     debugImplementation(libs.compose.ui.test.manifest)
+
+    // On a device: the adapter suite against the real WebView, and the window on a screen.
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.ui.test.junit4)
 }
 
 // The window is tested over the real core too (ThroughTheCoreTest): the library :core-engine

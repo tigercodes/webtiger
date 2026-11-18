@@ -1,8 +1,8 @@
 // The whole Android shell above the WebView, over the real Rust core: the window's model, the
 // session, the engine adapter and the page tracker, with the core deciding and the shell
 // drawing. The one thing that is not real is the WebView: its callbacks are made by the test,
-// in the order a WebView makes them. (On a device, the app's own UI test does this with a real
-// WebView; no device was available: 003 §8.)
+// in the order a WebView makes them. (On a device, AppWindowTest does this with a real WebView:
+// 003 §8.)
 package com.tigercodes.webtiger
 
 import com.tigercodes.webtiger.core.NativeCore

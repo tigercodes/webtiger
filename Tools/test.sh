@@ -8,12 +8,15 @@
 #   Tools/test.sh build    build the apps (macOS and the iOS simulator)
 #   Tools/test.sh ui       the apps' UI tests in fake mode (macOS and the iOS simulator)
 #   Tools/test.sh android  the Android shell: its JVM tests against the real core, and the debug APK
+#   Tools/test.sh android-device  the Android shell on a device: the adapter suite against the
+#                          real WebView, isolation, and the app's window
 #   Tools/test.sh all      lint, core, unit, build, ios, ui
 #
 # Exits non-zero on the first failing step. Set IOS_SIM to pick a simulator.
-# The Windows shell's checks are Tools/test.ps1's, on the Windows PC. `android` is not part
-# of `all` yet: it needs a JDK, the Android SDK and the NDK, and nothing on a device is run
-# (docs/features/003-android-shell.md §8).
+# The Windows shell's checks are Tools/test.ps1's, on the Windows PC. `android` and
+# `android-device` are not part of `all` yet: they need a JDK, the Android SDK and the NDK, and
+# the second an attached device or an emulator's system image (Tools/android/emulator.sh;
+# docs/features/003-android-shell.md §8).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -115,10 +118,12 @@ ensure_android() {
   # macOS has a `java` on the PATH that only says there is none: it is asked, not looked for.
   if [[ -z "${JAVA_HOME:-}" ]] && ! java -version >/dev/null 2>&1; then
     local jdk
-    for jdk in /opt/homebrew/opt/openjdk@21 /usr/local/opt/openjdk@21; do
+    # Homebrew's JDK 21, or the one Android Studio carries.
+    for jdk in /opt/homebrew/opt/openjdk@21 /usr/local/opt/openjdk@21 \
+      "/Applications/Android Studio.app/Contents/jbr/Contents/Home"; do
       if [[ -x "$jdk/bin/java" ]]; then export JAVA_HOME="$jdk"; break; fi
     done
-    [[ -n "${JAVA_HOME:-}" ]] || { echo "android: no JDK found; set JAVA_HOME to a JDK 21" >&2; exit 1; }
+    [[ -n "${JAVA_HOME:-}" ]] || { echo "android: no JDK found; set JAVA_HOME to a JDK 21 or later" >&2; exit 1; }
   fi
   if [[ -z "${ANDROID_HOME:-}" && ! -f Android/local.properties ]]; then
     [[ -d "$HOME/Library/Android/sdk" ]] || { echo "android: no Android SDK found; set ANDROID_HOME" >&2; exit 1; }
@@ -143,6 +148,27 @@ run_android() {
   ls -l Android/app/build/outputs/apk/debug/app-debug.apk
 }
 
+# On a device: whatever is attached, or the emulator Tools/android/emulator.sh boots. The
+# emulator is left running for the next run; `Tools/android/emulator.sh stop` ends it.
+run_android_device() {
+  ensure_android
+  step "android: a device"
+  ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}" Tools/android/emulator.sh start
+  step "android: the adapter suite, isolation and the window, on the device"
+  # Without mDNS, as the adb server was started (Tools/android/emulator.sh says why).
+  ADB_MDNS=0 android_gradle :app:connectedDebugAndroidTest
+  python3 -I - <<'PY'
+import glob
+import os
+import xml.etree.ElementTree as ET
+
+for path in glob.glob("Android/app/build/outputs/androidTest-results/connected/debug/*.xml"):
+    suite = ET.parse(path).getroot()
+    device = os.path.basename(path).removeprefix("TEST-").removesuffix(".xml")
+    print(f"{device}: {suite.get('tests')} tests, {suite.get('failures')} failures, {suite.get('skipped', '0')} skipped")
+PY
+}
+
 case "${1:-all}" in
   lint) ensure_tools; run_lint ;;
   core) run_core ;;
@@ -151,7 +177,8 @@ case "${1:-all}" in
   build) run_build ;;
   ui) run_ui ;;
   android) run_android ;;
+  android-device) run_android_device ;;
   all) ensure_tools; run_lint; run_core; run_unit; run_build; run_ios; run_ui ;;
-  *) echo "usage: Tools/test.sh [lint|core|unit|ios|build|ui|android|all]" >&2; exit 2 ;;
+  *) echo "usage: Tools/test.sh [lint|core|unit|ios|build|ui|android|android-device|all]" >&2; exit 2 ;;
 esac
 printf '\n\033[1;32mOK: %s\033[0m\n' "${1:-all}"
