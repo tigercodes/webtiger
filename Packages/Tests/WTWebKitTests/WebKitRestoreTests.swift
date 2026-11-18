@@ -40,6 +40,18 @@ final class WebKitRestoreTests: XCTestCase {
         XCTFail("the web view shows \(webView.url?.path ?? "nothing"), not \(path)", file: file, line: line)
     }
 
+    /// The page's title once WebKit has it. It arrives a moment after the load ends, so reading
+    /// it at once is a race a slower machine loses.
+    private func title(of webView: WKWebView) async -> String {
+        for _ in 0 ..< 1000 {
+            if let title = webView.title, !title.isEmpty {
+                return title
+            }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        return webView.title ?? ""
+    }
+
     private func load(_ webView: WKWebView, _ path: String) async {
         guard let url = URL(string: site.url(path)) else { return XCTFail("a bad test address") }
         webView.load(URLRequest(url: url))
@@ -64,7 +76,8 @@ final class WebKitRestoreTests: XCTestCase {
         let woken = makeWebView()
         woken.interactionState = data
         await wait(for: woken, toShow: "/tall")
-        XCTAssertEqual(woken.title, "Tall")
+        let restored = await title(of: woken)
+        XCTAssertEqual(restored, "Tall")
         XCTAssertTrue(woken.canGoBack, "the history came back with it")
         XCTAssertFalse(woken.canGoForward)
         XCTAssertEqual(woken.backForwardList.backList.map(\.url.absoluteString), [site.url("/"), site.url("/landed")])
@@ -104,6 +117,7 @@ final class WebKitRestoreTests: XCTestCase {
         woken.interactionState = asleep
         await wait(for: woken, toShow: "/set?v=ada")
         await load(woken, "/whoami")
-        XCTAssertEqual(woken.title, "who=ada", "waking a tab does not sign it out")
+        let answer = await title(of: woken)
+        XCTAssertEqual(answer, "who=ada", "waking a tab does not sign it out")
     }
 }
