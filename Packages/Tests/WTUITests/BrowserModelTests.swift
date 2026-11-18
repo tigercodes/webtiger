@@ -113,6 +113,42 @@ final class BrowserModelTests: XCTestCase {
         XCTAssertEqual(model.addressText, "exam", "until something is typed")
     }
 
+    /// Lets a core's script reach the core it is the script of.
+    private final class Emitter: @unchecked Sendable {
+        var core: ScriptedCore?
+    }
+
+    func testTheFirstSnapshotIsDrawnEvenWhenItComesBeforeItsSubscriptionIsKnown() async {
+        let first = snapshot(url: "https://example.com/", display: "example.com", title: "First")
+        let emitter = Emitter()
+        let core = ScriptedCore { request in
+            switch request {
+            case .openWindow:
+                var opened = WTWindowOpened()
+                opened.windowID = 1
+                opened.tabID = 2
+                return .windowOpened(opened)
+            case .subscribe:
+                // The core publishes a subscription's first snapshot at once, with its answer.
+                // Here the snapshot is well ahead of the answer: the session has it before the
+                // window knows which subscription is its own.
+                emitter.core?.emit(first, subscription: 3)
+                Thread.sleep(forTimeInterval: 0.05)
+                var subscribed = WTSubscribed()
+                subscribed.subscriptionID = 3
+                return .subscribed(subscribed)
+            default:
+                return .ack(WTAck())
+            }
+        }
+        emitter.core = core
+        let model = BrowserModel(session: BrowserSession(core: core, engine: WebKitEngine()))
+        await model.open()
+        await settle { model.tab.title == "First" }
+        XCTAssertEqual(model.tab.title, "First", "a window's first snapshot is never lost")
+        XCTAssertEqual(model.addressText, "example.com")
+    }
+
     func testSnapshotsForAnotherSubscriptionAreIgnored() async {
         let (session, core) = session()
         let model = BrowserModel(session: session)

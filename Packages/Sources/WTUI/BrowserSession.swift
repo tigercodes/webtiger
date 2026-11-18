@@ -10,6 +10,10 @@ public final class BrowserSession {
     public let core: any CoreClient
     public let engine: WebKitEngine
     private var windows: [UInt64: @MainActor (WTWindowSnapshot) -> Void] = [:]
+    /// Windows being opened, and the snapshots that came for subscriptions not yet known to be
+    /// theirs.
+    private var opening = 0
+    private var unclaimed: [UInt64: WTWindowSnapshot] = [:]
     private var listening: Task<Void, Never>?
 
     /// A session over a core that is already running. Tests pass a `ScriptedCore`.
@@ -67,6 +71,13 @@ public final class BrowserSession {
 
     /// Opens a window in the core and delivers its snapshots to `update` until it is closed.
     func openWindow(update: @escaping @MainActor (WTWindowSnapshot) -> Void) async throws -> OpenedWindow {
+        opening += 1
+        defer {
+            opening -= 1
+            if opening == 0 {
+                unclaimed.removeAll()
+            }
+        }
         guard case let .windowOpened(opened) = try await core.request(.openWindow(WTOpenWindow())) else {
             throw CoreError.refused(code: "response.unexpected", field: "")
         }
@@ -76,6 +87,11 @@ public final class BrowserSession {
             throw CoreError.refused(code: "response.unexpected", field: "")
         }
         windows[subscribed.subscriptionID] = update
+        // The first snapshot follows the answer at once, and may have been taken off the events
+        // before this was told its subscription's id.
+        if let first = unclaimed.removeValue(forKey: subscribed.subscriptionID) {
+            update(first)
+        }
         return OpenedWindow(windowID: opened.windowID, tabID: opened.tabID, subscriptionID: subscribed.subscriptionID)
     }
 
@@ -89,7 +105,11 @@ public final class BrowserSession {
 
     private func receive(_ event: WTEvent.OneOf_Kind) {
         guard case let .snapshot(snapshot) = event, case let .window(window) = snapshot.model else { return }
-        windows[snapshot.subscriptionID]?(window)
+        if let update = windows[snapshot.subscriptionID] {
+            update(window)
+        } else if opening > 0 {
+            unclaimed[snapshot.subscriptionID] = window
+        }
     }
 }
 

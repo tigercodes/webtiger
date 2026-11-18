@@ -142,7 +142,7 @@ Two rules every adapter keeps, found while building the first (and now in `engin
 - **`BrowserWindowView`**: back, forward, reload or stop, the address field with its security mark, a progress line, and the page, an empty tab, or a failed page in words. ⌘L goes to the address field.
 - The package builds **without** the Rust core too (`ScriptedCore`), so a screen can be worked on first.
 
-**Verified:** the package's 48 tests on macOS and on the iPhone 17 simulator; the app's 4 UI tests on macOS and the iPhone 17 simulator, the first 3 of them also on the iPhone Duo simulator. **Not yet looked at:** iPad layouts, Stage Manager, multiple windows.
+**Verified:** the package's 49 tests on macOS and on the iPhone 17 simulator; the app's 4 UI tests on macOS and the iPhone 17 simulator, the first 3 of them also on the iPhone Duo simulator. **Not yet looked at:** iPad layouts, Stage Manager, multiple windows.
 
 ## 7. Fake mode
 
@@ -164,7 +164,7 @@ Tools/test.sh lint | core | unit | ios | build | ui | all
 | `wt-ffi` | 21 | The header matches the exports; the core through its C functions, from many threads |
 | `wt-proto` | 3 | The contract's version is the same in three places |
 | `wt-import`, `wt-cli` | 36 | 002 |
-| Swift package | 48 | The real core through Swift (8); the WebKit adapter, isolation and restore (28); the window's model (8); `ScriptedCore` (4) |
+| Swift package | 49 | The real core through Swift (8); the WebKit adapter, isolation and restore (28); the window's model (9); `ScriptedCore` (4) |
 | Android (JVM) | 106 | The real core through JNI from Kotlin (28); the adapter's rules, the error codes, the window's model |
 | Android (on an emulator) | 42 | The adapter suite against the real System WebView (19); isolation between login sets (12); sleep and wake (3); the app's window in fake mode (8). `Tools/test.sh android-device`, not part of `all` |
 | App UI tests | 4 × 2 | A page loads through the core; typing an address; a failure in words; Apple's accessibility audit over the empty tab and the failed page |
@@ -197,6 +197,7 @@ Small ones, each made where the plan was silent or wrong. None changes a decisio
 | F15 | A finish reported after a failure does not clear the failure | Android's WebView finishes an error page of its own after a load fails; found while building the Android adapter, fixed in the core with a test |
 | F16 | An address field that has the keyboard still follows the page until something is typed in it; and a window that opens on a page gives the page the keyboard | Found on Android, where a new window's field takes the focus by itself when a keyboard was used last, and then showed nothing over a loaded page (003 §6). The same happened to the Mac app on GitHub's runner, where its UI test failed on an empty field. Both rules are in both shells |
 | F17 | The WebKit adapter holds each login set's data store, and deletes a login set by clearing it through that store first | Q5 found that a cookie with no expiry lives in its store's memory and goes with the store: left to the web views, a Space whose last tab slept could wake signed out. A private login set's web views each got a store of their own, so a private window's second tab would not have been signed in where its first was. And deleting a store's files straight after letting the store go left its cookies, for a moment, to a store made anew for the same login set (§10, Q2) |
+| F18 | A window keeps a snapshot that arrives before it knows which subscription is its own | The core sends a subscription's first snapshot at once, with its answer (§5), and a shell takes answers and events off the core by different paths. The Android session was built to keep such a snapshot; the Apple one dropped it, and a window would then have shown nothing until the page next changed |
 | F14 | Words a person must read are in the primary colour, the retry button is neutral, and the light accent is `#C2410C` | Apple's accessibility audit failed the system's secondary grey, a tinted button label and the first accent (4.3:1 on white; the new one is 5.2:1). The audit now runs in the UI tests on both platforms |
 
 ## 10. Spikes
