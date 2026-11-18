@@ -1,0 +1,56 @@
+# What WebTiger Core may depend on. Tools/test.sh lint runs `cargo deny check`
+# when cargo-deny is installed, for this workspace and for tools/proto-gen.
+
+[graph]
+# The targets WebTiger builds. A crate that only another target pulls in is not
+# distributed, so its licence and advisories do not apply.
+targets = [
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+    "aarch64-apple-ios",
+    "aarch64-apple-ios-sim",
+    "x86_64-pc-windows-msvc",
+    "aarch64-pc-windows-msvc",
+    "aarch64-linux-android",
+    "x86_64-linux-android",
+    "x86_64-unknown-linux-gnu",
+]
+all-features = true
+
+[advisories]
+# RustSec advisories: a vulnerable, unsound, yanked or unmaintained crate fails
+# the check. An exception goes in `ignore` with the advisory id and the reason
+# it does not apply.
+yanked = "deny"
+ignore = []
+
+[licenses]
+# WebTiger is MPL-2.0. Its dependencies are permissive or MPL-2.0; nothing
+# GPL-family, which the App Store's terms conflict with (WT-D8).
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "CC0-1.0",
+    "Unlicense",
+    "MPL-2.0",
+]
+confidence-threshold = 0.93
+unused-allowed-license = "allow"
+
+[bans]
+# A second version of a crate is reported, not refused. A wildcard version
+# requirement is refused, except for the workspace's path dependencies.
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+# crates.io only: no other registry and no git dependencies.
+unknown-registry = "deny"
+unknown-git = "deny"

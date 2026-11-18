@@ -1,0 +1,302 @@
+{
+  "format": "webtiger.portable",
+  "version": 1,
+  "source": {
+    "app": "arc"
+  },
+  "login_sets": [
+    {
+      "key": "default",
+      "name": "Personal"
+    },
+    {
+      "key": "profile-1",
+      "name": "Work"
+    }
+  ],
+  "spaces": [
+    {
+      "name": "Personal",
+      "icon": {
+        "emoji": "🏡"
+      },
+      "colour": "#6CBAD9",
+      "login_set": "default",
+      "favourites": [
+        {
+          "kind": "site",
+          "title": "Mail",
+          "address": "https://mail.example.com/",
+          "added_at": 1710193501000
+        },
+        {
+          "kind": "site",
+          "title": "Music",
+          "address": "https://music.example.com/",
+          "added_at": 1710193503000
+        }
+      ],
+      "sites": [
+        {
+          "kind": "site",
+          "title": "Example Mail",
+          "address": "https://mail.example.com/",
+          "added_at": 1710193600000
+        },
+        {
+          "kind": "group",
+          "name": "Docs",
+          "children": [
+            {
+              "kind": "site",
+              "title": "Handbook",
+              "address": "https://docs.example.com/handbook",
+              "added_at": 1710193900000
+            },
+            {
+              "kind": "group",
+              "name": "Reference",
+              "children": [
+                {
+                  "kind": "site",
+                  "title": "API reference",
+                  "address": "https://docs.example.com/api",
+                  "added_at": 1710194200000
+                },
+                {
+                  "kind": "site",
+                  "title": "Left pane",
+                  "address": "https://left.example.com/",
+                  "added_at": 1710194400000
+                },
+                {
+                  "kind": "site",
+                  "title": "Right pane",
+                  "address": "https://right.example.com/",
+                  "added_at": 1710194500000
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "tabs": [
+        {
+          "title": "rust — Example Search",
+          "address": "https://search.example.com/?q=rust",
+          "last_active_at": 1724733900250
+        }
+      ]
+    },
+    {
+      "name": "Work",
+      "icon": {
+        "name": "planet"
+      },
+      "colour": "#FF0080",
+      "login_set": "profile-1",
+      "favourites": [
+        {
+          "kind": "site",
+          "title": "Jira",
+          "address": "https://jira.example.com/",
+          "added_at": 1710307501000
+        },
+        {
+          "kind": "site",
+          "title": "Git",
+          "address": "https://git.example.com/",
+          "added_at": 1710307502000
+        },
+        {
+          "kind": "site",
+          "title": "Calendar",
+          "address": "https://calendar.example.com/",
+          "added_at": 1712307502000
+        }
+      ],
+      "sites": [
+        {
+          "kind": "site",
+          "title": "Board",
+          "address": "https://jira.example.com/board",
+          "added_at": 1710307300000
+        },
+        {
+          "kind": "site",
+          "title": "Repositories",
+          "address": "https://git.example.com/",
+          "added_at": 1710307400000
+        }
+      ]
+    },
+    {
+      "name": "",
+      "icon": {
+        "emoji": "🚀"
+      },
+      "login_set": "default",
+      "favourites": [
+        {
+          "kind": "site",
+          "title": "Mail",
+          "address": "https://mail.example.com/",
+          "added_at": 1710193501000
+        },
+        {
+          "kind": "site",
+          "title": "Music",
+          "address": "https://music.example.com/",
+          "added_at": 1710193503000
+        }
+      ],
+      "sites": [
+        {
+          "kind": "site",
+          "title": "News",
+          "address": "https://news.example.com/",
+          "added_at": 1711307300000
+        }
+      ]
+    },
+    {
+      "name": "Side project",
+      "icon": {
+        "symbol": "hammer.fill"
+      },
+      "login_set": "profile-1",
+      "favourites": [
+        {
+          "kind": "site",
+          "title": "Jira",
+          "address": "https://jira.example.com/",
+          "added_at": 1710307501000
+        },
+        {
+          "kind": "site",
+          "title": "Git",
+          "address": "https://git.example.com/",
+          "added_at": 1710307502000
+        },
+        {
+          "kind": "site",
+          "title": "Calendar",
+          "address": "https://calendar.example.com/",
+          "added_at": 1712307502000
+        }
+      ],
+      "sites": [
+        {
+          "kind": "group",
+          "name": "Loop",
+          "children": [
+            {
+              "kind": "site",
+              "title": "Dev server",
+              "address": "http://localhost:3000/",
+              "added_at": 1712307400000
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "link_rules": [
+    {
+      "match": "contains",
+      "pattern": "jira.example.com",
+      "target": "space",
+      "space": 1
+    },
+    {
+      "match": "equals",
+      "pattern": "https://calendar.example.com/",
+      "target": "most_recent_space"
+    },
+    {
+      "match": "contains",
+      "pattern": "meet.example.com",
+      "target": "quick_window"
+    }
+  ],
+  "tweaks": [
+    {
+      "name": "Quiet wiki",
+      "matches": [
+        "*://*.wikipedia.example.com/wiki/*"
+      ],
+      "css": "#sidebar { display: none; }\nbody { max-width: 46rem; margin: 0 auto; }\n",
+      "script": "document.documentElement.dataset.quiet = \"1\";\n",
+      "run_at": "document_start",
+      "enabled": true
+    },
+    {
+      "name": "Serif news",
+      "matches": [
+        "*://*.news.example.com/*"
+      ],
+      "css": "article { font-family: Georgia, serif; }\n",
+      "run_at": "document_idle",
+      "enabled": false
+    }
+  ],
+  "archive": [
+    {
+      "title": "An old page",
+      "address": "https://docs.example.com/old-page",
+      "archived_at": 1722307200500,
+      "space": 1
+    },
+    {
+      "title": "Renamed",
+      "address": "https://shop.example.com/cart",
+      "archived_at": 1723307200000
+    }
+  ],
+  "notes": [
+    {
+      "code": "arc.address_skipped",
+      "count": 3
+    },
+    {
+      "code": "arc.easel_skipped",
+      "count": 1
+    },
+    {
+      "code": "arc.favourite_folder_flattened",
+      "count": 1
+    },
+    {
+      "code": "arc.little_arc_skipped",
+      "count": 1
+    },
+    {
+      "code": "arc.missing_item",
+      "count": 1
+    },
+    {
+      "code": "arc.note_skipped",
+      "count": 1
+    },
+    {
+      "code": "arc.repeated_item_skipped",
+      "count": 2
+    },
+    {
+      "code": "arc.rule_space_missing",
+      "count": 1
+    },
+    {
+      "code": "arc.rule_unsupported",
+      "count": 1
+    },
+    {
+      "code": "arc.split_flattened",
+      "count": 1
+    },
+    {
+      "code": "arc.unknown_item_skipped",
+      "count": 1
+    }
+  ]
+}

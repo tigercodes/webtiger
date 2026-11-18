@@ -1,0 +1,11 @@
+{
+  "pinned": false,
+  "id": "0a1b2c3d-0000-4000-8000-000000000002",
+  "scope": "news.example.com",
+  "installedInProfiles": [ { "default": {} } ],
+  "components": {
+    "contentStylesheet": { "path": "styles.css", "enabled": true }
+  },
+  "extensionEnabled": false,
+  "name": "Serif news"
+}

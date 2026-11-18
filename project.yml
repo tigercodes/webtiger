@@ -1,0 +1,154 @@
+# XcodeGen spec. Regenerate with: Tools/bin/xcodegen generate
+# The project is generated and gitignored; this file is the source of truth.
+name: WebTiger
+options:
+  bundleIdPrefix: com.tigercodes
+  deploymentTarget:
+    macOS: "26.0"
+    iOS: "26.0"
+  xcodeVersion: "27.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+  groupSortPosition: top
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_UPCOMING_FEATURE_EXISTENTIAL_ANY: YES
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: 1
+    GENERATE_INFOPLIST_FILE: YES
+    DEAD_CODE_STRIPPING: YES
+    ALWAYS_SEARCH_USER_PATHS: NO
+  configs:
+    Debug:
+      ONLY_ACTIVE_ARCH: YES
+      # Local builds work without a Developer Program account: ad-hoc signing, no
+      # entitlements. Release builds get their identity and entitlements with the
+      # distribution work (001 §9).
+      CODE_SIGN_IDENTITY: "-"
+      CODE_SIGN_STYLE: Manual
+      DEVELOPMENT_TEAM: ""
+      PROVISIONING_PROFILE_SPECIFIER: ""
+packages:
+  WebTigerPackages:
+    path: Packages
+targets:
+  WebTiger-macOS:
+    type: application
+    platform: macOS
+    sources:
+      - path: Apps/WebTiger/Shared
+      - path: Apps/WebTiger/macOS
+        optional: true
+    dependencies:
+      - package: WebTigerPackages
+        product: WTUI
+      - package: WebTigerPackages
+        product: WTCoreClient
+    info:
+      path: Apps/WebTiger/macOS/Info.plist
+      properties:
+        CFBundleDisplayName: WebTiger
+        LSApplicationCategoryType: public.app-category.productivity
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        # A browser loads whatever the user asks for, plain http included. The core marks
+        # such a page "not secure"; App Transport Security must not refuse it first.
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoadsInWebContent: true
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tigercodes.webtiger
+        PRODUCT_NAME: WebTiger
+        ENABLE_HARDENED_RUNTIME: YES
+  WebTiger-iOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: Apps/WebTiger/Shared
+      - path: Apps/WebTiger/iOS
+        optional: true
+    dependencies:
+      - package: WebTigerPackages
+        product: WTUI
+      - package: WebTigerPackages
+        product: WTCoreClient
+    info:
+      path: Apps/WebTiger/iOS/Info.plist
+      properties:
+        CFBundleDisplayName: WebTiger
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoadsInWebContent: true
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tigercodes.webtiger
+        PRODUCT_NAME: WebTiger
+        TARGETED_DEVICE_FAMILY: "1,2"
+  WebTigerUITests-macOS:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: Apps/WebTiger/UITests
+      # The loopback site the package's adapter suite uses.
+      - path: Packages/Tests/WTWebKitTests/TestSite.swift
+    dependencies:
+      - target: WebTiger-macOS
+    # The Mac's UI test runner is sandboxed. Its loopback site has to listen, and the
+    # sandbox refuses that without this.
+    entitlements:
+      path: Apps/WebTiger/UITests/UITests-macOS.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.server: true
+        com.apple.security.network.client: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tigercodes.webtiger.uitests
+        TEST_TARGET_NAME: WebTiger-macOS
+  WebTigerUITests-iOS:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Apps/WebTiger/UITests
+      - path: Packages/Tests/WTWebKitTests/TestSite.swift
+    dependencies:
+      - target: WebTiger-iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tigercodes.webtiger.uitests
+        TEST_TARGET_NAME: WebTiger-iOS
+schemes:
+  WebTiger-macOS:
+    build:
+      targets:
+        WebTiger-macOS: all
+        WebTigerUITests-macOS: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - WebTigerUITests-macOS
+  WebTiger-iOS:
+    build:
+      targets:
+        WebTiger-iOS: all
+        WebTigerUITests-iOS: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - WebTigerUITests-iOS

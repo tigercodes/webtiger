@@ -1,0 +1,39 @@
+// Types the rest of the contract shares (docs/features/001-foundations.md §4).
+syntax = "proto3";
+
+package webtiger.core.v1;
+
+option java_multiple_files = true;
+option java_package = "com.tigercodes.webtiger.core.v1";
+option swift_prefix = "WT";
+
+// A failure, as a stable code of the form "area.reason" ("tab.unknown",
+// "host.timeout"). User-visible text never crosses the boundary: the shells
+// turn codes into words.
+message Error {
+  string code = 1;
+  // The request field at fault, when one is ("text"). Empty otherwise.
+  string field = 2;
+}
+
+// A success that has nothing to say.
+message Ack {}
+
+// A web engine. "Engine" in WebTiger always means one of these; the Rust
+// side is "the core".
+enum EngineKind {
+  ENGINE_KIND_UNSPECIFIED = 0;
+  // WKWebView on Apple platforms.
+  ENGINE_KIND_WEBKIT = 1;
+  // WebView2 on Windows, the System WebView on Android, the CEF pack on the Mac.
+  ENGINE_KIND_CHROMIUM = 2;
+}
+
+// What a web view can be told to do with its own history.
+enum NavigationCommand {
+  NAVIGATION_COMMAND_UNSPECIFIED = 0;
+  NAVIGATION_COMMAND_BACK = 1;
+  NAVIGATION_COMMAND_FORWARD = 2;
+  NAVIGATION_COMMAND_RELOAD = 3;
+  NAVIGATION_COMMAND_STOP = 4;
+}

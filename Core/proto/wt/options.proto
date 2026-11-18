@@ -1,0 +1,28 @@
+// WebTiger's own protobuf options.
+//
+// They live in their own package so a field reads `[(wt.redact) = true]` from
+// every version of the contract. buf's version-suffix rule is for the
+// contract's packages, not for an options file all versions share, hence the
+// one ignore below.
+//
+// Only the Rust side reads these options. The Swift and C generators are told
+// to leave this file out, so those languages have no trace of it.
+syntax = "proto3";
+
+// buf:lint:ignore PACKAGE_VERSION_SUFFIX
+package wt;
+
+import "google/protobuf/descriptor.proto";
+
+option java_multiple_files = true;
+option java_package = "com.tigercodes.webtiger.options";
+
+extend google.protobuf.FieldOptions {
+  // The field may carry personal data: an address, a title, typed text, a
+  // path, a login set's id. No envelope is logged in W0. When envelope logging
+  // arrives (debug builds only), it goes through a redactor generated from
+  // this option, which masks such a field; release builds never log envelopes.
+  // It may mark a string or bytes field, singular, optional, repeated or in a
+  // oneof, or a message field, which is cleared.
+  bool redact = 51000;
+}

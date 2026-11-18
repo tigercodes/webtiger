@@ -1,0 +1,21 @@
+# Settings for every cargo command run in Core/, an IDE's included.
+
+[env]
+# SQLite's build flags, for the amalgamation libsqlite3-sys compiles (wt-store).
+# Its bundled build already enables FTS5; these add: no double-quoted string
+# literals, no memory statistics, no deprecated APIs, and multi-thread mode
+# (one connection per thread). wt-store's tests assert `PRAGMA compile_options`
+# carries all of them.
+LIBSQLITE3_FLAGS = "-DSQLITE_DQS=0 -DSQLITE_DEFAULT_MEMSTATUS=0 -DSQLITE_OMIT_DEPRECATED -USQLITE_THREADSAFE -DSQLITE_THREADSAFE=2"
+
+[target.'cfg(all(windows, target_env = "msvc"))']
+rustflags = [
+    # Control Flow Guard in the core's DLL, as in the shell.
+    "-C", "control-flow-guard=checks",
+    # The hybrid CRT: the VC runtime linked statically, the Universal CRT that
+    # ships with Windows dynamically, so neither webtiger_core.dll nor the MSIX
+    # needs the VC++ redistributable.
+    "-C", "target-feature=+crt-static",
+    "-C", "link-arg=/NODEFAULTLIB:libucrt.lib",
+    "-C", "link-arg=/DEFAULTLIB:ucrt.lib",
+]

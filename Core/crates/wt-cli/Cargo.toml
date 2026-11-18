@@ -1,0 +1,22 @@
+[package]
+name = "wt-cli"
+description = "The `webtiger` command line: the importers, and later a headless driver and the plugin tools"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "webtiger"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+wt-import.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

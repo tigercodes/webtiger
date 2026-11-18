@@ -1,0 +1,18 @@
+[package]
+name = "wt-testkit"
+description = "Test support: a fake shell with a scripted web engine, driving the whole contract in process"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# A paused clock: a host request's timeout runs out the moment the test has
+# nothing else to do.
+tokio = { workspace = true, features = ["rt", "time", "test-util"] }
+wt-app.workspace = true
+wt-proto.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,90 @@
+// Host services (000 §5.5): what the core asks the platform for, as a
+// HostRequest the shell answers with exactly one HostResponse carrying the
+// request's envelope id.
+//
+// W0 has the health check and the WebViews service. The answer must be the
+// request's kind (HostPing → HostPong; every WebView request → Ack) or an
+// Error with a code ("webview.unknown"). The core reports anything else as
+// "host.wrong_answer", no answer within its timeout as "host.timeout", and an
+// Error whose code isn't "area.reason" as "host.failed", so no text travels
+// through an error.
+syntax = "proto3";
+
+package webtiger.core.v1;
+
+import "webtiger/core/v1/common.proto";
+import "wt/options.proto";
+
+option java_multiple_files = true;
+option java_package = "com.tigercodes.webtiger.core.v1";
+option swift_prefix = "WT";
+
+message HostRequest {
+  oneof kind {
+    HostPing ping = 1;
+    WebViewCreate web_view_create = 2;
+    WebViewLoad web_view_load = 3;
+    WebViewCommand web_view_command = 4;
+    WebViewDestroy web_view_destroy = 5;
+  }
+}
+
+message HostResponse {
+  oneof kind {
+    Error error = 1;
+    Ack ack = 2;
+    HostPong pong = 3;
+  }
+}
+
+// The contract's health check through the shell (Ping.via_host).
+message HostPing {
+  bytes payload = 1;
+}
+
+message HostPong {
+  bytes payload = 1;
+}
+
+// An identity: one data store per engine (cookies, storage, cache, service
+// workers, permissions). Web views in different login sets share nothing.
+message LoginSet {
+  // A UUID, lower case with hyphens. The shell names the engine's store by
+  // it: WKWebsiteDataStore(forIdentifier:), a WebView2 profile, an Android
+  // WebView profile.
+  string id = 1 [(wt.redact) = true];
+  // A private window's: the engine keeps it in memory and nothing is written.
+  bool ephemeral = 2;
+}
+
+// WebViews: creates a web view, not yet on screen and showing nothing. The
+// shell keeps it under `web_view_id` and shows it where a snapshot's TabView
+// names it. Answered with Ack, or "engine.unavailable" when the shell has no
+// such engine.
+message WebViewCreate {
+  // Chosen by the core, never 0, never reused.
+  uint64 web_view_id = 1;
+  EngineKind engine = 2;
+  LoginSet login_set = 3;
+}
+
+// WebViews: loads an address. Answered with Ack once the load was started;
+// how it goes arrives as EngineEvents. "webview.unknown" for an id the shell
+// doesn't have.
+message WebViewLoad {
+  uint64 web_view_id = 1;
+  string url = 2 [(wt.redact) = true];
+}
+
+// WebViews: back, forward, reload or stop. Answered with Ack, also when the
+// web view had nowhere to go.
+message WebViewCommand {
+  uint64 web_view_id = 1;
+  NavigationCommand command = 2;
+}
+
+// WebViews: destroys a web view and releases its engine resources. Answered
+// with Ack, also when the shell no longer had it.
+message WebViewDestroy {
+  uint64 web_view_id = 1;
+}

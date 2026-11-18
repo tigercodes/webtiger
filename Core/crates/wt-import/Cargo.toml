@@ -1,0 +1,20 @@
+[package]
+name = "wt-import"
+description = "Importers from other browsers, and the portable file they write"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+# Only web addresses are imported: the same parser the address field uses decides.
+wt-core.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

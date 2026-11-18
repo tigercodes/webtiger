@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "items": [
+    "ARCHIVED-1",
+    { "sidebarItem": { "id": "ARCHIVED-1", "parentID": null, "childrenIds": [], "title": null, "data": { "tab": { "savedURL": "https://docs.example.com/old-page", "savedTitle": "An old page" } } },
+      "reason": "auto", "archivedAt": 744000000.5, "source": { "space": { "_0": "SPACE-WORK" } } },
+    "ARCHIVED-2",
+    { "sidebarItem": { "id": "ARCHIVED-2", "parentID": null, "childrenIds": [], "title": "Renamed", "data": { "tab": { "savedURL": "https://shop.example.com/cart", "savedTitle": "Cart" } } },
+      "reason": "manual", "archivedAt": 745000000.0, "source": { "littleArc": {} } },
+    "ARCHIVED-3",
+    { "sidebarItem": { "id": "ARCHIVED-3", "parentID": null, "childrenIds": [], "title": null, "data": { "tab": { "savedURL": "chrome://extensions", "savedTitle": "Extensions" } } },
+      "reason": "auto", "archivedAt": 745000001.0, "source": { "space": { "_0": "SPACE-WORK" } } }
+  ]
+}

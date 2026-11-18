@@ -1,0 +1,67 @@
+// What a shell passes to wt_core_start.
+syntax = "proto3";
+
+package webtiger.core.v1;
+
+import "webtiger/core/v1/common.proto";
+import "wt/options.proto";
+
+option java_multiple_files = true;
+option java_package = "com.tigercodes.webtiger.core.v1";
+option swift_prefix = "WT";
+
+// Passed to wt_core_start.
+message CoreConfig {
+  // The contract the shell was built with. The core refuses another major; a
+  // different minor works, because both sides ignore fields they don't know.
+  uint32 contract_major = 1;
+  uint32 contract_minor = 2;
+  Platform platform = 3;
+  // BCP 47, such as "en-GB".
+  string locale = 4;
+  // Per-user application data: the store lives here. Ignored in fake mode,
+  // whose store is in memory.
+  string data_dir = 5 [(wt.redact) = true];
+  TestMode test_mode = 6;
+  // Fake mode's knobs. Read with TEST_MODE_FAKE only.
+  FakeOptions fake = 7;
+  // The app's version, such as "0.1.0". For diagnostics.
+  string app_version = 8;
+  // The engines this shell can create web views with, the default first. At
+  // least one. A pack installed later is announced with a request (W6).
+  repeated EngineInfo engines = 9;
+}
+
+enum Platform {
+  PLATFORM_UNSPECIFIED = 0;
+  PLATFORM_MACOS = 1;
+  // iPhone and iPad.
+  PLATFORM_IOS = 2;
+  PLATFORM_WINDOWS = 3;
+  PLATFORM_ANDROID = 4;
+  // The `webtiger` command line and headless tests.
+  PLATFORM_CLI = 5;
+}
+
+enum TestMode {
+  // Read as TEST_MODE_LIVE.
+  TEST_MODE_UNSPECIFIED = 0;
+  TEST_MODE_LIVE = 1;
+  // Deterministic: the store is in memory, ids are fixed, and nothing on the
+  // device is read or written. UI suites run in it (WEBTIGER_FAKE=1).
+  TEST_MODE_FAKE = 2;
+}
+
+message FakeOptions {
+  // An address every new window's first tab opens (WEBTIGER_FAKE_START).
+  // Empty: the tab starts empty.
+  string start_address = 1 [(wt.redact) = true];
+}
+
+// One engine a shell offers.
+message EngineInfo {
+  EngineKind kind = 1;
+  // The engine's own version, such as "621.1.15" or "142.0.7444.60". For
+  // diagnostics and, later, the minimum-safe-version rule.
+  string version = 2;
+}

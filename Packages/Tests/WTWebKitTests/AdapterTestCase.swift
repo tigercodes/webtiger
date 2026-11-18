@@ -1,0 +1,166 @@
+// What the adapter suites share: a loopback site, a scripted core, the engine under test, and
+// helpers that speak the WebViews host service as the core does.
+import WebKit
+import WTContract
+import WTCoreClient
+import WTWebKit
+import XCTest
+
+@MainActor
+class AdapterTestCase: XCTestCase {
+    // XCTest makes a new instance of the case for every test, so these are each test's own.
+    let site = TestSite()
+    let core = ScriptedCore()
+    let engine = WebKitEngine()
+    private var created: [UInt64] = []
+    private var loginSets: [UUID] = []
+
+    override func setUp() async throws {
+        XCTAssertNotEqual(site.port, 0, "the loopback site is listening")
+        engine.attach(core)
+    }
+
+    override func tearDown() async throws {
+        for id in created {
+            await destroy(id)
+        }
+        created = []
+        for loginSet in loginSets {
+            await remove(loginSet)
+        }
+        loginSets = []
+    }
+
+    // MARK: Helpers
+
+    func newLoginSet() -> UUID {
+        let id = UUID()
+        loginSets.append(id)
+        return id
+    }
+
+    @discardableResult
+    func create(
+        _ id: UInt64,
+        loginSet: UUID? = nil,
+        ephemeral: Bool = false,
+        engine kind: WTEngineKind = .webkit
+    ) async -> WTHostResponse.OneOf_Kind {
+        var create = WTWebViewCreate()
+        create.webViewID = id
+        create.engine = kind
+        create.loginSet.id = (loginSet ?? UUID()).uuidString.lowercased()
+        create.loginSet.ephemeral = ephemeral
+        let answer = await engine.answer(.webViewCreate(create))
+        if case .ack = answer {
+            created.append(id)
+        }
+        return answer
+    }
+
+    @discardableResult
+    func load(_ id: UInt64, _ url: String) async -> WTHostResponse.OneOf_Kind {
+        var load = WTWebViewLoad()
+        load.webViewID = id
+        load.url = url
+        return await engine.answer(.webViewLoad(load))
+    }
+
+    func command(_ id: UInt64, _ command: WTNavigationCommand) async {
+        var request = WTWebViewCommand()
+        request.webViewID = id
+        request.command = command
+        _ = await engine.answer(.webViewCommand(request))
+    }
+
+    func destroy(_ id: UInt64) async {
+        var destroy = WTWebViewDestroy()
+        destroy.webViewID = id
+        _ = await engine.answer(.webViewDestroy(destroy))
+        created.removeAll { $0 == id }
+    }
+
+    /// Deletes a login set's data store. WebKit refuses while a web view still uses it, and a
+    /// destroyed web view lets go a moment later, so this tries for a while.
+    @discardableResult
+    func remove(_ loginSet: UUID) async -> Bool {
+        for _ in 0 ..< 100 {
+            do {
+                try await WKWebsiteDataStore.remove(forIdentifier: loginSet)
+                return true
+            } catch {
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+        }
+        return false
+    }
+
+    /// What the adapter has reported about a web view, in order.
+    func reports(_ id: UInt64) -> [WTEngineEvent.OneOf_Kind] {
+        core.reports.filter { $0.webViewID == id }.compactMap(\.kind)
+    }
+
+    /// Waits until the reports about a web view satisfy `done`, for up to fifteen seconds.
+    func wait(
+        _ id: UInt64,
+        _ what: String,
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        until done: ([WTEngineEvent.OneOf_Kind]) -> Bool
+    ) async {
+        for _ in 0 ..< 1500 {
+            if done(reports(id)) {
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        XCTFail("timed out waiting for \(what); reported: \(names(reports(id)))", file: file, line: line)
+    }
+
+    func finished(_ reports: [WTEngineEvent.OneOf_Kind], times: Int = 1) -> Bool {
+        reports.count(where: {
+            if case .navigationFinished = $0 {
+                true
+            } else {
+                false
+            }
+        }) >= times
+    }
+
+    func lastTitle(_ id: UInt64) -> String {
+        reports(id).reversed().compactMap {
+            if case let .titleChanged(changed) = $0 {
+                changed.title
+            } else {
+                nil
+            }
+        }.first ?? ""
+    }
+
+    func hasTitle(_ title: String) -> ([WTEngineEvent.OneOf_Kind]) -> Bool {
+        { reports in reports.contains {
+            if case let .titleChanged(changed) = $0 {
+                changed.title == title
+            } else {
+                false
+            }
+        } }
+    }
+
+    /// The reports' kinds, without progress, which arrives at the engine's own pace.
+    func names(_ reports: [WTEngineEvent.OneOf_Kind]) -> [String] {
+        reports.compactMap { report in
+            switch report {
+            case .navigationStarted: "started"
+            case .navigationCommitted: "committed"
+            case .navigationFinished: "finished"
+            case let .navigationFailed(failed): "failed(\(failed.code))"
+            case .addressChanged: "address"
+            case .titleChanged: "title"
+            case .historyChanged: "history"
+            case .rendererGone: "gone"
+            case .progressChanged: nil
+            }
+        }
+    }
+}

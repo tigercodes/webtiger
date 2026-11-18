@@ -1,0 +1,44 @@
+// The seam between the engine adapter's logic and the WebView itself, so the first is tested on
+// the JVM without the second.
+package com.tigercodes.webtiger.webview
+
+import android.view.View
+import com.tigercodes.webtiger.core.NavigationVerdict
+import com.tigercodes.webtiger.core.RequestVerdict
+import com.tigercodes.webtiger.core.ResourceType
+import com.tigercodes.webtiger.core.v1.EngineEvent
+import com.tigercodes.webtiger.core.v1.NavigationCommand
+
+/** One web view, as the engine holds it. [WebViewPage] is the real one. */
+internal interface Page {
+    /** The view a window shows for the page. Null when there is none: after its renderer died, or in a test. */
+    val view: View?
+
+    /** Loads an address. False when no web view could be made to load it in. */
+    fun load(url: String): Boolean
+
+    /** Back, forward, reload or stop. Nothing happens when the web view has nowhere to go. */
+    fun command(command: NavigationCommand)
+
+    /** Destroys the web view and releases what it held. */
+    fun close()
+}
+
+/** What a page needs of the engine: where its reports go, and who answers its questions. */
+internal interface PageHost {
+    fun report(event: EngineEvent)
+
+    fun navigationVerdict(url: String, webViewId: Long, mainFrame: Boolean, userGesture: Boolean): NavigationVerdict
+
+    /** Called on the WebView's own threads. */
+    fun requestVerdict(url: String, sourceUrl: String, webViewId: Long, resource: ResourceType): RequestVerdict
+}
+
+/** Makes pages. [WebViewPages] makes real ones. */
+internal interface PageFactory {
+    /** Whether this device's WebView can keep one login set's data apart from another's. */
+    val keepsLoginSetsApart: Boolean
+
+    /** A page whose web view runs in the login set `loginSet`, a UUID. Throws when the device has no usable WebView. */
+    fun create(webViewId: Long, loginSet: String, host: PageHost): Page
+}

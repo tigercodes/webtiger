@@ -1,0 +1,10 @@
+--swiftversion 6.0
+--indent 4
+--maxwidth 140
+--wraparguments before-first
+--wrapcollections before-first
+--stripunusedargs closure-only
+--self remove
+--header strip
+--disable redundantReturn, wrapMultilineStatementBraces, noForceUnwrapInTests
+--exclude Packages/.build, Tools, Packages/Sources/WTContract, Packages/Sources/WTDesign/Tokens.generated.swift

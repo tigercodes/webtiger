@@ -1,0 +1,84 @@
+// What a shell reports about a web view (000 §5.5). Each is a Request sent
+// with envelope id 0: a notification, which the core does not answer.
+//
+// Only main-frame events are reported. A shell maps its engine's callbacks
+// to these (001 §5 lists the mapping for each engine), so the core sees one
+// event order whatever the engine.
+//
+// Two rules every adapter keeps, because the address field depends on them:
+//   - An address is reported as the page's (NavigationCommitted,
+//     AddressChanged) only once that page owns the web view. Where a load is
+//     heading is NavigationStarted's to say, and nothing else's.
+//   - A main-frame navigation the shell refuses on the core's verdict
+//     (wt_nav_check) is reported as NavigationFailed "net.cancelled" by the
+//     shell itself when its engine then reports nothing, so a tab the user
+//     sent there does not wait for ever.
+syntax = "proto3";
+
+package webtiger.core.v1;
+
+import "wt/options.proto";
+
+option java_multiple_files = true;
+option java_package = "com.tigercodes.webtiger.core.v1";
+option swift_prefix = "WT";
+
+message EngineEvent {
+  uint64 web_view_id = 1;
+  oneof kind {
+    NavigationStarted navigation_started = 2;
+    NavigationCommitted navigation_committed = 3;
+    NavigationFinished navigation_finished = 4;
+    NavigationFailed navigation_failed = 5;
+    AddressChanged address_changed = 6;
+    TitleChanged title_changed = 7;
+    ProgressChanged progress_changed = 8;
+    HistoryChanged history_changed = 9;
+    RendererGone renderer_gone = 10;
+  }
+}
+
+// A load began. The page it asks for does not own the web view yet.
+message NavigationStarted {
+  string url = 1 [(wt.redact) = true];
+}
+
+// The page at `url` now owns the web view: its content is what is on screen.
+message NavigationCommitted {
+  string url = 1 [(wt.redact) = true];
+}
+
+// The load that committed has finished.
+message NavigationFinished {}
+
+// A load failed, before or after it committed.
+message NavigationFailed {
+  // "net.cancelled" (not shown as a failure), "net.offline", "net.dns",
+  // "net.connect", "net.timeout", "net.tls", "net.failed".
+  string code = 1;
+  string url = 2 [(wt.redact) = true];
+}
+
+// The page on screen changed its own address without a load: a fragment, or
+// the History API. Never the address a load is heading for.
+message AddressChanged {
+  string url = 1 [(wt.redact) = true];
+}
+
+message TitleChanged {
+  string title = 1 [(wt.redact) = true];
+}
+
+message ProgressChanged {
+  // 0 to 1.
+  double fraction = 1;
+}
+
+message HistoryChanged {
+  bool can_go_back = 1;
+  bool can_go_forward = 2;
+}
+
+// The process drawing the page died. The web view shows nothing until it is
+// loaded again.
+message RendererGone {}

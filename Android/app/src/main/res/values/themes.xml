@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The window before Compose draws: the system's own light or dark theme, without a title bar.
+     Everything after that is Compose's (design/Theme.kt). -->
+<resources>
+    <style name="Theme.WebTiger" parent="android:Theme.DeviceDefault.DayNight">
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+</resources>

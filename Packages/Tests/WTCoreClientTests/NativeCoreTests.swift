@@ -1,0 +1,208 @@
+// The Rust core, through Swift: the same contract the Rust tests drive, crossing the real C ABI.
+#if WEBTIGER_CORE
+    import WTContract
+    import WTCoreClient
+    import XCTest
+
+    /// A host that records what the core asks and answers as a shell with a working engine would.
+    @MainActor
+    private final class RecordingHost: HostServices {
+        private(set) var requests: [WTHostRequest.OneOf_Kind] = []
+
+        func answer(_ request: WTHostRequest.OneOf_Kind) async -> WTHostResponse.OneOf_Kind {
+            requests.append(request)
+            if case let .ping(ping) = request {
+                var pong = WTHostPong()
+                pong.payload = ping.payload
+                return .pong(pong)
+            }
+            return .ack(WTAck())
+        }
+    }
+
+    /// The tab snapshots a core has published, in order.
+    @MainActor
+    private final class TabLog {
+        var tabs: [WTTabView] = []
+
+        /// The first snapshot that matches, waiting up to ten seconds for it.
+        func first(where matches: (WTTabView) -> Bool) async -> WTTabView? {
+            for _ in 0 ..< 2000 {
+                if let found = tabs.first(where: matches) {
+                    return found
+                }
+                try? await Task.sleep(for: .milliseconds(5))
+            }
+            return nil
+        }
+    }
+
+    @MainActor
+    final class NativeCoreTests: XCTestCase {
+        private func fakeConfig() -> WTCoreConfig {
+            var config = WTCoreConfig()
+            config.platform = .macos
+            config.locale = "en-GB"
+            config.testMode = .fake
+            var engine = WTEngineInfo()
+            engine.kind = .webkit
+            engine.version = "test"
+            config.engines = [engine]
+            return config
+        }
+
+        /// Keeps every tab snapshot the core publishes.
+        private func tabs(of core: NativeCore) -> TabLog {
+            let log = TabLog()
+            let events = core.events
+            Task { @MainActor in
+                for await event in events {
+                    if case let .snapshot(snapshot) = event, case let .window(window) = snapshot.model {
+                        log.tabs.append(window.tab)
+                    }
+                }
+            }
+            return log
+        }
+
+        func testTheLibrarySpeaksThisShellsContract() throws {
+            let core = try NativeCore.start(config: fakeConfig(), host: RecordingHost())
+            defer { core.stop() }
+            XCTAssertEqual(NativeCore.contractMajor, 1)
+        }
+
+        func testPingGoesToTheCoreAndRoundThroughTheHost() async throws {
+            let host = RecordingHost()
+            let core = try NativeCore.start(config: fakeConfig(), host: host)
+            defer { core.stop() }
+
+            var ping = WTPing()
+            ping.payload = Data("hello".utf8)
+            guard case let .pong(direct) = try await core.request(.ping(ping)) else { return XCTFail("expected Pong") }
+            XCTAssertEqual(direct.payload, Data("hello".utf8))
+            XCTAssertFalse(direct.viaHost)
+            XCTAssertEqual(direct.contractMajor, NativeCore.contractMajor)
+
+            ping.viaHost = true
+            guard case let .pong(round) = try await core.request(.ping(ping)) else { return XCTFail("expected Pong") }
+            XCTAssertTrue(round.viaHost)
+            XCTAssertEqual(host.requests.count, 1)
+        }
+
+        func testAPageLoadsThroughTheContract() async throws {
+            let host = RecordingHost()
+            let core = try NativeCore.start(config: fakeConfig(), host: host)
+            defer { core.stop() }
+            let log = tabs(of: core)
+
+            guard case let .windowOpened(opened) = try await core.request(.openWindow(WTOpenWindow())) else {
+                return XCTFail("expected WindowOpened")
+            }
+            var subscribe = WTSubscribe()
+            subscribe.window.windowID = opened.windowID
+            guard case .subscribed = try await core.request(.subscribe(subscribe)) else { return XCTFail("expected Subscribed") }
+
+            var submit = WTSubmitAddress()
+            submit.tabID = opened.tabID
+            submit.text = "example.com"
+            try await core.perform(.submitAddress(submit))
+
+            // The core asked for a web view in the Space's login set, then for the load: in that order.
+            guard host.requests.count == 2, case let .webViewCreate(create) = host.requests[0],
+                  case let .webViewLoad(load) = host.requests[1]
+            else { return XCTFail("expected a create then a load, got \(host.requests)") }
+            XCTAssertEqual(create.engine, .webkit)
+            XCTAssertNotNil(UUID(uuidString: create.loginSet.id), "a login set is named by a UUID")
+            XCTAssertEqual(load.webViewID, create.webViewID)
+            XCTAssertEqual(load.url, "https://example.com/")
+
+            // The engine reports the page arriving; the core's snapshot says what to show.
+            var committed = WTEngineEvent()
+            committed.webViewID = create.webViewID
+            committed.navigationCommitted.url = "https://example.com/"
+            core.report(committed)
+            var titled = WTEngineEvent()
+            titled.webViewID = create.webViewID
+            titled.titleChanged.title = "Example Domain"
+            core.report(titled)
+            var finished = WTEngineEvent()
+            finished.webViewID = create.webViewID
+            finished.navigationFinished = WTNavigationFinished()
+            core.report(finished)
+
+            let tab = await log.first { $0.loadState == .idle && !$0.title.isEmpty }
+            XCTAssertEqual(tab?.title, "Example Domain")
+            XCTAssertEqual(tab?.webViewID, create.webViewID)
+            XCTAssertEqual(tab?.address.display, "example.com")
+            XCTAssertEqual(tab?.address.registrableDomain, "example.com")
+            XCTAssertEqual(tab?.address.security, .secure)
+        }
+
+        func testARefusalIsThrownWithItsCode() async throws {
+            let core = try NativeCore.start(config: fakeConfig(), host: RecordingHost())
+            defer { core.stop() }
+            var submit = WTSubmitAddress()
+            submit.tabID = 9999
+            submit.text = "example.com"
+            do {
+                try await core.perform(.submitAddress(submit))
+                XCTFail("expected a refusal")
+            } catch {
+                XCTAssertEqual(error as? CoreError, .refused(code: "tab.unknown", field: "tab_id"))
+            }
+        }
+
+        func testARefusedStartSaysWhy() {
+            var config = fakeConfig()
+            config.testMode = .live // and no data folder
+            XCTAssertThrowsError(try NativeCore.start(config: config, host: RecordingHost())) { error in
+                XCTAssertEqual(error as? CoreError, .startRefused(code: "start.data_dir"))
+            }
+            var none = fakeConfig()
+            none.engines = []
+            XCTAssertThrowsError(try NativeCore.start(config: none, host: RecordingHost())) { error in
+                XCTAssertEqual(error as? CoreError, .startRefused(code: "start.no_engine"))
+            }
+        }
+
+        func testLiveModeKeepsItsStoreInTheDataFolder() throws {
+            let folder = FileManager.default.temporaryDirectory.appending(path: "webtiger-test-\(UUID().uuidString)")
+            defer { try? FileManager.default.removeItem(at: folder) }
+            var config = fakeConfig()
+            config.testMode = .live
+            config.dataDir = folder.path(percentEncoded: false)
+            let core = try NativeCore.start(config: config, host: RecordingHost())
+            core.stop()
+            XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appending(path: "webtiger.sqlite").path(percentEncoded: false)))
+        }
+
+        func testTheNavigationPolicyAnswersSynchronously() throws {
+            let core = try NativeCore.start(config: fakeConfig(), host: RecordingHost())
+            defer { core.stop() }
+            func verdict(_ url: String, mainFrame: Bool = true) -> NavigationVerdict {
+                core.navigationVerdict(for: url, webViewID: 1, mainFrame: mainFrame, userGesture: false)
+            }
+            XCTAssertEqual(verdict("https://example.com/"), .allow)
+            XCTAssertEqual(verdict("about:blank"), .allow)
+            XCTAssertEqual(verdict("javascript:alert(1)"), .cancel)
+            XCTAssertEqual(verdict("file:///etc/passwd"), .cancel)
+            XCTAssertEqual(verdict("data:text/html,x"), .cancel)
+            XCTAssertEqual(verdict("data:text/html,x", mainFrame: false), .allow)
+            XCTAssertEqual(verdict("mailto:ada@example.com"), .external)
+            XCTAssertEqual(verdict(""), .cancel)
+        }
+
+        func testAStoppedCoreRefusesEverything() async throws {
+            let core = try NativeCore.start(config: fakeConfig(), host: RecordingHost())
+            core.stop()
+            core.stop() // twice is harmless
+            do {
+                try await core.perform(.ping(WTPing()))
+                XCTFail("expected the core to have stopped")
+            } catch {
+                XCTAssertEqual(error as? CoreError, .stopped)
+            }
+            XCTAssertEqual(core.navigationVerdict(for: "https://example.com/", webViewID: 1, mainFrame: true, userGesture: false), .cancel)
+        }
+    }
+#endif

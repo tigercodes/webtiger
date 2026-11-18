@@ -1,0 +1,5 @@
+# unwrap, expect and panic are denied in library code (Cargo.toml) and
+# allowed in tests, where a failure is the point.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true

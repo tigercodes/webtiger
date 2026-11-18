@@ -1,0 +1,269 @@
+// One Android WebView, and the clients that hand its callbacks to PageTracker.
+//
+// Nothing in this file has run on a device or an emulator (003 §8): it is written from the
+// platform's documentation and the WebView's source, and its rules live in PageTracker,
+// which is tested.
+package com.tigercodes.webtiger.webview
+
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.MutableContextWrapper
+import android.graphics.Bitmap
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.http.SslError
+import android.view.View
+import android.view.ViewGroup
+import android.webkit.RenderProcessGoneDetail
+import android.webkit.SslErrorHandler
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
+import com.tigercodes.webtiger.core.NavigationVerdict
+import com.tigercodes.webtiger.core.RequestVerdict
+import com.tigercodes.webtiger.core.ResourceType
+import com.tigercodes.webtiger.core.v1.NavigationCommand
+import java.io.ByteArrayInputStream
+
+/** Makes pages over this device's WebView. */
+internal class WebViewPages(private val context: Context) : PageFactory {
+    /**
+     * A login set is a WebView profile, which needs a WebView that has them. The answer is the
+     * installed WebView's, so it is asked each time: the WebView is updated behind the app.
+     */
+    override val keepsLoginSetsApart: Boolean
+        get() =
+            try {
+                WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)
+            } catch (_: RuntimeException) {
+                false
+            }
+
+    override fun create(webViewId: Long, loginSet: String, host: PageHost): Page = WebViewPage(context, webViewId, loginSet, host, ::isOnline)
+
+    /** Whether the device has a network that reaches the internet. */
+    private fun isOnline(): Boolean {
+        val connectivity = context.getSystemService(ConnectivityManager::class.java) ?: return true
+        val capabilities = connectivity.getNetworkCapabilities(connectivity.activeNetwork) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+}
+
+/**
+ * A web view in a login set's profile. It outlives the activity that shows it (000 §6.5: a
+ * fold or a rotation reloads nothing), so it is made with a context whose base is the
+ * application; the window that shows it lends it the activity while it is on screen
+ * (ui/WebViewHost.kt).
+ */
+internal class WebViewPage(
+    appContext: Context,
+    private val id: Long,
+    private val loginSet: String,
+    private val host: PageHost,
+    private val online: () -> Boolean,
+) : Page {
+    private val context = MutableContextWrapper(appContext)
+    private val tracker = PageTracker(id, host::report)
+
+    /** Null once the renderer has died, until the page is loaded again. */
+    private var webView: WebView? = create()
+
+    /** The page's address, for Guard's check, which the WebView makes on its own threads. */
+    @Volatile private var topUrl = ""
+
+    override val view: View? get() = webView
+
+    override fun load(url: String): Boolean {
+        val view = webView ?: recreate() ?: return false
+        tracker.willLoad(url)
+        view.loadUrl(url)
+        return true
+    }
+
+    override fun command(command: NavigationCommand) {
+        when (command) {
+            NavigationCommand.NAVIGATION_COMMAND_BACK ->
+                webView?.takeIf { it.canGoBack() }?.let { view ->
+                    tracker.willTraverse()
+                    view.goBack()
+                }
+            NavigationCommand.NAVIGATION_COMMAND_FORWARD ->
+                webView?.takeIf { it.canGoForward() }?.let { view ->
+                    tracker.willTraverse()
+                    view.goForward()
+                }
+            NavigationCommand.NAVIGATION_COMMAND_RELOAD -> {
+                // After a failure, or with a new web view in a dead one's place, the engine
+                // has nothing of its own to reload: the address is loaded again.
+                val again = tracker.reloadTarget
+                if (again != null) {
+                    load(again)
+                } else {
+                    webView?.let { view ->
+                        tracker.willReload()
+                        view.reload()
+                    }
+                }
+            }
+            NavigationCommand.NAVIGATION_COMMAND_STOP ->
+                webView?.let { view ->
+                    tracker.willStop()
+                    view.stopLoading()
+                }
+            NavigationCommand.NAVIGATION_COMMAND_UNSPECIFIED -> Unit
+        }
+    }
+
+    override fun close() {
+        webView?.let { view ->
+            view.stopLoading()
+            destroy(view)
+        }
+        webView = null
+    }
+
+    /** Out of whatever window shows it, then destroyed: in that order, as the WebView asks. */
+    private fun destroy(view: WebView) {
+        (view.parent as? ViewGroup)?.removeView(view)
+        view.destroy()
+    }
+
+    private fun recreate(): WebView? =
+        try {
+            create().also { webView = it }
+        } catch (_: RuntimeException) {
+            null
+        }
+
+    private fun create(): WebView {
+        // Asked here as well as by the engine: no web view is ever made that would have to run
+        // in the default profile, whatever became of the installed WebView in between.
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) {
+            val view = WebView(context)
+            try {
+                // Before anything else is done with the web view, as the API requires: its pages
+                // run in the login set's profile (made here if it is new).
+                WebViewCompat.setProfile(view, loginSet)
+            } catch (refused: RuntimeException) {
+                view.destroy()
+                throw refused
+            }
+            configure(view)
+            return view
+        }
+        throw IllegalStateException("engine.no_profiles")
+    }
+
+    @SuppressLint("SetJavaScriptEnabled") // A browser runs the pages' scripts.
+    private fun configure(view: WebView) {
+        view.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            // Pages are laid out for their own viewport, and zoom with two fingers.
+            useWideViewPort = true
+            loadWithOverviewMode = true
+            builtInZoomControls = true
+            displayZoomControls = false
+            // Web content reads nothing of the device: no files, no content providers.
+            allowFileAccess = false
+            allowContentAccess = false
+        }
+        view.webViewClient = Client()
+        view.webChromeClient = Chrome()
+    }
+
+    /** Navigation, as the engine reports it. Every callback but one is on the main thread. */
+    private inner class Client : WebViewClient() {
+        /**
+         * The navigation policy. The engine asks about navigations a page starts and about
+         * every redirect; not about a load the adapter itself asked for, a form's POST, or a
+         * step back or forward. In a frame it asks only about addresses that are not http(s).
+         */
+        override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+            if (view !== webView) return true
+            val url = request.url.toString()
+            val mainFrame = request.isForMainFrame
+            if (host.navigationVerdict(url, id, mainFrame, request.hasGesture()) == NavigationVerdict.ALLOW) {
+                if (mainFrame) tracker.navigationAllowed(url)
+                return false
+            }
+            // W1 hands an external address to the system; until then it is only refused.
+            if (mainFrame) tracker.navigationRefused(url, request.isRedirect)
+            return true
+        }
+
+        override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
+            if (view === webView) tracker.pageStarted(url)
+        }
+
+        override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) {
+            if (view !== webView) return
+            topUrl = url
+            tracker.committed(url, view.canGoBack(), view.canGoForward())
+        }
+
+        override fun onPageFinished(view: WebView, url: String) {
+            if (view === webView) tracker.pageFinished(url)
+        }
+
+        override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+            // The page's own load only. A resource of the page that failed is the page's business.
+            if (view === webView && request.isForMainFrame) {
+                tracker.failed(netErrorCode(error.errorCode, online()), request.url.toString())
+            }
+        }
+
+        override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {
+            // A certificate the system does not trust is never accepted on the user's behalf.
+            handler.cancel()
+            if (view === webView) tracker.certificateRefused(error.url)
+        }
+
+        /**
+         * Guard's check, for every request the page makes: called on the WebView's own
+         * threads, so nothing of the web view is touched here. The WebView does not say what
+         * a request is for beyond whether it is the page itself.
+         */
+        override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+            val url = request.url.toString()
+            val mainFrame = request.isForMainFrame
+            val verdict = host.requestVerdict(url, if (mainFrame) url else topUrl, id, if (mainFrame) ResourceType.DOCUMENT else ResourceType.OTHER)
+            // Until Guard exists (W4) nothing is blocked, and how a blocked request should look
+            // to its page is settled then. For now: an empty answer that says "forbidden".
+            return if (verdict == RequestVerdict.BLOCK) {
+                WebResourceResponse("text/plain", "utf-8", 403, "Blocked", emptyMap(), ByteArrayInputStream(ByteArray(0)))
+            } else {
+                null
+            }
+        }
+
+        /**
+         * The process drawing the page died. A WebView whose renderer is gone cannot be used
+         * again, so it is destroyed; the next load makes another in the same login set.
+         * Returning true keeps the app alive.
+         */
+        override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+            if (view === webView) {
+                webView = null
+                destroy(view)
+                tracker.rendererGone()
+            }
+            return true
+        }
+    }
+
+    private inner class Chrome : WebChromeClient() {
+        override fun onProgressChanged(view: WebView, newProgress: Int) {
+            if (view === webView) tracker.progress(newProgress)
+        }
+
+        override fun onReceivedTitle(view: WebView, title: String?) {
+            if (view === webView) tracker.title(title.orEmpty())
+        }
+    }
+}

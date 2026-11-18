@@ -1,0 +1,31 @@
+{
+  "comment": "Every user-visible string, once, for every shell. The core speaks codes; the shells speak these words. Tools/strings/strings.py writes the Apple String Catalog from it (strings.xml and .resw join with their shells). Keys are dotted lower case; an 'error.<code>' key is the words for a core error code. British spelling.",
+  "strings": {
+    "app.name": { "en": "WebTiger", "note": "The app's name. Not translated." },
+    "address.placeholder": { "en": "Search or enter address", "note": "Placeholder in the address field." },
+    "address.label": { "en": "Address and search", "note": "Accessibility label of the address field." },
+    "address.secure": { "en": "Secure connection", "note": "Accessibility label of the padlock shown for an https page." },
+    "address.insecure": { "en": "Not secure", "note": "Accessibility label of the warning shown for an http page." },
+    "toolbar.open_location": { "en": "Open Location", "note": "Command (Command-L on a Mac): put the keyboard in the address field with the whole address selected." },
+    "toolbar.back": { "en": "Back", "note": "Button: go back one page." },
+    "toolbar.forward": { "en": "Forward", "note": "Button: go forward one page." },
+    "toolbar.reload": { "en": "Reload", "note": "Button: reload the page." },
+    "toolbar.stop": { "en": "Stop", "note": "Button: stop loading the page." },
+    "tab.empty.title": { "en": "Where to?", "note": "Heading of a tab that has no page yet." },
+    "tab.empty.hint": { "en": "Type an address or a search above.", "note": "Hint under the heading of an empty tab." },
+    "error.title": { "en": "This page didn’t load", "note": "Heading shown over a page that failed to load." },
+    "error.retry": { "en": "Try Again", "note": "Button on the failed-page view: reload." },
+    "error.net.offline": { "en": "You’re not connected to the internet.", "note": "A load failed: no network." },
+    "error.net.dns": { "en": "The site’s address couldn’t be found.", "note": "A load failed: DNS." },
+    "error.net.connect": { "en": "The site couldn’t be reached.", "note": "A load failed: connection refused or lost." },
+    "error.net.timeout": { "en": "The site took too long to answer.", "note": "A load failed: timed out." },
+    "error.net.tls": { "en": "A secure connection to the site couldn’t be made.", "note": "A load failed: TLS or certificate problem." },
+    "error.net.failed": { "en": "Something went wrong while loading the page.", "note": "A load failed for a reason without words of its own." },
+    "error.page.renderer_gone": { "en": "The page stopped unexpectedly.", "note": "The process drawing the page died." },
+    "error.engine.no_profiles": { "en": "The web engine on this device can’t keep each Space’s logins separate. Update Android System WebView and try again.", "note": "Android: the System WebView is too old to give each login set a profile of its own." },
+    "error.engine.no_private": { "en": "Private windows aren’t available on this device yet.", "note": "The engine cannot make a login set that is kept in memory only." },
+    "error.engine.unavailable": { "en": "This page’s engine isn’t available.", "note": "The web engine the tab asked for is not installed." },
+    "error.start.title": { "en": "WebTiger couldn’t start", "note": "Heading when the core refused to start." },
+    "error.start.detail": { "en": "Error code: %@", "note": "Shown under the start failure heading. %@ is a code such as store.open." }
+  }
+}

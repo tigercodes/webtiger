@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The words for a core error code are found by name (ui/Words.kt: "net.dns" is error_net_dns),
+     which resource shrinking cannot see. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@string/error_*" />

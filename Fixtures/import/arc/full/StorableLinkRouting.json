@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "defaultDestination": { "littleArc": { "_0": { "mostRecent": {} } } },
+  "rules": [
+    { "id": "RULE-1",
+      "sourceComponents": [ { "id": "C1", "componentType": { "urlMatch": { "_0": { "contains": {} }, "_1": "jira.example.com" } } } ],
+      "destination": { "space": { "_0": { "space": { "_0": "SPACE-WORK" } } } } },
+    { "id": "RULE-2",
+      "sourceComponents": [ { "id": "C2", "componentType": { "urlMatch": { "_0": { "matches": {} }, "_1": "https://calendar.example.com/" } } } ],
+      "destination": { "space": { "_0": { "mostRecent": {} } } } },
+    { "id": "RULE-3",
+      "sourceComponents": [ { "id": "C3", "componentType": { "urlMatch": { "_0": { "contains": {} }, "_1": "meet.example.com" } } } ],
+      "destination": { "littleArc": { "_0": { "mostRecent": {} } } } },
+    { "id": "RULE-4",
+      "sourceComponents": [ { "id": "C4", "componentType": { "urlMatch": { "_0": { "contains": {} }, "_1": "gone.example.com" } } } ],
+      "destination": { "space": { "_0": { "space": { "_0": "A-SPACE-THAT-WAS-DELETED" } } } } },
+    { "id": "RULE-5",
+      "sourceComponents": [ { "id": "C5", "componentType": { "sourceApp": { "_0": "com.example.chat" } } } ],
+      "destination": { "space": { "_0": { "space": { "_0": "SPACE-WORK" } } } } }
+  ]
+}

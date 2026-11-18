@@ -1,0 +1,39 @@
+[package]
+name = "wt-ffi"
+description = "The C ABI every WebTiger shell links: a static library on Apple, webtiger_core.dll on Windows, libwebtiger_core.so on Android"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# One library under one name: a shared library for Windows and Android, and
+# an rlib so this crate's own Rust tests can call the exports directly. The
+# Apple build asks for a static library on the command line
+# (Tools/apple/xcframework.sh).
+[lib]
+name = "webtiger_core"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+arc-swap.workspace = true
+prost.workspace = true
+# The core's own thread runs a current-thread runtime: its channel, and the
+# timers the host bridge's timeouts need.
+tokio = { workspace = true, features = ["rt", "sync", "time"] }
+wt-app.workspace = true
+wt-core.workspace = true
+wt-proto.workspace = true
+# The Android glue (the `jni` feature): Kotlin's NativeCore over the C ABI.
+jni = { workspace = true, optional = true }
+
+[features]
+# The JNI exports Kotlin's NativeCore binds: on for libwebtiger_core.so, which
+# Android/core-engine builds. Off everywhere else.
+jni = ["dep:jni"]
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

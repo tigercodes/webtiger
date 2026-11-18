@@ -1,0 +1,43 @@
+# Rust
+Core/target/
+Core/tools/*/target/
+# Xcode / SwiftPM
+.build/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+.swiftpm/
+Packages/.build/
+*.xcresult
+# Generated projects (XcodeGen regenerates them)
+*.xcodeproj
+# The Rust core as an xcframework (Tools/apple/xcframework.sh builds it)
+Packages/Frameworks/
+# Tools downloaded by Tools/bootstrap.sh
+Tools/bin/
+Tools/.downloads/
+# Android
+Android/.gradle/
+Android/**/build/
+Android/local.properties
+Android/**/*.jks
+Android/**/*.keystore
+Android/signing.properties
+Android/.kotlin/
+# Windows
+Windows/out/
+Windows/obj/
+Windows/packages/
+Windows/.vs/
+*.vcxproj.user
+# Snapshot failures
+**/__Snapshots__/**/*.diff.png
+# Secrets
+*.pem
+.env
+.env.*
+Config.xcconfig
+# OS / IDE
+.DS_Store
+.idea/
+*.swp

@@ -1,0 +1,219 @@
+// The WebViews host service, with pages that have no WebView behind them: what the engine
+// answers, and what it refuses with which code.
+package com.tigercodes.webtiger.webview
+
+import com.tigercodes.webtiger.core.NavigationVerdict
+import com.tigercodes.webtiger.core.RequestVerdict
+import com.tigercodes.webtiger.core.ResourceType
+import com.tigercodes.webtiger.core.ScriptedCore
+import com.tigercodes.webtiger.core.v1.EngineEvent
+import com.tigercodes.webtiger.core.v1.EngineKind
+import com.tigercodes.webtiger.core.v1.HostPing
+import com.tigercodes.webtiger.core.v1.HostRequest
+import com.tigercodes.webtiger.core.v1.HostResponse
+import com.tigercodes.webtiger.core.v1.LoginSet
+import com.tigercodes.webtiger.core.v1.NavigationCommand
+import com.tigercodes.webtiger.core.v1.NavigationFinished
+import com.tigercodes.webtiger.core.v1.WebViewCommand
+import com.tigercodes.webtiger.core.v1.WebViewCreate
+import com.tigercodes.webtiger.core.v1.WebViewDestroy
+import com.tigercodes.webtiger.core.v1.WebViewLoad
+import kotlinx.coroutines.test.runTest
+import okio.ByteString.Companion.encodeUtf8
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+private const val LOGIN_SET = "0f8b1c9e-2d47-4a6b-9c3e-5a1d7e8f9a0b"
+private const val OTHER_LOGIN_SET = "7c2e4f6a-8b1d-4c3e-a5f7-9d0b2c4e6f8a"
+
+class SystemWebViewEngineTest {
+    private val pages = FakePages()
+    private val core = ScriptedCore()
+    private val engine = SystemWebViewEngine(pages).also { it.attach(core) }
+
+    private fun create(id: Long, loginSet: LoginSet? = LoginSet(id = LOGIN_SET), kind: EngineKind = EngineKind.ENGINE_KIND_CHROMIUM) =
+        HostRequest(web_view_create = WebViewCreate(web_view_id = id, engine = kind, login_set = loginSet))
+
+    private fun load(id: Long, url: String) = HostRequest(web_view_load = WebViewLoad(web_view_id = id, url = url))
+
+    private fun command(id: Long, command: NavigationCommand) = HostRequest(web_view_command = WebViewCommand(web_view_id = id, command = command))
+
+    private fun destroy(id: Long) = HostRequest(web_view_destroy = WebViewDestroy(web_view_id = id))
+
+    private fun assertDone(response: HostResponse) {
+        assertNull("expected an Ack, got ${response.error?.code}", response.error)
+        assertNotNull(response.ack)
+    }
+
+    private fun assertRefused(code: String, response: HostResponse) {
+        assertEquals(code, response.error?.code)
+        assertNull(response.ack)
+    }
+
+    @Test
+    fun thePingIsAnsweredWithItsPayload() =
+        runTest {
+            val response = engine.answer(HostRequest(ping = HostPing(payload = "hello".encodeUtf8())))
+            assertEquals("hello".encodeUtf8(), response.pong?.payload)
+        }
+
+    @Test
+    fun aWebViewIsMadeInItsLoginSet() =
+        runTest {
+            val before = engine.generation
+            assertDone(engine.answer(create(4)))
+            assertDone(engine.answer(create(5, LoginSet(id = OTHER_LOGIN_SET))))
+            assertEquals(2, engine.webViewCount)
+            assertEquals(listOf(4L to LOGIN_SET, 5L to OTHER_LOGIN_SET), pages.made.map { it.id to it.loginSet })
+            assertTrue("a window showing a web view draws again when the web views change", engine.generation > before)
+        }
+
+    @Test
+    fun aWebViewThatCannotBeMadeIsRefusedWithACode() =
+        runTest {
+            assertRefused("engine.unavailable", engine.answer(create(4, kind = EngineKind.ENGINE_KIND_WEBKIT)))
+            assertRefused("webview.bad_login_set", engine.answer(create(4, loginSet = null)))
+            assertRefused("webview.bad_login_set", engine.answer(create(4, LoginSet(id = LOGIN_SET.uppercase()))))
+            assertRefused("webview.bad_login_set", engine.answer(create(4, LoginSet(id = "../Default"))))
+            // A private login set must leave nothing on disk, and a WebView profile always does.
+            assertRefused("engine.no_private", engine.answer(create(4, LoginSet(id = LOGIN_SET, ephemeral = true))))
+            assertEquals(0, engine.webViewCount)
+            assertTrue(pages.made.isEmpty())
+
+            assertDone(engine.answer(create(4)))
+            assertRefused("webview.exists", engine.answer(create(4)))
+            assertEquals(1, pages.made.size)
+        }
+
+    @Test
+    fun withoutProfilesNoWebViewIsMadeRatherThanOneThatSharesItsData() =
+        runTest {
+            pages.keepsLoginSetsApart = false
+            assertRefused("engine.no_profiles", engine.answer(create(4)))
+            assertEquals(0, engine.webViewCount)
+            assertTrue("no web view was made in the default profile", pages.made.isEmpty())
+            assertRefused("webview.unknown", engine.answer(load(4, "https://example.com/")))
+        }
+
+    @Test
+    fun aDeviceWithNoWebViewIsACodeAndNotItsWords() =
+        runTest {
+            pages.failure = IllegalStateException("No WebView installed; https://secret.example.com/")
+            val response = engine.answer(create(4))
+            assertRefused("engine.unavailable", response)
+            assertEquals("", response.error?.field_)
+            assertEquals(0, engine.webViewCount)
+        }
+
+    @Test
+    fun anAddressIsLoadedInTheWebViewTheCoreNamed() =
+        runTest {
+            engine.answer(create(4))
+            engine.answer(create(5))
+            assertDone(engine.answer(load(5, "https://example.com/")))
+            assertEquals(emptyList<String>(), pages.made[0].loaded)
+            assertEquals(listOf("https://example.com/"), pages.made[1].loaded)
+            assertRefused("webview.unknown", engine.answer(load(9, "https://example.com/")))
+        }
+
+    @Test
+    fun onlyAnAddressTheCoresPolicyAllowsIsEverLoaded() =
+        runTest {
+            engine.answer(create(4))
+            // WebView.loadUrl would run this as script in the page; the core's policy says no.
+            core.setVerdict(NavigationVerdict.CANCEL, "javascript:alert(document.cookie)")
+            core.setVerdict(NavigationVerdict.EXTERNAL, "mailto:ada@example.com")
+            assertRefused("webview.bad_address", engine.answer(load(4, "javascript:alert(document.cookie)")))
+            assertRefused("webview.bad_address", engine.answer(load(4, "mailto:ada@example.com")))
+            assertRefused("webview.bad_address", engine.answer(load(4, "")))
+            assertTrue(pages.made[0].loaded.isEmpty())
+        }
+
+    @Test
+    fun beforeACoreIsAttachedNothingIsLoaded() =
+        runTest {
+            val alone = SystemWebViewEngine(pages)
+            assertDone(alone.answer(create(4)))
+            assertRefused("webview.bad_address", alone.answer(load(4, "https://example.com/")))
+            // What a page reports goes nowhere, and what it asks is answered safely.
+            val host = pages.made[0].host
+            host.report(EngineEvent(web_view_id = 4, navigation_finished = NavigationFinished()))
+            assertEquals(NavigationVerdict.CANCEL, host.navigationVerdict("https://example.com/", 4, mainFrame = true, userGesture = true))
+            assertEquals(RequestVerdict.ALLOW, host.requestVerdict("https://example.com/a.js", "https://example.com/", 4, ResourceType.OTHER))
+        }
+
+    @Test
+    fun aWebViewThatCannotLoadSaysTheEngineIsNotThere() =
+        runTest {
+            engine.answer(create(4))
+            pages.made[0].loads = false
+            assertRefused("engine.unavailable", engine.answer(load(4, "https://example.com/")))
+        }
+
+    @Test
+    fun commandsReachTheWebView() =
+        runTest {
+            engine.answer(create(4))
+            val all =
+                listOf(
+                    NavigationCommand.NAVIGATION_COMMAND_BACK,
+                    NavigationCommand.NAVIGATION_COMMAND_FORWARD,
+                    NavigationCommand.NAVIGATION_COMMAND_RELOAD,
+                    NavigationCommand.NAVIGATION_COMMAND_STOP,
+                )
+            for (each in all) assertDone(engine.answer(command(4, each)))
+            assertEquals(all, pages.made[0].commands)
+            assertRefused("webview.bad_command", engine.answer(command(4, NavigationCommand.NAVIGATION_COMMAND_UNSPECIFIED)))
+            assertRefused("webview.unknown", engine.answer(command(9, NavigationCommand.NAVIGATION_COMMAND_RELOAD)))
+            assertEquals(all, pages.made[0].commands)
+        }
+
+    @Test
+    fun destroyingReleasesTheWebView() =
+        runTest {
+            engine.answer(create(4))
+            assertDone(engine.answer(destroy(4)))
+            assertTrue(pages.made[0].closed)
+            assertEquals(0, engine.webViewCount)
+            assertNull(engine.webView(4))
+            // Also when the shell no longer had it.
+            assertDone(engine.answer(destroy(4)))
+            assertRefused("webview.unknown", engine.answer(load(4, "https://example.com/")))
+            // Its id can be made again: the core never reuses one, but nothing here depends on that.
+            assertDone(engine.answer(create(4)))
+        }
+
+    @Test
+    fun aRequestThisShellDoesNotKnowIsRefusedWithACode() =
+        runTest {
+            assertRefused("host.unsupported", engine.answer(HostRequest()))
+        }
+
+    @Test
+    fun whatAPageReportsAndAsksGoesToTheCore() =
+        runTest {
+            engine.answer(create(4))
+            val host = pages.made[0].host
+            host.report(EngineEvent(web_view_id = 4, navigation_finished = NavigationFinished()))
+            assertEquals(listOf(4L), core.reports.map { it.web_view_id })
+
+            core.setVerdict(NavigationVerdict.EXTERNAL, "tel:+441632960000")
+            core.setVerdict(RequestVerdict.BLOCK, "https://tracker.example.com/pixel.gif")
+            assertEquals(NavigationVerdict.EXTERNAL, host.navigationVerdict("tel:+441632960000", 4, mainFrame = true, userGesture = true))
+            assertEquals(NavigationVerdict.ALLOW, host.navigationVerdict("https://example.com/", 4, mainFrame = true, userGesture = false))
+            assertEquals(RequestVerdict.BLOCK, host.requestVerdict("https://tracker.example.com/pixel.gif", "https://example.com/", 4, ResourceType.OTHER))
+        }
+
+    @Test
+    fun aLoginSetIsNamedByALowerCaseUuid() {
+        assertTrue(SystemWebViewEngine.isUuid(LOGIN_SET))
+        assertTrue(SystemWebViewEngine.isUuid("00000000-0000-0000-0000-000000000000"))
+        for (bad in listOf("", "Default", LOGIN_SET.uppercase(), LOGIN_SET.replace("-", ""), "$LOGIN_SET ", LOGIN_SET.replace('f', 'g'), "0f8b1c9e-2d47-4a6b-9c3e_5a1d7e8f9a0b", "../../../etc/passwd")) {
+            assertFalse(bad, SystemWebViewEngine.isUuid(bad))
+        }
+    }
+}

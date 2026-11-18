@@ -1,0 +1,19 @@
+# Pinned for reproducible builds: every builder (the Mac, the Windows PC, CI)
+# compiles with the same toolchain, and rustup fetches it on first use. Bump
+# deliberately, with Tools/test.sh core green.
+# The targets are the five apps': the Mac, the iPhone and iPad and their
+# simulator, Windows on both architectures, and Android's two ABIs.
+[toolchain]
+channel = "1.99.1"
+components = ["rustfmt", "clippy"]
+targets = [
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+    "aarch64-apple-ios",
+    "aarch64-apple-ios-sim",
+    "x86_64-pc-windows-msvc",
+    "aarch64-pc-windows-msvc",
+    "aarch64-linux-android",
+    "x86_64-linux-android",
+]
+profile = "minimal"

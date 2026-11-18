@@ -1,0 +1,157 @@
+// WebTiger Core ↔ shell contract (docs/features/000-master-plan.md §5.5,
+// docs/features/001-foundations.md §4).
+// Contract version: 1.0 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
+//
+// Every message crosses the C ABI as protobuf bytes:
+//   wt_core_start(CoreConfig)   config.proto
+//   wt_core_send(Envelope)      a Request (id chosen by the shell; 0 for a
+//                               notification, which gets no Response) or a
+//                               HostResponse (id of the HostRequest it answers)
+//   sink ← Envelope             Responses, Events (id 0) and HostRequests
+//
+// The files: this one has the envelope and its parts; common.proto the shared
+// types and Error; config.proto CoreConfig; browser.proto windows and tabs;
+// engine.proto what a shell reports about a web view; host.proto the host
+// services.
+//
+// Changing the contract:
+//   - Within v1, changes are additive only: new fields, messages and oneof
+//     cases. Never renumber, retype or reuse a field number; mark a removed
+//     one `reserved`. Bump WT_CONTRACT_MINOR and the version line above.
+//     (Until the first public beta nothing has shipped, and a W-phase may
+//     still reshape a message; 001 records each such change.)
+//   - Run Tools/proto/generate.sh afterwards. The generated code is checked
+//     in, so no build runs a code generator; `Tools/test.sh lint` fails when
+//     it is stale.
+//   - User-visible text never crosses the boundary. Errors and statuses are
+//     stable codes ("area.reason"); the shells turn codes into words.
+//   - Mark every field that may carry personal data `[(wt.redact) = true]`.
+//     A browser's addresses and titles are exactly that.
+syntax = "proto3";
+
+package webtiger.core.v1;
+
+import "webtiger/core/v1/browser.proto";
+import "webtiger/core/v1/common.proto";
+import "webtiger/core/v1/engine.proto";
+import "webtiger/core/v1/host.proto";
+
+option java_multiple_files = true;
+option java_package = "com.tigercodes.webtiger.core.v1";
+option swift_prefix = "WT";
+
+message Envelope {
+  // A request's id, chosen by the shell, correlates its response; a request
+  // sent with id 0 is a notification and gets none. A host request's id,
+  // chosen by the core, correlates the shell's answer. Events carry 0.
+  uint64 id = 1;
+  oneof body {
+    Request request = 10;
+    Response response = 11;
+    Event event = 12;
+    HostRequest host_request = 13;
+    HostResponse host_response = 14;
+  }
+}
+
+// Shell → core. The core takes requests in the order they arrive: a
+// request's effect on the models comes before the next request's, though a
+// request that waits (on the shell) never holds up others.
+message Request {
+  oneof kind {
+    Ping ping = 1;
+    Subscribe subscribe = 2;
+    Unsubscribe unsubscribe = 3;
+    // browser.proto
+    OpenWindow open_window = 4;
+    CloseWindow close_window = 5;
+    SubmitAddress submit_address = 6;
+    TabCommand tab_command = 7;
+    // engine.proto. Sent as a notification (envelope id 0).
+    EngineEvent engine_event = 8;
+  }
+}
+
+// Core → shell: the answer to the Request with the envelope's id.
+message Response {
+  oneof kind {
+    Error error = 1;
+    Ack ack = 2;
+    Pong pong = 3;
+    Subscribed subscribed = 4;
+    // browser.proto
+    WindowOpened window_opened = 5;
+  }
+}
+
+// Core → shell, unasked.
+message Event {
+  oneof kind {
+    CoreStatus status = 1;
+    Snapshot snapshot = 2;
+  }
+}
+
+// The contract's health check.
+message Ping {
+  // Echoed in Pong. At most 64 KiB ("ping.payload_too_large").
+  bytes payload = 1;
+  // Ask the shell's HostPing on the way, so a test covers the round trip.
+  bool via_host = 2;
+  // The panic fence's test hook: the core panics while answering, and must
+  // answer "core.panic" and carry on. Honoured in fake mode only.
+  bool panic = 3;
+}
+
+message Pong {
+  bytes payload = 1;
+  bool via_host = 2;
+  // The core's own version, such as "0.1.0".
+  string core_version = 3;
+  uint32 contract_major = 4;
+  uint32 contract_minor = 5;
+}
+
+// Subscribes to a model. Answered with Subscribed; the model's snapshot
+// follows at once as an Event, and again whenever the model changes. Changes
+// that arrive together are published as one snapshot.
+message Subscribe {
+  oneof topic {
+    WindowTopic window = 1;
+  }
+}
+
+message WindowTopic {
+  uint64 window_id = 1;
+}
+
+message Subscribed {
+  // Never 0. Names the subscription in its Snapshots and in Unsubscribe.
+  uint64 subscription_id = 1;
+}
+
+// Ends a subscription. Answered with Ack, also when it had already ended.
+message Unsubscribe {
+  uint64 subscription_id = 1;
+}
+
+message Snapshot {
+  uint64 subscription_id = 1;
+  oneof model {
+    WindowSnapshot window = 2;
+  }
+}
+
+// The core's own state. STATE_READY follows a successful start;
+// STATE_FATAL with a code ("start.bad_config", "start.contract_major",
+// "start.store") is all a refused start sends.
+message CoreStatus {
+  State state = 1;
+  string code = 2;
+
+  enum State {
+    STATE_UNSPECIFIED = 0;
+    STATE_READY = 1;
+    STATE_FATAL = 2;
+  }
+}

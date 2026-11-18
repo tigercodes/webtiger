@@ -1,0 +1,10 @@
+# buf's rules for the contract. Tools/test.sh lint runs `buf lint` and
+# `buf format --diff --exit-code` here when buf is installed. `buf breaking`
+# joins them once contract 1.0 has shipped and there is a release to compare with.
+version: v2
+lint:
+  use:
+    - STANDARD
+breaking:
+  use:
+    - FILE

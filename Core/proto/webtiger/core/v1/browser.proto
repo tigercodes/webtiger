@@ -1,0 +1,107 @@
+// Windows and tabs: what a shell asks for and what it draws.
+//
+// W0 has one window model with one tab. W2 replaces WindowSnapshot.tab with
+// the sidebar tree and the tab strip; the requests here stay.
+syntax = "proto3";
+
+package webtiger.core.v1;
+
+import "webtiger/core/v1/common.proto";
+import "wt/options.proto";
+
+option java_multiple_files = true;
+option java_package = "com.tigercodes.webtiger.core.v1";
+option swift_prefix = "WT";
+
+// Opens a window in the default Space, with one tab. Answered with
+// WindowOpened. In fake mode the tab opens FakeOptions.start_address.
+message OpenWindow {}
+
+message WindowOpened {
+  uint64 window_id = 1;
+  uint64 tab_id = 2;
+}
+
+// Closes a window: its tabs' web views are destroyed and its subscriptions
+// end. Answered with Ack, or "window.unknown".
+message CloseWindow {
+  uint64 window_id = 1;
+}
+
+// What the user typed in the address field, as typed. The core decides
+// whether it is an address or a search, fixes it up, and loads it in the tab.
+// Answered with Ack once the web view was told to load, or an Error:
+// "address.empty", "tab.unknown", or the host's.
+message SubmitAddress {
+  uint64 tab_id = 1;
+  string text = 2 [(wt.redact) = true];
+}
+
+// Back, forward, reload or stop for a tab. Answered with Ack, "tab.unknown",
+// or "tab.no_page" when the tab has no web view yet.
+message TabCommand {
+  uint64 tab_id = 1;
+  NavigationCommand command = 2;
+}
+
+// A window, as its subscription publishes it.
+message WindowSnapshot {
+  uint64 window_id = 1;
+  TabView tab = 2;
+}
+
+message TabView {
+  uint64 tab_id = 1;
+  // The web view the shell shows for this tab; 0 while it has none.
+  uint64 web_view_id = 2;
+  AddressView address = 3;
+  // The page's title. Empty: the shell shows the address's host.
+  string title = 4 [(wt.redact) = true];
+  LoadState load_state = 5;
+  // 0 to 1 while LOAD_STATE_LOADING.
+  double progress = 6;
+  bool can_go_back = 7;
+  bool can_go_forward = 8;
+  // With LOAD_STATE_FAILED: why, such as "net.dns" or "page.renderer_gone".
+  string error_code = 9;
+  EngineKind engine = 10;
+  // The login set the tab's pages run in, as a UUID.
+  string login_set_id = 11 [(wt.redact) = true];
+}
+
+enum LoadState {
+  LOAD_STATE_UNSPECIFIED = 0;
+  // Nothing is loading: an empty tab or a finished page.
+  LOAD_STATE_IDLE = 1;
+  LOAD_STATE_LOADING = 2;
+  LOAD_STATE_FAILED = 3;
+}
+
+// What the address field shows. The core builds it so that every shell shows
+// the same thing and none can be made to lie: a page-initiated load does not
+// change it until the page commits.
+message AddressView {
+  // The whole address. Empty on an empty tab.
+  string url = 1 [(wt.redact) = true];
+  // What the field shows while it is not being edited: host and path, with
+  // the scheme only when it is not https.
+  string display = 2 [(wt.redact) = true];
+  // The host in its ASCII form, so a look-alike international name reads as
+  // what it is.
+  string host = 3 [(wt.redact) = true];
+  // The part of the host a shell emphasises ("example.co.uk"). Empty for an
+  // IP address or a local name.
+  string registrable_domain = 4 [(wt.redact) = true];
+  Security security = 5;
+
+  enum Security {
+    // No page: an empty tab.
+    SECURITY_UNSPECIFIED = 0;
+    // https.
+    SECURITY_SECURE = 1;
+    // http.
+    SECURITY_INSECURE = 2;
+    // The browser's own pages and local content: about:, file:, data:.
+    SECURITY_LOCAL = 3;
+  }
+}

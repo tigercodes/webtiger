@@ -1,0 +1,13 @@
+{
+  "pinned": false,
+  "id": "0a1b2c3d-0000-4000-8000-000000000001",
+  "scope": "wikipedia.example.com/wiki",
+  "installedInProfiles": [ { "default": {} } ],
+  "extensionId": "abcdefghijklmnopabcdefghijklmnop",
+  "components": {
+    "contentScript": { "path": "content.js", "enabled": true, "settings": { "run_at": "Before page loads" } },
+    "contentStylesheet": { "path": "styles.css", "enabled": true }
+  },
+  "extensionEnabled": true,
+  "name": "Quiet wiki"
+}

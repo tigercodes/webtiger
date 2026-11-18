@@ -1,0 +1,15 @@
+[package]
+name = "wt-proto-gen"
+description = "Regenerates Core/crates/wt-proto/src/gen from Core/proto with prost-build; run only by Tools/proto/generate.sh"
+version = "0.1.0"
+edition = "2024"
+license = "MPL-2.0"
+publish = false
+
+# Its own workspace, so the core's builds and tests never compile the
+# generator or its dependencies. prost-build is pinned to the exact version
+# of the prost runtime in Core/Cargo.toml (wt-proto's tests check the two agree).
+[workspace]
+
+[dependencies]
+prost-build = "=0.14.4"

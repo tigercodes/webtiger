@@ -1,0 +1,318 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "address.insecure": {
+      "comment": "Accessibility label of the warning shown for an http page.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not secure"
+          }
+        }
+      }
+    },
+    "address.label": {
+      "comment": "Accessibility label of the address field.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Address and search"
+          }
+        }
+      }
+    },
+    "address.placeholder": {
+      "comment": "Placeholder in the address field.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search or enter address"
+          }
+        }
+      }
+    },
+    "address.secure": {
+      "comment": "Accessibility label of the padlock shown for an https page.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Secure connection"
+          }
+        }
+      }
+    },
+    "app.name": {
+      "comment": "The app's name. Not translated.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebTiger"
+          }
+        }
+      }
+    },
+    "error.engine.no_private": {
+      "comment": "The engine cannot make a login set that is kept in memory only.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Private windows aren’t available on this device yet."
+          }
+        }
+      }
+    },
+    "error.engine.no_profiles": {
+      "comment": "Android: the System WebView is too old to give each login set a profile of its own.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The web engine on this device can’t keep each Space’s logins separate. Update Android System WebView and try again."
+          }
+        }
+      }
+    },
+    "error.engine.unavailable": {
+      "comment": "The web engine the tab asked for is not installed.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This page’s engine isn’t available."
+          }
+        }
+      }
+    },
+    "error.net.connect": {
+      "comment": "A load failed: connection refused or lost.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The site couldn’t be reached."
+          }
+        }
+      }
+    },
+    "error.net.dns": {
+      "comment": "A load failed: DNS.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The site’s address couldn’t be found."
+          }
+        }
+      }
+    },
+    "error.net.failed": {
+      "comment": "A load failed for a reason without words of its own.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Something went wrong while loading the page."
+          }
+        }
+      }
+    },
+    "error.net.offline": {
+      "comment": "A load failed: no network.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You’re not connected to the internet."
+          }
+        }
+      }
+    },
+    "error.net.timeout": {
+      "comment": "A load failed: timed out.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The site took too long to answer."
+          }
+        }
+      }
+    },
+    "error.net.tls": {
+      "comment": "A load failed: TLS or certificate problem.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A secure connection to the site couldn’t be made."
+          }
+        }
+      }
+    },
+    "error.page.renderer_gone": {
+      "comment": "The process drawing the page died.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The page stopped unexpectedly."
+          }
+        }
+      }
+    },
+    "error.retry": {
+      "comment": "Button on the failed-page view: reload.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try Again"
+          }
+        }
+      }
+    },
+    "error.start.detail": {
+      "comment": "Shown under the start failure heading. %@ is a code such as store.open.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Error code: %@"
+          }
+        }
+      }
+    },
+    "error.start.title": {
+      "comment": "Heading when the core refused to start.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebTiger couldn’t start"
+          }
+        }
+      }
+    },
+    "error.title": {
+      "comment": "Heading shown over a page that failed to load.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This page didn’t load"
+          }
+        }
+      }
+    },
+    "tab.empty.hint": {
+      "comment": "Hint under the heading of an empty tab.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type an address or a search above."
+          }
+        }
+      }
+    },
+    "tab.empty.title": {
+      "comment": "Heading of a tab that has no page yet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where to?"
+          }
+        }
+      }
+    },
+    "toolbar.back": {
+      "comment": "Button: go back one page.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back"
+          }
+        }
+      }
+    },
+    "toolbar.forward": {
+      "comment": "Button: go forward one page.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forward"
+          }
+        }
+      }
+    },
+    "toolbar.open_location": {
+      "comment": "Command (Command-L on a Mac): put the keyboard in the address field with the whole address selected.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Location"
+          }
+        }
+      }
+    },
+    "toolbar.reload": {
+      "comment": "Button: reload the page.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reload"
+          }
+        }
+      }
+    },
+    "toolbar.stop": {
+      "comment": "Button: stop loading the page.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}
