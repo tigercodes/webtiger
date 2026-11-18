@@ -34,9 +34,11 @@ jobs:
         run: cargo clippy -p wt-ffi --features jni --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
 
+  # The Apple shell builds with Xcode 27. GitHub has it on one image, a preview, labelled
+  # `xcode-27` (macOS 27); the `macos-26` image stops at Xcode 26.
   apple:
     name: Apple shell (lint, unit, build)
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -60,7 +62,7 @@ jobs:
   simulators:
     name: Apple shell (iOS simulator, UI)
     if: github.event_name == 'push'
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
