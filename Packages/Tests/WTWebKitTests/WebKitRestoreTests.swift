@@ -23,9 +23,9 @@ final class WebKitRestoreTests: XCTestCase {
         }
     }
 
-    private func makeWebView() -> WKWebView {
+    private func makeWebView(in store: WKWebsiteDataStore? = nil) -> WKWebView {
         let configuration = WKWebViewConfiguration()
-        configuration.websiteDataStore = WKWebsiteDataStore(forIdentifier: loginSet)
+        configuration.websiteDataStore = store ?? WKWebsiteDataStore(forIdentifier: loginSet)
         return WKWebView(frame: CGRect(x: 0, y: 0, width: 800, height: 600), configuration: configuration)
     }
 
@@ -116,6 +116,56 @@ final class WebKitRestoreTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(10))
         }
         XCTAssertEqual(scrolled, 2400, accuracy: 1, "a woken tab is where it was left")
+    }
+
+    /// A cookie with no expiry lives in the memory of its data store's session. A tab that
+    /// sleeps has no web view; when it was the last one of its login set, the sign-in is kept
+    /// for as long as something still holds the data store (000 §4.7, spike Q5). With nothing
+    /// holding it the cookie goes when WebKit lets the session go, which is a moment after the
+    /// store and not a moment anyone can count on: in some runs a new store for the same login
+    /// set still had it seconds later, in others it was gone at once. So the adapter holds the
+    /// store (WebKitIsolationTests has that test), and nothing here asserts the losing.
+    func testASessionCookieIsKeptWhileItsDataStoreIsHeld() async throws {
+        let store = WKWebsiteDataStore(forIdentifier: loginSet)
+        do {
+            let awake = makeWebView(in: store)
+            await load(awake, "/session?v=ada")
+            // `awake` is released here, and the login set has no web view.
+        }
+        try await Task.sleep(for: .seconds(2))
+        let woken = makeWebView(in: store)
+        await load(woken, "/whoami")
+        let answer = await title(of: woken)
+        XCTAssertEqual(answer, "who=ada", "a sign-in for the session lives as long as its data store is held")
+    }
+
+    /// Text typed into a form's field does not come back when its tab sleeps and wakes: the
+    /// state WebKit hands over has the page's address, history and scroll position, and not what
+    /// was typed. So a tab with unsaved form text is one of those kept awake (000 §5.7), and
+    /// this test fails on the day WebKit starts keeping it.
+    func testTextTypedIntoAFormIsLostWhenATabSleeps() async throws {
+        let awake = makeWebView()
+        await load(awake, "/tall")
+        // Typed as an editing command, which is what a key press is to the page; then, to be
+        // sure, set as a script would.
+        let typed = try await awake.evaluateJavaScript("""
+        const note = document.getElementById('note');
+        note.focus();
+        document.execCommand('insertText', false, 'a draft');
+        note.value
+        """) as? String
+        XCTAssertEqual(typed, "a draft", "the field took the text")
+        // The history item is brought up to date a moment later, as for the scroll position.
+        // Waiting longer changes nothing: four seconds gave the same answer as two.
+        try await Task.sleep(for: .seconds(2))
+        let asleep = try XCTUnwrap(awake.interactionState as? Data)
+
+        let woken = makeWebView()
+        woken.interactionState = asleep
+        await wait(for: woken, toShow: "/tall")
+        try await Task.sleep(for: .milliseconds(300))
+        let note = try await woken.evaluateJavaScript("document.getElementById('note').value") as? String
+        XCTAssertEqual(note, "", "WebKit's interaction state does not carry a field's text")
     }
 
     func testAWokenTabKeepsItsLoginSet() async throws {

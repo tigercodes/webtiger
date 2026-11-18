@@ -67,11 +67,15 @@ def page(entry: dict) -> dict:
             raise SystemExit(f"{entry.get('path', 'not_found')}: 'body' goes with a title; this page has content")
         body = text_of(entry["content"])
         kind = entry.get("type", "text/html")
+    headers = list(entry.get("headers", []))
+    # Nothing is kept by a cache unless the page says it may be: a test sees every request.
+    if not any(header.lower().startswith("cache-control:") for header in headers):
+        headers.insert(0, "Cache-Control: no-store")
     return {
         "path": entry.get("path", ""),
         "status": entry.get("status", "200 OK"),
         "type": kind,
-        "headers": [pieces(header) for header in entry.get("headers", [])],
+        "headers": [pieces(header) for header in headers],
         "body": pieces(body),
         "delay_ms": int(entry.get("delay_ms", 0)),
     }
@@ -245,7 +249,6 @@ def respond(site: dict, head: str) -> tuple:
         f"HTTP/1.1 {entry['status']}",
         f"Content-Type: {entry['type']}; charset=utf-8",
         f"Content-Length: {len(body)}",
-        "Cache-Control: no-store",
         "Connection: close",
     ] + [filled(header, query, cookies) for header in entry["headers"]]
     return ("\r\n".join(headers) + "\r\n\r\n").encode("latin-1") + body, entry["delay_ms"] / 1000
@@ -329,6 +332,12 @@ def self_test() -> int:
 
     answer, body = get("/worker.js")
     expect("/worker.js type", answer.getheader("Content-Type"), "text/javascript; charset=utf-8")
+
+    answer, body = get("/session?v=ada")
+    expect("/session signs in with no expiry", answer.getheader("Set-Cookie"), "who=ada; Path=/")
+
+    answer, body = get("/cached.js")
+    expect("/cached.js may be kept", answer.getheader("Cache-Control"), "max-age=3600")
 
     answer, body = get("/storage?v=ada")
     expect("/storage keeps its lines", body.count("\n"), 4)

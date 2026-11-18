@@ -124,7 +124,6 @@ final class TestSite: @unchecked Sendable {
             "HTTP/1.1 \(page.status)",
             "Content-Type: \(page.type); charset=utf-8",
             "Content-Length: \(body.count)",
-            "Cache-Control: no-store",
             "Connection: close",
         ] + page.headers.map { filled($0, from: request) }
         return (Data((head.joined(separator: "\r\n") + "\r\n\r\n").utf8) + body, page.delayMilliseconds)

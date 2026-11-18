@@ -1,5 +1,5 @@
 {
-  "comment": "The test site: the pages every shell's adapter suite and UI tests load, defined once. Tools/testsite/site.py writes them into each suite's own loopback server (Swift, Kotlin) and can serve them itself. A page with a 'title' is an HTML page with that title, a heading saying the same, and 'body' after it; a page with 'content' is that text, as 'type'. 'status' is '200 OK' unless given. 'body' and 'content' may be a list of lines. In a title, a header or a body, {query:NAME|DEFAULT} is the request's query value NAME and {cookie:NAME|DEFAULT} its cookie NAME, or DEFAULT when the request has none. Every answer says Cache-Control: no-store and closes the connection.",
+  "comment": "The test site: the pages every shell's adapter suite and UI tests load, defined once. Tools/testsite/site.py writes them into each suite's own loopback server (Swift, Kotlin) and can serve them itself. A page with a 'title' is an HTML page with that title, a heading saying the same, and 'body' after it; a page with 'content' is that text, as 'type'. 'status' is '200 OK' unless given. 'body' and 'content' may be a list of lines. In a title, a header or a body, {query:NAME|DEFAULT} is the request's query value NAME and {cookie:NAME|DEFAULT} its cookie NAME, or DEFAULT when the request has none. Every answer closes the connection and says Cache-Control: no-store, unless the page gives a Cache-Control header of its own.",
   "pages": [
     {
       "path": "/",
@@ -12,6 +12,12 @@
       "title": "Set",
       "headers": ["Set-Cookie: who={query:v|someone}; Path=/; Max-Age=3600"],
       "note": "Signs in: remembers ?v= in a cookie."
+    },
+    {
+      "path": "/session",
+      "title": "Session",
+      "headers": ["Set-Cookie: who={query:v|someone}; Path=/"],
+      "note": "Signs in for the session only: a cookie with no expiry, which an engine keeps in memory."
     },
     {
       "path": "/whoami",
@@ -69,6 +75,19 @@
       "path": "/pixel",
       "type": "image/svg+xml",
       "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>"
+    },
+    {
+      "path": "/uses-cached",
+      "title": "Uses",
+      "body": "<script src=\"/cached.js\"></script>",
+      "note": "A page whose script may be kept: for the HTTP cache."
+    },
+    {
+      "path": "/cached.js",
+      "type": "text/javascript",
+      "headers": ["Cache-Control: max-age=3600"],
+      "content": "document.title = 'Cached';",
+      "note": "May be kept for an hour. A second request for it means the cache did not have it."
     },
     {
       "path": "/slow",

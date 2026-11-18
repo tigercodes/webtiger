@@ -7,7 +7,7 @@ enum TestSitePages {
             path: "/",
             status: "200 OK",
             type: "text/html",
-            headers: [],
+            headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Home</title><h1>Home</h1><a id=\"next\" href=\"/landed\">next</a>")],
             delayMilliseconds: 0
         ),
@@ -15,15 +15,23 @@ enum TestSitePages {
             path: "/set",
             status: "200 OK",
             type: "text/html",
-            headers: [[.text("Set-Cookie: who="), .query("v", or: "someone"), .text("; Path=/; Max-Age=3600")]],
+            headers: [[.text("Cache-Control: no-store")], [.text("Set-Cookie: who="), .query("v", or: "someone"), .text("; Path=/; Max-Age=3600")]],
             body: [.text("<!doctype html><title>Set</title><h1>Set</h1>")],
+            delayMilliseconds: 0
+        ),
+        TestSitePage(
+            path: "/session",
+            status: "200 OK",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")], [.text("Set-Cookie: who="), .query("v", or: "someone"), .text("; Path=/")]],
+            body: [.text("<!doctype html><title>Session</title><h1>Session</h1>")],
             delayMilliseconds: 0
         ),
         TestSitePage(
             path: "/whoami",
             status: "200 OK",
             type: "text/html",
-            headers: [],
+            headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>who="), .cookie("who", or: "none"), .text("</title><h1>who="), .cookie("who", or: "none"), .text("</h1>")],
             delayMilliseconds: 0
         ),
@@ -31,7 +39,7 @@ enum TestSitePages {
             path: "/redirect",
             status: "302 Found",
             type: "text/html",
-            headers: [[.text("Location: /landed")]],
+            headers: [[.text("Cache-Control: no-store")], [.text("Location: /landed")]],
             body: [],
             delayMilliseconds: 0
         ),
@@ -39,7 +47,7 @@ enum TestSitePages {
             path: "/landed",
             status: "200 OK",
             type: "text/html",
-            headers: [],
+            headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Landed</title><h1>Landed</h1>")],
             delayMilliseconds: 0
         ),
@@ -47,7 +55,7 @@ enum TestSitePages {
             path: "/push",
             status: "200 OK",
             type: "text/html",
-            headers: [],
+            headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Push</title><h1>Push</h1><script>history.pushState({}, '', '/pushed')</script>")],
             delayMilliseconds: 0
         ),
@@ -55,7 +63,7 @@ enum TestSitePages {
             path: "/worker.js",
             status: "200 OK",
             type: "text/javascript",
-            headers: [],
+            headers: [[.text("Cache-Control: no-store")]],
             body: [.text("self.addEventListener('install', () => self.skipWaiting());")],
             delayMilliseconds: 0
         ),
@@ -63,7 +71,7 @@ enum TestSitePages {
             path: "/tall",
             status: "200 OK",
             type: "text/html",
-            headers: [],
+            headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Tall</title><h1>Tall</h1><input id=\"note\"><div style=\"height: 6000px\"></div><p id=\"end\">end</p>")],
             delayMilliseconds: 0
         ),
@@ -71,7 +79,7 @@ enum TestSitePages {
             path: "/storage",
             status: "200 OK",
             type: "text/html",
-            headers: [],
+            headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Storage</title><h1>Storage</h1><script>\nconst v = new URLSearchParams(location.search).get('v');\nif (v) localStorage.setItem('who', v);\ndocument.title = 'stored=' + (localStorage.getItem('who') || 'none');\n</script>")],
             delayMilliseconds: 0
         ),
@@ -79,7 +87,7 @@ enum TestSitePages {
             path: "/tracked",
             status: "200 OK",
             type: "text/html",
-            headers: [],
+            headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Tracked</title><h1>Tracked</h1><img src=\"/pixel\" alt=\"\">")],
             delayMilliseconds: 0
         ),
@@ -87,15 +95,31 @@ enum TestSitePages {
             path: "/pixel",
             status: "200 OK",
             type: "image/svg+xml",
-            headers: [],
+            headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>")],
+            delayMilliseconds: 0
+        ),
+        TestSitePage(
+            path: "/uses-cached",
+            status: "200 OK",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("<!doctype html><title>Uses</title><h1>Uses</h1><script src=\"/cached.js\"></script>")],
+            delayMilliseconds: 0
+        ),
+        TestSitePage(
+            path: "/cached.js",
+            status: "200 OK",
+            type: "text/javascript",
+            headers: [[.text("Cache-Control: max-age=3600")]],
+            body: [.text("document.title = 'Cached';")],
             delayMilliseconds: 0
         ),
         TestSitePage(
             path: "/slow",
             status: "200 OK",
             type: "text/html",
-            headers: [],
+            headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Slow</title><h1>Slow</h1>")],
             delayMilliseconds: 3000
         ),
@@ -106,7 +130,7 @@ enum TestSitePages {
         path: "",
         status: "404 Not Found",
         type: "text/html",
-        headers: [],
+        headers: [[.text("Cache-Control: no-store")]],
         body: [.text("<title>Not found</title>")],
         delayMilliseconds: 0
     )

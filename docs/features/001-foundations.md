@@ -18,8 +18,8 @@ W0 proves the stack before any feature is built on it: one Rust core that every 
 | Repository layout, licence, contributor documents | Done | — |
 | Core skeleton: `wt-core`, `wt-store`, `wt-app`, `wt-proto`, `wt-testkit` | Done | 82 Rust tests |
 | The contract (1.0) and `wt-ffi`: C ABI, core thread, fast path | Done | 21 Rust tests through the C functions; 8 Swift tests through the real library |
-| Apple shell loads a page through the core, in the Space's login set | **Done on macOS and the iPhone simulator** | 23 tests against real WKWebView (macOS 27.2, iOS 27 simulator; one is skipped on iOS, where a test process has no service workers); 4 UI tests on macOS and the iPhone 17 simulator; the first 3 also on the iPhone Duo simulator |
-| Android shell loads a page through the core, in the Space's login set | **Done on an emulator** (Android 16, System WebView 133). Not run on a physical device ([003](003-android-shell.md)) | 106 JVM tests, 28 of them driving the real core through JNI; 36 on the emulator: the adapter suite against the real WebView (19), isolation (9), and the app's window in fake mode (8) |
+| Apple shell loads a page through the core, in the Space's login set | **Done on macOS and the iPhone simulator** | 28 tests against real WKWebView (macOS 27.2, iOS 27 simulator; one is skipped on iOS, where a test process has no service workers); 4 UI tests on macOS and the iPhone 17 simulator; the first 3 also on the iPhone Duo simulator |
+| Android shell loads a page through the core, in the Space's login set | **Done on an emulator** (Android 16, System WebView 133). Not run on a physical device ([003](003-android-shell.md)) | 106 JVM tests, 28 of them driving the real core through JNI; 41 on the emulator: the adapter suite against the real WebView (19), isolation (11), sleep and wake (3), and the app's window in fake mode (8) |
 | Windows shell | **Not started.** It cannot be built on this Mac; it needs the Windows PC | — |
 | Fake mode | Done (core and Apple shell) | The UI tests run in it |
 | Design tokens and strings, one source for every shell | Done for Apple (Swift, String Catalog) | `lint` fails when the generated files are stale |
@@ -138,11 +138,11 @@ Two rules every adapter keeps, found while building the first (and now in `engin
 `WTUI → WTWebKit → WTCoreClient → WTContract`, with `WTDesign` beside. The app targets hold one file.
 
 - **`NativeCore`** wraps the C ABI. Its handle is immutable, so the fast path takes no lock on the Swift side either. One task answers host requests in order.
-- **`WebKitEngine`** answers the WebViews host service. A login set is `WKWebsiteDataStore(forIdentifier:)`; a private one is `.nonPersistent()`.
+- **`WebKitEngine`** answers the WebViews host service. A login set is `WKWebsiteDataStore(forIdentifier:)`; a private one is `.nonPersistent()`. The engine holds each login set's store itself, one for all of its web views (F17).
 - **`BrowserWindowView`**: back, forward, reload or stop, the address field with its security mark, a progress line, and the page, an empty tab, or a failed page in words. ⌘L goes to the address field.
 - The package builds **without** the Rust core too (`ScriptedCore`), so a screen can be worked on first.
 
-**Verified:** the package's 43 tests on macOS and on the iPhone 17 simulator; the app's 4 UI tests on macOS and the iPhone 17 simulator, the first 3 of them also on the iPhone Duo simulator. **Not yet looked at:** iPad layouts, Stage Manager, multiple windows.
+**Verified:** the package's 48 tests on macOS and on the iPhone 17 simulator; the app's 4 UI tests on macOS and the iPhone 17 simulator, the first 3 of them also on the iPhone Duo simulator. **Not yet looked at:** iPad layouts, Stage Manager, multiple windows.
 
 ## 7. Fake mode
 
@@ -164,12 +164,12 @@ Tools/test.sh lint | core | unit | ios | build | ui | all
 | `wt-ffi` | 21 | The header matches the exports; the core through its C functions, from many threads |
 | `wt-proto` | 3 | The contract's version is the same in three places |
 | `wt-import`, `wt-cli` | 36 | 002 |
-| Swift package | 43 | The real core through Swift (8); the WebKit adapter, isolation and restore (23); the window's model (8); `ScriptedCore` (4) |
+| Swift package | 48 | The real core through Swift (8); the WebKit adapter, isolation and restore (28); the window's model (8); `ScriptedCore` (4) |
 | Android (JVM) | 106 | The real core through JNI from Kotlin (28); the adapter's rules, the error codes, the window's model |
-| Android (on an emulator) | 36 | The adapter suite against the real System WebView (19); isolation between login sets (9); the app's window in fake mode (8). `Tools/test.sh android-device`, not part of `all` |
+| Android (on an emulator) | 41 | The adapter suite against the real System WebView (19); isolation between login sets (11); sleep and wake (3); the app's window in fake mode (8). `Tools/test.sh android-device`, not part of `all` |
 | App UI tests | 4 × 2 | A page loads through the core; typing an address; a failure in words; Apple's accessibility audit over the empty tab and the failed page |
 
-**The adapter suite** (`Packages/Tests/WTWebKitTests`) is the bar every engine adapter must clear (000 §8.3): event order, redirects, address changes, history, failures as codes, the navigation policy, host requests for web views that do not exist, release on destroy, and **isolation**: sign in under one login set and another sees no cookie, no local storage, no database, no cache and no service worker; a private login set is forgotten with its web view; a deleted login set leaves nothing.
+**The adapter suite** (`Packages/Tests/WTWebKitTests`) is the bar every engine adapter must clear (000 §8.3): event order, redirects, address changes, history, failures as codes, the navigation policy, host requests for web views that do not exist, release on destroy, and **isolation**: sign in under one login set and another sees no cookie, no local storage, no database, no cache, no service worker and no copy in the HTTP cache; the web views of one private login set share it, and it is forgotten with the last of them; a sign-in for the session outlives the last web view of its login set; a deleted login set leaves nothing.
 
 `lint` also runs `buf lint` and `buf format` over the contract and `cargo deny check` over the core's dependencies (`Core/deny.toml`: permissive licences and MPL-2.0 only, crates.io only, no known advisories). Both tools are pinned by checksum in `Tools/bootstrap.sh` and both pass.
 
@@ -196,6 +196,7 @@ Small ones, each made where the plan was silent or wrong. None changes a decisio
 | F13 | WKWebView's default user agent is kept | Sites that sniff for Safari are a W1 matter |
 | F15 | A finish reported after a failure does not clear the failure | Android's WebView finishes an error page of its own after a load fails; found while building the Android adapter, fixed in the core with a test |
 | F16 | An address field that has the keyboard still follows the page until something is typed in it; and a window that opens on a page gives the page the keyboard | Found on Android, where a new window's field takes the focus by itself when a keyboard was used last, and then showed nothing over a loaded page (003 §6). The same happened to the Mac app on GitHub's runner, where its UI test failed on an empty field. Both rules are in both shells |
+| F17 | The WebKit adapter holds each login set's data store, and deletes a login set by clearing it through that store first | Q5 found that a cookie with no expiry lives in its store's memory and goes with the store: left to the web views, a Space whose last tab slept could wake signed out. A private login set's web views each got a store of their own, so a private window's second tab would not have been signed in where its first was. And deleting a store's files straight after letting the store go left its cookies, for a moment, to a store made anew for the same login set (§10, Q2) |
 | F14 | Words a person must read are in the primary colour, the retry button is neutral, and the light accent is `#C2410C` | Apple's accessibility audit failed the system's secondary grey, a tinted button label and the first accent (4.3:1 on white; the new one is 5.2:1). The audit now runs in the UI tests on both platforms |
 
 ## 10. Spikes
@@ -203,10 +204,10 @@ Small ones, each made where the plan was silent or wrong. None changes a decisio
 | # | Question | State | Answer so far |
 |---|---|---|---|
 | Q1 | CEF on the Mac | **Pack size answered**; the rest not started | CEF 156 (Chromium 156.0.8078.100, published 2026-11-18): the *minimal* distribution, which is the framework and its resources without debug symbols, is **135 MB** compressed for Apple silicon and 142 MB for Intel. So the Chromium pack is about 135 MB per architecture to download, not the 100 MB 000 §13 guessed, and a universal pack would be about 277 MB: the pack should be per architecture. Not yet: in-process loading, memory once loaded, crash containment, loading from outside the app bundle under the hardened runtime |
-| Q2 | Isolation on all four engines | **WebKit answered; Android answered for WebView 133** | On macOS 27.2 and the iOS 27 simulator, two `WKWebsiteDataStore(forIdentifier:)` stores share no cookie, no local storage, no IndexedDB database, no Cache API cache and (on macOS, where a test process has them) no service worker; a non-persistent store is gone with its web view; `remove(forIdentifier:)` leaves nothing, and refuses while a web view still uses the store (it succeeds a moment after the last one is released). **Android** (System WebView 133 on an Android 16 emulator, 003 §5.2 and §8.1): two WebView profiles share no cookie, no local storage, no IndexedDB database, no Cache API cache and no service worker, and nothing reaches the default profile. A profile that has been used cannot be deleted until the app starts again; its data can be cleared at once, completely only with `WebStorageCompat.deleteBrowsingData`. **Not yet tested:** the HTTP cache, permissions; the cost of each extra store; the lowest Android WebView that has profiles; WebView2 and CEF |
+| Q2 | Isolation on all four engines | **WebKit answered; Android answered for WebView 133** | On macOS 27.2 and the iOS 27 simulator, two `WKWebsiteDataStore(forIdentifier:)` stores share no cookie, no local storage, no IndexedDB database, no Cache API cache and (on macOS, where a test process has them) no service worker; a non-persistent store is gone with its web view; `remove(forIdentifier:)` leaves nothing, and refuses while a web view still uses the store (it succeeds a moment after the last one is released). **Android** (System WebView 133 on an Android 16 emulator, 003 §5.2 and §8.1): two WebView profiles share no cookie, no local storage, no IndexedDB database, no Cache API cache and no service worker, and nothing reaches the default profile. A profile that has been used cannot be deleted until the app starts again; its data can be cleared at once, completely only with `WebStorageCompat.deleteBrowsingData`. **Both:** the HTTP cache is each login set's own, and its web views share it: a script that may be kept is fetched once for a login set and again for another. **Deleting on WebKit has a trap:** WebKit lets a store's session go a moment after the store, and a store made anew for the same login set in that moment is given the old one's cookies, though the files are gone. The adapter clears a login set through its store before deleting it (F17). **Not yet tested:** permissions; the cost of each extra store; the lowest Android WebView that has profiles; WebView2 and CEF |
 | Q3 | WebKit rule lists: compile time, chunk size | **Answered for this Mac** | §11.1. Not yet: the oldest supported iPhone; exceptions across chunks; the corpus difference |
 | Q4 | Request callback cost | Not started; needs the Windows and Android shells | — |
-| Q5 | Sleep and restore fidelity | **WebKit answered** | A released web view's `interactionState` is plain data, 1 KB for three pages of history. Given to a new web view in the same login set it brings back the page, its title, the back and forward list, the scroll position to the pixel, and the signed-in state (`WebKitRestoreTests`). **Not yet tested:** cookies with no expiry across an app restart (the case 000 §4.4 flags), text typed into a form, the other engines |
+| Q5 | Sleep and restore fidelity | **WebKit and Android answered** | §11.3. Not yet: cookies with no expiry across a restart of the app (the case 000 §4.4 flags); WebView2 and CEF |
 | Q6 | Baselines for the budgets | **Started** | §11 |
 | Q7 | QuickJS size and memory | **Answered for macOS and the iOS simulator** | §11.2. Not yet: Android, Windows Arm64, a WebAssembly wall |
 | Q8 | Passwords and AutoFill | Not started; needs a person at the Mac, and the entitlements | One fact recorded on the way: in a Mac process **without** the browser entitlement, a WKWebView page on a secure context has service workers, the Notification interface, the Credential Management interface and storage estimates, and has **no** `PushManager` and no WebUSB (macOS 27.2). That confirms 000 §4.7's "no web push" for the Mac. **On the iOS 27 simulator the same page has no service workers and no Notification interface either.** On iPhone and iPad, WebKit gives service workers only to an app that holds Apple's browser entitlement, so that entitlement is not a nicety for being the default browser: without it a large part of the modern web does not work (§13) |
@@ -264,6 +265,21 @@ EasyList and EasyPrivacy as published on 2026-11-18 (135,478 lines), converted w
 
 **What it says.** The plan's numbers hold: about 1 MB of code, about 100 KB per plugin that is awake, and both guard rails (a time limit per event, a memory ceiling) exist and work. **One correction:** `rquickjs` ships ready-made bindings for macOS, Windows (x64 and Arm64) and Linux, but **not for iOS or Android**. Those need its `bindgen` feature, which needs libclang when the core is built. It built and ran for the iOS simulator that way. **Not measured:** Android, Windows Arm64, a real iPhone, and what a WebAssembly wall around the runtime would cost.
 
+### 11.3 Q5: what a sleeping tab keeps
+
+A tab that sleeps has no web view (000 §5.7). What it wakes with is what the engine hands over when the web view is let go, and takes back in a new one: WebKit's `interactionState`, the System WebView's `saveState`. Both were put to it on real engines (`WebKitRestoreTests`, macOS 27.2 and the iOS 27 simulator; `SystemWebViewRestoreTest`, WebView 133 on an Android 16 emulator), with the first web view destroyed before the second was made.
+
+| | WebKit | System WebView |
+|---|---|---|
+| The state | Plain data, 1 KB for three pages of history | One byte array, 2.4 KB for the same |
+| The page, its title, back and forward | Yes | Yes |
+| The signed-in state | Yes | Yes |
+| The scroll position | Yes, to the pixel | Yes, **once the engine has recorded it**: about a second after the last scroll. Put to sleep 0.6 s after, the tab woke at the top |
+| Text typed into a form | **No.** Waiting longer before the sleep changes nothing | Yes, on the same condition as the scroll position |
+| A sign-in for the session (a cookie with no expiry), while the app runs | Kept **only while something holds the login set's data store**. With no holder it goes when WebKit lets the session go, a moment later that cannot be counted on | Kept: a profile stays loaded for the life of the process |
+
+**What it says.** Sleeping a tab is cheap and faithful on both engines: the budget of 250 KB a tab (000 §7) is a hundred times what the state needs. Two things follow for W3. On WebKit, **unsaved form text is lost by sleeping**, so "has unsaved form text" must stay among the reasons a tab is kept awake (000 §5.7), and the adapter must hold each login set's data store, which it now does (§9, F17): otherwise the last tab of a Space, sleeping, could sign the Space out. On Android, a tab put to sleep under memory pressure within a second of the user's last scroll or keystroke wakes without it; a tab that sleeps after minutes in the background does not have that problem.
+
 **iPhone Duo.** The app builds for the iPhone Duo simulator and its three UI tests pass there, on the display the simulator starts with. Nothing in the app yet adapts to the fold, and no test folds the device: that is W5.
 
 ## 12. What is not done, in order
@@ -272,7 +288,7 @@ EasyList and EasyPrivacy as published on 2026-11-18 (135,478 lines), converted w
 2. **The Windows shell**, on the Windows PC: C++/WinRT, WinUI 3, WebView2 with a profile per login set, nanopb, the adapter suite, `Tools/test.ps1`.
 3. ~~`Tools/testsite`, shared by all three adapter suites.~~ Done for the two that exist (F12); the Windows suite will read the same definition. The plan's longer list (000 §8.2: several hostnames, third-party trackers, downloads, uploads, permissions, media) arrives with the features that need each page.
 4. **The design catalogue**, snapshot-tested.
-5. **The spikes**, starting with those this Mac can answer alone: the rest of Q2 and Q5 for WebKit, then Q1.
+5. **The spikes**, starting with those a Mac can answer alone. Q2 and Q5 are answered for WebKit and for the System WebView as far as §10 says; Q1 is next.
 6. **The Arc importer against a real Arc folder** (002 §8).
 
 ## 13. For the owner
@@ -298,5 +314,6 @@ EasyList and EasyPrivacy as published on 2026-11-18 (135,478 lines), converted w
 - [ ] Android shell on a physical device.
 - [ ] Windows shell.
 - [ ] Design catalogue.
-- [ ] Spikes Q1, Q4, Q8, Q9, Q11; the rest of Q2, Q3, Q5, Q6, Q7, Q10.
+- [x] Spikes Q2 and Q5 for WebKit and the System WebView (§10, §11.3), but for permissions, the cost of a store, and session cookies across a restart.
+- [ ] Spikes Q1, Q4, Q8, Q9, Q11; the rest of Q3, Q6, Q7, Q10; Q2 and Q5 for WebView2 and CEF.
 - [ ] CI green on GitHub.

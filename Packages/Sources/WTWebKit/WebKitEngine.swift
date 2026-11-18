@@ -11,6 +11,14 @@ public import WTCoreClient
 public final class WebKitEngine: HostServices {
     private var pages: [UInt64: Page] = [:]
     private var core: (any CoreClient)?
+    /// The data stores of the login sets used so far, held here and not left to the web views.
+    /// A sign-in for the session (a cookie with no expiry) lives in its store's memory and goes
+    /// with the store: a login set whose last tab sleeps must still have its store when the
+    /// tab wakes. Each is held until `deleteLoginSet`.
+    private var stores: [UUID: WKWebsiteDataStore] = [:]
+    /// The stores of private login sets, which exist nowhere else: one for all of a login
+    /// set's web views, forgotten when the last of them is destroyed.
+    private var privateStores: [UUID: WKWebsiteDataStore] = [:]
 
     public init() {}
 
@@ -61,31 +69,81 @@ public final class WebKitEngine: HostServices {
             }
             return .ack(WTAck())
         case let .webViewDestroy(destroy):
-            pages.removeValue(forKey: destroy.webViewID)?.close()
+            if let page = pages.removeValue(forKey: destroy.webViewID) {
+                page.close()
+                if page.isPrivate, !pages.values.contains(where: { $0.isPrivate && $0.loginSet == page.loginSet }) {
+                    // A private login set is kept in memory and nowhere else: with its last
+                    // web view gone, letting go of its store is what forgets it.
+                    privateStores[page.loginSet] = nil
+                }
+            }
             return .ack(WTAck())
         }
+    }
+
+    /// Deletes a login set: everything its pages stored, and the store itself. False, and
+    /// nothing is deleted, while a web view still uses it. (Deleting a login set is the
+    /// LoginSets host service's, which the contract does not have yet: until then this is for
+    /// the tests that delete one.)
+    public func deleteLoginSet(_ loginSet: UUID) async -> Bool {
+        guard !pages.values.contains(where: { !$0.isPrivate && $0.loginSet == loginSet }) else { return false }
+        do {
+            // Cleared through the store while it is still held. Deleting the files alone is not
+            // enough: WebKit lets a store's session go a moment after the store, and until
+            // then what is in its memory (its cookies) is given to a store made anew for the
+            // same login set.
+            let store = stores[loginSet] ?? WKWebsiteDataStore(forIdentifier: loginSet)
+            await store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)
+            stores[loginSet] = nil
+        }
+        // WebKit refuses while the store is in use, and a released store lets go a moment later.
+        for _ in 0 ..< 100 {
+            do {
+                try await WKWebsiteDataStore.remove(forIdentifier: loginSet)
+                return true
+            } catch {
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+        }
+        return false
     }
 
     private func create(_ create: WTWebViewCreate) -> WTHostResponse.OneOf_Kind {
         guard create.engine == .webkit else { return failure("engine.unavailable") }
         guard pages[create.webViewID] == nil else { return failure("webview.exists") }
+        guard let loginSet = UUID(uuidString: create.loginSet.id) else { return failure("webview.bad_login_set") }
         let configuration = WKWebViewConfiguration()
-        if create.loginSet.ephemeral {
-            // A private window's: kept in memory, never written.
-            configuration.websiteDataStore = .nonPersistent()
-        } else {
-            guard let identifier = UUID(uuidString: create.loginSet.id) else { return failure("webview.bad_login_set") }
-            // One data store per login set: cookies, storage, cache, service workers and
-            // permissions are all kept apart by WebKit itself.
-            configuration.websiteDataStore = WKWebsiteDataStore(forIdentifier: identifier)
-        }
+        // One data store per login set: cookies, storage, cache, service workers and
+        // permissions are all kept apart by WebKit itself.
+        configuration.websiteDataStore = dataStore(for: loginSet, private: create.loginSet.ephemeral)
         let webView = WKWebView(frame: .zero, configuration: configuration)
         #if os(macOS)
             webView.allowsMagnification = true
         #endif
         webView.allowsBackForwardNavigationGestures = true
-        pages[create.webViewID] = Page(id: create.webViewID, webView: webView, engine: self)
+        pages[create.webViewID] = Page(
+            id: create.webViewID, webView: webView, loginSet: loginSet, isPrivate: create.loginSet.ephemeral, engine: self
+        )
         return .ack(WTAck())
+    }
+
+    /// A login set's data store: the one already held, or a new one, held from now on.
+    private func dataStore(for loginSet: UUID, private isPrivate: Bool) -> WKWebsiteDataStore {
+        if isPrivate {
+            if let held = privateStores[loginSet] {
+                return held
+            }
+            // A private window's: kept in memory, never written.
+            let store = WKWebsiteDataStore.nonPersistent()
+            privateStores[loginSet] = store
+            return store
+        }
+        if let held = stores[loginSet] {
+            return held
+        }
+        let store = WKWebsiteDataStore(forIdentifier: loginSet)
+        stores[loginSet] = store
+        return store
     }
 
     private func failure(_ code: String) -> WTHostResponse.OneOf_Kind {
@@ -134,6 +192,9 @@ public final class WebKitEngine: HostServices {
 private final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
     let id: UInt64
     let webView: WKWebView
+    /// The login set the web view's pages run in, and whether it is a private one.
+    let loginSet: UUID
+    let isPrivate: Bool
     private weak var engine: WebKitEngine?
     private var observations: [NSKeyValueObservation] = []
     /// A main-frame load has started and not yet committed or failed.
@@ -141,9 +202,11 @@ private final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
     /// The address last reported as the page on screen, by a commit or an address change.
     private var reportedURL: URL?
 
-    init(id: UInt64, webView: WKWebView, engine: WebKitEngine) {
+    init(id: UInt64, webView: WKWebView, loginSet: UUID, isPrivate: Bool, engine: WebKitEngine) {
         self.id = id
         self.webView = webView
+        self.loginSet = loginSet
+        self.isPrivate = isPrivate
         self.engine = engine
         super.init()
         webView.navigationDelegate = self

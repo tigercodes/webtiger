@@ -49,7 +49,9 @@ class AdapterTestCase: XCTestCase {
         var create = WTWebViewCreate()
         create.webViewID = id
         create.engine = kind
-        create.loginSet.id = (loginSet ?? UUID()).uuidString.lowercased()
+        // A login set a test did not name is one of its own, deleted with the others.
+        let loginSet = loginSet ?? (ephemeral ? UUID() : newLoginSet())
+        create.loginSet.id = loginSet.uuidString.lowercased()
         create.loginSet.ephemeral = ephemeral
         let answer = await engine.answer(.webViewCreate(create))
         if case .ack = answer {
@@ -80,19 +82,10 @@ class AdapterTestCase: XCTestCase {
         created.removeAll { $0 == id }
     }
 
-    /// Deletes a login set's data store. WebKit refuses while a web view still uses it, and a
-    /// destroyed web view lets go a moment later, so this tries for a while.
+    /// Deletes a login set, as the engine does it. False while a web view still uses it.
     @discardableResult
     func remove(_ loginSet: UUID) async -> Bool {
-        for _ in 0 ..< 100 {
-            do {
-                try await WKWebsiteDataStore.remove(forIdentifier: loginSet)
-                return true
-            } catch {
-                try? await Task.sleep(for: .milliseconds(50))
-            }
-        }
-        return false
+        await engine.deleteLoginSet(loginSet)
     }
 
     /// What the adapter has reported about a web view, in order.

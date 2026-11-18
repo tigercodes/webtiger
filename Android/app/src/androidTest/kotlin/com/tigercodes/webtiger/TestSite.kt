@@ -114,7 +114,6 @@ internal class TestSite : Closeable {
                 "HTTP/1.1 ${page.status}",
                 "Content-Type: ${page.type}; charset=utf-8",
                 "Content-Length: ${body.size}",
-                "Cache-Control: no-store",
                 "Connection: close",
             ) + page.headers.map { filled(it, query, cookies) }
         return (answer.joinToString("\r\n") + "\r\n\r\n").toByteArray(Charsets.ISO_8859_1) + body

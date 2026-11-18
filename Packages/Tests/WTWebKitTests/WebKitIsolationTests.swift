@@ -54,6 +54,46 @@ final class WebKitIsolationTests: AdapterTestCase {
         XCTAssertEqual(lastTitle(2), "who=none")
     }
 
+    func testWebViewsOfOnePrivateLoginSetShareIt() async {
+        let window = UUID()
+        await create(1, loginSet: window, ephemeral: true)
+        await create(2, loginSet: window, ephemeral: true)
+        await load(1, site.url("/set?v=ada"))
+        await wait(1, "the cookie to be set") { self.finished($0) && self.hasTitle("Set")($0) }
+        // A private window's second tab is signed in where its first one signed in.
+        await load(2, site.url("/whoami"))
+        await wait(2, "the other tab's answer") { self.finished($0) && self.lastTitle(2).hasPrefix("who=") }
+        XCTAssertEqual(lastTitle(2), "who=ada", "one private login set is one identity")
+
+        // And the login set is forgotten when the last of its web views is destroyed, not the first.
+        await destroy(1)
+        await create(3, loginSet: window, ephemeral: true)
+        await load(3, site.url("/whoami"))
+        await wait(3, "the third tab's answer") { self.finished($0) && self.lastTitle(3).hasPrefix("who=") }
+        XCTAssertEqual(lastTitle(3), "who=ada", "a web view of the login set is still there")
+        await destroy(2)
+        await destroy(3)
+        await create(4, loginSet: window, ephemeral: true)
+        await load(4, site.url("/whoami"))
+        await wait(4, "the answer after all were closed") { self.finished($0) && self.lastTitle(4).hasPrefix("who=") }
+        XCTAssertEqual(lastTitle(4), "who=none", "with its last web view gone, a private login set is forgotten")
+    }
+
+    func testASignInForTheSessionOutlivesTheLastWebViewOfItsLoginSet() async throws {
+        let loginSet = newLoginSet()
+        await create(1, loginSet: loginSet)
+        // A cookie with no expiry: WebKit keeps it in the memory of the login set's data store.
+        await load(1, site.url("/session?v=ada"))
+        await wait(1, "the cookie to be set") { self.finished($0) && self.hasTitle("Session")($0) }
+        // The login set's only tab sleeps: it has no web view at all for a while.
+        await destroy(1)
+        try await Task.sleep(for: .seconds(2))
+        await create(2, loginSet: loginSet)
+        await load(2, site.url("/whoami"))
+        await wait(2, "the woken tab's answer") { self.finished($0) && self.lastTitle(2).hasPrefix("who=") }
+        XCTAssertEqual(lastTitle(2), "who=ada", "a tab that sleeps does not sign its Space out")
+    }
+
     func testDeletingALoginSetLeavesNothing() async {
         let loginSet = newLoginSet()
         await create(1, loginSet: loginSet)
@@ -142,6 +182,48 @@ final class WebKitIsolationTests: AdapterTestCase {
         XCTAssertEqual(other, 0, "another login set has no worker for the same site")
         let same = await run(count, in: 3) as? Int
         XCTAssertEqual(same, 1, "the same login set has it")
+    }
+
+    /// How many times the site was asked for a path.
+    private func asked(_ path: String) -> Int {
+        site.requests.count { $0 == path }
+    }
+
+    func testLoginSetsShareNoHTTPCache() async {
+        let personal = newLoginSet()
+        let work = newLoginSet()
+        await create(1, loginSet: personal)
+        await create(2, loginSet: work)
+        await create(3, loginSet: personal)
+
+        // A page whose script may be kept for an hour.
+        await load(1, site.url("/uses-cached"))
+        await wait(1, "the script to run") { _ in self.lastTitle(1) == "Cached" }
+        XCTAssertEqual(asked("/cached.js"), 1)
+
+        // Another web view in the same login set gets the script from the cache. The cache is
+        // written a moment after the answer came, so this is tried until it holds; without it
+        // the next step would show nothing.
+        var kept = false
+        for attempt in 0 ..< 20 where !kept {
+            let before = asked("/cached.js")
+            let id = UInt64(100 + attempt)
+            await create(id, loginSet: personal)
+            await load(id, site.url("/uses-cached"))
+            await wait(id, "the script to run again") { _ in self.lastTitle(id) == "Cached" }
+            kept = asked("/cached.js") == before
+            await destroy(id)
+            if !kept {
+                try? await Task.sleep(for: .milliseconds(200))
+            }
+        }
+        XCTAssertTrue(kept, "web views in one login set share its cache")
+
+        // Another login set has no copy: the site is asked again.
+        let before = asked("/cached.js")
+        await load(2, site.url("/uses-cached"))
+        await wait(2, "the other login set's script") { _ in self.lastTitle(2) == "Cached" }
+        XCTAssertEqual(asked("/cached.js"), before + 1, "a login set's cache is its own")
     }
 
     /// Not an assertion about WebTiger: a record of what WebKit offers a web view in an app

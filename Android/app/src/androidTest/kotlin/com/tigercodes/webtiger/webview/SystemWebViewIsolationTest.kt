@@ -121,6 +121,60 @@ internal class SystemWebViewIsolationTest : AdapterTestCase() {
         assertEquals("the same login set has it", "1", run(3, count))
     }
 
+    /** How many times the site was asked for a path. */
+    private fun asked(path: String): Int = site.requests.count { it == path }
+
+    @Test
+    fun loginSetsShareNoHttpCache() {
+        val personal = newLoginSet()
+        create(1, loginSet = personal)
+        create(2, loginSet = newLoginSet())
+
+        // A page whose script may be kept for an hour.
+        load(1, site.url("/uses-cached"))
+        await(1, "the script to run") { lastTitle(1) == "Cached" }
+        assertEquals(1, asked("/cached.js"))
+
+        // Another web view in the same login set gets the script from the cache. The cache is
+        // written a moment after the answer came, so this is tried until it holds; without it
+        // the next step would show nothing.
+        var kept = false
+        for (attempt in 0 until 20) {
+            val before = asked("/cached.js")
+            val id = 100L + attempt
+            create(id, loginSet = personal)
+            load(id, site.url("/uses-cached"))
+            await(id, "the script to run again") { lastTitle(id) == "Cached" }
+            kept = asked("/cached.js") == before
+            destroy(id)
+            if (kept) break
+            Thread.sleep(200)
+        }
+        assertTrue("web views in one login set share its cache", kept)
+
+        // Another login set has no copy: the site is asked again.
+        val before = asked("/cached.js")
+        load(2, site.url("/uses-cached"))
+        await(2, "the other login set's script") { lastTitle(2) == "Cached" }
+        assertEquals("a login set's cache is its own", before + 1, asked("/cached.js"))
+    }
+
+    @Test
+    fun aSignInForTheSessionOutlivesTheLastWebViewOfItsLoginSet() {
+        val loginSet = newLoginSet()
+        create(1, loginSet = loginSet)
+        // A cookie with no expiry, which an engine keeps in memory.
+        load(1, site.url("/session?v=ada"))
+        await(1, "the cookie to be set") { finished(it) && hasTitle("Session")(it) }
+        // The login set's only tab sleeps: it has no web view at all for a while.
+        destroy(1)
+        Thread.sleep(2_000)
+        create(2, loginSet = loginSet)
+        load(2, site.url("/whoami"))
+        await(2, "the woken tab's answer") { finished(it) && lastTitle(2).startsWith("who=") }
+        assertEquals("a tab that sleeps does not sign its Space out", "who=ada", lastTitle(2))
+    }
+
     @Test
     fun aPrivateLoginSetIsRefusedNotApproximated() {
         // A WebView profile is always written to disk; the contract's private login set is kept
