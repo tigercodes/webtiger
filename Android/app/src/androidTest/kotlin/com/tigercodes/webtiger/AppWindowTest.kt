@@ -200,6 +200,19 @@ internal class AppWindowTest {
     }
 
     @Test
+    fun theDesignCatalogueOpensInPlaceOfABrowser() {
+        scenario.close()
+        val intent = Intent(ApplicationProvider.getApplicationContext(), MainActivity::class.java).putExtra(MainActivity.EXTRA_CATALOGUE, true)
+        scenario = ActivityScenario.launch(intent)
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("catalogue").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Design Catalogue").assertExists()
+        compose.onNodeWithTag("catalogue-tokens").assertExists()
+        // Each state is the window itself, with an address field of its own (004 §2).
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("address-field").fetchSemanticsNodes().size > 1 }
+        assertEquals("no page is loaded for a catalogue", null, shownWebView())
+    }
+
+    @Test
     fun turningTheDeviceReloadsNothing() {
         awaitPage("Home")
         awaitAddress(shown("/"))

@@ -29,8 +29,9 @@ import kotlinx.coroutines.launch
 /**
  * How the app was asked to start. Fake mode, for UI suites and screenshots, keeps the store in
  * memory and makes ids deterministic; [fakeStart] names an address every new window opens.
+ * [catalogue] asks for the design catalogue in place of a browser (004).
  */
-data class LaunchOptions(val fake: Boolean = false, val fakeStart: String = "")
+data class LaunchOptions(val fake: Boolean = false, val fakeStart: String = "", val catalogue: Boolean = false)
 
 /**
  * The app's connection to the core: started once, shared by every window. Used on the main

@@ -34,4 +34,40 @@ object Tokens {
         val minimumHit = 44.dp
         val pointerHit = 28.dp
     }
+
+    /** Every token by name, for the design catalogue. */
+    object Catalogue {
+        val colors =
+            listOf(
+                "accent" to Palette.accent,
+                "secure" to Palette.secure,
+                "insecure" to Palette.insecure,
+                "fieldFill" to Palette.fieldFill,
+                "hairline" to Palette.hairline,
+            )
+
+        val space =
+            listOf(
+                "xs" to Space.xs,
+                "s" to Space.s,
+                "m" to Space.m,
+                "l" to Space.l,
+                "xl" to Space.xl,
+            )
+
+        val radius =
+            listOf(
+                "field" to Radius.field,
+                "tile" to Radius.tile,
+            )
+
+        val size =
+            listOf(
+                "toolbarHeight" to Size.toolbarHeight,
+                "fieldHeight" to Size.fieldHeight,
+                "progressHeight" to Size.progressHeight,
+                "minimumHit" to Size.minimumHit,
+                "pointerHit" to Size.pointerHit,
+            )
+    }
 }

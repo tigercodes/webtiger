@@ -35,6 +35,14 @@ class LaunchOptionsTest {
     @Test
     fun aBuildThatIsNotDebuggableIgnoresThem() {
         assertEquals(LaunchOptions(), MainActivity.launchOptions(fake("http://127.0.0.1:8080/start"), debuggable = false))
+        val catalogue = Intent(Intent.ACTION_MAIN).putExtra(MainActivity.EXTRA_CATALOGUE, true)
+        assertEquals(LaunchOptions(), MainActivity.launchOptions(catalogue, debuggable = false))
+    }
+
+    @Test
+    fun anExtraAsksForTheDesignCatalogue() {
+        val catalogue = Intent(Intent.ACTION_MAIN).putExtra(MainActivity.EXTRA_CATALOGUE, true)
+        assertEquals(LaunchOptions(catalogue = true), MainActivity.launchOptions(catalogue, debuggable = true))
     }
 
     @Test

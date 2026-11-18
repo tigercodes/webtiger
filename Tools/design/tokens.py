@@ -91,6 +91,19 @@ def kotlin(tokens: dict) -> str:
         for name, value in tokens[group].items():
             out.append(f"        val {name} = {value}.dp")
         out.append("    }")
+    # Every token again, by name: what the design catalogue draws (004).
+    out += ["", "    /** Every token by name, for the design catalogue. */", "    object Catalogue {"]
+    out.append("        val colors =")
+    out.append("            listOf(")
+    for name in tokens["color"]:
+        out.append(f'                "{name}" to Palette.{name},')
+    out.append("            )")
+    for group in ("space", "radius", "size"):
+        out += ["", f"        val {group} =", "            listOf("]
+        for name in tokens[group]:
+            out.append(f'                "{name}" to {group.capitalize()}.{name},')
+        out.append("            )")
+    out.append("    }")
     out += ["}", ""]
     return "\n".join(out)
 

@@ -74,6 +74,14 @@ dependencies {
 // The window is tested over the real core too (ThroughTheCoreTest): the library :core-engine
 // builds for this machine, as its own tests load it.
 tasks.withType<Test>().configureEach {
+    // The design catalogue's pictures (004): where they are checked in, and where what was drawn
+    // goes when it does not match.
+    val snapshots = layout.projectDirectory.dir("src/test/snapshots")
+    systemProperty("webtiger.snapshots", snapshots.asFile.absolutePath)
+    systemProperty("webtiger.snapshots.failed", layout.buildDirectory.dir("snapshots").get().asFile.absolutePath)
+    inputs.dir(snapshots).withPropertyName("snapshots").withPathSensitivity(PathSensitivity.RELATIVE).optional()
+    // Recording them is asked for in the environment, and must not be answered from the cache.
+    inputs.property("recordSnapshots", providers.environmentVariable("WEBTIGER_RECORD_SNAPSHOTS").orElse(""))
     dependsOn(":core-engine:cargoBuildHost")
     val libraries = rootProject.layout.projectDirectory.dir("../Core/target/jvm/debug")
     systemProperty("java.library.path", libraries.asFile.absolutePath)
