@@ -35,6 +35,8 @@ import com.tigercodes.webtiger.core.v1.TitleChanged
  *   without having committed is reported as cancelled.
  * - **A failed load is followed by the engine's own error page**, which commits at the failed
  *   address and finishes like any page. None of that is a new load.
+ * - **A refused navigation is followed by progress of its own**, 10 and then 100, or by a
+ *   finished page when it was a redirect. Neither is a load.
  *
  * The two rules of engine.proto hold throughout: an address is reported as the page's only
  * from a commit, and a navigation refused on the core's verdict is reported as cancelled.
@@ -83,6 +85,7 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
     fun willTraverse() {
         failedUrl = null
         lateCommit = null
+        refusedUrl = null
     }
 
     /** The adapter is about to stop the load. The engine may say nothing more about it, so its end is reported here. */
@@ -146,6 +149,12 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
     fun progress(percent: Int) {
         // The engine loading its own error page.
         if (failedUrl != null) return
+        if (refusedUrl != null) {
+            // A navigation that was refused has progress of its own, 10 and then 100, with no
+            // page on its way: not a load, and not the end of one that is going on.
+            if (percent >= 100) refusedUrl = null
+            if (!loading || percent >= 100) return
+        }
         if (percent < 100 && !loading) {
             // A load nothing else announced: back or forward, or a form's submission.
             loading = true
@@ -200,6 +209,8 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
     private fun begin(url: String) {
         failedUrl = null
         lateCommit = null
+        // An address refused before may be allowed now: its page's end is then the page's.
+        if (url == refusedUrl) refusedUrl = null
         gone = false
         awaitingCommit = true
         heading = url.ifEmpty { null }

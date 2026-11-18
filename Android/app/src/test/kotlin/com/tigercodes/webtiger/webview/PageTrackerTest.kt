@@ -1,6 +1,8 @@
 // What a System WebView's callbacks become. Each test replays the callbacks the WebView makes
-// in one situation, in the order its source gives them (003 §5), and says what the core is told.
-// None of these sequences was recorded from a device: no device was available (003 §8).
+// in one situation and says what the core is told. The sequences were first taken from the
+// WebView's source (003 §5); those marked "as observed" were then recorded from WebView 133 on
+// an Android 16 emulator, where the device suite (src/androidTest) runs the same situations
+// against the real thing.
 package com.tigercodes.webtiger.webview
 
 import com.tigercodes.webtiger.core.v1.EngineEvent
@@ -130,6 +132,34 @@ class PageTrackerTest {
     }
 
     @Test
+    fun aNavigationRefusedAsObserved() {
+        load(A)
+        // A link the page followed, refused: the WebView then reports progress and no page.
+        tracker.navigationRefused(X, isRedirect = false)
+        assertEquals(listOf("failed net.cancelled $X"), told())
+        tracker.progress(10)
+        tracker.progress(100)
+        tracker.progress(100)
+        assertEquals("the refused navigation's progress is not a load", emptyList<String>(), told())
+        // The next load nothing announced is one again.
+        tracker.progress(10)
+        assertEquals(listOf("started", "progress 0.1"), told())
+    }
+
+    @Test
+    fun anAddressRefusedOnceCanBeLoadedLater() {
+        load(A)
+        tracker.navigationRefused(X, isRedirect = false)
+        told()
+        // No end was reported for the refusal; the user then goes there, and now may.
+        tracker.willLoad(X)
+        tracker.pageStarted(X)
+        tracker.committed(X, canGoBack = true, canGoForward = false)
+        tracker.pageFinished(X)
+        assertEquals(listOf("started $X", "committed $X", "history true false", "finished"), told())
+    }
+
+    @Test
     fun aRedirectRefusedEndsTheLoadTheUserAskedFor() {
         tracker.willLoad(A)
         tracker.progress(10)
@@ -149,6 +179,10 @@ class PageTrackerTest {
         // The page still on screen tries something the policy refuses; the user's load goes on.
         tracker.navigationRefused("javascript:void(0)", isRedirect = false)
         assertEquals(listOf("failed net.cancelled javascript:void(0)", "started $B"), told())
+        // The refused navigation's own progress does not end the load that is going on.
+        tracker.progress(10)
+        tracker.progress(100)
+        assertEquals(listOf("progress 0.1"), told())
         tracker.pageStarted(B)
         tracker.committed(B, canGoBack = true, canGoForward = false)
         tracker.pageFinished(B)
