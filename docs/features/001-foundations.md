@@ -19,7 +19,7 @@ W0 proves the stack before any feature is built on it: one Rust core that every 
 | Core skeleton: `wt-core`, `wt-store`, `wt-app`, `wt-proto`, `wt-testkit` | Done | 82 Rust tests |
 | The contract (1.0) and `wt-ffi`: C ABI, core thread, fast path | Done | 21 Rust tests through the C functions; 8 Swift tests through the real library |
 | Apple shell loads a page through the core, in the Space's login set | **Done on macOS and the iPhone simulator** | 28 tests against real WKWebView (macOS 27.2, iOS 27 simulator; one is skipped on iOS, where a test process has no service workers); 4 UI tests on macOS and the iPhone 17 simulator; the first 3 also on the iPhone Duo simulator |
-| Android shell loads a page through the core, in the Space's login set | **Done on an emulator** (Android 16, System WebView 133). Not run on a physical device ([003](003-android-shell.md)) | 106 JVM tests, 28 of them driving the real core through JNI; 41 on the emulator: the adapter suite against the real WebView (19), isolation (11), sleep and wake (3), and the app's window in fake mode (8) |
+| Android shell loads a page through the core, in the Space's login set | **Done on an emulator** (Android 16, System WebView 133). Not run on a physical device ([003](003-android-shell.md)) | 106 JVM tests, 28 of them driving the real core through JNI; 42 on the emulator: the adapter suite against the real WebView (19), isolation (12), sleep and wake (3), and the app's window in fake mode (8) |
 | Windows shell | **Not started.** It cannot be built on this Mac; it needs the Windows PC | — |
 | Fake mode | Done (core and Apple shell) | The UI tests run in it |
 | Design tokens and strings, one source for every shell | Done for Apple (Swift, String Catalog) | `lint` fails when the generated files are stale |
@@ -166,7 +166,7 @@ Tools/test.sh lint | core | unit | ios | build | ui | all
 | `wt-import`, `wt-cli` | 36 | 002 |
 | Swift package | 48 | The real core through Swift (8); the WebKit adapter, isolation and restore (28); the window's model (8); `ScriptedCore` (4) |
 | Android (JVM) | 106 | The real core through JNI from Kotlin (28); the adapter's rules, the error codes, the window's model |
-| Android (on an emulator) | 41 | The adapter suite against the real System WebView (19); isolation between login sets (11); sleep and wake (3); the app's window in fake mode (8). `Tools/test.sh android-device`, not part of `all` |
+| Android (on an emulator) | 42 | The adapter suite against the real System WebView (19); isolation between login sets (12); sleep and wake (3); the app's window in fake mode (8). `Tools/test.sh android-device`, not part of `all` |
 | App UI tests | 4 × 2 | A page loads through the core; typing an address; a failure in words; Apple's accessibility audit over the empty tab and the failed page |
 
 **The adapter suite** (`Packages/Tests/WTWebKitTests`) is the bar every engine adapter must clear (000 §8.3): event order, redirects, address changes, history, failures as codes, the navigation policy, host requests for web views that do not exist, release on destroy, and **isolation**: sign in under one login set and another sees no cookie, no local storage, no database, no cache, no service worker and no copy in the HTTP cache; the web views of one private login set share it, and it is forgotten with the last of them; a sign-in for the session outlives the last web view of its login set; a deleted login set leaves nothing.
@@ -213,7 +213,7 @@ Small ones, each made where the plan was silent or wrong. None changes a decisio
 | Q8 | Passwords and AutoFill | Not started; needs a person at the Mac, and the entitlements | One fact recorded on the way: in a Mac process **without** the browser entitlement, a WKWebView page on a secure context has service workers, the Notification interface, the Credential Management interface and storage estimates, and has **no** `PushManager` and no WebUSB (macOS 27.2). That confirms 000 §4.7's "no web push" for the Mac. **On the iOS 27 simulator the same page has no service workers and no Notification interface either.** On iPhone and iPad, WebKit gives service workers only to an app that holds Apple's browser entitlement, so that entitlement is not a nicety for being the default browser: without it a large part of the modern web does not work (§13) |
 | Q9 | WinUI 3 with WebView2 profiles | Not started; needs the Windows PC | — |
 | Q10 | iPhone Duo | **Started** | The app runs on the iPhone Duo simulator and its UI tests pass (§11). Custom chrome with reserved regions and vertical bars is not built |
-| Q11 | DRM video; WebUSB and friends | Not started | — |
+| Q11 | DRM video; WebUSB and friends | **Started**: what each engine offers a page is recorded; nothing was played | §11.4. Not yet: a protected video actually playing in WKWebView; Widevine in the System WebView on a real device; WebUSB, WebSerial and WebHID in WebView2 (the Windows PC) |
 
 ## 11. First measurements
 
@@ -279,6 +279,22 @@ A tab that sleeps has no web view (000 §5.7). What it wakes with is what the en
 | A sign-in for the session (a cookie with no expiry), while the app runs | Kept **only while something holds the login set's data store**. With no holder it goes when WebKit lets the session go, a moment later that cannot be counted on | Kept: a profile stays loaded for the life of the process |
 
 **What it says.** Sleeping a tab is cheap and faithful on both engines: the budget of 250 KB a tab (000 §7) is a hundred times what the state needs. Two things follow for W3. On WebKit, **unsaved form text is lost by sleeping**, so "has unsaved form text" must stay among the reasons a tab is kept awake (000 §5.7), and the adapter must hold each login set's data store, which it now does (§9, F17): otherwise the last tab of a Space, sleeping, could sign the Space out. On Android, a tab put to sleep under memory pressure within a second of the user's last scroll or keystroke wakes without it; a tab that sleeps after minutes in the background does not have that problem.
+
+### 11.4 Q8 and Q11: what each engine offers a page
+
+Asked of a page on the loopback address (a secure context) in each adapter's web view, by a test that records the answers and asserts nothing about them (`testWhatWebKitOffersWithoutTheBrowserEntitlement`, `whatTheSystemWebViewOffersAPage`). The Mac's process holds no browser entitlement. 2026-11-18.
+
+| A page is offered | WKWebView, macOS 27.2 | System WebView 133, Android 16 emulator |
+|---|---|---|
+| Service workers | Yes (on the iOS 27 simulator: **no**, without the browser entitlement) | Yes |
+| The Notification interface | Yes (iOS simulator: no) | **No** |
+| Web push (`PushManager`) | **No** | **No** |
+| WebUSB, WebSerial, WebHID, Web Bluetooth | **None** | **None** |
+| Credential Management, storage estimates | Yes | Yes |
+| A DRM key system | **FairPlay: yes** (`com.apple.fps` is granted to the page). Widevine: no | Widevine: **refused here**, which settles nothing (below) |
+| Clear Key | Yes | Yes |
+
+**What it says.** 000 §4.7's rows hold where they could be checked: no web push in either engine, none of the device interfaces in either, and no web notifications at all on Android. **FairPlay is offered to a page in a WKWebView of an ordinary app**, which is the first half of 000 §4.4's "DRM video: FairPlay (W0 verifies)"; the second half, a protected stream playing, needs a stream and its licence server and was not tried. **Widevine on Android is not answered**: the WebView asks the app before it grants a page protected media (`onPermissionRequest`), the adapter does not answer permission requests yet (W1), and an emulator image may have no Widevine to offer in any case.
 
 **iPhone Duo.** The app builds for the iPhone Duo simulator and its three UI tests pass there, on the display the simulator starts with. Nothing in the app yet adapts to the fold, and no test folds the device: that is W5.
 

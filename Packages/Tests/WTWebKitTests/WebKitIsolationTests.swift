@@ -226,13 +226,24 @@ final class WebKitIsolationTests: AdapterTestCase {
         XCTAssertEqual(asked("/cached.js"), before + 1, "a login set's cache is its own")
     }
 
-    /// Not an assertion about WebTiger: a record of what WebKit offers a web view in an app
-    /// without the browser entitlement (spike Q8), printed for 001.
+    /// Not an assertion about WebTiger: a record of what WebKit offers a page in a web view of
+    /// an app without the browser entitlement (spikes Q8 and Q11; 000 §4.7), printed for 001.
     func testWhatWebKitOffersWithoutTheBrowserEntitlement() async {
         await create(1, loginSet: newLoginSet())
         await load(1, site.url("/"))
         await wait(1, "the page") { self.finished($0) }
         let offered = await run("""
+        const keySystem = async (name, type) => {
+            if (!navigator.requestMediaKeySystemAccess) return false;
+            try {
+                await navigator.requestMediaKeySystemAccess(name, [{
+                    initDataTypes: [type], videoCapabilities: [{ contentType: 'video/mp4; codecs="avc1.42E01E"' }],
+                }]);
+                return true;
+            } catch (refused) {
+                return false;
+            }
+        };
         return {
             secureContext: window.isSecureContext,
             serviceWorker: "serviceWorker" in navigator,
@@ -240,7 +251,13 @@ final class WebKitIsolationTests: AdapterTestCase {
             notifications: "Notification" in window,
             credentials: "credentials" in navigator,
             usb: "usb" in navigator,
+            serial: "serial" in navigator,
+            hid: "hid" in navigator,
+            bluetooth: "bluetooth" in navigator,
             storageEstimate: !!(navigator.storage && navigator.storage.estimate),
+            fairPlay: await keySystem("com.apple.fps", "sinf"),
+            widevine: await keySystem("com.widevine.alpha", "cenc"),
+            clearKey: await keySystem("org.w3.clearkey", "keyids"),
         };
         """, in: 1) as? [String: Bool] ?? [:]
         XCTAssertFalse(offered.isEmpty, "the page answered")

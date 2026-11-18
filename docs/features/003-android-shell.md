@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built, and **run on an emulator** (Android 16, System WebView 133): the app starts, a page loads through the core, and 41 tests pass on the device, among them the adapter suite against the real WebView and isolation between login sets. 106 more pass on the JVM, 28 of them driving the real core through JNI. **Not yet run on a physical device, on any other WebView version, or folded** (§8) |
+| **Status** | Built, and **run on an emulator** (Android 16, System WebView 133): the app starts, a page loads through the core, and 42 tests pass on the device, among them the adapter suite against the real WebView and isolation between login sets. 106 more pass on the JVM, 28 of them driving the real core through JNI. **Not yet run on a physical device, on any other WebView version, or folded** (§8) |
 | **Phase** | W0 of [000](000-master-plan.md) §9; item 1 of [001](001-foundations.md) §12 |
 | **Stack** | 000 §5.1: Kotlin, Jetpack Compose, Material 3, `androidx.webkit`, Wire, JNI through `wt-ffi` |
 | **Last updated** | 2026-11-18 (run on an emulator; the device suite) |
@@ -24,7 +24,7 @@ The Mac that first built it had the Android SDK and NDK and **no emulator, no sy
 | The core for `arm64-v8a` and `x86_64`, built with the NDK and packed in the APK | Done | Both libraries are in the APK, aligned for 16 KB pages. The `arm64-v8a` one is loaded and used on the emulator; **the `x86_64` one has never been loaded** |
 | System WebView adapter: WebViews host service, a profile per login set | Done | Its logic: 45 JVM tests without a WebView. Against the real WebView: the adapter suite, 19 tests on the emulator (§8.1) |
 | Event mapping (001 §5.1, Android column) | Corrected (§5.1) from the WebView's source, then **observed** on WebView 133 | 28 JVM tests of the rules; the device suite. One rule was missing and was found there (§5.1, the refused navigation) |
-| Isolation between login sets (Q2 for Android) | **Holds** on WebView 133 | 11 tests on the emulator (§8.1): no cookie, stored value, database, cache, service worker or copy in the HTTP cache is shared; nothing reaches the default profile. Deleting a profile has a rule of its own (§5.2) |
+| Isolation between login sets (Q2 for Android) | **Holds** on WebView 133 | 12 tests on the emulator (§8.1): no cookie, stored value, database, cache, service worker or copy in the HTTP cache is shared; nothing reaches the default profile. Deleting a profile has a rule of its own (§5.2) |
 | Compose window: address field, back, forward, reload or stop, progress, three content states | Done | 9 tests drawn on Robolectric; 11 of its model; 8 on the emulator's screen with the real core and WebView. Three faults showed only on a device and are fixed (§6) |
 | Strings and tokens from the shared sources | Done | `--check` covers them; the Apple outputs are byte for byte what they were |
 | Fake mode | Done | 6 JVM tests; the device's window tests start the app in it |
@@ -234,12 +234,12 @@ The line above was run against the emulator, with a page served from the Mac (`1
 
 An emulator without a window, made by `Tools/android/emulator.sh` from the Google APIs image for Android 16 (API 36, `arm64-v8a`, revision 7) with the Pixel 8 profile, on a Mac with Apple silicon; its System WebView is **133.0.6943.137**. 2026-11-18.
 
-`Tools/test.sh android-device` runs the tests in `Android/app/src/androidTest` there: 41 pass. From a cold emulator the whole step took 40 s, the boot included.
+`Tools/test.sh android-device` runs the tests in `Android/app/src/androidTest` there: 42 pass. From a cold emulator the whole step took 40 s, the boot included.
 
 | Suite | Count | What it shows |
 |---|---|---|
 | `SystemWebViewAdapterTest` | 19 | The adapter suite (001 §8) against the real WebView and a site on the device's loopback address, with a scripted core: started, committed, finished in that order; a redirect commits where it landed; a pushed address is an address change, not a page; back and forward; a link the page follows; a refused connection and a name that does not resolve, as codes, with the engine's error page reported neither as finished nor by its title; trying again after a failure; stop; the navigation policy for a link, a redirect and an external address; a `javascript:` address never given to the WebView; no address reported before it commits; **every request put to the core** (a request the core blocks never reaches the site); **a renderer that is killed** is reported, and the next load makes another web view; the host service's codes |
-| `SystemWebViewIsolationTest` | 11 | Isolation as a security property (000 §8.4): two login sets share no cookie, no stored value, no IndexedDB database, no Cache API cache, no service worker and no copy in the HTTP cache, and two web views in one login set share them all; nothing a login set stores reaches the default profile; a sign-in for the session outlives the last web view of its login set; a private login set is refused; deleting and clearing, as §5.2 |
+| `SystemWebViewIsolationTest` | 12 | Isolation as a security property (000 §8.4): two login sets share no cookie, no stored value, no IndexedDB database, no Cache API cache, no service worker and no copy in the HTTP cache, and two web views in one login set share them all; nothing a login set stores reaches the default profile; a sign-in for the session outlives the last web view of its login set; a private login set is refused; deleting and clearing, as §5.2; and a record of what the WebView offers a page (001 §11.4) |
 | `SystemWebViewRestoreTest` | 3 | What a sleeping tab keeps (Q5; 001 §11.3): `saveState` is one small byte array, and a new web view in the same profile wakes from it with the page, its history, its login set, and, once the engine has had a second to record them, the scroll position and the text typed into a form |
 | `AppWindowTest` | 8 | The app, started in fake mode, with the real core and the real WebView in its window: a page loads through the core; a typed address loads, and the window's Back and the system's Back go back; a failure is shown in words, over the engine's own error page; the address field at rest, tapped, and when it took the focus by itself (§6); **turning the device reloads nothing**: the same activity, the same web view, no second request |
 

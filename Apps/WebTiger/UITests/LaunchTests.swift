@@ -118,9 +118,12 @@ final class LaunchTests: XCTestCase {
                         return true
                     }
                 #endif
-                let what = [element.map { "\($0.elementType.rawValue)" }, element?.identifier, element?.label]
+                // What the element is, where it is, and Apple's own account of the fault: enough
+                // to find it from a runner's log, where nobody can look at the window.
+                let frame = element.map { "\(Int($0.frame.minX)),\(Int($0.frame.minY)) \(Int($0.frame.width))x\(Int($0.frame.height))" }
+                let what = [element.map { "\($0.elementType.rawValue)" }, element?.identifier, element?.label, frame]
                     .compactMap(\.self).filter { !$0.isEmpty }.joined(separator: " / ")
-                faults.append("\(issue.compactDescription) [\(what)]")
+                faults.append("\(issue.compactDescription) [\(what)]: \(issue.detailedDescription)")
                 return true
             }
         } catch {

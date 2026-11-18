@@ -194,6 +194,51 @@ internal class SystemWebViewIsolationTest : AdapterTestCase() {
         assertNull("nothing a login set stores reaches the default profile", leaked)
     }
 
+    /**
+     * Not an assertion about WebTiger: a record of what the System WebView offers a page
+     * (000 §4.7, spike Q11), written to the log for 001.
+     */
+    @Test
+    fun whatTheSystemWebViewOffersAPage() {
+        create(1, loginSet = newLoginSet())
+        load(1, site.url("/"))
+        await(1, "the page") { finished(it) }
+        val offered =
+            run(
+                1,
+                """
+                const keySystem = async (name, type) => {
+                    if (!navigator.requestMediaKeySystemAccess) return false;
+                    try {
+                        await navigator.requestMediaKeySystemAccess(name, [{
+                            initDataTypes: [type], videoCapabilities: [{ contentType: 'video/mp4; codecs="avc1.42E01E"' }],
+                        }]);
+                        return true;
+                    } catch (refused) {
+                        return false;
+                    }
+                };
+                const offered = {
+                    secureContext: window.isSecureContext,
+                    serviceWorker: "serviceWorker" in navigator,
+                    push: "PushManager" in window,
+                    notifications: "Notification" in window,
+                    credentials: "credentials" in navigator,
+                    usb: "usb" in navigator,
+                    serial: "serial" in navigator,
+                    hid: "hid" in navigator,
+                    bluetooth: "bluetooth" in navigator,
+                    storageEstimate: !!(navigator.storage && navigator.storage.estimate),
+                    widevine: await keySystem("com.widevine.alpha", "cenc"),
+                    clearKey: await keySystem("org.w3.clearkey", "keyids"),
+                };
+                return Object.keys(offered).sort().map(name => name + "=" + offered[name]).join(" ");
+                """.trimIndent(),
+            )
+        assertNotNull("the page answered", offered)
+        Log.i("WTFACT", "System WebView offers a page: $offered")
+    }
+
     /** Whether the WebView refuses, now, to delete a login set's profile. */
     private fun deletionIsRefused(loginSet: String): Boolean =
         onMain {
