@@ -95,7 +95,7 @@ The app's UI tests open the catalogue (`WEBTIGER_CATALOGUE=1`), check that each 
 - **Windows.** Its catalogue comes with its shell.
 - **Contrast themes, text sizes, size classes, fold postures** (000 §8.6). The pictures are light and dark at the default text size, at one size for each platform.
 - **The Android pictures on a device.** They are Robolectric's Android, by design (§3.1); how the catalogue looks on a phone is seen by opening it there.
-- **GitHub's runner.** Whether the pictures match on its Mac is not known until it has run them; its accessibility audit already differs from both Macs here (001). When a picture does not match there, the workflow keeps what was drawn and the difference.
+- **Other machines, so far.** The pictures matched on GitHub's runners at their first run there: the Mac's and the iPhone simulator's on its Mac (macOS 27.0.1, an older system than the one that drew them, on a screen of one pixel a point), and Android's on Linux. That is three machines, not every machine: when a picture does not match there, the workflow keeps what was drawn and the difference. The catalogue's accessibility audit did differ on that Mac, for the reason in 001 F19.
 - **The tint on the iPhone.** The pictures show the toolbar's reload and stop buttons in the system's blue, where the Mac draws them grey. Nobody chose that: no accent is set on the window. Left as found, for whoever settles the palette (001 F10).
 - **The page.** No state shows a web page: the catalogue has no engine.
 
