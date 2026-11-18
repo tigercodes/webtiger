@@ -29,11 +29,20 @@ final class WebKitRestoreTests: XCTestCase {
         return WKWebView(frame: CGRect(x: 0, y: 0, width: 800, height: 600), configuration: configuration)
     }
 
-    /// Waits until the web view shows `path` and has stopped loading.
+    /// Waits until the web view's *document* is `path` and has finished loading.
+    ///
+    /// The web view's own `url` and `isLoading` are not enough. `url` changes when a load is
+    /// asked for and when a state is restored, a moment before `isLoading` does, so the two can
+    /// read "there, and idle" while the old document (or none) is still the one on show. A slow
+    /// machine finds that moment: GitHub's runner did. So the document itself is asked.
     private func wait(for webView: WKWebView, toShow path: String, file: StaticString = #filePath, line: UInt = #line) async {
+        let wanted = site.url(path)
         for _ in 0 ..< 1500 {
-            if !webView.isLoading, webView.url?.absoluteString == site.url(path) {
-                return
+            if !webView.isLoading, webView.url?.absoluteString == wanted {
+                let shown = try? await webView.evaluateJavaScript("document.readyState + ' ' + location.href") as? String
+                if shown == "complete \(wanted)" {
+                    return
+                }
             }
             try? await Task.sleep(for: .milliseconds(10))
         }
