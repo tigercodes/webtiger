@@ -176,7 +176,7 @@ mod tests {
         let folder = tempfile::tempdir().unwrap();
         let path = folder.path().join("webtiger.sqlite");
         // A store as this build makes it, put back to version 2 by taking
-        // the session's table away: what 008 left.
+        // away the session's table and what came after it: what 008 left.
         let mut store = Store::open(&path).unwrap();
         let made = store.default_space(MINE, Timestamp(1)).unwrap();
         store
@@ -189,7 +189,7 @@ mod tests {
             .unwrap();
         drop(store);
         let old = Connection::open(&path).unwrap();
-        old.execute_batch("DROP TABLE tab; PRAGMA user_version = 2;")
+        old.execute_batch("DROP TABLE site_setting; DROP TABLE tab; PRAGMA user_version = 2;")
             .unwrap();
         drop(old);
 

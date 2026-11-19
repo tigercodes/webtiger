@@ -6,9 +6,11 @@ pub mod clock;
 pub mod id;
 pub mod policy;
 pub mod uuid;
+pub mod zoom;
 
 pub use address::{Address, AddressError, Input, Security, classify, search_address};
 pub use clock::{Clock, ManualClock, SystemClock, Timestamp};
 pub use id::{IdMint, LoginSetId, SpaceId, SubscriptionId, TabId, WebViewId, WindowId};
 pub use policy::{NavigationAction, check_navigation, opens_outside};
 pub use uuid::Uuid;
+pub use zoom::{ACTUAL_SIZE, ZOOM_LEVELS, zoom_in, zoom_out};

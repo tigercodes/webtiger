@@ -101,6 +101,15 @@ public nonisolated struct WTHostRequest: Sendable {
     set {kind = .webViewFind(newValue)}
   }
 
+  /// Since 1.8
+  public var webViewSetZoom: WTWebViewSetZoom {
+    get {
+      if case .webViewSetZoom(let v)? = kind {return v}
+      return WTWebViewSetZoom()
+    }
+    set {kind = .webViewSetZoom(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -113,6 +122,8 @@ public nonisolated struct WTHostRequest: Sendable {
     case openOutside(WTOpenOutside)
     /// Since 1.6
     case webViewFind(WTWebViewFind)
+    /// Since 1.8
+    case webViewSetZoom(WTWebViewSetZoom)
 
   }
 
@@ -325,13 +336,32 @@ public nonisolated struct WTWebViewFind: Sendable {
   public init() {}
 }
 
+/// WebViews: sets a web view's zoom (012), which stays, whatever page it goes
+/// on to, until it is set again. 100 is actual size; a web view that was
+/// never asked is at 100. Answered with Ack, or "webview.unknown". An engine
+/// that cannot zoom a whole page zooms what it can (its text), and says
+/// nothing of the difference.
+public nonisolated struct WTWebViewSetZoom: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var webViewID: UInt64 = 0
+
+  public var percent: UInt32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
 
 nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".HostRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{3}web_view_create\0\u{3}web_view_load\0\u{3}web_view_command\0\u{3}web_view_destroy\0\u{3}open_outside\0\u{3}web_view_find\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{3}web_view_create\0\u{3}web_view_load\0\u{3}web_view_command\0\u{3}web_view_destroy\0\u{3}open_outside\0\u{3}web_view_find\0\u{3}web_view_set_zoom\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -430,6 +460,19 @@ nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
           self.kind = .webViewFind(v)
         }
       }()
+      case 8: try {
+        var v: WTWebViewSetZoom?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .webViewSetZoom(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .webViewSetZoom(v)
+        }
+      }()
       default: break
       }
     }
@@ -468,6 +511,10 @@ nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
     case .webViewFind?: try {
       guard case .webViewFind(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
+    }()
+    case .webViewSetZoom?: try {
+      guard case .webViewSetZoom(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
     }()
     case nil: break
     }
@@ -869,6 +916,41 @@ nonisolated extension WTWebViewFind: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if lhs.webViewID != rhs.webViewID {return false}
     if lhs.text != rhs.text {return false}
     if lhs.backwards != rhs.backwards {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTWebViewSetZoom: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WebViewSetZoom"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{1}percent\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.webViewID) }()
+      case 2: try { try decoder.decodeSingularUInt32Field(value: &self.percent) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.webViewID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.webViewID, fieldNumber: 1)
+    }
+    if self.percent != 0 {
+      try visitor.visitSingularUInt32Field(value: self.percent, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTWebViewSetZoom, rhs: WTWebViewSetZoom) -> Bool {
+    if lhs.webViewID != rhs.webViewID {return false}
+    if lhs.percent != rhs.percent {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

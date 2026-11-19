@@ -9,15 +9,16 @@ use std::time::Duration;
 
 use tokio::time::Instant;
 use wt_core::{
-    Address, Clock, Input, TabId, Timestamp, WebViewId, WindowId, classify, opens_outside,
-    search_address,
+    ACTUAL_SIZE, Address, Clock, Input, TabId, Timestamp, WebViewId, WindowId, classify,
+    opens_outside, search_address, zoom_in, zoom_out,
 };
 use wt_proto::v1::{
     Ack, ActivateTab, AddressSuggestion, AddressSuggestions, CloseTab, CloseWindow, EngineEvent,
     EngineKind, FindInPage, ForgetHistory, HistoryEntry, HistoryPage, LoginSet, NavigationCommand,
     OpenOutside, OpenTab, OutsideLinkRequested, QueryHistory, SubmitAddress, SuggestAddresses,
     TabCommand, TabOpened, WebViewCommand, WebViewCreate, WebViewDestroy, WebViewFind, WebViewLoad,
-    WindowOpened, WindowSnapshot, engine_event, forget_history, host_request, request, response,
+    WebViewSetZoom, WindowOpened, WindowSnapshot, ZoomChange, ZoomPage, engine_event,
+    forget_history, host_request, request, response,
 };
 use wt_store::{SavedTab, Space, Store};
 
@@ -129,6 +130,7 @@ impl App {
             request::Kind::FindInPage(find) => self.find_in_page(&find),
             request::Kind::QueryHistory(query) => answer(self.query_history(&query)),
             request::Kind::SuggestAddresses(suggest) => answer(self.suggest_addresses(&suggest)),
+            request::Kind::ZoomPage(zoom) => self.zoom_page(&zoom),
             request::Kind::ForgetHistory(forget) => answer(self.forget_history(&forget)),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
@@ -156,6 +158,8 @@ impl App {
             engine_event::Kind::NavigationCommitted(_) | engine_event::Kind::AddressChanged(_)
         );
         let titled = matches!(kind, engine_event::Kind::TitleChanged(_));
+        // A page that only changes its own address stays on its site.
+        let committed = matches!(kind, engine_event::Kind::NavigationCommitted(_));
         if arrives {
             self.write_title(web_view, true);
         }
@@ -164,6 +168,9 @@ impl App {
             self.record_visit(web_view);
         } else if titled {
             self.write_title(web_view, false);
+        }
+        if committed {
+            self.zoom_arrived(web_view);
         }
         // A page that closed its own tab may have left one that is asleep
         // in front.
@@ -599,6 +606,77 @@ impl App {
             finding.await?;
             Ok(response::Kind::Ack(Ack {}))
         })
+    }
+
+    /// Makes a tab's page bigger or smaller, or puts it back (012). The
+    /// level is its site's, in the tab's login set: it is written, and every
+    /// tab that shows the site has it, before this returns; what it returns
+    /// is the wait for their web views.
+    fn zoom_page(&self, zoom: &ZoomPage) -> AppFuture {
+        let (login_set, site, now) = match self.state.borrow().zoom_of(TabId(zoom.tab_id)) {
+            Ok(found) => found,
+            Err(false) => return refuse(AppError::new("tab.unknown").field("tab_id")),
+            Err(true) => return refuse(AppError::new("tab.no_page").field("tab_id")),
+        };
+        let level = match zoom.change() {
+            ZoomChange::In => zoom_in(now),
+            ZoomChange::Out => zoom_out(now),
+            ZoomChange::Reset => Some(ACTUAL_SIZE),
+            ZoomChange::Unspecified => {
+                return refuse(AppError::new("tab.bad_command").field("change"));
+            }
+        };
+        // No further level, or the level it has: nothing changes.
+        let Some(level) = level.filter(|level| *level != now) else {
+            return Box::pin(async { Ok(response::Kind::Ack(Ack {})) });
+        };
+        if let Err(error) = self.store.borrow_mut().set_zoom(login_set, &site, level) {
+            return refuse(AppError::new(error.code()));
+        }
+        let to_tell = self.state.borrow_mut().set_zoom(login_set, &site, level);
+        // Asked at once, in order; what follows only waits.
+        let asked: Vec<_> = to_tell
+            .into_iter()
+            .map(|web_view| self.set_web_view_zoom(web_view, level))
+            .collect();
+        Box::pin(async move {
+            for answer in asked {
+                answer.await?;
+            }
+            Ok(response::Kind::Ack(Ack {}))
+        })
+    }
+
+    /// A page has arrived in a web view (012): it is given its site's zoom,
+    /// when the web view was last told another. A store that refuses leaves
+    /// the page at actual size.
+    fn zoom_arrived(&self, web_view: WebViewId) {
+        let Some((login_set, site, now)) = self.state.borrow().zoom_at(web_view) else {
+            return;
+        };
+        let level = site
+            .and_then(|site| self.store.borrow().zoom(login_set, &site).ok().flatten())
+            .unwrap_or(ACTUAL_SIZE);
+        if level == now {
+            return;
+        }
+        self.state.borrow_mut().zoomed(web_view, level);
+        let asked = self.set_web_view_zoom(web_view, level);
+        // Asked already; this only waits for the answer, so that a shell
+        // that never gives one is given up on like any other.
+        tokio::task::spawn_local(async move {
+            let _ = asked.await;
+        });
+    }
+
+    /// Asks the shell to zoom a web view. The request is on its way when
+    /// this returns.
+    fn set_web_view_zoom(&self, web_view: WebViewId, percent: u32) -> HostFuture {
+        self.host
+            .request(host_request::Kind::WebViewSetZoom(WebViewSetZoom {
+                web_view_id: web_view.get(),
+                percent,
+            }))
     }
 
     /// Where typed text goes: the address it is, or a search for it. `None`

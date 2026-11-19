@@ -10,7 +10,7 @@
 
 /// WebTiger Core ↔ shell contract (docs/features/000-master-plan.md §5.5,
 /// docs/features/001-foundations.md §4).
-/// Contract version: 1.7 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
+/// Contract version: 1.8 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
 ///   1.1  Tabs: OpenTab, CloseTab, ActivateTab, TabOpened; WindowSnapshot.tabs.
 ///   1.2  A page that asks for a new window: NewWindowRequested, CloseRequested;
 ///        web view ids with their top bit set are the shell's.
@@ -23,6 +23,8 @@
 ///        request WebViewFind; FindResult.
 ///   1.7  Places offered as the address field is typed in: SuggestAddresses,
 ///        AddressSuggestions, AddressSuggestion.
+///   1.8  Zoom: ZoomPage, ZoomView (TabView.zoom); the host request
+///        WebViewSetZoom.
 ///
 /// Every message crosses the C ABI as protobuf bytes:
 ///   wt_core_start(CoreConfig)   config.proto
@@ -269,6 +271,15 @@ public nonisolated struct WTRequest: Sendable {
     set {kind = .suggestAddresses(newValue)}
   }
 
+  /// browser.proto, since 1.8
+  public var zoomPage: WTZoomPage {
+    get {
+      if case .zoomPage(let v)? = kind {return v}
+      return WTZoomPage()
+    }
+    set {kind = .zoomPage(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -293,6 +304,8 @@ public nonisolated struct WTRequest: Sendable {
     case findInPage(WTFindInPage)
     /// browser.proto, since 1.7
     case suggestAddresses(WTSuggestAddresses)
+    /// browser.proto, since 1.8
+    case zoomPage(WTZoomPage)
 
   }
 
@@ -748,7 +761,7 @@ nonisolated extension WTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Request"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0\u{3}open_tab\0\u{3}close_tab\0\u{3}activate_tab\0\u{3}query_history\0\u{3}forget_history\0\u{3}find_in_page\0\u{3}suggest_addresses\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0\u{3}open_tab\0\u{3}close_tab\0\u{3}activate_tab\0\u{3}query_history\0\u{3}forget_history\0\u{3}find_in_page\0\u{3}suggest_addresses\0\u{3}zoom_page\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -951,6 +964,19 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
           self.kind = .suggestAddresses(v)
         }
       }()
+      case 16: try {
+        var v: WTZoomPage?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .zoomPage(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .zoomPage(v)
+        }
+      }()
       default: break
       }
     }
@@ -1021,6 +1047,10 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     case .suggestAddresses?: try {
       guard case .suggestAddresses(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 15)
+    }()
+    case .zoomPage?: try {
+      guard case .zoomPage(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 16)
     }()
     case nil: break
     }

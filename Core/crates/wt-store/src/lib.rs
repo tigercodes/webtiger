@@ -11,6 +11,7 @@
 mod history;
 mod schema;
 mod session;
+mod site;
 mod suggest;
 
 use std::path::Path;

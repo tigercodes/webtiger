@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use crate::StoreError;
 
 /// The version this build's store is at.
-pub const SCHEMA_VERSION: u32 = 3;
+pub const SCHEMA_VERSION: u32 = 4;
 
 /// The migrations, in order: `MIGRATIONS[n]` takes version `n` to `n + 1`.
 const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
@@ -67,6 +67,15 @@ const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
          title TEXT NOT NULL,
          front INTEGER NOT NULL CHECK (front IN (0, 1)),
          PRIMARY KEY (space_id, position)
+     ) STRICT, WITHOUT ROWID;",
+    // 4 (W1, 012): what a site is remembered by, in a login set: its zoom,
+    // so far. The table 000 §5.6 names, with the one column that needs it.
+    // A site at 100% has no row.
+    "CREATE TABLE site_setting (
+         login_set_id BLOB NOT NULL REFERENCES login_set (id),
+         site TEXT NOT NULL,
+         zoom INTEGER NOT NULL CHECK (zoom BETWEEN 25 AND 500),
+         PRIMARY KEY (login_set_id, site)
      ) STRICT, WITHOUT ROWID;",
 ];
 

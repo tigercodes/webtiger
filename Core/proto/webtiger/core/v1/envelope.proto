@@ -1,6 +1,6 @@
 // WebTiger Core ↔ shell contract (docs/features/000-master-plan.md §5.5,
 // docs/features/001-foundations.md §4).
-// Contract version: 1.7 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
+// Contract version: 1.8 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
 //   1.1  Tabs: OpenTab, CloseTab, ActivateTab, TabOpened; WindowSnapshot.tabs.
 //   1.2  A page that asks for a new window: NewWindowRequested, CloseRequested;
 //        web view ids with their top bit set are the shell's.
@@ -13,6 +13,8 @@
 //        request WebViewFind; FindResult.
 //   1.7  Places offered as the address field is typed in: SuggestAddresses,
 //        AddressSuggestions, AddressSuggestion.
+//   1.8  Zoom: ZoomPage, ZoomView (TabView.zoom); the host request
+//        WebViewSetZoom.
 //
 // Every message crosses the C ABI as protobuf bytes:
 //   wt_core_start(CoreConfig)   config.proto
@@ -92,6 +94,8 @@ message Request {
     FindInPage find_in_page = 14;
     // browser.proto, since 1.7
     SuggestAddresses suggest_addresses = 15;
+    // browser.proto, since 1.8
+    ZoomPage zoom_page = 16;
   }
 }
 

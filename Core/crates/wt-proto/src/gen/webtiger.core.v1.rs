@@ -222,6 +222,10 @@ pub struct TabView {
     /// has no find.
     #[prost(message, optional, tag = "12")]
     pub find: ::core::option::Option<FindView>,
+    /// Since 1.8. What the tab's page is zoomed to (012). Not set while the tab
+    /// has no page with a site.
+    #[prost(message, optional, tag = "13")]
+    pub zoom: ::core::option::Option<ZoomView>,
 }
 /// What the address field shows. The core builds it so that every shell shows
 /// the same thing and none can be made to lie: a page-initiated load does not
@@ -442,6 +446,32 @@ pub struct AddressSuggestion {
     #[prost(string, tag = "3")]
     pub display: ::prost::alloc::string::String,
 }
+/// Makes the page of a tab bigger or smaller, or puts it back to actual size.
+/// The level is its site's, in the tab's login set: every tab that shows the
+/// site is given it, and it is remembered. Answered with Ack, also when there
+/// is no further level; "tab.unknown"; "tab.no_page" for a tab with no page,
+/// or a page with no site; "tab.bad_command" for a change that is none of
+/// the three.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ZoomPage {
+    #[prost(uint64, tag = "1")]
+    pub tab_id: u64,
+    #[prost(enumeration = "ZoomChange", tag = "2")]
+    pub change: i32,
+}
+/// What a tab's page is zoomed to: what the core asked of its web view, not
+/// what an engine says it did. A shell does not know the levels: it is told
+/// whether there is one above and one below.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ZoomView {
+    /// 100 is actual size.
+    #[prost(uint32, tag = "1")]
+    pub percent: u32,
+    #[prost(bool, tag = "2")]
+    pub can_zoom_in: bool,
+    #[prost(bool, tag = "3")]
+    pub can_zoom_out: bool,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum LoadState {
@@ -471,6 +501,41 @@ impl LoadState {
             "LOAD_STATE_IDLE" => Some(Self::Idle),
             "LOAD_STATE_LOADING" => Some(Self::Loading),
             "LOAD_STATE_FAILED" => Some(Self::Failed),
+            _ => None,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum ZoomChange {
+    Unspecified = 0,
+    /// Bigger: the next level up.
+    In = 1,
+    /// Smaller: the next level down.
+    Out = 2,
+    /// Actual size: 100%.
+    Reset = 3,
+}
+impl ZoomChange {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "ZOOM_CHANGE_UNSPECIFIED",
+            Self::In => "ZOOM_CHANGE_IN",
+            Self::Out => "ZOOM_CHANGE_OUT",
+            Self::Reset => "ZOOM_CHANGE_RESET",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "ZOOM_CHANGE_UNSPECIFIED" => Some(Self::Unspecified),
+            "ZOOM_CHANGE_IN" => Some(Self::In),
+            "ZOOM_CHANGE_OUT" => Some(Self::Out),
+            "ZOOM_CHANGE_RESET" => Some(Self::Reset),
             _ => None,
         }
     }
@@ -763,7 +828,7 @@ pub struct FindResult {
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct HostRequest {
-    #[prost(oneof = "host_request::Kind", tags = "1, 2, 3, 4, 5, 6, 7")]
+    #[prost(oneof = "host_request::Kind", tags = "1, 2, 3, 4, 5, 6, 7, 8")]
     pub kind: ::core::option::Option<host_request::Kind>,
 }
 /// Nested message and enum types in `HostRequest`.
@@ -786,6 +851,9 @@ pub mod host_request {
         /// Since 1.6
         #[prost(message, tag = "7")]
         WebViewFind(super::WebViewFind),
+        /// Since 1.8
+        #[prost(message, tag = "8")]
+        WebViewSetZoom(super::WebViewSetZoom),
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -896,6 +964,18 @@ pub struct WebViewFind {
     #[prost(bool, tag = "3")]
     pub backwards: bool,
 }
+/// WebViews: sets a web view's zoom (012), which stays, whatever page it goes
+/// on to, until it is set again. 100 is actual size; a web view that was
+/// never asked is at 100. Answered with Ack, or "webview.unknown". An engine
+/// that cannot zoom a whole page zooms what it can (its text), and says
+/// nothing of the difference.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct WebViewSetZoom {
+    #[prost(uint64, tag = "1")]
+    pub web_view_id: u64,
+    #[prost(uint32, tag = "2")]
+    pub percent: u32,
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Envelope {
     /// A request's id, chosen by the shell, correlates its response; a request
@@ -929,7 +1009,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -973,6 +1053,9 @@ pub mod request {
         /// browser.proto, since 1.7
         #[prost(message, tag = "15")]
         SuggestAddresses(super::SuggestAddresses),
+        /// browser.proto, since 1.8
+        #[prost(message, tag = "16")]
+        ZoomPage(super::ZoomPage),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.

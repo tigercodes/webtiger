@@ -120,6 +120,9 @@ message TabView {
   // Since 1.6. What the tab's find has found (010). Not set while the tab
   // has no find.
   FindView find = 12;
+  // Since 1.8. What the tab's page is zoomed to (012). Not set while the tab
+  // has no page with a site.
+  ZoomView zoom = 13;
 }
 
 enum LoadState {
@@ -273,4 +276,37 @@ message AddressSuggestion {
   string title = 2 [(wt.redact) = true];
   // The address as the address field shows it.
   string display = 3 [(wt.redact) = true];
+}
+
+// Zoom (012). Since 1.8.
+
+// Makes the page of a tab bigger or smaller, or puts it back to actual size.
+// The level is its site's, in the tab's login set: every tab that shows the
+// site is given it, and it is remembered. Answered with Ack, also when there
+// is no further level; "tab.unknown"; "tab.no_page" for a tab with no page,
+// or a page with no site; "tab.bad_command" for a change that is none of
+// the three.
+message ZoomPage {
+  uint64 tab_id = 1;
+  ZoomChange change = 2;
+}
+
+enum ZoomChange {
+  ZOOM_CHANGE_UNSPECIFIED = 0;
+  // Bigger: the next level up.
+  ZOOM_CHANGE_IN = 1;
+  // Smaller: the next level down.
+  ZOOM_CHANGE_OUT = 2;
+  // Actual size: 100%.
+  ZOOM_CHANGE_RESET = 3;
+}
+
+// What a tab's page is zoomed to: what the core asked of its web view, not
+// what an engine says it did. A shell does not know the levels: it is told
+// whether there is one above and one below.
+message ZoomView {
+  // 100 is actual size.
+  uint32 percent = 1;
+  bool can_zoom_in = 2;
+  bool can_zoom_out = 3;
 }

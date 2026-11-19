@@ -70,6 +70,54 @@ public nonisolated enum WTLoadState: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
+public nonisolated enum WTZoomChange: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+
+  /// Bigger: the next level up.
+  case `in` // = 1
+
+  /// Smaller: the next level down.
+  case out // = 2
+
+  /// Actual size: 100%.
+  case reset // = 3
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .in
+    case 2: self = .out
+    case 3: self = .reset
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .in: return 1
+    case .out: return 2
+    case .reset: return 3
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [WTZoomChange] = [
+    .unspecified,
+    .in,
+    .out,
+    .reset,
+  ]
+
+}
+
 /// Opens a window in the default Space, with one tab. Answered with
 /// WindowOpened. In fake mode the tab opens FakeOptions.start_address.
 public nonisolated struct WTOpenWindow: Sendable {
@@ -343,6 +391,17 @@ public nonisolated struct WTTabView: @unchecked Sendable {
   public var hasFind: Bool {_storage._find != nil}
   /// Clears the value of `find`. Subsequent reads from it will return its default value.
   public mutating func clearFind() {_uniqueStorage()._find = nil}
+
+  /// Since 1.8. What the tab's page is zoomed to (012). Not set while the tab
+  /// has no page with a site.
+  public var zoom: WTZoomView {
+    get {_storage._zoom ?? WTZoomView()}
+    set {_uniqueStorage()._zoom = newValue}
+  }
+  /// Returns true if `zoom` has been explicitly set.
+  public var hasZoom: Bool {_storage._zoom != nil}
+  /// Clears the value of `zoom`. Subsequent reads from it will return its default value.
+  public mutating func clearZoom() {_uniqueStorage()._zoom = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -663,12 +722,56 @@ public nonisolated struct WTAddressSuggestion: Sendable {
   public init() {}
 }
 
+/// Makes the page of a tab bigger or smaller, or puts it back to actual size.
+/// The level is its site's, in the tab's login set: every tab that shows the
+/// site is given it, and it is remembered. Answered with Ack, also when there
+/// is no further level; "tab.unknown"; "tab.no_page" for a tab with no page,
+/// or a page with no site; "tab.bad_command" for a change that is none of
+/// the three.
+public nonisolated struct WTZoomPage: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var tabID: UInt64 = 0
+
+  public var change: WTZoomChange = .unspecified
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// What a tab's page is zoomed to: what the core asked of its web view, not
+/// what an engine says it did. A shell does not know the levels: it is told
+/// whether there is one above and one below.
+public nonisolated struct WTZoomView: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// 100 is actual size.
+  public var percent: UInt32 = 0
+
+  public var canZoomIn: Bool = false
+
+  public var canZoomOut: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
 
 nonisolated extension WTLoadState: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0LOAD_STATE_UNSPECIFIED\0\u{1}LOAD_STATE_IDLE\0\u{1}LOAD_STATE_LOADING\0\u{1}LOAD_STATE_FAILED\0")
+}
+
+nonisolated extension WTZoomChange: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0ZOOM_CHANGE_UNSPECIFIED\0\u{1}ZOOM_CHANGE_IN\0\u{1}ZOOM_CHANGE_OUT\0\u{1}ZOOM_CHANGE_RESET\0")
 }
 
 nonisolated extension WTOpenWindow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
@@ -1051,7 +1154,7 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TabView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}web_view_id\0\u{1}address\0\u{1}title\0\u{3}load_state\0\u{1}progress\0\u{3}can_go_back\0\u{3}can_go_forward\0\u{3}error_code\0\u{1}engine\0\u{3}login_set_id\0\u{1}find\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}web_view_id\0\u{1}address\0\u{1}title\0\u{3}load_state\0\u{1}progress\0\u{3}can_go_back\0\u{3}can_go_forward\0\u{3}error_code\0\u{1}engine\0\u{3}login_set_id\0\u{1}find\0\u{1}zoom\0")
 
   fileprivate class _StorageClass {
     var _tabID: UInt64 = 0
@@ -1066,6 +1169,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _engine: WTEngineKind = .unspecified
     var _loginSetID: String = String()
     var _find: WTFindView? = nil
+    var _zoom: WTZoomView? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1088,6 +1192,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _engine = source._engine
       _loginSetID = source._loginSetID
       _find = source._find
+      _zoom = source._zoom
     }
   }
 
@@ -1118,6 +1223,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 10: try { try decoder.decodeSingularEnumField(value: &_storage._engine) }()
         case 11: try { try decoder.decodeSingularStringField(value: &_storage._loginSetID) }()
         case 12: try { try decoder.decodeSingularMessageField(value: &_storage._find) }()
+        case 13: try { try decoder.decodeSingularMessageField(value: &_storage._zoom) }()
         default: break
         }
       }
@@ -1166,6 +1272,9 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       try { if let v = _storage._find {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
       } }()
+      try { if let v = _storage._zoom {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1187,6 +1296,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._engine != rhs_storage._engine {return false}
         if _storage._loginSetID != rhs_storage._loginSetID {return false}
         if _storage._find != rhs_storage._find {return false}
+        if _storage._zoom != rhs_storage._zoom {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -1654,6 +1764,81 @@ nonisolated extension WTAddressSuggestion: SwiftProtobuf.Message, SwiftProtobuf.
     if lhs.url != rhs.url {return false}
     if lhs.title != rhs.title {return false}
     if lhs.display != rhs.display {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTZoomPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ZoomPage"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{1}change\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.tabID) }()
+      case 2: try { try decoder.decodeSingularEnumField(value: &self.change) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.tabID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.tabID, fieldNumber: 1)
+    }
+    if self.change != .unspecified {
+      try visitor.visitSingularEnumField(value: self.change, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTZoomPage, rhs: WTZoomPage) -> Bool {
+    if lhs.tabID != rhs.tabID {return false}
+    if lhs.change != rhs.change {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTZoomView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ZoomView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}percent\0\u{3}can_zoom_in\0\u{3}can_zoom_out\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt32Field(value: &self.percent) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.canZoomIn) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.canZoomOut) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.percent != 0 {
+      try visitor.visitSingularUInt32Field(value: self.percent, fieldNumber: 1)
+    }
+    if self.canZoomIn != false {
+      try visitor.visitSingularBoolField(value: self.canZoomIn, fieldNumber: 2)
+    }
+    if self.canZoomOut != false {
+      try visitor.visitSingularBoolField(value: self.canZoomOut, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTZoomView, rhs: WTZoomView) -> Bool {
+    if lhs.percent != rhs.percent {return false}
+    if lhs.canZoomIn != rhs.canZoomIn {return false}
+    if lhs.canZoomOut != rhs.canZoomOut {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

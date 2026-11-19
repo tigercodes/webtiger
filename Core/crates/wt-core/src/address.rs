@@ -86,6 +86,15 @@ impl Address {
         }
     }
 
+    /// The site a page of this address is of (012): what someone registered,
+    /// or, for a host with nothing registered (an IP address, `localhost`),
+    /// the host itself. Whatever the scheme and the port. `None` for an
+    /// address with no host.
+    #[must_use]
+    pub fn site(&self) -> Option<&str> {
+        self.registrable_domain().or_else(|| self.host())
+    }
+
     #[must_use]
     pub fn security(&self) -> Security {
         match self.url.scheme() {
@@ -434,6 +443,24 @@ mod tests {
             address("xn--r8jz45g.xn--fiqs8s"),
             "https://xn--r8jz45g.xn--fiqs8s/"
         );
+    }
+
+    #[test]
+    fn a_site_is_what_was_registered_or_else_the_host() {
+        let site = |url: &str| Address::parse(url).unwrap().site().map(str::to_owned);
+        assert_eq!(
+            site("https://www.example.co.uk/a"),
+            Some("example.co.uk".into())
+        );
+        assert_eq!(
+            site("http://shop.example.co.uk:8080/"),
+            Some("example.co.uk".into())
+        );
+        assert_eq!(site("https://example.com/"), Some("example.com".into()));
+        // Nothing registered: the host is its own site, without its port.
+        assert_eq!(site("http://127.0.0.1:8080/"), Some("127.0.0.1".into()));
+        assert_eq!(site("http://localhost:3000/"), Some("localhost".into()));
+        assert_eq!(site("about:blank"), None);
     }
 
     #[test]

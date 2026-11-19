@@ -97,6 +97,10 @@ public final class WebKitEngine: HostServices {
             guard let page = pages[find.webViewID] else { return failure("webview.unknown") }
             page.find(find.text, backwards: find.backwards)
             return .ack(WTAck())
+        case .webViewSetZoom:
+            // Zoom (012) is in the contract and the core; this adapter does not zoom yet, and
+            // answers as a shell built before 1.8 does. Nothing asks until a shell can.
+            return failure("host.unsupported")
         }
     }
 

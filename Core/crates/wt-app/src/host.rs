@@ -109,7 +109,8 @@ impl Expected {
             | host_request::Kind::WebViewCommand(_)
             | host_request::Kind::WebViewDestroy(_)
             | host_request::Kind::OpenOutside(_)
-            | host_request::Kind::WebViewFind(_) => Expected::Ack,
+            | host_request::Kind::WebViewFind(_)
+            | host_request::Kind::WebViewSetZoom(_) => Expected::Ack,
         }
     }
 

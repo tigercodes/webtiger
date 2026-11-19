@@ -3,9 +3,12 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use wt_core::{Address, IdMint, LoginSetId, Security, TabId, WebViewId, WindowId};
+use wt_core::{
+    ACTUAL_SIZE, Address, IdMint, LoginSetId, Security, TabId, WebViewId, WindowId, zoom_in,
+    zoom_out,
+};
 use wt_proto::v1::{
-    AddressView, EngineKind, FindView, LoadState, TabSummary, TabView, WindowSnapshot,
+    AddressView, EngineKind, FindView, LoadState, TabSummary, TabView, WindowSnapshot, ZoomView,
     address_view, engine_event,
 };
 use wt_store::{SavedTab, Space};
@@ -63,6 +66,9 @@ pub(crate) struct Tab {
     /// What is being looked for in the tab's page, and what the engine has
     /// said of it (010). `None` while the tab has no find.
     find: Option<FindView>,
+    /// The zoom the tab's web view was last told, in per cent (012). A web
+    /// view that was never told is at actual size.
+    zoom: u32,
 }
 
 /// The visit a tab's page is in the store, and what has been written of it.
@@ -106,6 +112,7 @@ impl Tab {
             asleep: false,
             session_title: None,
             find: None,
+            zoom: ACTUAL_SIZE,
         }
     }
 
@@ -305,7 +312,26 @@ impl Tab {
             engine: self.engine as i32,
             login_set_id: self.login_set.to_string(),
             find: self.find.clone(),
+            zoom: self.zoom_view(),
         }
+    }
+
+    /// The site of the page that owns the web view (012). `None` with no
+    /// page, and for a page with no host.
+    fn site(&self) -> Option<&str> {
+        self.committed.as_ref()?.site()
+    }
+
+    /// What the page is zoomed to, for the snapshot: what its web view was
+    /// last told. `None` while the tab has no page with a site.
+    fn zoom_view(&self) -> Option<ZoomView> {
+        self.web_view?;
+        self.site()?;
+        Some(ZoomView {
+            percent: self.zoom,
+            can_zoom_in: zoom_in(self.zoom).is_some(),
+            can_zoom_out: zoom_out(self.zoom).is_some(),
+        })
     }
 }
 
@@ -623,6 +649,58 @@ impl State {
             self.dirty.insert(tab.window);
         }
         Ok(web_view)
+    }
+
+    /// The site of a tab's page, in its login set, and the zoom its web
+    /// view was last told (012). `Err(false)` for no such tab, `Err(true)`
+    /// for a tab with no page, or a page with no site.
+    pub(crate) fn zoom_of(&self, tab: TabId) -> Result<(LoginSetId, String, u32), bool> {
+        let tab = self.tabs.get(&tab).ok_or(false)?;
+        tab.web_view.ok_or(true)?;
+        let site = tab.site().ok_or(true)?;
+        Ok((tab.login_set, site.to_owned(), tab.zoom))
+    }
+
+    /// A site was given a zoom in a login set: every tab there whose page
+    /// is of the site has it. The web views to tell, in the order their
+    /// tabs were opened; one that was told that zoom already is not told
+    /// again.
+    pub(crate) fn set_zoom(
+        &mut self,
+        login_set: LoginSetId,
+        site: &str,
+        percent: u32,
+    ) -> Vec<WebViewId> {
+        let mut to_tell = Vec::new();
+        for tab in self.tabs.values_mut() {
+            let Some(web_view) = tab.web_view else {
+                continue;
+            };
+            if tab.login_set != login_set || tab.site() != Some(site) || tab.zoom == percent {
+                continue;
+            }
+            tab.zoom = percent;
+            self.dirty.insert(tab.window);
+            to_tell.push(web_view);
+        }
+        to_tell
+    }
+
+    /// The page a web view now shows, for its zoom: its login set, its site
+    /// when it has one, and the zoom the web view was last told.
+    pub(crate) fn zoom_at(&self, web_view: WebViewId) -> Option<(LoginSetId, Option<String>, u32)> {
+        let tab = self.tab_of(web_view)?;
+        Some((tab.login_set, tab.site().map(str::to_owned), tab.zoom))
+    }
+
+    /// A web view is told a zoom.
+    pub(crate) fn zoomed(&mut self, web_view: WebViewId, percent: u32) {
+        let Some(tab) = self.tab_of_mut(web_view) else {
+            return;
+        };
+        tab.zoom = percent;
+        let window = tab.window;
+        self.dirty.insert(window);
     }
 
     /// The web view of a tab: `Err(false)` for no such tab, `Err(true)` for

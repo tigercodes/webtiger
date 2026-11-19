@@ -30,6 +30,8 @@ message HostRequest {
     OpenOutside open_outside = 6;
     // Since 1.6
     WebViewFind web_view_find = 7;
+    // Since 1.8
+    WebViewSetZoom web_view_set_zoom = 8;
   }
 }
 
@@ -114,4 +116,14 @@ message WebViewFind {
   uint64 web_view_id = 1;
   string text = 2 [(wt.redact) = true];
   bool backwards = 3;
+}
+
+// WebViews: sets a web view's zoom (012), which stays, whatever page it goes
+// on to, until it is set again. 100 is actual size; a web view that was
+// never asked is at 100. Answered with Ack, or "webview.unknown". An engine
+// that cannot zoom a whole page zooms what it can (its text), and says
+// nothing of the difference.
+message WebViewSetZoom {
+  uint64 web_view_id = 1;
+  uint32 percent = 2;
 }

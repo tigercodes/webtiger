@@ -54,6 +54,9 @@ pub struct FakeEngine {
     /// (empty to stop), and whether backwards. It finds nothing by itself:
     /// a test reports what a page would have.
     pub finds: Vec<(u64, String, bool)>,
+    /// Every zoom a web view was asked for, in order (012): the web view and
+    /// the per cent.
+    pub zooms: Vec<(u64, u32)>,
 }
 
 impl FakeEngine {
@@ -66,6 +69,7 @@ impl FakeEngine {
             opened_outside: Vec::new(),
             nothing_opens_outside: false,
             finds: Vec::new(),
+            zooms: Vec::new(),
         }
     }
 
@@ -250,6 +254,13 @@ impl FakeEngine {
                 }
                 self.finds
                     .push((find.web_view_id, find.text, find.backwards));
+                (ack, Vec::new())
+            }
+            Kind::WebViewSetZoom(zoom) => {
+                if !self.web_views.contains_key(&zoom.web_view_id) {
+                    return (error("webview.unknown"), Vec::new());
+                }
+                self.zooms.push((zoom.web_view_id, zoom.percent));
                 (ack, Vec::new())
             }
             Kind::OpenOutside(open) => {
