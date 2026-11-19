@@ -486,14 +486,18 @@ final class LaunchTests: XCTestCase {
     /// hit regions, clipped text.
     func testEveryStateOfTheWindowPassesTheAccessibilityAudit() {
         continueAfterFailure = true
-        let empty = launch(start: nil)
-        XCTAssertTrue(empty.staticTexts["empty-tab"].waitForExistence(timeout: 30))
-        audit(empty, "an empty tab")
-        empty.terminate()
+        let app = launch(start: nil)
+        XCTAssertTrue(app.staticTexts["empty-tab"].waitForExistence(timeout: 30))
+        audit(app, "an empty tab")
 
-        let failed = launch(start: "http://webtiger-test.invalid/")
-        XCTAssertTrue(failed.buttons["retry"].waitForExistence(timeout: 30))
-        audit(failed, "a failed page")
+        // The failed page, in the same run of the app. The app used to be ended here and
+        // started again on the failing address; twice on GitHub's simulator it did not end
+        // within a minute of being asked, straight after the audit, and nowhere else.
+        let field = app.textFields["address-field"]
+        openLocation(field, in: app)
+        field.typeText("http://webtiger-test.invalid/\n")
+        XCTAssertTrue(app.buttons["retry"].waitForExistence(timeout: 30))
+        audit(app, "a failed page")
     }
 }
 
