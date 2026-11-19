@@ -84,7 +84,7 @@ This is built in from the first commit, because it is the one thing that cannot 
 
 ## 5. The contract, version 1.0
 
-(W0's contract. W1 has added to it since: 1.1 is tabs, in [005](005-tabs.md) §4; 1.2 and 1.3 are a page that asks for a new window, in [006](006-new-windows.md) §4; 1.4 is a link for the system, in [007](007-outside-links.md) §4; 1.5 is history, in [008](008-history.md) §5.)
+(W0's contract. W1 has added to it since: 1.1 is tabs, in [005](005-tabs.md) §4; 1.2 and 1.3 are a page that asks for a new window, in [006](006-new-windows.md) §4; 1.4 is a link for the system, in [007](007-outside-links.md) §4; 1.5 is history, in [008](008-history.md) §5; 1.6 is find on the page, in [010](010-find-in-page.md) §4.)
 
 `Core/proto/webtiger/core/v1`. The C ABI is `Core/crates/wt-ffi/include/webtiger_core.h`.
 
@@ -163,7 +163,7 @@ Tools/test.sh lint | core | unit | ios | build | ui | all
 |---|---|---|
 | `wt-core` | 30 | Address fix-up, the registrable domain, the navigation policy, ids |
 | `wt-store` | 26 | Migrations, a newer store refused, SQLite's build flags (7); history: visits, the words to find them by, and forgetting them from the files (14, [008](008-history.md)); the tabs a window had (5, [009](009-session-restore.md)) |
-| `wt-app` | 133 | A tab's life and the contract's rules, through `FakeShell` (45); several tabs (21, [005](005-tabs.md)); a page that asks for a new window (19, [006](006-new-windows.md)); a link for the system (12, [007](007-outside-links.md)); history (20, [008](008-history.md)); the tabs come back (16, [009](009-session-restore.md)) |
+| `wt-app` | 143 | A tab's life and the contract's rules, through `FakeShell` (45); several tabs (21, [005](005-tabs.md)); a page that asks for a new window (19, [006](006-new-windows.md)); a link for the system (12, [007](007-outside-links.md)); history (20, [008](008-history.md)); the tabs come back (16, [009](009-session-restore.md)); find on the page (10, [010](010-find-in-page.md)) |
 | `wt-ffi` | 21 | The header matches the exports; the core through its C functions, from many threads |
 | `wt-proto` | 3 | The contract's version is the same in three places |
 | `wt-import`, `wt-cli` | 36 | 002 |

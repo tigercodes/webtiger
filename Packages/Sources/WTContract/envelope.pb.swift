@@ -10,7 +10,7 @@
 
 /// WebTiger Core ↔ shell contract (docs/features/000-master-plan.md §5.5,
 /// docs/features/001-foundations.md §4).
-/// Contract version: 1.5 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
+/// Contract version: 1.6 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
 ///   1.1  Tabs: OpenTab, CloseTab, ActivateTab, TabOpened; WindowSnapshot.tabs.
 ///   1.2  A page that asks for a new window: NewWindowRequested, CloseRequested;
 ///        web view ids with their top bit set are the shell's.
@@ -19,6 +19,8 @@
 ///   1.4  A link for the system: OutsideLinkRequested; the host request
 ///        OpenOutside.
 ///   1.5  History: QueryHistory, HistoryPage, HistoryEntry, ForgetHistory.
+///   1.6  Find on the page: FindInPage, FindView (TabView.find); the host
+///        request WebViewFind; FindResult.
 ///
 /// Every message crosses the C ABI as protobuf bytes:
 ///   wt_core_start(CoreConfig)   config.proto
@@ -247,6 +249,15 @@ public nonisolated struct WTRequest: Sendable {
     set {kind = .forgetHistory(newValue)}
   }
 
+  /// browser.proto, since 1.6
+  public var findInPage: WTFindInPage {
+    get {
+      if case .findInPage(let v)? = kind {return v}
+      return WTFindInPage()
+    }
+    set {kind = .findInPage(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -267,6 +278,8 @@ public nonisolated struct WTRequest: Sendable {
     /// browser.proto, since 1.5
     case queryHistory(WTQueryHistory)
     case forgetHistory(WTForgetHistory)
+    /// browser.proto, since 1.6
+    case findInPage(WTFindInPage)
 
   }
 
@@ -711,7 +724,7 @@ nonisolated extension WTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Request"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0\u{3}open_tab\0\u{3}close_tab\0\u{3}activate_tab\0\u{3}query_history\0\u{3}forget_history\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0\u{3}open_tab\0\u{3}close_tab\0\u{3}activate_tab\0\u{3}query_history\0\u{3}forget_history\0\u{3}find_in_page\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -888,6 +901,19 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
           self.kind = .forgetHistory(v)
         }
       }()
+      case 14: try {
+        var v: WTFindInPage?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .findInPage(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .findInPage(v)
+        }
+      }()
       default: break
       }
     }
@@ -950,6 +976,10 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     case .forgetHistory?: try {
       guard case .forgetHistory(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
+    }()
+    case .findInPage?: try {
+      guard case .findInPage(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
     }()
     case nil: break
     }

@@ -212,39 +212,33 @@ public nonisolated struct WTActivateTab: Sendable {
 }
 
 /// A window, as its subscription publishes it.
-public nonisolated struct WTWindowSnapshot: @unchecked Sendable {
+public nonisolated struct WTWindowSnapshot: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var windowID: UInt64 {
-    get {_storage._windowID}
-    set {_uniqueStorage()._windowID = newValue}
-  }
+  public var windowID: UInt64 = 0
 
   /// The tab in front, whole: the page a shell shows, and what its controls
   /// act on.
   public var tab: WTTabView {
-    get {_storage._tab ?? WTTabView()}
-    set {_uniqueStorage()._tab = newValue}
+    get {_tab ?? WTTabView()}
+    set {_tab = newValue}
   }
   /// Returns true if `tab` has been explicitly set.
-  public var hasTab: Bool {_storage._tab != nil}
+  public var hasTab: Bool {self._tab != nil}
   /// Clears the value of `tab`. Subsequent reads from it will return its default value.
-  public mutating func clearTab() {_uniqueStorage()._tab = nil}
+  public mutating func clearTab() {self._tab = nil}
 
   /// Every tab of the window, the one in front among them, in the order they
   /// are shown.
-  public var tabs: [WTTabSummary] {
-    get {_storage._tabs}
-    set {_uniqueStorage()._tabs = newValue}
-  }
+  public var tabs: [WTTabSummary] = []
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _storage = _StorageClass.defaultInstance
+  fileprivate var _tab: WTTabView? = nil
 }
 
 /// A tab as a strip of tabs shows it: enough to name it, and no more.
@@ -270,50 +264,91 @@ public nonisolated struct WTTabSummary: Sendable {
   public init() {}
 }
 
-public nonisolated struct WTTabView: Sendable {
+public nonisolated struct WTTabView: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var tabID: UInt64 = 0
+  public var tabID: UInt64 {
+    get {_storage._tabID}
+    set {_uniqueStorage()._tabID = newValue}
+  }
 
   /// The web view the shell shows for this tab; 0 while it has none.
-  public var webViewID: UInt64 = 0
+  public var webViewID: UInt64 {
+    get {_storage._webViewID}
+    set {_uniqueStorage()._webViewID = newValue}
+  }
 
   public var address: WTAddressView {
-    get {_address ?? WTAddressView()}
-    set {_address = newValue}
+    get {_storage._address ?? WTAddressView()}
+    set {_uniqueStorage()._address = newValue}
   }
   /// Returns true if `address` has been explicitly set.
-  public var hasAddress: Bool {self._address != nil}
+  public var hasAddress: Bool {_storage._address != nil}
   /// Clears the value of `address`. Subsequent reads from it will return its default value.
-  public mutating func clearAddress() {self._address = nil}
+  public mutating func clearAddress() {_uniqueStorage()._address = nil}
 
   /// The page's title. Empty: the shell shows the address's host.
-  public var title: String = String()
+  public var title: String {
+    get {_storage._title}
+    set {_uniqueStorage()._title = newValue}
+  }
 
-  public var loadState: WTLoadState = .unspecified
+  public var loadState: WTLoadState {
+    get {_storage._loadState}
+    set {_uniqueStorage()._loadState = newValue}
+  }
 
   /// 0 to 1 while LOAD_STATE_LOADING.
-  public var progress: Double = 0
+  public var progress: Double {
+    get {_storage._progress}
+    set {_uniqueStorage()._progress = newValue}
+  }
 
-  public var canGoBack: Bool = false
+  public var canGoBack: Bool {
+    get {_storage._canGoBack}
+    set {_uniqueStorage()._canGoBack = newValue}
+  }
 
-  public var canGoForward: Bool = false
+  public var canGoForward: Bool {
+    get {_storage._canGoForward}
+    set {_uniqueStorage()._canGoForward = newValue}
+  }
 
   /// With LOAD_STATE_FAILED: why, such as "net.dns" or "page.renderer_gone".
-  public var errorCode: String = String()
+  public var errorCode: String {
+    get {_storage._errorCode}
+    set {_uniqueStorage()._errorCode = newValue}
+  }
 
-  public var engine: WTEngineKind = .unspecified
+  public var engine: WTEngineKind {
+    get {_storage._engine}
+    set {_uniqueStorage()._engine = newValue}
+  }
 
   /// The login set the tab's pages run in, as a UUID.
-  public var loginSetID: String = String()
+  public var loginSetID: String {
+    get {_storage._loginSetID}
+    set {_uniqueStorage()._loginSetID = newValue}
+  }
+
+  /// Since 1.6. What the tab's find has found (010). Not set while the tab
+  /// has no find.
+  public var find: WTFindView {
+    get {_storage._find ?? WTFindView()}
+    set {_uniqueStorage()._find = newValue}
+  }
+  /// Returns true if `find` has been explicitly set.
+  public var hasFind: Bool {_storage._find != nil}
+  /// Clears the value of `find`. Subsequent reads from it will return its default value.
+  public mutating func clearFind() {_uniqueStorage()._find = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _address: WTAddressView? = nil
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 /// What the address field shows. The core builds it so that every shell shows
@@ -516,6 +551,57 @@ public nonisolated struct WTForgetHistory: Sendable {
     case everything(Bool)
 
   }
+
+  public init() {}
+}
+
+/// Finds text in a tab's page: the first match, or with the same text again
+/// the next one, or the one before with `backwards`. Empty text stops
+/// finding: the marks are cleared, and the tab has no find. Answered with
+/// Ack, "tab.unknown", or "tab.no_page" for a tab with no web view.
+public nonisolated struct WTFindInPage: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var tabID: UInt64 = 0
+
+  public var text: String = String()
+
+  public var backwards: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// What a tab's find has found. A shell draws it and keeps no count of its
+/// own.
+public nonisolated struct WTFindView: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// The text looked for.
+  public var text: String = String()
+
+  /// The engine has said something about this text. Until then nothing is
+  /// known: a find just asked for is not "not found".
+  public var answered: Bool = false
+
+  /// With `answered`: the text is on the page.
+  public var found: Bool = false
+
+  /// The engine counts matches: `matches` and `current` mean something.
+  /// WebKit does not.
+  public var counted: Bool = false
+
+  public var matches: UInt32 = 0
+
+  /// Which match is shown, counted from 1. 0 when none is.
+  public var current: UInt32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 }
@@ -821,81 +907,41 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
   public static let protoMessageName: String = _protobuf_package + ".WindowSnapshot"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0")
 
-  fileprivate class _StorageClass {
-    var _windowID: UInt64 = 0
-    var _tab: WTTabView? = nil
-    var _tabs: [WTTabSummary] = []
-
-      // This property is used as the initial default value for new instances of the type.
-      // The type itself is protecting the reference to its storage via CoW semantics.
-      // This will force a copy to be made of this reference when the first mutation occurs;
-      // hence, it is safe to mark this as `nonisolated(unsafe)`.
-      static nonisolated(unsafe) let defaultInstance = _StorageClass()
-
-    private init() {}
-
-    init(copying source: _StorageClass) {
-      _windowID = source._windowID
-      _tab = source._tab
-      _tabs = source._tabs
-    }
-  }
-
-  fileprivate mutating func _uniqueStorage() -> _StorageClass {
-    if !isKnownUniquelyReferenced(&_storage) {
-      _storage = _StorageClass(copying: _storage)
-    }
-    return _storage
-  }
-
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    _ = _uniqueStorage()
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      while let fieldNumber = try decoder.nextFieldNumber() {
-        // The use of inline closures is to circumvent an issue where the compiler
-        // allocates stack space for every case branch when no optimizations are
-        // enabled. https://github.com/apple/swift-protobuf/issues/1034
-        switch fieldNumber {
-        case 1: try { try decoder.decodeSingularUInt64Field(value: &_storage._windowID) }()
-        case 2: try { try decoder.decodeSingularMessageField(value: &_storage._tab) }()
-        case 3: try { try decoder.decodeRepeatedMessageField(value: &_storage._tabs) }()
-        default: break
-        }
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.windowID) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._tab) }()
+      case 3: try { try decoder.decodeRepeatedMessageField(value: &self.tabs) }()
+      default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every if/case branch local when no optimizations
-      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-      // https://github.com/apple/swift-protobuf/issues/1182
-      if _storage._windowID != 0 {
-        try visitor.visitSingularUInt64Field(value: _storage._windowID, fieldNumber: 1)
-      }
-      try { if let v = _storage._tab {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-      } }()
-      if !_storage._tabs.isEmpty {
-        try visitor.visitRepeatedMessageField(value: _storage._tabs, fieldNumber: 3)
-      }
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if self.windowID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.windowID, fieldNumber: 1)
+    }
+    try { if let v = self._tab {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    if !self.tabs.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.tabs, fieldNumber: 3)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: WTWindowSnapshot, rhs: WTWindowSnapshot) -> Bool {
-    if lhs._storage !== rhs._storage {
-      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-        let _storage = _args.0
-        let rhs_storage = _args.1
-        if _storage._windowID != rhs_storage._windowID {return false}
-        if _storage._tab != rhs_storage._tab {return false}
-        if _storage._tabs != rhs_storage._tabs {return false}
-        return true
-      }
-      if !storagesAreEqual {return false}
-    }
+    if lhs.windowID != rhs.windowID {return false}
+    if lhs._tab != rhs._tab {return false}
+    if lhs.tabs != rhs.tabs {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -948,83 +994,146 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TabView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}web_view_id\0\u{1}address\0\u{1}title\0\u{3}load_state\0\u{1}progress\0\u{3}can_go_back\0\u{3}can_go_forward\0\u{3}error_code\0\u{1}engine\0\u{3}login_set_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}web_view_id\0\u{1}address\0\u{1}title\0\u{3}load_state\0\u{1}progress\0\u{3}can_go_back\0\u{3}can_go_forward\0\u{3}error_code\0\u{1}engine\0\u{3}login_set_id\0\u{1}find\0")
+
+  fileprivate class _StorageClass {
+    var _tabID: UInt64 = 0
+    var _webViewID: UInt64 = 0
+    var _address: WTAddressView? = nil
+    var _title: String = String()
+    var _loadState: WTLoadState = .unspecified
+    var _progress: Double = 0
+    var _canGoBack: Bool = false
+    var _canGoForward: Bool = false
+    var _errorCode: String = String()
+    var _engine: WTEngineKind = .unspecified
+    var _loginSetID: String = String()
+    var _find: WTFindView? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _tabID = source._tabID
+      _webViewID = source._webViewID
+      _address = source._address
+      _title = source._title
+      _loadState = source._loadState
+      _progress = source._progress
+      _canGoBack = source._canGoBack
+      _canGoForward = source._canGoForward
+      _errorCode = source._errorCode
+      _engine = source._engine
+      _loginSetID = source._loginSetID
+      _find = source._find
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.tabID) }()
-      case 2: try { try decoder.decodeSingularUInt64Field(value: &self.webViewID) }()
-      case 3: try { try decoder.decodeSingularMessageField(value: &self._address) }()
-      case 4: try { try decoder.decodeSingularStringField(value: &self.title) }()
-      case 5: try { try decoder.decodeSingularEnumField(value: &self.loadState) }()
-      case 6: try { try decoder.decodeSingularDoubleField(value: &self.progress) }()
-      case 7: try { try decoder.decodeSingularBoolField(value: &self.canGoBack) }()
-      case 8: try { try decoder.decodeSingularBoolField(value: &self.canGoForward) }()
-      case 9: try { try decoder.decodeSingularStringField(value: &self.errorCode) }()
-      case 10: try { try decoder.decodeSingularEnumField(value: &self.engine) }()
-      case 11: try { try decoder.decodeSingularStringField(value: &self.loginSetID) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularUInt64Field(value: &_storage._tabID) }()
+        case 2: try { try decoder.decodeSingularUInt64Field(value: &_storage._webViewID) }()
+        case 3: try { try decoder.decodeSingularMessageField(value: &_storage._address) }()
+        case 4: try { try decoder.decodeSingularStringField(value: &_storage._title) }()
+        case 5: try { try decoder.decodeSingularEnumField(value: &_storage._loadState) }()
+        case 6: try { try decoder.decodeSingularDoubleField(value: &_storage._progress) }()
+        case 7: try { try decoder.decodeSingularBoolField(value: &_storage._canGoBack) }()
+        case 8: try { try decoder.decodeSingularBoolField(value: &_storage._canGoForward) }()
+        case 9: try { try decoder.decodeSingularStringField(value: &_storage._errorCode) }()
+        case 10: try { try decoder.decodeSingularEnumField(value: &_storage._engine) }()
+        case 11: try { try decoder.decodeSingularStringField(value: &_storage._loginSetID) }()
+        case 12: try { try decoder.decodeSingularMessageField(value: &_storage._find) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if self.tabID != 0 {
-      try visitor.visitSingularUInt64Field(value: self.tabID, fieldNumber: 1)
-    }
-    if self.webViewID != 0 {
-      try visitor.visitSingularUInt64Field(value: self.webViewID, fieldNumber: 2)
-    }
-    try { if let v = self._address {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
-    } }()
-    if !self.title.isEmpty {
-      try visitor.visitSingularStringField(value: self.title, fieldNumber: 4)
-    }
-    if self.loadState != .unspecified {
-      try visitor.visitSingularEnumField(value: self.loadState, fieldNumber: 5)
-    }
-    if self.progress.bitPattern != 0 {
-      try visitor.visitSingularDoubleField(value: self.progress, fieldNumber: 6)
-    }
-    if self.canGoBack != false {
-      try visitor.visitSingularBoolField(value: self.canGoBack, fieldNumber: 7)
-    }
-    if self.canGoForward != false {
-      try visitor.visitSingularBoolField(value: self.canGoForward, fieldNumber: 8)
-    }
-    if !self.errorCode.isEmpty {
-      try visitor.visitSingularStringField(value: self.errorCode, fieldNumber: 9)
-    }
-    if self.engine != .unspecified {
-      try visitor.visitSingularEnumField(value: self.engine, fieldNumber: 10)
-    }
-    if !self.loginSetID.isEmpty {
-      try visitor.visitSingularStringField(value: self.loginSetID, fieldNumber: 11)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._tabID != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._tabID, fieldNumber: 1)
+      }
+      if _storage._webViewID != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._webViewID, fieldNumber: 2)
+      }
+      try { if let v = _storage._address {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+      } }()
+      if !_storage._title.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._title, fieldNumber: 4)
+      }
+      if _storage._loadState != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._loadState, fieldNumber: 5)
+      }
+      if _storage._progress.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._progress, fieldNumber: 6)
+      }
+      if _storage._canGoBack != false {
+        try visitor.visitSingularBoolField(value: _storage._canGoBack, fieldNumber: 7)
+      }
+      if _storage._canGoForward != false {
+        try visitor.visitSingularBoolField(value: _storage._canGoForward, fieldNumber: 8)
+      }
+      if !_storage._errorCode.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._errorCode, fieldNumber: 9)
+      }
+      if _storage._engine != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._engine, fieldNumber: 10)
+      }
+      if !_storage._loginSetID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._loginSetID, fieldNumber: 11)
+      }
+      try { if let v = _storage._find {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: WTTabView, rhs: WTTabView) -> Bool {
-    if lhs.tabID != rhs.tabID {return false}
-    if lhs.webViewID != rhs.webViewID {return false}
-    if lhs._address != rhs._address {return false}
-    if lhs.title != rhs.title {return false}
-    if lhs.loadState != rhs.loadState {return false}
-    if lhs.progress != rhs.progress {return false}
-    if lhs.canGoBack != rhs.canGoBack {return false}
-    if lhs.canGoForward != rhs.canGoForward {return false}
-    if lhs.errorCode != rhs.errorCode {return false}
-    if lhs.engine != rhs.engine {return false}
-    if lhs.loginSetID != rhs.loginSetID {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._tabID != rhs_storage._tabID {return false}
+        if _storage._webViewID != rhs_storage._webViewID {return false}
+        if _storage._address != rhs_storage._address {return false}
+        if _storage._title != rhs_storage._title {return false}
+        if _storage._loadState != rhs_storage._loadState {return false}
+        if _storage._progress != rhs_storage._progress {return false}
+        if _storage._canGoBack != rhs_storage._canGoBack {return false}
+        if _storage._canGoForward != rhs_storage._canGoForward {return false}
+        if _storage._errorCode != rhs_storage._errorCode {return false}
+        if _storage._engine != rhs_storage._engine {return false}
+        if _storage._loginSetID != rhs_storage._loginSetID {return false}
+        if _storage._find != rhs_storage._find {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1283,6 +1392,101 @@ nonisolated extension WTForgetHistory: SwiftProtobuf.Message, SwiftProtobuf._Mes
   public static func ==(lhs: WTForgetHistory, rhs: WTForgetHistory) -> Bool {
     if lhs.windowID != rhs.windowID {return false}
     if lhs.what != rhs.what {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTFindInPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".FindInPage"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{1}text\0\u{1}backwards\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.tabID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.text) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.backwards) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.tabID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.tabID, fieldNumber: 1)
+    }
+    if !self.text.isEmpty {
+      try visitor.visitSingularStringField(value: self.text, fieldNumber: 2)
+    }
+    if self.backwards != false {
+      try visitor.visitSingularBoolField(value: self.backwards, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTFindInPage, rhs: WTFindInPage) -> Bool {
+    if lhs.tabID != rhs.tabID {return false}
+    if lhs.text != rhs.text {return false}
+    if lhs.backwards != rhs.backwards {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTFindView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".FindView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}text\0\u{1}answered\0\u{1}found\0\u{1}counted\0\u{1}matches\0\u{1}current\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.text) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.answered) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.found) }()
+      case 4: try { try decoder.decodeSingularBoolField(value: &self.counted) }()
+      case 5: try { try decoder.decodeSingularUInt32Field(value: &self.matches) }()
+      case 6: try { try decoder.decodeSingularUInt32Field(value: &self.current) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.text.isEmpty {
+      try visitor.visitSingularStringField(value: self.text, fieldNumber: 1)
+    }
+    if self.answered != false {
+      try visitor.visitSingularBoolField(value: self.answered, fieldNumber: 2)
+    }
+    if self.found != false {
+      try visitor.visitSingularBoolField(value: self.found, fieldNumber: 3)
+    }
+    if self.counted != false {
+      try visitor.visitSingularBoolField(value: self.counted, fieldNumber: 4)
+    }
+    if self.matches != 0 {
+      try visitor.visitSingularUInt32Field(value: self.matches, fieldNumber: 5)
+    }
+    if self.current != 0 {
+      try visitor.visitSingularUInt32Field(value: self.current, fieldNumber: 6)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTFindView, rhs: WTFindView) -> Bool {
+    if lhs.text != rhs.text {return false}
+    if lhs.answered != rhs.answered {return false}
+    if lhs.found != rhs.found {return false}
+    if lhs.counted != rhs.counted {return false}
+    if lhs.matches != rhs.matches {return false}
+    if lhs.current != rhs.current {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

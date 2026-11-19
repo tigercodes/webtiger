@@ -143,6 +143,15 @@ public nonisolated struct WTEngineEvent: Sendable {
     set {kind = .outsideLinkRequested(newValue)}
   }
 
+  /// Since 1.6
+  public var findResult: WTFindResult {
+    get {
+      if case .findResult(let v)? = kind {return v}
+      return WTFindResult()
+    }
+    set {kind = .findResult(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -160,6 +169,8 @@ public nonisolated struct WTEngineEvent: Sendable {
     case closeRequested(WTCloseRequested)
     /// Since 1.4
     case outsideLinkRequested(WTOutsideLinkRequested)
+    /// Since 1.6
+    case findResult(WTFindResult)
 
   }
 
@@ -358,13 +369,36 @@ public nonisolated struct WTOutsideLinkRequested: Sendable {
   public init() {}
 }
 
+/// What a WebViewFind found (010). Reported after each one, and again when an
+/// engine that counts has finished counting.
+public nonisolated struct WTFindResult: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// The text is on the page.
+  public var found: Bool = false
+
+  /// The engine counts matches: `matches` and `current` mean something.
+  public var counted: Bool = false
+
+  public var matches: UInt32 = 0
+
+  /// Which match is shown, counted from 1. 0 when none is.
+  public var current: UInt32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
 
 nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EngineEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{3}navigation_started\0\u{3}navigation_committed\0\u{3}navigation_finished\0\u{3}navigation_failed\0\u{3}address_changed\0\u{3}title_changed\0\u{3}progress_changed\0\u{3}history_changed\0\u{3}renderer_gone\0\u{3}new_window_requested\0\u{3}close_requested\0\u{3}outside_link_requested\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{3}navigation_started\0\u{3}navigation_committed\0\u{3}navigation_finished\0\u{3}navigation_failed\0\u{3}address_changed\0\u{3}title_changed\0\u{3}progress_changed\0\u{3}history_changed\0\u{3}renderer_gone\0\u{3}new_window_requested\0\u{3}close_requested\0\u{3}outside_link_requested\0\u{3}find_result\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -529,6 +563,19 @@ nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
           self.kind = .outsideLinkRequested(v)
         }
       }()
+      case 14: try {
+        var v: WTFindResult?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .findResult(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .findResult(v)
+        }
+      }()
       default: break
       }
     }
@@ -590,6 +637,10 @@ nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
     case .outsideLinkRequested?: try {
       guard case .outsideLinkRequested(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
+    }()
+    case .findResult?: try {
+      guard case .findResult(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
     }()
     case nil: break
     }
@@ -956,6 +1007,51 @@ nonisolated extension WTOutsideLinkRequested: SwiftProtobuf.Message, SwiftProtob
   public static func ==(lhs: WTOutsideLinkRequested, rhs: WTOutsideLinkRequested) -> Bool {
     if lhs.url != rhs.url {return false}
     if lhs.userGesture != rhs.userGesture {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTFindResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".FindResult"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}found\0\u{1}counted\0\u{1}matches\0\u{1}current\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBoolField(value: &self.found) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.counted) }()
+      case 3: try { try decoder.decodeSingularUInt32Field(value: &self.matches) }()
+      case 4: try { try decoder.decodeSingularUInt32Field(value: &self.current) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.found != false {
+      try visitor.visitSingularBoolField(value: self.found, fieldNumber: 1)
+    }
+    if self.counted != false {
+      try visitor.visitSingularBoolField(value: self.counted, fieldNumber: 2)
+    }
+    if self.matches != 0 {
+      try visitor.visitSingularUInt32Field(value: self.matches, fieldNumber: 3)
+    }
+    if self.current != 0 {
+      try visitor.visitSingularUInt32Field(value: self.current, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTFindResult, rhs: WTFindResult) -> Bool {
+    if lhs.found != rhs.found {return false}
+    if lhs.counted != rhs.counted {return false}
+    if lhs.matches != rhs.matches {return false}
+    if lhs.current != rhs.current {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -93,6 +93,9 @@ public final class WebKitEngine: HostServices {
             // The System service's, which the shell answers itself (007): opening a link
             // with another app is nothing to do with a web engine.
             return failure("host.unsupported")
+        case .webViewFind:
+            // Find on the page (010): not built in this adapter yet.
+            return failure("host.unsupported")
         }
     }
 

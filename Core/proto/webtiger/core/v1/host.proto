@@ -28,6 +28,8 @@ message HostRequest {
     WebViewDestroy web_view_destroy = 5;
     // Since 1.4
     OpenOutside open_outside = 6;
+    // Since 1.6
+    WebViewFind web_view_find = 7;
   }
 }
 
@@ -101,4 +103,15 @@ message WebViewDestroy {
 // device opens it. In fake mode a shell opens nothing and answers Ack.
 message OpenOutside {
   string url = 1 [(wt.redact) = true];
+}
+
+// WebViews: finds text in a web view's page and shows the match (010): the
+// first one, or with the same text again the next, or the one before with
+// `backwards`. Empty text clears what was found. Answered with Ack, or
+// "webview.unknown". What was found is reported as FindResult
+// (engine.proto), not in the answer: an engine may go on counting.
+message WebViewFind {
+  uint64 web_view_id = 1;
+  string text = 2 [(wt.redact) = true];
+  bool backwards = 3;
 }

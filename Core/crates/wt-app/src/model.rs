@@ -5,8 +5,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use wt_core::{Address, IdMint, LoginSetId, Security, TabId, WebViewId, WindowId};
 use wt_proto::v1::{
-    AddressView, EngineKind, LoadState, TabSummary, TabView, WindowSnapshot, address_view,
-    engine_event,
+    AddressView, EngineKind, FindView, LoadState, TabSummary, TabView, WindowSnapshot,
+    address_view, engine_event,
 };
 use wt_store::{SavedTab, Space};
 
@@ -60,6 +60,9 @@ pub(crate) struct Tab {
     /// title of: the first a page says, so that a page that changes its
     /// title all the time is written once.
     session_title: Option<(String, String)>,
+    /// What is being looked for in the tab's page, and what the engine has
+    /// said of it (010). `None` while the tab has no find.
+    find: Option<FindView>,
 }
 
 /// The visit a tab's page is in the store, and what has been written of it.
@@ -102,6 +105,7 @@ impl Tab {
             visit: None,
             asleep: false,
             session_title: None,
+            find: None,
         }
     }
 
@@ -196,6 +200,8 @@ impl Tab {
                 // An address the engine reports but the parser refuses is
                 // shown as no address at all rather than as the old one.
                 self.committed = Address::parse(&committed.url).ok();
+                // What was found went with the page it was found in.
+                self.find = None;
                 self.had_page = true;
                 self.pending = None;
                 self.title.clear();
@@ -242,6 +248,21 @@ impl Tab {
             Kind::NewWindowRequested(_)
             | Kind::CloseRequested(_)
             | Kind::OutsideLinkRequested(_) => {}
+            // What the engine found is for the text now looked for (010).
+            // With no find, it is a late word about one that has stopped.
+            Kind::FindResult(result) => {
+                if let Some(find) = &mut self.find {
+                    find.answered = true;
+                    find.found = result.found;
+                    find.counted = result.counted;
+                    find.matches = if result.counted { result.matches } else { 0 };
+                    find.current = if result.counted {
+                        result.current.min(result.matches)
+                    } else {
+                        0
+                    };
+                }
+            }
         }
     }
 
@@ -283,6 +304,7 @@ impl Tab {
             error_code: self.error.clone(),
             engine: self.engine as i32,
             login_set_id: self.login_set.to_string(),
+            find: self.find.clone(),
         }
     }
 }
@@ -579,6 +601,28 @@ impl State {
             tab.fail(code);
             self.dirty.insert(tab.window);
         }
+    }
+
+    /// Text is looked for in a tab's page (010), or with empty text the
+    /// find stops. The web view to ask, as [`State::web_view_of`] says it.
+    pub(crate) fn find(&mut self, tab_id: TabId, text: &str) -> Result<WebViewId, bool> {
+        let tab = self.tabs.get_mut(&tab_id).ok_or(false)?;
+        let web_view = tab.web_view.ok_or(true)?;
+        let before = tab.find.clone();
+        if text.is_empty() {
+            tab.find = None;
+        } else if tab.find.as_ref().is_none_or(|find| find.text != text) {
+            // Other text: nothing is known of it yet. The same text again
+            // goes to another match, and what is known still holds.
+            tab.find = Some(FindView {
+                text: text.to_owned(),
+                ..FindView::default()
+            });
+        }
+        if tab.find != before {
+            self.dirty.insert(tab.window);
+        }
+        Ok(web_view)
     }
 
     /// The web view of a tab: `Err(false)` for no such tab, `Err(true)` for

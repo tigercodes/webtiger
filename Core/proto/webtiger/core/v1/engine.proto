@@ -40,6 +40,8 @@ message EngineEvent {
     CloseRequested close_requested = 12;
     // Since 1.4
     OutsideLinkRequested outside_link_requested = 13;
+    // Since 1.6
+    FindResult find_result = 14;
   }
 }
 
@@ -131,4 +133,16 @@ message OutsideLinkRequested {
   string url = 1 [(wt.redact) = true];
   // A person asked: a click or a key, as far as the engine says.
   bool user_gesture = 2;
+}
+
+// What a WebViewFind found (010). Reported after each one, and again when an
+// engine that counts has finished counting.
+message FindResult {
+  // The text is on the page.
+  bool found = 1;
+  // The engine counts matches: `matches` and `current` mean something.
+  bool counted = 2;
+  uint32 matches = 3;
+  // Which match is shown, counted from 1. 0 when none is.
+  uint32 current = 4;
 }

@@ -5,10 +5,10 @@
 use std::collections::BTreeMap;
 
 use wt_proto::v1::{
-    Ack, AddressChanged, CloseRequested, EngineEvent, EngineKind, Error, HistoryChanged, HostPong,
-    NavigationCommand, NavigationCommitted, NavigationFailed, NavigationFinished,
-    NavigationStarted, NewWindowRequested, OutsideLinkRequested, ProgressChanged, RendererGone,
-    TitleChanged, engine_event, host_request, host_response,
+    Ack, AddressChanged, CloseRequested, EngineEvent, EngineKind, Error, FindResult,
+    HistoryChanged, HostPong, NavigationCommand, NavigationCommitted, NavigationFailed,
+    NavigationFinished, NavigationStarted, NewWindowRequested, OutsideLinkRequested,
+    ProgressChanged, RendererGone, TitleChanged, engine_event, host_request, host_response,
 };
 
 /// A page of the scripted web.
@@ -50,6 +50,10 @@ pub struct FakeEngine {
     /// Nothing on this device opens an outside link: `OpenOutside` is
     /// answered with "system.no_handler".
     pub nothing_opens_outside: bool,
+    /// What this shell was asked to find, in order: the web view, the text
+    /// (empty to stop), and whether backwards. It finds nothing by itself:
+    /// a test reports what a page would have.
+    pub finds: Vec<(u64, String, bool)>,
 }
 
 impl FakeEngine {
@@ -61,7 +65,24 @@ impl FakeEngine {
             own_web_views: 0,
             opened_outside: Vec::new(),
             nothing_opens_outside: false,
+            finds: Vec::new(),
         }
+    }
+
+    /// The report of what a find found (010): whether the text is there,
+    /// and for an engine that counts, how many matches and which is shown.
+    #[must_use]
+    pub fn find_result(id: u64, found: bool, counted: Option<(u32, u32)>) -> EngineEvent {
+        let (matches, current) = counted.unwrap_or_default();
+        event(
+            id,
+            engine_event::Kind::FindResult(FindResult {
+                found,
+                counted: counted.is_some(),
+                matches,
+                current,
+            }),
+        )
     }
 
     /// The report of a page trying to go to an address that is not a
@@ -221,6 +242,14 @@ impl FakeEngine {
             }
             Kind::WebViewDestroy(destroy) => {
                 self.web_views.remove(&destroy.web_view_id);
+                (ack, Vec::new())
+            }
+            Kind::WebViewFind(find) => {
+                if !self.web_views.contains_key(&find.web_view_id) {
+                    return (error("webview.unknown"), Vec::new());
+                }
+                self.finds
+                    .push((find.web_view_id, find.text, find.backwards));
                 (ack, Vec::new())
             }
             Kind::OpenOutside(open) => {

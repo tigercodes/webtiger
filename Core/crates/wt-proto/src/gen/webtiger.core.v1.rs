@@ -218,6 +218,10 @@ pub struct TabView {
     /// The login set the tab's pages run in, as a UUID.
     #[prost(string, tag = "11")]
     pub login_set_id: ::prost::alloc::string::String,
+    /// Since 1.6. What the tab's find has found (010). Not set while the tab
+    /// has no find.
+    #[prost(message, optional, tag = "12")]
+    pub find: ::core::option::Option<FindView>,
 }
 /// What the address field shows. The core builds it so that every shell shows
 /// the same thing and none can be made to lie: a page-initiated load does not
@@ -364,6 +368,43 @@ pub mod forget_history {
         #[prost(bool, tag = "4")]
         Everything(bool),
     }
+}
+/// Finds text in a tab's page: the first match, or with the same text again
+/// the next one, or the one before with `backwards`. Empty text stops
+/// finding: the marks are cleared, and the tab has no find. Answered with
+/// Ack, "tab.unknown", or "tab.no_page" for a tab with no web view.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct FindInPage {
+    #[prost(uint64, tag = "1")]
+    pub tab_id: u64,
+    #[prost(string, tag = "2")]
+    pub text: ::prost::alloc::string::String,
+    #[prost(bool, tag = "3")]
+    pub backwards: bool,
+}
+/// What a tab's find has found. A shell draws it and keeps no count of its
+/// own.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct FindView {
+    /// The text looked for.
+    #[prost(string, tag = "1")]
+    pub text: ::prost::alloc::string::String,
+    /// The engine has said something about this text. Until then nothing is
+    /// known: a find just asked for is not "not found".
+    #[prost(bool, tag = "2")]
+    pub answered: bool,
+    /// With `answered`: the text is on the page.
+    #[prost(bool, tag = "3")]
+    pub found: bool,
+    /// The engine counts matches: `matches` and `current` mean something.
+    /// WebKit does not.
+    #[prost(bool, tag = "4")]
+    pub counted: bool,
+    #[prost(uint32, tag = "5")]
+    pub matches: u32,
+    /// Which match is shown, counted from 1. 0 when none is.
+    #[prost(uint32, tag = "6")]
+    pub current: u32,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -524,7 +565,7 @@ pub struct EngineEvent {
     pub web_view_id: u64,
     #[prost(
         oneof = "engine_event::Kind",
-        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13"
+        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14"
     )]
     pub kind: ::core::option::Option<engine_event::Kind>,
 }
@@ -558,6 +599,9 @@ pub mod engine_event {
         /// Since 1.4
         #[prost(message, tag = "13")]
         OutsideLinkRequested(super::OutsideLinkRequested),
+        /// Since 1.6
+        #[prost(message, tag = "14")]
+        FindResult(super::FindResult),
     }
 }
 /// A load began. The page it asks for does not own the web view yet.
@@ -665,9 +709,25 @@ pub struct OutsideLinkRequested {
     #[prost(bool, tag = "2")]
     pub user_gesture: bool,
 }
+/// What a WebViewFind found (010). Reported after each one, and again when an
+/// engine that counts has finished counting.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct FindResult {
+    /// The text is on the page.
+    #[prost(bool, tag = "1")]
+    pub found: bool,
+    /// The engine counts matches: `matches` and `current` mean something.
+    #[prost(bool, tag = "2")]
+    pub counted: bool,
+    #[prost(uint32, tag = "3")]
+    pub matches: u32,
+    /// Which match is shown, counted from 1. 0 when none is.
+    #[prost(uint32, tag = "4")]
+    pub current: u32,
+}
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct HostRequest {
-    #[prost(oneof = "host_request::Kind", tags = "1, 2, 3, 4, 5, 6")]
+    #[prost(oneof = "host_request::Kind", tags = "1, 2, 3, 4, 5, 6, 7")]
     pub kind: ::core::option::Option<host_request::Kind>,
 }
 /// Nested message and enum types in `HostRequest`.
@@ -687,6 +747,9 @@ pub mod host_request {
         /// Since 1.4
         #[prost(message, tag = "6")]
         OpenOutside(super::OpenOutside),
+        /// Since 1.6
+        #[prost(message, tag = "7")]
+        WebViewFind(super::WebViewFind),
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -783,6 +846,20 @@ pub struct OpenOutside {
     #[prost(string, tag = "1")]
     pub url: ::prost::alloc::string::String,
 }
+/// WebViews: finds text in a web view's page and shows the match (010): the
+/// first one, or with the same text again the next, or the one before with
+/// `backwards`. Empty text clears what was found. Answered with Ack, or
+/// "webview.unknown". What was found is reported as FindResult
+/// (engine.proto), not in the answer: an engine may go on counting.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct WebViewFind {
+    #[prost(uint64, tag = "1")]
+    pub web_view_id: u64,
+    #[prost(string, tag = "2")]
+    pub text: ::prost::alloc::string::String,
+    #[prost(bool, tag = "3")]
+    pub backwards: bool,
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Envelope {
     /// A request's id, chosen by the shell, correlates its response; a request
@@ -814,7 +891,10 @@ pub mod envelope {
 /// request that waits (on the shell) never holds up others.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Request {
-    #[prost(oneof = "request::Kind", tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13")]
+    #[prost(
+        oneof = "request::Kind",
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14"
+    )]
     pub kind: ::core::option::Option<request::Kind>,
 }
 /// Nested message and enum types in `Request`.
@@ -851,6 +931,9 @@ pub mod request {
         QueryHistory(super::QueryHistory),
         #[prost(message, tag = "13")]
         ForgetHistory(super::ForgetHistory),
+        /// browser.proto, since 1.6
+        #[prost(message, tag = "14")]
+        FindInPage(super::FindInPage),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.

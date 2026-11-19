@@ -13,11 +13,11 @@ use wt_core::{
     search_address,
 };
 use wt_proto::v1::{
-    Ack, ActivateTab, CloseTab, CloseWindow, EngineEvent, EngineKind, ForgetHistory, HistoryEntry,
-    HistoryPage, LoginSet, NavigationCommand, OpenOutside, OpenTab, OutsideLinkRequested,
-    QueryHistory, SubmitAddress, TabCommand, TabOpened, WebViewCommand, WebViewCreate,
-    WebViewDestroy, WebViewLoad, WindowOpened, WindowSnapshot, engine_event, forget_history,
-    host_request, request, response,
+    Ack, ActivateTab, CloseTab, CloseWindow, EngineEvent, EngineKind, FindInPage, ForgetHistory,
+    HistoryEntry, HistoryPage, LoginSet, NavigationCommand, OpenOutside, OpenTab,
+    OutsideLinkRequested, QueryHistory, SubmitAddress, TabCommand, TabOpened, WebViewCommand,
+    WebViewCreate, WebViewDestroy, WebViewFind, WebViewLoad, WindowOpened, WindowSnapshot,
+    engine_event, forget_history, host_request, request, response,
 };
 use wt_store::{SavedTab, Space, Store};
 
@@ -110,8 +110,8 @@ impl App {
 
     /// Handles one of the app's requests: a window's (`OpenWindow`,
     /// `CloseWindow`), a tab's (`OpenTab`, `CloseTab`, `ActivateTab`,
-    /// `SubmitAddress`, `TabCommand`) or history's (`QueryHistory`,
-    /// `ForgetHistory`). The dispatcher answers the rest.
+    /// `SubmitAddress`, `TabCommand`, `FindInPage`) or history's
+    /// (`QueryHistory`, `ForgetHistory`). The dispatcher answers the rest.
     pub fn request(&self, kind: request::Kind) -> AppFuture {
         match kind {
             request::Kind::OpenWindow(_) => self.open_window(),
@@ -121,6 +121,7 @@ impl App {
             request::Kind::ActivateTab(activate) => self.activate_tab(&activate),
             request::Kind::SubmitAddress(submit) => self.submit_address(&submit),
             request::Kind::TabCommand(command) => self.tab_command(&command),
+            request::Kind::FindInPage(find) => self.find_in_page(&find),
             request::Kind::QueryHistory(query) => answer(self.query_history(&query)),
             request::Kind::ForgetHistory(forget) => answer(self.forget_history(&forget)),
             request::Kind::Ping(_)
@@ -536,6 +537,28 @@ impl App {
             }));
         Box::pin(async move {
             commanded.await?;
+            Ok(response::Kind::Ack(Ack {}))
+        })
+    }
+
+    /// Finds text in a tab's page (010), or with empty text stops finding.
+    /// The tab's find is what the snapshot shows before this returns; what
+    /// the engine found arrives as its report.
+    fn find_in_page(&self, find: &FindInPage) -> AppFuture {
+        let web_view = match self.state.borrow_mut().find(TabId(find.tab_id), &find.text) {
+            Ok(web_view) => web_view,
+            Err(false) => return refuse(AppError::new("tab.unknown").field("tab_id")),
+            Err(true) => return refuse(AppError::new("tab.no_page").field("tab_id")),
+        };
+        let finding = self
+            .host
+            .request(host_request::Kind::WebViewFind(WebViewFind {
+                web_view_id: web_view.get(),
+                text: find.text.clone(),
+                backwards: find.backwards,
+            }));
+        Box::pin(async move {
+            finding.await?;
             Ok(response::Kind::Ack(Ack {}))
         })
     }

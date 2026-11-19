@@ -200,6 +200,7 @@ class AdapterTestCase: XCTestCase {
             case .newWindowRequested: "window"
             case .closeRequested: "close"
             case .outsideLinkRequested: "outside"
+            case .findResult: "find"
             case .progressChanged: nil
             }
         }

@@ -117,6 +117,9 @@ message TabView {
   EngineKind engine = 10;
   // The login set the tab's pages run in, as a UUID.
   string login_set_id = 11 [(wt.redact) = true];
+  // Since 1.6. What the tab's find has found (010). Not set while the tab
+  // has no find.
+  FindView find = 12;
 }
 
 enum LoadState {
@@ -209,4 +212,34 @@ message ForgetHistory {
     // Every visit. Only `true` means it.
     bool everything = 4;
   }
+}
+
+// Find on the page (010). Since 1.6.
+
+// Finds text in a tab's page: the first match, or with the same text again
+// the next one, or the one before with `backwards`. Empty text stops
+// finding: the marks are cleared, and the tab has no find. Answered with
+// Ack, "tab.unknown", or "tab.no_page" for a tab with no web view.
+message FindInPage {
+  uint64 tab_id = 1;
+  string text = 2 [(wt.redact) = true];
+  bool backwards = 3;
+}
+
+// What a tab's find has found. A shell draws it and keeps no count of its
+// own.
+message FindView {
+  // The text looked for.
+  string text = 1 [(wt.redact) = true];
+  // The engine has said something about this text. Until then nothing is
+  // known: a find just asked for is not "not found".
+  bool answered = 2;
+  // With `answered`: the text is on the page.
+  bool found = 3;
+  // The engine counts matches: `matches` and `current` mean something.
+  // WebKit does not.
+  bool counted = 4;
+  uint32 matches = 5;
+  // Which match is shown, counted from 1. 0 when none is.
+  uint32 current = 6;
 }
