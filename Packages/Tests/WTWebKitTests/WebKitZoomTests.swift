@@ -14,7 +14,10 @@ final class WebKitZoomTests: AdapterTestCase {
     /// A web view of a known size on a page.
     private func page(_ id: UInt64 = 1, at path: String = "/sized", titled title: String = "Sized") async {
         await create(id)
-        engine.webView(for: id)?.frame = CGRect(x: 0, y: 0, width: 800, height: 600)
+        // Tall enough that the page never scrolls, at any level. On GitHub's Mac the page was
+        // 156 wide at five times, where 160 was expected: what a scroll bar that is always
+        // shown would leave of 800, for a page too tall for its web view there.
+        engine.webView(for: id)?.frame = CGRect(x: 0, y: 0, width: 800, height: 4000)
         await load(id, site.url(path))
         await wait(id, "the page to load") { self.finished($0) && self.hasTitle(title)($0) }
     }
