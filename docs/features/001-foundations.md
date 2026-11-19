@@ -162,7 +162,7 @@ Tools/test.sh lint | core | unit | ios | build | ui | all
 | Suite | Count | What it shows |
 |---|---|---|
 | `wt-core` | 44 | Address fix-up, the registrable domain, the navigation policy, ids; the levels a page may be zoomed to, and the site a page is of (5, [012](012-zoom.md)); the name a downloaded file is saved under (9, [013](013-downloads.md)) |
-| `wt-store` | 39 | Migrations, a newer store refused, SQLite's build flags (7); history: visits, the words to find them by, and forgetting them from the files (14, [008](008-history.md)); the tabs a window had (5, [009](009-session-restore.md)); places to offer for what is typed (8, [011](011-suggestions.md)); a site's zoom (5, [012](012-zoom.md)) |
+| `wt-store` | 45 | Migrations, a newer store refused, SQLite's build flags (7); history: visits, the words to find them by, and forgetting them from the files (14, [008](008-history.md)); the tabs a window had (5, [009](009-session-restore.md)); places to offer for what is typed (8, [011](011-suggestions.md)); a site's zoom (5, [012](012-zoom.md)); what was downloaded (6, [013](013-downloads.md)) |
 | `wt-app` | 159 | A tab's life and the contract's rules, through `FakeShell` (45); several tabs (21, [005](005-tabs.md)); a page that asks for a new window (19, [006](006-new-windows.md)); a link for the system (12, [007](007-outside-links.md)); history (20, [008](008-history.md)); the tabs come back (16, [009](009-session-restore.md)); find on the page (10, [010](010-find-in-page.md)); places offered (6, [011](011-suggestions.md)); zoom (10, [012](012-zoom.md)) |
 | `wt-ffi` | 21 | The header matches the exports; the core through its C functions, from many threads |
 | `wt-proto` | 3 | The contract's version is the same in three places |

@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use crate::StoreError;
 
 /// The version this build's store is at.
-pub const SCHEMA_VERSION: u32 = 4;
+pub const SCHEMA_VERSION: u32 = 5;
 
 /// The migrations, in order: `MIGRATIONS[n]` takes version `n` to `n + 1`.
 const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
@@ -77,6 +77,23 @@ const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
          zoom INTEGER NOT NULL CHECK (zoom BETWEEN 25 AND 500),
          PRIMARY KEY (login_set_id, site)
      ) STRICT, WITHOUT ROWID;",
+    // 5 (W1, 013): what was downloaded, per login set. The table 000 §5.6
+    // names. Ids are never used twice, as a visit's are not: newest first is
+    // by id. How far a download has got is not here: it changes many times
+    // a second and means nothing after a quit. `state` is 'coming',
+    // 'finished', or the code it failed with.
+    "CREATE TABLE download (
+         id INTEGER PRIMARY KEY AUTOINCREMENT,
+         login_set_id BLOB NOT NULL REFERENCES login_set (id),
+         url TEXT NOT NULL,
+         file_name TEXT NOT NULL,
+         mime_type TEXT NOT NULL,
+         total_bytes INTEGER NOT NULL,
+         state TEXT NOT NULL,
+         started_at INTEGER NOT NULL,
+         ended_at INTEGER
+     ) STRICT;
+     CREATE INDEX download_login_set ON download (login_set_id, id);",
 ];
 
 pub(crate) fn version(connection: &Connection) -> Result<u32, StoreError> {

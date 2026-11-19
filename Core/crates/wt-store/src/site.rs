@@ -182,7 +182,7 @@ mod tests {
             .unwrap();
         drop(store);
         let old = Connection::open(&path).unwrap();
-        old.execute_batch("DROP TABLE site_setting; PRAGMA user_version = 3;")
+        old.execute_batch("DROP TABLE download; DROP TABLE site_setting; PRAGMA user_version = 3;")
             .unwrap();
         drop(old);
 

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress: the name of the file is built and tested in the core (§4); the rest is planned (§10). The design below is to be read before it is built: §8 lists what it decides |
+| **Status** | In progress: the name of the file (§4) and the store's records (§5) are built and tested; the rest is planned (§10). The design below is to be read before it is built: §8 lists what it decides |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "downloads". The `download` table of the store (000 §5.6) and the downloads half of the Library (000 §4), in their first form |
 | **Contract** | 1.9: `DownloadRequested`, `DownloadProgress`, `DownloadFinished`, `DownloadFailed`; the host requests `DownloadStart` and `DownloadCancel`; `QueryDownloads`, `CancelDownload`, `ForgetDownloads` |
 | **Last updated** | 2026-11-19 |
@@ -74,7 +74,7 @@ CREATE TABLE download (
 ) STRICT;
 ```
 
-A store opened with downloads still `coming` marks them failed: the app ended under them.
+A download ends once: what is said of one that has ended changes nothing. Downloads still `coming` when the core starts are ended as `download.interrupted`: the app that was fetching them is gone. Forgetting a record leaves no trace of it in the store's files, as forgetting a visit does (008), and touches no file of the person's.
 
 ## 6. The engines
 
@@ -90,7 +90,7 @@ A store opened with downloads still `coming` marks them failed: the app ended un
 | Where | What |
 |---|---|
 | The name (`wt-core`, 9) | What stays as it is; no folder, by either separator; nothing a file system refuses or hides; nothing that turns the name round; the names a system keeps for devices, and what only looks like one; the address names it when nothing is suggested, escapes read, and an escape that hides a folder is a folder; never empty, and not named by an address that is not the web's; a name with no ending takes its kind's; a long name is cut in the name, not in its ending, and never inside a character. Eight of the rules checked by breaking them |
-| Store (`wt-store`) | The migration from version 4. A download written, ended, listed newest first by login set, forgotten; one left `coming` is failed when the store is opened |
+| Store (`wt-store`, 6) | The migration from version 4, which keeps what was there. A download is written as it starts and once as it ends, under the name the shell used; a failure keeps the name asked for, and a size not said is none; listed newest first, a page at a time, by login set; forgetting one, and all, of one login set's; those left `coming` are interrupted, and what had ended is as it ended |
 | Core (through `FakeShell`) | Each row of §3's tables. An unknown web view; a second in a second. The name asked of the shell is the safe one. Progress in the list and the snapshot's count. Cancelling; forgetting one that is coming. Another login set's are not listed |
 | Adapter suites | The test site gains a file served as an attachment, one of a kind no engine shows, and a link that says "download". Each is reported once, with its name and size; the file arrives whole in a folder of the test's own; cancelling removes what was saved; a name that is taken gains " (2)" |
 | The shells' screens | The list's model against `ScriptedCore`; pictures of the list coming, finished and failed; the apps with the real core: click, see it listed, see it finish |
@@ -114,7 +114,7 @@ No test writes into a person's own Downloads folder: the suites give the adapter
 ## 10. Done checklist
 
 - [x] The name's rules, in `wt-core`. 9 tests.
-- [ ] The store: migration 5; the records.
+- [x] The store: migration 5; the records. 6 tests.
 - [ ] Contract 1.9 and its version in every place it is written.
 - [ ] The core: the rules of §3. Tests through `FakeShell`.
 - [ ] The test site's files.

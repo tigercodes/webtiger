@@ -8,6 +8,7 @@
 //!
 //! Private login sets are never written here: they live and die in memory.
 
+mod download;
 mod history;
 mod schema;
 mod session;
@@ -19,6 +20,7 @@ use std::path::Path;
 use rusqlite::{Connection, OptionalExtension as _, params};
 use wt_core::{LoginSetId, SpaceId, Timestamp, Uuid};
 
+pub use download::{COMING, Download, DownloadPage, FINISHED, INTERRUPTED};
 pub use history::{MAX_VISITS_PER_PAGE, Visit, VisitPage};
 pub use schema::SCHEMA_VERSION;
 pub use session::SavedTab;

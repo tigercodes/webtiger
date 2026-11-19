@@ -191,7 +191,7 @@ impl Store {
     /// After forgetting: the rows are overwritten already (`secure_delete`),
     /// but the write-ahead log still holds the pages as they were. It is
     /// written back and emptied. A database in memory has none.
-    fn leave_no_trace(&self) -> Result<(), StoreError> {
+    pub(crate) fn leave_no_trace(&self) -> Result<(), StoreError> {
         self.connection
             .query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()))
             .optional()
