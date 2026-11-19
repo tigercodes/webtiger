@@ -205,6 +205,18 @@
         }
       }
     },
+    "catalogue.state.tabs": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Several tabs"
+          }
+        }
+      }
+    },
     "catalogue.states": {
       "comment": "Design catalogue: heading of the browser window's states.",
       "extractionState": "manual",
@@ -417,6 +429,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "Where to?"
+          }
+        }
+      }
+    },
+    "tabs.close": {
+      "comment": "Button on a tab in the strip, and command (Command-W on a Mac): close the tab.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close Tab"
+          }
+        }
+      }
+    },
+    "tabs.list": {
+      "comment": "Accessibility label of the strip of the window's tabs.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tabs"
+          }
+        }
+      }
+    },
+    "tabs.new": {
+      "comment": "Button at the end of the strip of tabs, and command (Command-T on a Mac): open an empty tab.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Tab"
+          }
+        }
+      }
+    },
+    "tabs.untitled": {
+      "comment": "The name the strip gives a tab that has no page yet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Tab"
           }
         }
       }

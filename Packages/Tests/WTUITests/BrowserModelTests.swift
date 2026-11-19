@@ -149,6 +149,93 @@ final class BrowserModelTests: XCTestCase {
         XCTAssertEqual(model.addressText, "example.com")
     }
 
+    // MARK: Tabs (005)
+
+    /// A snapshot whose tab in front is `front`, with `others` beside it in the strip.
+    private func tabs(front: UInt64, url: String, display: String, others: [UInt64] = []) -> WTWindowSnapshot {
+        var window = snapshot(url: url, display: display)
+        window.tab.tabID = front
+        window.tabs = ([front] + others).map { id in
+            var summary = WTTabSummary()
+            summary.tabID = id
+            return summary
+        }
+        return window
+    }
+
+    func testTheWindowsControlsActOnTheTabInFront() async {
+        let (session, core) = session()
+        let model = BrowserModel(session: session)
+        await model.open()
+        // Before any snapshot, the tab the window opened with.
+        model.perform(.stop)
+        await settle { core.requests.count == 3 }
+        guard case let .tabCommand(first) = core.requests.last else { return XCTFail("expected TabCommand") }
+        XCTAssertEqual(first.tabID, 2)
+
+        // Another tab is in front now: the controls are its.
+        core.emit(tabs(front: 9, url: "https://example.org/", display: "example.org", others: [2]), subscription: 3)
+        await settle { model.tab.tabID == 9 }
+        XCTAssertEqual(model.tabs.map(\.tabID), [9, 2], "the strip lists the window's tabs in their order")
+        model.perform(.reload)
+        model.isEditingAddress = true
+        model.addressText = "example.com"
+        model.submit()
+        await settle { core.requests.count == 5 }
+        guard case let .tabCommand(command) = core.requests[3], case let .submitAddress(submit) = core.requests[4] else {
+            return XCTFail("expected a TabCommand and a SubmitAddress")
+        }
+        XCTAssertEqual(command.tabID, 9)
+        XCTAssertEqual(submit.tabID, 9)
+    }
+
+    func testOpeningClosingAndActivatingTabsAskTheCore() async {
+        let (session, core) = session()
+        let model = BrowserModel(session: session)
+        await model.open()
+        core.emit(tabs(front: 2, url: "", display: "", others: [5]), subscription: 3)
+        await settle { model.tabs.count == 2 }
+
+        model.openTab()
+        model.activate(5)
+        model.closeTab(5)
+        await settle { core.requests.count == 5 }
+        guard case let .openTab(open) = core.requests[2], case let .activateTab(activate) = core.requests[3],
+              case let .closeTab(close) = core.requests[4]
+        else { return XCTFail("expected OpenTab, ActivateTab and CloseTab, in that order") }
+        XCTAssertEqual(open.windowID, 1)
+        XCTAssertEqual(open.text, "", "a new tab is empty")
+        XCTAssertFalse(open.background, "and in front")
+        XCTAssertEqual(activate.tabID, 5)
+        XCTAssertEqual(close.tabID, 5)
+
+        // The tab in front is in front already: nothing is asked.
+        model.activate(2)
+        await settle()
+        XCTAssertEqual(core.requests.count, 5)
+    }
+
+    func testWhatWasTypedIsDroppedWhenAnotherTabComesInFront() async {
+        let (session, core) = session()
+        let model = BrowserModel(session: session)
+        await model.open()
+        core.emit(tabs(front: 2, url: "https://example.com/", display: "example.com"), subscription: 3)
+        await settle { model.tab.tabID == 2 }
+        model.isEditingAddress = true
+        model.addressText = "half an addr"
+
+        // The same tab, changed: what is being typed stays.
+        core.emit(tabs(front: 2, url: "https://example.com/next", display: "example.com/next"), subscription: 3)
+        await settle { model.tab.address.url == "https://example.com/next" }
+        XCTAssertEqual(model.addressText, "half an addr")
+
+        // Another tab in front: it was typed for the tab that was there.
+        core.emit(tabs(front: 9, url: "https://example.org/", display: "example.org", others: [2]), subscription: 3)
+        await settle { model.tab.tabID == 9 }
+        XCTAssertEqual(model.addressText, "https://example.org/", "the field shows the tab that is in front")
+        XCTAssertFalse(model.hasTypedAddress)
+    }
+
     func testSnapshotsForAnotherSubscriptionAreIgnored() async {
         let (session, core) = session()
         let model = BrowserModel(session: session)

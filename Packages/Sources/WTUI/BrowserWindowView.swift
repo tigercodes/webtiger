@@ -1,5 +1,6 @@
-// A browser window: a toolbar, a progress line, and the page. W0 has one tab; the sidebar
-// and the tab strip arrive in W2.
+// A browser window: its tabs in a strip, a toolbar, a progress line, and the page of the tab
+// in front (005). The strip is one plain row on every size of window; the sidebar and the tab
+// strip proper arrive in W2.
 public import SwiftUI
 import WTContract
 import WTDesign
@@ -9,6 +10,7 @@ public struct BrowserWindowView: View {
     private let session: BrowserSession
     @FocusState private var addressFocused: Bool
     @State private var addressSelection: TextSelection?
+    @Environment(\.dismiss) private var dismiss
 
     public init(session: BrowserSession) {
         self.session = session
@@ -17,12 +19,22 @@ public struct BrowserWindowView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
+            TabStrip(model: model)
             toolbar
             progress
             content
         }
+        .background { tabShortcuts }
         .task { await model.open() }
         .onDisappear { model.close() }
+        // Another tab came in front. An empty one is given the keyboard in its address field:
+        // there is nothing else to do in an empty tab. One with a page keeps the keyboard out
+        // of the field. (The window's first snapshot names its first tab, and is no switch.)
+        .onChange(of: model.tab.tabID) { before, _ in
+            if before != 0 {
+                addressFocused = !model.hasPage
+            }
+        }
         // A window that opens on a page gives the page the keyboard. A new window's first
         // responder is its address field; with nothing typed in it, the field lets go when the
         // page arrives. An empty tab keeps the keyboard in the field, ready for an address.
@@ -86,6 +98,34 @@ public struct BrowserWindowView: View {
         .accessibilityIdentifier(identifier)
     }
 
+    /// ⌘T and ⌘W, as in every browser. The buttons draw nothing; they carry the shortcuts until
+    /// the app has its menus (W2).
+    private var tabShortcuts: some View {
+        Group {
+            Button {
+                model.openTab()
+            } label: {
+                Text("tabs.new", bundle: .module)
+            }
+            .keyboardShortcut("t", modifiers: .command)
+            Button {
+                // On a window's last tab ⌘W closes the window, as it does everywhere on a Mac.
+                // The core's own rule is only that a window is never left empty (005, T1).
+                if model.tabs.count > 1 {
+                    model.closeTab(model.tab.tabID)
+                } else {
+                    dismiss()
+                }
+            } label: {
+                Text("tabs.close", bundle: .module)
+            }
+            .keyboardShortcut("w", modifiers: .command)
+        }
+        .opacity(0)
+        .frame(width: 0, height: 0)
+        .accessibilityHidden(true)
+    }
+
     /// ⌘L, as in every browser: the keyboard goes to the address field, whole address selected.
     /// The button draws nothing; it is here to carry the shortcut.
     private var openLocationShortcut: some View {
@@ -101,7 +141,7 @@ public struct BrowserWindowView: View {
     }
 
     /// The least a toolbar button measures: a finger's width on a touch screen, less under a pointer.
-    private static var hitSize: CGFloat {
+    static var hitSize: CGFloat {
         #if os(iOS)
             Tokens.Size.minimumHit
         #else
@@ -186,6 +226,98 @@ public struct BrowserWindowView: View {
             WebViewHost(engine: session.engine, webViewID: model.tab.webViewID)
         } else {
             EmptyTabView()
+        }
+    }
+}
+
+/// The window's tabs in a row: each by its name, the one in front marked, a button to close each
+/// and one to open another (005 §5).
+struct TabStrip: View {
+    let model: BrowserModel
+    /// How wide a tab's name may be. It grows with the text's size, so that at the largest
+    /// sizes a short name is still whole; a long title is cut to one line at any size.
+    @ScaledMetric private var widestName: CGFloat = 180
+
+    var body: some View {
+        ScrollViewReader { row in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Tokens.Space.xs) {
+                    ForEach(model.tabs, id: \.tabID) { tab in
+                        chip(tab).id(tab.tabID)
+                    }
+                    Button {
+                        model.openTab()
+                    } label: {
+                        Label { Text("tabs.new", bundle: .module) } icon: { Image(systemName: "plus") }
+                            .labelStyle(.iconOnly)
+                            .frame(minWidth: BrowserWindowView.hitSize, minHeight: BrowserWindowView.hitSize)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityIdentifier("new-tab")
+                }
+                .padding(.horizontal, Tokens.Space.m)
+            }
+            // The tab that comes in front is brought into view.
+            .onChange(of: model.tab.tabID) { _, front in
+                row.scrollTo(front)
+            }
+        }
+        .frame(minHeight: BrowserWindowView.hitSize + Tokens.Space.s)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text("tabs.list", bundle: .module))
+        .accessibilityIdentifier("tab-strip")
+    }
+
+    private func chip(_ tab: WTTabSummary) -> some View {
+        let isFront = tab.tabID == model.tab.tabID
+        return HStack(spacing: 0) {
+            Button {
+                model.activate(tab.tabID)
+            } label: {
+                HStack(spacing: Tokens.Space.xs) {
+                    if tab.loading {
+                        // A dot, not a spinner: a tab that is loading is marked, and stays still.
+                        Circle()
+                            .fill(Tokens.Palette.accent)
+                            .frame(width: 6, height: 6)
+                            .accessibilityHidden(true)
+                    }
+                    name(tab)
+                        .lineLimit(1)
+                        .fontWeight(isFront ? .semibold : .regular)
+                }
+                .padding(.leading, Tokens.Space.s)
+                .frame(maxWidth: widestName, minHeight: BrowserWindowView.hitSize, alignment: .leading)
+                .fixedSize(horizontal: true, vertical: false)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("tab")
+            .accessibilityAddTraits(isFront ? .isSelected : [])
+            Button {
+                model.closeTab(tab.tabID)
+            } label: {
+                Label { Text("tabs.close", bundle: .module) } icon: { Image(systemName: "xmark") }
+                    .labelStyle(.iconOnly)
+                    .font(.caption)
+                    .frame(minWidth: BrowserWindowView.hitSize, minHeight: BrowserWindowView.hitSize)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .accessibilityIdentifier("close-tab")
+        }
+        .background(isFront ? Tokens.Palette.fieldFill : .clear, in: RoundedRectangle(cornerRadius: Tokens.Radius.field))
+    }
+
+    /// A tab's name: its page's title, or its site, or the words for a tab with no page.
+    private func name(_ tab: WTTabSummary) -> Text {
+        if !tab.title.isEmpty {
+            Text(verbatim: tab.title)
+        } else if !tab.host.isEmpty {
+            Text(verbatim: tab.host)
+        } else {
+            Text("tabs.untitled", bundle: .module)
         }
     }
 }

@@ -95,6 +95,56 @@ final class LaunchTests: XCTestCase {
         XCTAssertTrue(pageShows("Landed", in: app), "back goes back")
     }
 
+    /// Several tabs (005): a new one is empty, in front, and has the keyboard; each tab is
+    /// where it was left; closing the one in front brings the other forward.
+    func testTabsOpenSwitchAndClose() {
+        let app = launch(start: site.url("/"))
+        XCTAssertTrue(pageShows("Home", in: app), "the first tab's page loaded")
+        let tabs = app.buttons.matching(identifier: "tab")
+        XCTAssertEqual(tabs.count, 1)
+
+        press(app.buttons["new-tab"])
+        XCTAssertTrue(app.staticTexts["empty-tab"].waitForExistence(timeout: 30), "a new tab is empty, and in front")
+        XCTAssertEqual(tabs.count, 2)
+        // The keyboard is in the new tab's address field already: nothing is tapped first.
+        let field = app.textFields["address-field"]
+        field.typeText("127.0.0.1:\(site.port)/landed\n")
+        XCTAssertTrue(pageShows("Landed", in: app), "the new tab loaded what was typed")
+
+        // The first tab is where it was left.
+        press(tabs.element(boundBy: 0))
+        XCTAssertTrue(pageShows("Home", in: app), "the first tab came in front")
+        expect(field, toShow: "http://127.0.0.1:\(site.port)")
+
+        // Closing the tab in front brings the other forward.
+        press(app.buttons.matching(identifier: "close-tab").element(boundBy: 0))
+        XCTAssertTrue(pageShows("Landed", in: app), "the tab that was left came forward")
+        XCTAssertEqual(tabs.count, 1)
+    }
+
+    #if os(macOS)
+        /// ⌘T opens a tab; ⌘W closes the one in front, and on the last tab the window.
+        func testTheMacsTabShortcuts() {
+            let app = launch(start: nil)
+            XCTAssertTrue(app.staticTexts["empty-tab"].waitForExistence(timeout: 30))
+            let tabs = app.buttons.matching(identifier: "tab")
+            app.typeKey("t", modifierFlags: .command)
+            XCTAssertTrue(tabs.element(boundBy: 1).waitForExistence(timeout: 30), "⌘T opened a tab")
+            app.typeKey("w", modifierFlags: .command)
+            let one = NSPredicate(format: "count == 1")
+            XCTAssertEqual(
+                XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: one, object: tabs)], timeout: 30),
+                .completed,
+                "⌘W closed it"
+            )
+            XCTAssertTrue(app.windows.firstMatch.exists, "and left the window")
+            app.typeKey("w", modifierFlags: .command)
+            let none = NSPredicate(format: "exists == false")
+            let closed = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: none, object: app.windows.firstMatch)], timeout: 30)
+            XCTAssertEqual(closed, .completed, "⌘W on the last tab closes the window")
+        }
+    #endif
+
     func testAPageThatCannotBeReachedSaysSoInWords() {
         // RFC 6761 reserves .invalid: it never resolves.
         let app = launch(start: "http://webtiger-test.invalid/")
@@ -124,6 +174,11 @@ final class LaunchTests: XCTestCase {
                    kind == .group || kind == .other, element?.identifier.isEmpty ?? true {
                     return true
                 }
+                // A tab with no title is named by its site, and a site's name is what it is: the
+                // audit takes a host for a label nobody could read.
+                if issue.auditType == .sufficientElementDescription, element?.identifier == "tab" {
+                    return true
+                }
                 // An element cut by the window's edge is not drawn whole, and what is not drawn
                 // has no contrast to measure. (A long screen that scrolls has one at its foot.)
                 if issue.auditType == .contrast, let frame = element?.frame, !app.windows.firstMatch.frame.contains(frame) {
@@ -147,6 +202,10 @@ final class LaunchTests: XCTestCase {
                 #if !os(macOS)
                     // A one-line text field scrolls what does not fit: that is not clipped text.
                     if issue.auditType == .textClipped, element?.elementType == .textField {
+                        return true
+                    }
+                    // A tab in the strip shows one line of its title, and is read out whole.
+                    if issue.auditType == .textClipped, element?.identifier == "tab" {
                         return true
                     }
                 #endif

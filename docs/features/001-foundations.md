@@ -144,7 +144,7 @@ Two rules every adapter keeps, found while building the first (and now in `engin
 - **`BrowserWindowView`**: back, forward, reload or stop, the address field with its security mark, a progress line, and the page, an empty tab, or a failed page in words. ⌘L goes to the address field.
 - The package builds **without** the Rust core too (`ScriptedCore`), so a screen can be worked on first.
 
-**Verified:** the package's tests on macOS (54) and on the iPhone 17 simulator (55); the app's 5 UI tests on macOS and on the iPhone 17, iPhone Duo and iPad Air 11-inch simulators. The Duo's run is where the audit found the failed page's words cut short at the largest text sizes (004 §5.1). **Not yet looked at:** what the iPad's window should be (it is the phone's, larger), Stage Manager, multiple windows, the Duo folded.
+**Verified:** the package's tests on macOS (57) and on the iPhone 17 simulator (58); the app's UI tests on macOS (7) and the iPhone 17 simulator (6); the five there were before tabs also on the iPhone Duo and iPad Air 11-inch simulators. The Duo's run is where the audit found the failed page's words cut short at the largest text sizes (004 §5.1). **Not yet looked at:** what the iPad's window should be (it is the phone's, larger), Stage Manager, multiple windows, the Duo folded.
 
 ## 7. Fake mode
 
@@ -166,10 +166,10 @@ Tools/test.sh lint | core | unit | ios | build | ui | all
 | `wt-ffi` | 21 | The header matches the exports; the core through its C functions, from many threads |
 | `wt-proto` | 3 | The contract's version is the same in three places |
 | `wt-import`, `wt-cli` | 36 | 002 |
-| Swift package | 54 (55 on the iPhone simulator) | The real core through Swift (8); the WebKit adapter, isolation and restore (28); the window's model (9); the design catalogue as pictures (5, and one more on the iPhone for the largest text size); `ScriptedCore` (4) |
+| Swift package | 57 (58 on the iPhone simulator) | The real core through Swift (8); the WebKit adapter, isolation and restore (28); the window's model (12); the design catalogue as pictures (5, and one more on the iPhone for the largest text size); `ScriptedCore` (4) |
 | Android (JVM) | 116 | The real core through JNI from Kotlin (28); the adapter's rules, the error codes, the window's model; the design catalogue as pictures (9) |
 | Android (on an emulator) | 44 | The adapter suite against the real System WebView (19); isolation between login sets (12); sleep and wake (3); the app's window in fake mode (10), with Android's accessibility checks. `Tools/test.sh android-device`, not part of `all` |
-| App UI tests | 5 × 2 | A page loads through the core; typing an address; a failure in words; Apple's accessibility audit over the empty tab and the failed page; the design catalogue opens and passes the audit |
+| App UI tests | 7 on the Mac, 6 on the iPhone | A page loads through the core; typing an address; a failure in words; Apple's accessibility audit over the empty tab and the failed page; the design catalogue opens and passes the audit; tabs open, switch and close (005), and the Mac's ⌘T and ⌘W |
 
 **The adapter suite** (`Packages/Tests/WTWebKitTests`) is the bar every engine adapter must clear (000 §8.3): event order, redirects, address changes, history, failures as codes, the navigation policy, host requests for web views that do not exist, release on destroy, and **isolation**: sign in under one login set and another sees no cookie, no local storage, no database, no cache, no service worker and no copy in the HTTP cache; the web views of one private login set share it, and it is forgotten with the last of them; a sign-in for the session outlives the last web view of its login set; a deleted login set leaves nothing.
 

@@ -35,6 +35,8 @@
     <string name="catalogue_state_long">An address too long for its field</string>
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_secure">A secure page</string>
+    <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_tabs">Several tabs</string>
     <!-- Design catalogue: heading of the browser window's states. -->
     <string name="catalogue_states">The Window</string>
     <!-- Title of the design catalogue: a screen for designers that shows every design token and every state of the window. -->
@@ -71,6 +73,14 @@
     <string name="tab_empty_hint">Type an address or a search above.</string>
     <!-- Heading of a tab that has no page yet. -->
     <string name="tab_empty_title">Where to?</string>
+    <!-- Button on a tab in the strip, and command (Command-W on a Mac): close the tab. -->
+    <string name="tabs_close">Close Tab</string>
+    <!-- Accessibility label of the strip of the window's tabs. -->
+    <string name="tabs_list">Tabs</string>
+    <!-- Button at the end of the strip of tabs, and command (Command-T on a Mac): open an empty tab. -->
+    <string name="tabs_new">New Tab</string>
+    <!-- The name the strip gives a tab that has no page yet. -->
+    <string name="tabs_untitled">New Tab</string>
     <!-- Button: go back one page. -->
     <string name="toolbar_back">Back</string>
     <!-- Button: go forward one page. -->

@@ -1,5 +1,6 @@
 // The states of the window the design catalogue shows (004 §2): each is the snapshot a core
 // would publish, given to the real window by a scripted core. Nothing here draws.
+import Foundation
 import SwiftUI
 import WTContract
 import WTCoreClient
@@ -14,6 +15,7 @@ enum CatalogueState: String, CaseIterable, Identifiable {
     case long
     case failed
     case history
+    case tabs
 
     var id: String {
         rawValue
@@ -29,6 +31,7 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         case .long: "catalogue.state.long"
         case .failed: "catalogue.state.failed"
         case .history: "catalogue.state.history"
+        case .tabs: "catalogue.state.tabs"
         }
     }
 
@@ -60,15 +63,43 @@ enum CatalogueState: String, CaseIterable, Identifiable {
             page(&window, url: "https://example.com/second", display: "example.com/second", security: .secure)
             window.tab.canGoBack = true
             window.tab.canGoForward = true
+        case .tabs:
+            page(&window, url: "https://example.com/", display: "example.com", security: .secure)
+            window.tab.title = "Example Domain"
+        }
+        // The strip names every tab: the one in front, and for "several tabs" its neighbours,
+        // one with a title, one still loading and known only by its site, one with no page.
+        var front = WTTabSummary()
+        front.tabID = window.tab.tabID
+        front.title = window.tab.title
+        front.host = window.tab.address.url.isEmpty ? "" : window.tab.address.host
+        front.loading = window.tab.loadState == .loading
+        window.tabs = [front]
+        if self == .tabs {
+            window.tabs = [
+                Self.neighbour(11, title: "A page whose title is longer than a tab is wide"),
+                front,
+                Self.neighbour(12, host: "example.org", loading: true),
+                Self.neighbour(13),
+            ]
         }
         return window
+    }
+
+    private static func neighbour(_ id: UInt64, title: String = "", host: String = "", loading: Bool = false) -> WTTabSummary {
+        var summary = WTTabSummary()
+        summary.tabID = id
+        summary.title = title
+        summary.host = host
+        summary.loading = loading
+        return summary
     }
 
     private func page(_ window: inout WTWindowSnapshot, url: String, display: String, security: WTAddressView.Security) {
         window.tab.webViewID = 4
         window.tab.address.url = url
         window.tab.address.display = display
-        window.tab.address.host = "example.com"
+        window.tab.address.host = URLComponents(string: url)?.host ?? ""
         window.tab.address.registrableDomain = "example.com"
         window.tab.address.security = security
     }

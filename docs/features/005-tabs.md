@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress. The contract (1.1) and the core are built and tested; the shells still draw one tab, the one in front, and their tab strips are next (§9) |
+| **Status** | In progress. The contract (1.1), the core and the Apple shell are built and tested; the Android shell still draws one tab, the one in front, and its strip is next (§9) |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "tabs and windows" |
 | **Contract** | 1.1: `OpenTab`, `CloseTab`, `ActivateTab`, `TabOpened`, `TabSummary`; `WindowSnapshot.tabs` |
 | **Last updated** | 2026-11-19 |
@@ -71,8 +71,12 @@ Each shows a strip of the window's tabs above the toolbar: a tab's title (or its
 
 - The window's controls (back, forward, reload, the address field) act on the tab in front.
 - **Only the tab in front has its web view in the window.** The others' web views stay in the engine, out of every window, as a sleeping tab's will not.
-- A new tab is empty and in front, and the keyboard goes to the address field: there is nothing else to do in an empty tab.
-- Mac: ⌘T opens a tab; ⌘W closes the one in front.
+- A new tab is empty and in front, and the keyboard goes to the address field: there is nothing else to do in an empty tab. A tab with a page that comes in front keeps the keyboard out of the field.
+- What was typed in the address field and not sent is dropped when another tab comes in front: it was typed for the tab that was there.
+- Mac: ⌘T opens a tab; ⌘W closes the one in front, and on a window's last tab closes the window, as ⌘W does everywhere on a Mac (the core's rule is T1; this is the shell's idiom).
+- A tab that is loading has a dot before its name, not a spinner: it is marked, and stays still.
+
+**As built on Apple** (`TabStrip` in `BrowserWindowView.swift`): the names' widths grow with the text's size, so a short name is whole at the largest sizes, and a long title is cut to one line at any size and read out whole. Apple's audit said two things of a tab's button that are passed over, with the reason beside each in the audit's helper: that a tab named by its site ("webtiger-test.invalid") has a label nobody could read, and that one line of a title may be clipped.
 
 ## 6. Tests
 
@@ -104,6 +108,6 @@ Each shows a strip of the window's tabs above the toolbar: a tab's title (or its
 - [x] Contract 1.1 and its version in three places (and Kotlin's constant).
 - [x] The core: several tabs, their order, the one in front; open, close, activate.
 - [x] Core tests through `FakeShell`: 21, and two of its rules checked by breaking them.
-- [ ] Apple shell: the strip, ⌘T and ⌘W, the model's tests, a UI test, the pictures.
+- [x] Apple shell: the strip, ⌘T and ⌘W, the model's tests (3), UI tests (opening, switching and closing on the Mac and the iPhone; the shortcuts on the Mac), and the pictures recorded again with a strip, a state with several tabs among them.
 - [ ] Android shell: the strip, the model's tests, the device suite, the pictures.
 - [ ] `Tools/test.sh all` green.
