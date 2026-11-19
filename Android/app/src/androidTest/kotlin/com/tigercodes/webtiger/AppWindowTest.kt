@@ -297,6 +297,30 @@ internal class AppWindowTest {
         assertSame("the tab's own web view, as it was left", opener, shownWebView())
     }
 
+    /**
+     * A window that is refused the only place it was going leaves no tab behind (006). The
+     * page's link opens a window on a letter to write, which is for the system and not for a
+     * browser: the WebView makes the window before the core's policy refuses its address, and
+     * the core closes it.
+     */
+    @Test
+    fun aWindowRefusedItsAddressLeavesNoTab() {
+        awaitPage("Home")
+        type(site.url("/opener"))
+        awaitPage("Opener")
+        val opener = checkNotNull(shownWebView())
+
+        PageTouch.tap(opener, "letter")
+        // Whatever came and went, the page is in front again, and its other link works.
+        Thread.sleep(1_000)
+        awaitPage("Opener")
+        assertSame(opener, shownWebView())
+        PageTouch.tap(opener, "blank")
+
+        awaitPage("Opened")
+        compose.onAllNodesWithTag("tab").assertCountEquals(2)
+    }
+
     @Test
     fun theDesignCatalogueOpensInPlaceOfABrowser() {
         scenario.close()

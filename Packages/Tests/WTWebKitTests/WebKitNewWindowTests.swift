@@ -145,6 +145,61 @@ final class WebKitNewWindowTests: AdapterTestCase {
         XCTAssertNotEqual(next & WebKitEngine.ownID, 0)
     }
 
+    /// The failures a web view has reported, in order.
+    private func failures(_ id: UInt64) -> [WTNavigationFailed] {
+        reports(id).compactMap {
+            if case let .navigationFailed(failed) = $0 {
+                failed
+            } else {
+                nil
+            }
+        }
+    }
+
+    func testAWindowOpenedByScriptOnARefusedAddressSaysItWasRefused() async {
+        await opener()
+        // The core's policy refuses where the script sends the window.
+        core.setVerdict(.cancel, for: site.url("/landed"))
+
+        await run("window.open('/landed')", in: 1)
+        let new = await awaitWindow(askedBy: 1).newWebViewID
+
+        // For a window script opens, WebKit asks for the web view first and about the address
+        // after, in the new web view. The refusal is reported there, as one: the core closes
+        // the tab of a window that was refused the only place it was going.
+        await wait(new, "the refusal") { _ in !self.failures(new).isEmpty }
+        XCTAssertEqual(failures(new).map(\.code), ["net.cancelled"])
+        XCTAssertEqual(failures(new).map(\.refused), [true])
+        XCTAssertEqual(names(reports(new)).filter { $0 == "committed" }, [], "nothing committed in it")
+    }
+
+    func testAWindowRedirectedToARefusedAddressSaysItWasRefused() async {
+        await opener()
+        // The window's address is allowed; where the server sends it on to is not.
+        core.setVerdict(.cancel, for: site.url("/landed"))
+
+        await run("window.open('/redirect')", in: 1)
+        let new = await awaitWindow(askedBy: 1).newWebViewID
+
+        // The load began, so its end is what says it was refused.
+        await wait(new, "the load's end") { _ in self.failures(new).contains(where: \.refused) }
+        XCTAssertTrue(failures(new).allSatisfy { $0.code == "net.cancelled" })
+        XCTAssertEqual(failures(new).last?.refused, true, "the last word on the load is that it was refused")
+        XCTAssertEqual(names(reports(new)).filter { $0 == "committed" }, [])
+    }
+
+    func testALoadThatIsStoppedIsNotARefusal() async {
+        await create(1)
+        await load(1, site.url("/slow"))
+        await wait(1, "the load to start") { self.names($0).contains("started") }
+
+        await command(1, .stop)
+
+        await wait(1, "the load's end") { _ in !self.failures(1).isEmpty }
+        XCTAssertEqual(failures(1).map(\.code), ["net.cancelled"])
+        XCTAssertEqual(failures(1).map(\.refused), [false], "stopped, not refused")
+    }
+
     func testANewWindowTheCoreRefusesToNavigateSaysNothingOfThePageThatAsked() async {
         await opener()
         let before = names(reports(1))

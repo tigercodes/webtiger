@@ -39,7 +39,9 @@ import com.tigercodes.webtiger.core.v1.TitleChanged
  *   finished page when it was a redirect. Neither is a load.
  *
  * The two rules of engine.proto hold throughout: an address is reported as the page's only
- * from a commit, and a navigation refused on the core's verdict is reported as cancelled.
+ * from a commit, and a navigation refused on the core's verdict is reported as cancelled. A
+ * refusal that leaves the web view loading nothing is said to be one (`refused`): a window a
+ * page opened has then nothing to show, and the core closes its tab (006).
  */
 internal class PageTracker(private val webViewId: Long, private val report: (EngineEvent) -> Unit) {
     /** The core has been told a load began, and not yet how it ended. */
@@ -106,7 +108,9 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
             awaitingCommit = false
             heading = null
         }
-        emit(EngineEvent(web_view_id = webViewId, navigation_failed = NavigationFailed(code = "net.cancelled", url = url)))
+        // With another load still going, this is not the last word on the web view, and it is
+        // not said to be a refusal: that load's end will say how things stand.
+        emit(EngineEvent(web_view_id = webViewId, navigation_failed = NavigationFailed(code = "net.cancelled", url = url, refused = !loading)))
         // The core takes "cancelled" as the end of loading. A load that is still going is one
         // the refused navigation did not belong to, and it goes on.
         if (loading) emit(EngineEvent(web_view_id = webViewId, navigation_started = NavigationStarted(url = heading.orEmpty())))

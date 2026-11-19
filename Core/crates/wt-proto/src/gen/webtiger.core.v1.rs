@@ -504,6 +504,14 @@ pub struct NavigationFailed {
     pub code: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
     pub url: ::prost::alloc::string::String,
+    /// Since 1.3. The shell refused the navigation on the core's verdict, and
+    /// with that the web view is left loading nothing. `code` is
+    /// "net.cancelled", which is also how a load that was stopped or replaced
+    /// ends; this says which. A window a page opened that is refused the only
+    /// place it was going has nothing to show, and the core closes its tab
+    /// (006).
+    #[prost(bool, tag = "3")]
+    pub refused: bool,
 }
 /// The page on screen changed its own address without a load: a fragment, or
 /// the History API. Never the address a load is heading for.

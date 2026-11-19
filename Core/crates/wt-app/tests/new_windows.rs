@@ -406,6 +406,180 @@ fn a_page_that_closes_the_windows_only_tab_leaves_an_empty_one() {
     });
 }
 
+// A window that is refused the only place it was going
+
+#[test]
+fn a_window_whose_only_navigation_is_refused_is_closed() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (window, first, subscription, first_web_view) = a_page(&mut shell).await;
+        let last = shell.open_tab(window, "").await;
+        shell.activate_tab(first).await;
+        let new = ask(&mut shell, first_web_view, true).await;
+        assert_eq!(ids(&shell, subscription).len(), 3);
+
+        // An address for the system (a letter to write, a number to ring):
+        // the shell refused it on the core's verdict, and nothing else is
+        // on its way.
+        shell.report(FakeEngine::navigation_refused(
+            new,
+            "mailto:ada@example.com",
+        ));
+        shell.settle().await;
+
+        assert_eq!(ids(&shell, subscription), [first, last], "its tab is gone");
+        assert_eq!(
+            front(&shell, subscription).tab_id,
+            first,
+            "and the tab it came from is in front, as if nothing had opened"
+        );
+        assert_eq!(destroyed(&shell), [new]);
+        assert_eq!(shell.pending_host_requests(), 0);
+    });
+}
+
+#[test]
+fn a_load_that_was_stopped_or_replaced_closes_nothing() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (_, _, subscription, first_web_view) = a_page(&mut shell).await;
+        let new = ask(&mut shell, first_web_view, true).await;
+
+        // Cancelled, and not a refusal: another load took its place, or the
+        // user stopped it. The window may yet show a page.
+        shell.report(FakeEngine::navigation_started(
+            new,
+            "https://example.com/popup",
+        ));
+        shell.report(FakeEngine::navigation_failed(
+            new,
+            "net.cancelled",
+            "https://example.com/popup",
+        ));
+        shell.settle().await;
+
+        assert_eq!(ids(&shell, subscription).len(), 2);
+        assert_eq!(front(&shell, subscription).web_view_id, new);
+        assert_eq!(destroyed(&shell), [0u64; 0]);
+        // And it does: the page that replaced it arrives.
+        goes_to(&mut shell, new, "https://example.com/popup").await;
+        assert_eq!(front(&shell, subscription).title, "Popup");
+    });
+}
+
+#[test]
+fn a_refusal_closes_only_a_window_that_has_had_no_page() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (_, first, subscription, first_web_view) = a_page(&mut shell).await;
+        let new = ask(&mut shell, first_web_view, true).await;
+        goes_to(&mut shell, new, "https://example.com/popup").await;
+        let opened = front(&shell, subscription).tab_id;
+
+        // The window has a page, which then tries to go somewhere refused:
+        // the page is still there to look at.
+        shell.report(FakeEngine::navigation_refused(
+            new,
+            "mailto:ada@example.com",
+        ));
+        // And the same in a tab the user opened, with a page or without.
+        shell.report(FakeEngine::navigation_refused(
+            first_web_view,
+            "mailto:ada@example.com",
+        ));
+        shell.settle().await;
+
+        assert_eq!(ids(&shell, subscription), [first, opened]);
+        let tab = front(&shell, subscription);
+        assert_eq!(tab.tab_id, opened);
+        assert_eq!(tab.title, "Popup");
+        assert_eq!(tab.load_state(), LoadState::Idle);
+        assert_eq!(destroyed(&shell), [0u64; 0]);
+    });
+}
+
+#[test]
+fn a_refusal_never_closes_a_tab_the_user_opened() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (window, first, subscription, _) = a_page(&mut shell).await;
+        // A tab of the user's with a web view and no page: its load was stopped.
+        shell.engine.page("https://example.org/", "Another");
+        shell.hold_host = true;
+        let opening = shell.send(wt_proto::v1::request::Kind::OpenTab(
+            wt_proto::v1::OpenTab {
+                window_id: window,
+                text: "example.org".to_owned(),
+                background: false,
+                after_tab_id: 0,
+            },
+        ));
+        shell.settle().await;
+        let second = front(&shell, subscription).tab_id;
+        let web_view = created(&shell)[1];
+        shell.report(FakeEngine::navigation_failed(
+            web_view,
+            "net.cancelled",
+            "https://example.org/",
+        ));
+
+        shell.report(FakeEngine::navigation_refused(
+            web_view,
+            "mailto:ada@example.com",
+        ));
+        shell.settle().await;
+
+        assert_eq!(ids(&shell, subscription), [first, second]);
+        assert_eq!(destroyed(&shell), [0u64; 0]);
+        shell.release_host();
+        shell.settle().await;
+        assert!(shell.take_response(opening).is_some());
+    });
+}
+
+#[test]
+fn a_refusal_does_not_close_a_window_the_user_has_sent_somewhere() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        shell.engine.page("https://example.org/", "Another");
+        let (_, _, subscription, first_web_view) = a_page(&mut shell).await;
+        let new = ask(&mut shell, first_web_view, true).await;
+        let opened = front(&shell, subscription).tab_id;
+
+        // The user types an address in the new tab before its page has said
+        // where it wants to go; the shell is slow to load it.
+        shell.hold_host = true;
+        let typed = shell.send(wt_proto::v1::request::Kind::SubmitAddress(
+            wt_proto::v1::SubmitAddress {
+                tab_id: opened,
+                text: "example.org".to_owned(),
+            },
+        ));
+        shell.settle().await;
+        // Meanwhile what the page wanted is refused.
+        shell.report(FakeEngine::navigation_refused(
+            new,
+            "mailto:ada@example.com",
+        ));
+        shell.settle().await;
+
+        assert_eq!(
+            ids(&shell, subscription).len(),
+            2,
+            "the tab is the user's now"
+        );
+        shell.release_host();
+        shell.settle().await;
+        assert!(matches!(
+            shell.take_response(typed),
+            Some(response::Kind::Ack(_))
+        ));
+        let tab = front(&shell, subscription);
+        assert_eq!(tab.tab_id, opened);
+        assert_eq!(tab.title, "Another");
+    });
+}
+
 #[test]
 fn closing_the_window_destroys_the_web_views_the_shell_made_too() {
     run(async {

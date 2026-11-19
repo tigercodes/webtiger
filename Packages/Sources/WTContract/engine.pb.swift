@@ -204,6 +204,14 @@ public nonisolated struct WTNavigationFailed: Sendable {
 
   public var url: String = String()
 
+  /// Since 1.3. The shell refused the navigation on the core's verdict, and
+  /// with that the web view is left loading nothing. `code` is
+  /// "net.cancelled", which is also how a load that was stopped or replaced
+  /// ends; this says which. A window a page opened that is refused the only
+  /// place it was going has nothing to show, and the core closes its tab
+  /// (006).
+  public var refused: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -626,7 +634,7 @@ nonisolated extension WTNavigationFinished: SwiftProtobuf.Message, SwiftProtobuf
 
 nonisolated extension WTNavigationFailed: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".NavigationFailed"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}code\0\u{1}url\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}code\0\u{1}url\0\u{1}refused\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -636,6 +644,7 @@ nonisolated extension WTNavigationFailed: SwiftProtobuf.Message, SwiftProtobuf._
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.code) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.refused) }()
       default: break
       }
     }
@@ -648,12 +657,16 @@ nonisolated extension WTNavigationFailed: SwiftProtobuf.Message, SwiftProtobuf._
     if !self.url.isEmpty {
       try visitor.visitSingularStringField(value: self.url, fieldNumber: 2)
     }
+    if self.refused != false {
+      try visitor.visitSingularBoolField(value: self.refused, fieldNumber: 3)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: WTNavigationFailed, rhs: WTNavigationFailed) -> Bool {
     if lhs.code != rhs.code {return false}
     if lhs.url != rhs.url {return false}
+    if lhs.refused != rhs.refused {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

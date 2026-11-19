@@ -19,7 +19,7 @@ W0 proves the stack before any feature is built on it: one Rust core that every 
 | Core skeleton: `wt-core`, `wt-store`, `wt-app`, `wt-proto`, `wt-testkit` | Done | 82 Rust tests |
 | The contract (1.0) and `wt-ffi`: C ABI, core thread, fast path | Done | 21 Rust tests through the C functions; 8 Swift tests through the real library |
 | Apple shell loads a page through the core, in the Space's login set | **Done on macOS and the iPhone simulator** | 28 tests against real WKWebView (macOS 27.2, iOS 27 simulator; one is skipped on iOS, where a test process has no service workers); 5 UI tests on macOS and on the iPhone 17, iPhone Duo and iPad Air simulators |
-| Android shell loads a page through the core, in the Space's login set | **Done on an emulator** (Android 16, System WebView 133). Not run on a physical device ([003](003-android-shell.md)) | 123 JVM tests, 28 of them driving the real core through JNI; 54 on the emulator: the adapter suite against the real WebView (19, and 8 for new windows), isolation (12), sleep and wake (3), and the app's window in fake mode (12) |
+| Android shell loads a page through the core, in the Space's login set | **Done on an emulator** (Android 16, System WebView 133). Not run on a physical device ([003](003-android-shell.md)) | 125 JVM tests, 28 of them driving the real core through JNI; 57 on the emulator: the adapter suite against the real WebView (19, and 10 for new windows), isolation (12), sleep and wake (3), and the app's window in fake mode (13) |
 | Windows shell | **Not started.** It cannot be built on this Mac; it needs the Windows PC | — |
 | Fake mode | Done (core, Apple and Android shells) | The Apple apps' UI tests and the Android device suite's window tests run in it |
 | Design tokens and strings, one source for every shell | Done for Apple (Swift, String Catalog) and Android (Kotlin, `strings.xml`) | `lint` fails when the generated files are stale |
@@ -84,7 +84,7 @@ This is built in from the first commit, because it is the one thing that cannot 
 
 ## 5. The contract, version 1.0
 
-(W0's contract. W1 has added to it since: 1.1 is tabs, in [005](005-tabs.md) §4; 1.2 is a page that asks for a new window, in [006](006-new-windows.md) §4.)
+(W0's contract. W1 has added to it since: 1.1 is tabs, in [005](005-tabs.md) §4; 1.2 and 1.3 are a page that asks for a new window, in [006](006-new-windows.md) §4.)
 
 `Core/proto/webtiger/core/v1`. The C ABI is `Core/crates/wt-ffi/include/webtiger_core.h`.
 
@@ -139,12 +139,12 @@ Two rules every adapter keeps, found while building the first (and now in `engin
 
 `WTUI → WTWebKit → WTCoreClient → WTContract`, with `WTDesign` beside. The app targets hold one file.
 
-- **`NativeCore`** wraps the C ABI. Its handle is immutable, so the fast path takes no lock on the Swift side either. One task answers host requests in order.
+- **`NativeCore`** wraps the C ABI. Its handle is immutable, so the fast path takes no lock on the Swift side either. One task answers host requests in order. **A request is handed to the core before `send` returns** (F20): what was done first, the core hears first.
 - **`WebKitEngine`** answers the WebViews host service. A login set is `WKWebsiteDataStore(forIdentifier:)`; a private one is `.nonPersistent()`. The engine holds each login set's store itself, one for all of its web views (F17).
 - **`BrowserWindowView`**: back, forward, reload or stop, the address field with its security mark, a progress line, and the page, an empty tab, or a failed page in words. ⌘L goes to the address field.
 - The package builds **without** the Rust core too (`ScriptedCore`), so a screen can be worked on first.
 
-**Verified:** the package's tests on macOS (65) and on the iPhone 17 simulator (66); the app's UI tests on macOS (8) and the iPhone 17 simulator (7); the five there were before tabs also on the iPhone Duo and iPad Air 11-inch simulators. The Duo's run is where the audit found the failed page's words cut short at the largest text sizes (004 §5.1). **Not yet looked at:** what the iPad's window should be (it is the phone's, larger), Stage Manager, multiple windows, the Duo folded.
+**Verified:** the package's tests on macOS (73) and on the iPhone 17 simulator (74); the app's UI tests on macOS (9) and the iPhone 17 simulator (8); the five there were before tabs also on the iPhone Duo and iPad Air 11-inch simulators. The Duo's run is where the audit found the failed page's words cut short at the largest text sizes (004 §5.1). **Not yet looked at:** what the iPad's window should be (it is the phone's, larger), Stage Manager, multiple windows, the Duo folded.
 
 ## 7. Fake mode
 
@@ -162,14 +162,14 @@ Tools/test.sh lint | core | unit | ios | build | ui | all
 |---|---|---|
 | `wt-core` | 28 | Address fix-up, the registrable domain, the navigation policy, ids |
 | `wt-store` | 7 | Migrations, a newer store refused, SQLite's build flags |
-| `wt-app` | 80 | A tab's life and the contract's rules, through `FakeShell` (45); several tabs (21, [005](005-tabs.md)); a page that asks for a new window (14, [006](006-new-windows.md)) |
+| `wt-app` | 85 | A tab's life and the contract's rules, through `FakeShell` (45); several tabs (21, [005](005-tabs.md)); a page that asks for a new window (19, [006](006-new-windows.md)) |
 | `wt-ffi` | 21 | The header matches the exports; the core through its C functions, from many threads |
 | `wt-proto` | 3 | The contract's version is the same in three places |
 | `wt-import`, `wt-cli` | 36 | 002 |
-| Swift package | 65 (66 on the iPhone simulator) | The real core through Swift (8); the WebKit adapter, isolation and restore (28), and a page that asks for a new window (8, [006](006-new-windows.md)); the window's model (12); the design catalogue as pictures (5, and one more on the iPhone for the largest text size); `ScriptedCore` (4) |
-| Android (JVM) | 123 | The real core through JNI from Kotlin (28); the adapter's rules, the error codes, the window's model; the design catalogue as pictures (9) |
-| Android (on an emulator) | 54 | The adapter suite against the real System WebView (19); a page that asks for a new window (8, [006](006-new-windows.md)); isolation between login sets (12); sleep and wake (3); the app's window in fake mode (12), with Android's accessibility checks. `Tools/test.sh android-device`, not part of `all` |
-| App UI tests | 8 on the Mac, 7 on the iPhone | A page loads through the core; typing an address; a failure in words; Apple's accessibility audit over the empty tab and the failed page; the design catalogue opens and passes the audit; tabs open, switch and close (005), and the Mac's ⌘T and ⌘W; a link that opens a window opens a tab (006) |
+| Swift package | 73 (74 on the iPhone simulator) | The real core through Swift (11); the WebKit adapter, isolation and restore (28), and a page that asks for a new window (11, [006](006-new-windows.md)); the window's model (13); the design catalogue as pictures (5, and one more on the iPhone for the largest text size); `ScriptedCore` (5) |
+| Android (JVM) | 125 | The real core through JNI from Kotlin (28); the adapter's rules, the error codes, the window's model; the design catalogue as pictures (9) |
+| Android (on an emulator) | 57 | The adapter suite against the real System WebView (19); a page that asks for a new window (10, [006](006-new-windows.md)); isolation between login sets (12); sleep and wake (3); the app's window in fake mode (13), with Android's accessibility checks. `Tools/test.sh android-device`, not part of `all` |
+| App UI tests | 9 on the Mac, 8 on the iPhone | A page loads through the core; typing an address; a failure in words; Apple's accessibility audit over the empty tab and the failed page; the design catalogue opens and passes the audit; tabs open, switch and close (005), and the Mac's ⌘T and ⌘W; a link that opens a window opens a tab, and a window refused its address leaves none (006) |
 
 **The adapter suite** (`Packages/Tests/WTWebKitTests`) is the bar every engine adapter must clear (000 §8.3): event order, redirects, address changes, history, failures as codes, the navigation policy, host requests for web views that do not exist, release on destroy, and **isolation**: sign in under one login set and another sees no cookie, no local storage, no database, no cache, no service worker and no copy in the HTTP cache; the web views of one private login set share it, and it is forgotten with the last of them; a sign-in for the session outlives the last web view of its login set; a deleted login set leaves nothing.
 
@@ -202,6 +202,7 @@ Small ones, each made where the plan was silent or wrong. None changes a decisio
 | F18 | A window keeps a snapshot that arrives before it knows which subscription is its own | The core sends a subscription's first snapshot at once, with its answer (§5), and a shell takes answers and events off the core by different paths. The Android session was built to keep such a snapshot; the Apple one dropped it, and a window would then have shown nothing until the page next changed |
 | F19 | Apple's accessibility audit does not judge contrast on a screen of one pixel a point, nor a fault it gives no element for | The audit measures contrast from the screen. On GitHub's Mac (1024 × 768, one pixel a point) small text is drawn in greys that never reach its colour, and plain black on white was faulted; the recording kept from its run shows the screen. The same windows pass on a Mac whose points have four pixels. And macOS 27.0, which that runner has, reports a mismatch in the hierarchy with no element to name for every state of the window, where 27.2 reports none: a fault that cannot be named cannot be mended |
 | F14 | Words a person must read are in the primary colour, the retry button is neutral, and the light accent is `#C2410C` | Apple's accessibility audit failed the system's secondary grey, a tinted button label and the first accent (4.3:1 on white; the new one is 5.2:1). The audit now runs in the UI tests on both platforms |
+| F20 | The Swift client sends a request before `send` returns; only the answer is waited for | The window's model used to start a task for each gesture and send from inside it. Two tasks may run in either order, and against the real core sixty requests sent in a row arrived shuffled, every time it was tried: a Stop could overtake the load it was meant to stop. Found when a test of the tab strip's three requests failed once on the iPhone simulator. Android's client was already in order: its requests are sent from coroutines the main thread starts one after the other |
 
 ## 10. Spikes
 

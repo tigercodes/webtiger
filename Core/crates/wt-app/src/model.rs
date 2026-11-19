@@ -45,6 +45,8 @@ pub(crate) struct Tab {
     opener: Option<TabId>,
     /// A page opened this tab, and so a page may close it.
     opened_by_page: bool,
+    /// A page has owned the web view at some time.
+    had_page: bool,
 }
 
 impl Tab {
@@ -64,6 +66,7 @@ impl Tab {
             login_set,
             opener: None,
             opened_by_page: false,
+            had_page: false,
         }
     }
 
@@ -99,6 +102,7 @@ impl Tab {
                 // An address the engine reports but the parser refuses is
                 // shown as no address at all rather than as the old one.
                 self.committed = Address::parse(&committed.url).ok();
+                self.had_page = true;
                 self.pending = None;
                 self.title.clear();
             }
@@ -470,6 +474,16 @@ impl State {
         self.close_tab(tab_id).flatten()
     }
 
+    /// Whether a web view is a window a page opened that has nothing to show
+    /// and nowhere to go: no page has ever owned it, and the user has sent
+    /// its tab nowhere.
+    fn has_nothing_to_show(&self, web_view: WebViewId) -> bool {
+        self.web_views
+            .get(&web_view)
+            .and_then(|tab_id| self.tabs.get(tab_id))
+            .is_some_and(|tab| tab.opened_by_page && !tab.had_page && tab.pending.is_none())
+    }
+
     /// A shell's report about a web view. One the model no longer has (its
     /// window closed while the report was on its way) is ignored. Returns a
     /// web view the shell must now be told to destroy, when the report
@@ -488,6 +502,16 @@ impl State {
                 );
             }
             engine_event::Kind::CloseRequested(_) => return self.close_requested(web_view),
+            // The only place a window a page opened was going was refused,
+            // and nothing else is loading in it: its tab is closed, as if
+            // the window had not been opened. (A load that was stopped or
+            // replaced ends as cancelled too, and closes nothing.)
+            engine_event::Kind::NavigationFailed(ref failed)
+                if failed.refused && self.has_nothing_to_show(web_view) =>
+            {
+                let tab_id = *self.web_views.get(&web_view)?;
+                return self.close_tab(tab_id).flatten();
+            }
             _ => {}
         }
         // A web view no tab has: nothing changes, and nothing is destroyed.

@@ -101,9 +101,11 @@
       "body": [
         "<p><a id=\"blank\" href=\"/opened\" target=\"_blank\">new window</a></p>",
         "<p><button id=\"open\" onclick=\"window.open('/opened')\">open</button></p>",
+        "<p><a id=\"letter\" href=\"mailto:ada@example.com\" target=\"_blank\">write a letter</a></p>",
+        "<p><button id=\"ring\" onclick=\"window.open('tel:+15550100')\">ring</button></p>",
         "<script>addEventListener('message', (said) => { document.title = 'heard=' + said.data; });</script>"
       ],
-      "note": "Asks for new windows when clicked: a link with a target, and a button that calls window.open. Says in its title what a window it opened told it."
+      "note": "Asks for new windows when clicked: a link with a target, and a button that calls window.open. Says in its title what a window it opened told it. Its other link and button ask for windows on addresses that are for the system and not for a browser: a letter to write, a number to ring."
     },
     {
       "path": "/opened",

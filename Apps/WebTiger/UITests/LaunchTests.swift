@@ -153,6 +153,26 @@ final class LaunchTests: XCTestCase {
         expect(field, toShow: "http://127.0.0.1:\(site.port)/opener")
     }
 
+    /// A window that is refused the only place it was going leaves no tab behind (006). The
+    /// page's button opens a window on a number to ring, which is for the system and not for
+    /// a browser: the core's policy refuses it, and the window has nothing to show.
+    func testAWindowRefusedItsAddressLeavesNoTab() {
+        let app = launch(start: site.url("/opener"))
+        XCTAssertTrue(pageShows("Opener", in: app), "the page loaded")
+        let tabs = app.buttons.matching(identifier: "tab")
+
+        let ring = app.webViews.buttons["ring"]
+        XCTAssertTrue(ring.waitForExistence(timeout: 30), "the page's button is there to click")
+        press(ring)
+
+        // The page is in front again, and its link works: nothing was left in the way.
+        let link = app.webViews.links["new window"]
+        XCTAssertTrue(link.waitForExistence(timeout: 30), "the page that asked is in front")
+        press(link)
+        XCTAssertTrue(pageShows("Opened", in: app), "the link's page is in front")
+        XCTAssertEqual(tabs.count, 2, "the page and what its link opened: the refused window left no tab")
+    }
+
     #if os(macOS)
         /// ⌘T opens a tab; ⌘W closes the one in front, and on the last tab the window.
         func testTheMacsTabShortcuts() {

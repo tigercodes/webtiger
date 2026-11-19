@@ -7,6 +7,7 @@ package com.tigercodes.webtiger.webview
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.tigercodes.webtiger.core.NavigationVerdict
+import com.tigercodes.webtiger.core.v1.NavigationCommand
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
@@ -158,10 +159,42 @@ internal class SystemWebViewNewWindowTest : AdapterTestCase() {
         tap(1, "blank")
 
         // The WebView asks for the window before it says where it goes, so the web view is
-        // made; its load is then refused, and reported as cancelled.
+        // made; its load is then refused, and reported as cancelled, and as a refusal: the
+        // core closes the tab of a window that was refused the only place it was going.
         val new = awaitWindow(askedBy = 1).new_web_view_id
-        await(new, "the refused load to be reported") { reports -> reports.any { it.navigation_failed?.code == "net.cancelled" } }
+        await(new, "the refused load to be reported") { reports -> reports.any { it.navigation_failed != null } }
+        assertEquals(listOf("net.cancelled" to true), reports(new).mapNotNull { it.navigation_failed }.map { it.code to it.refused })
         assertEquals("nothing committed in it", emptyList<String>(), addresses(new))
         assertEquals("the page that asked went nowhere", listOf("window"), names(reports(1)).drop(before.size))
+    }
+
+    @Test
+    fun aWindowRedirectedToARefusedAddressSaysItWasRefused() {
+        opener()
+        // Where the window is first sent is allowed; where the server sends it on to is not.
+        core.setVerdict(NavigationVerdict.CANCEL, site.url("/landed"))
+        show(1)
+        run(1, "document.getElementById('open').setAttribute('onclick', \"window.open('/redirect')\");")
+
+        tap(1, "open")
+        val new = awaitWindow(askedBy = 1).new_web_view_id
+
+        await(new, "the load's end") { reports -> reports.any { it.navigation_failed?.refused == true } }
+        val failures = reports(new).mapNotNull { it.navigation_failed }
+        assertTrue(failures.all { it.code == "net.cancelled" })
+        assertEquals("the last word on the load is that it was refused", true, failures.last().refused)
+        assertEquals(emptyList<String>(), addresses(new))
+    }
+
+    @Test
+    fun aLoadThatIsStoppedIsNotARefusal() {
+        create(1)
+        load(1, site.url("/slow"))
+        await(1, "the load to start") { reports -> reports.any { it.navigation_started != null } }
+
+        command(1, NavigationCommand.NAVIGATION_COMMAND_STOP)
+
+        await(1, "the load's end") { failed(it) }
+        assertEquals(listOf("net.cancelled" to false), reports(1).mapNotNull { it.navigation_failed }.map { it.code to it.refused })
     }
 }

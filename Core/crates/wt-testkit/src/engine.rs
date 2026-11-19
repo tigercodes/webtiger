@@ -229,7 +229,11 @@ impl FakeEngine {
         if let Some(code) = failure {
             events.push(event(
                 id,
-                engine_event::Kind::NavigationFailed(NavigationFailed { code, url: at }),
+                engine_event::Kind::NavigationFailed(NavigationFailed {
+                    code,
+                    url: at,
+                    refused: false,
+                }),
             ));
             return events;
         }
@@ -351,6 +355,21 @@ impl FakeEngine {
             engine_event::Kind::NavigationFailed(NavigationFailed {
                 code: code.to_owned(),
                 url: url.to_owned(),
+                refused: false,
+            }),
+        )
+    }
+
+    /// The report of a navigation the shell refused on the core's verdict,
+    /// with nothing else loading in the web view.
+    #[must_use]
+    pub fn navigation_refused(id: u64, url: &str) -> EngineEvent {
+        event(
+            id,
+            engine_event::Kind::NavigationFailed(NavigationFailed {
+                code: "net.cancelled".to_owned(),
+                url: url.to_owned(),
+                refused: true,
             }),
         )
     }

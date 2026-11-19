@@ -60,6 +60,13 @@ message NavigationFailed {
   // "net.connect", "net.timeout", "net.tls", "net.failed".
   string code = 1;
   string url = 2 [(wt.redact) = true];
+  // Since 1.3. The shell refused the navigation on the core's verdict, and
+  // with that the web view is left loading nothing. `code` is
+  // "net.cancelled", which is also how a load that was stopped or replaced
+  // ends; this says which. A window a page opened that is refused the only
+  // place it was going has nothing to show, and the core closes its tab
+  // (006).
+  bool refused = 3;
 }
 
 // The page on screen changed its own address without a load: a fragment, or

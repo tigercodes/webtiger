@@ -27,7 +27,7 @@ class PageTrackerTest {
         event.navigation_started?.let { return "started ${it.url}".trim() }
         event.navigation_committed?.let { return "committed ${it.url}" }
         event.navigation_finished?.let { return "finished" }
-        event.navigation_failed?.let { return "failed ${it.code} ${it.url}".trim() }
+        event.navigation_failed?.let { return "failed ${it.code} ${it.url}".trim() + if (it.refused) " (refused)" else "" }
         event.address_changed?.let { return "address ${it.url}" }
         event.title_changed?.let { return "title ${it.title}" }
         event.progress_changed?.let { return "progress ${it.fraction}" }
@@ -124,7 +124,8 @@ class PageTrackerTest {
     fun aNavigationRefusedOnTheCoresVerdict() {
         load(A)
         tracker.navigationRefused("mailto:ada@example.com", isRedirect = false)
-        assertEquals(listOf("failed net.cancelled mailto:ada@example.com"), told())
+        // Cancelled, and said to be a refusal: nothing else is loading in the web view.
+        assertEquals(listOf("failed net.cancelled mailto:ada@example.com (refused)"), told())
         // The engine reports the refused navigation's end as a finished page: not the page's.
         tracker.pageFinished("mailto:ada@example.com")
         tracker.progress(100)
@@ -132,11 +133,31 @@ class PageTrackerTest {
     }
 
     @Test
+    fun aWindowAPageOpenedThatIsRefusedTheOnlyPlaceItWasGoing() {
+        // A new web view, nothing loaded: the WebView asks about its first address, and the
+        // policy says no (006).
+        tracker.navigationRefused("mailto:ada@example.com", isRedirect = false)
+        assertEquals(listOf("failed net.cancelled mailto:ada@example.com (refused)"), told())
+        tracker.progress(10)
+        tracker.progress(100)
+        assertEquals("and nothing more is said of it", emptyList<String>(), told())
+    }
+
+    @Test
+    fun aLoadThatIsStoppedIsNotARefusal() {
+        tracker.willLoad(A)
+        tracker.progress(10)
+        told()
+        tracker.willStop()
+        assertEquals(listOf("failed net.cancelled $A"), told())
+    }
+
+    @Test
     fun aNavigationRefusedAsObserved() {
         load(A)
         // A link the page followed, refused: the WebView then reports progress and no page.
         tracker.navigationRefused(X, isRedirect = false)
-        assertEquals(listOf("failed net.cancelled $X"), told())
+        assertEquals(listOf("failed net.cancelled $X (refused)"), told())
         tracker.progress(10)
         tracker.progress(100)
         tracker.progress(100)
@@ -165,7 +186,8 @@ class PageTrackerTest {
         tracker.progress(10)
         told()
         tracker.navigationRefused("file:///etc/passwd", isRedirect = true)
-        assertEquals(listOf("failed net.cancelled file:///etc/passwd"), told())
+        // The load was sent on to the refused address, and ends with it.
+        assertEquals(listOf("failed net.cancelled file:///etc/passwd (refused)"), told())
         tracker.pageFinished("file:///etc/passwd")
         tracker.progress(100)
         assertEquals("the load is over, and nothing more is said of it", emptyList<String>(), told())
@@ -178,6 +200,7 @@ class PageTrackerTest {
         told()
         // The page still on screen tries something the policy refuses; the user's load goes on.
         tracker.navigationRefused("javascript:void(0)", isRedirect = false)
+        // Not said to be a refusal: the web view is still loading something.
         assertEquals(listOf("failed net.cancelled javascript:void(0)", "started $B"), told())
         // The refused navigation's own progress does not end the load that is going on.
         tracker.progress(10)

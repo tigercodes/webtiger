@@ -130,7 +130,7 @@ internal object TestSitePages {
                 status = "200 OK",
                 type = "text/html",
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
-                body = listOf(TestSitePiece.Text("<!doctype html><title>Opener</title><h1>Opener</h1><p><a id=\"blank\" href=\"/opened\" target=\"_blank\">new window</a></p>\n<p><button id=\"open\" onclick=\"window.open('/opened')\">open</button></p>\n<script>addEventListener('message', (said) => { document.title = 'heard=' + said.data; });</script>")),
+                body = listOf(TestSitePiece.Text("<!doctype html><title>Opener</title><h1>Opener</h1><p><a id=\"blank\" href=\"/opened\" target=\"_blank\">new window</a></p>\n<p><button id=\"open\" onclick=\"window.open('/opened')\">open</button></p>\n<p><a id=\"letter\" href=\"mailto:ada@example.com\" target=\"_blank\">write a letter</a></p>\n<p><button id=\"ring\" onclick=\"window.open('tel:+15550100')\">ring</button></p>\n<script>addEventListener('message', (said) => { document.title = 'heard=' + said.data; });</script>")),
                 delayMilliseconds = 0,
             ),
             TestSitePage(

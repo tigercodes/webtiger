@@ -275,6 +275,10 @@ private final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
     private var provisional = false
     /// The address last reported as the page on screen, by a commit or an address change.
     private var reportedURL: URL?
+    /// A navigation was refused on the core's verdict while a load had started and not yet
+    /// committed. If that load now ends as interrupted, the refusal was of where it was
+    /// redirected to, and the load's end is the refusal's.
+    private var refusedWhileProvisional = false
 
     init(id: UInt64, webView: WKWebView, loginSet: UUID, isPrivate: Bool, engine: WebKitEngine) {
         self.id = id
@@ -381,6 +385,11 @@ private final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
                 var failed = WTNavigationFailed()
                 failed.code = "net.cancelled"
                 failed.url = action.request.url?.absoluteString ?? ""
+                // A refusal that leaves the web view loading nothing is said to be one: a
+                // window a page opened then has nothing to show (006). With a load on its
+                // way, it is that load's end that will say.
+                refusedWhileProvisional = provisional
+                failed.refused = !provisional && !webView.isLoading
                 engine?.report(id, .navigationFailed(failed))
             }
             return .cancel
@@ -396,6 +405,7 @@ private final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     func webView(_ webView: WKWebView, didCommit _: WKNavigation?) {
         provisional = false
+        refusedWhileProvisional = false
         reportedURL = webView.url
         var committed = WTNavigationCommitted()
         committed.url = webView.url?.absoluteString ?? ""
@@ -410,7 +420,11 @@ private final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     func webView(_: WKWebView, didFailProvisionalNavigation _: WKNavigation?, withError error: any Error) {
         provisional = false
-        failed(error)
+        // "Frame load interrupted" after a refusal: the load was redirected to the address
+        // that was refused, and ends with it.
+        let interrupted = (error as NSError).domain == "WebKitErrorDomain" && (error as NSError).code == 102
+        failed(error, refused: refusedWhileProvisional && interrupted)
+        refusedWhileProvisional = false
     }
 
     func webView(_: WKWebView, didFail _: WKNavigation?, withError error: any Error) {
@@ -422,11 +436,12 @@ private final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
         engine?.report(id, .rendererGone(WTRendererGone()))
     }
 
-    private func failed(_ error: any Error) {
+    private func failed(_ error: any Error, refused: Bool = false) {
         let error = error as NSError
         var failed = WTNavigationFailed()
         failed.code = WebKitEngine.code(for: error)
         failed.url = (error.userInfo[NSURLErrorFailingURLErrorKey] as? URL)?.absoluteString ?? ""
+        failed.refused = refused
         engine?.report(id, .navigationFailed(failed))
     }
 
