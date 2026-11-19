@@ -141,8 +141,10 @@ internal class SystemWebViewNewWindowTest : AdapterTestCase() {
 
         assertNull(webView(new))
         assertEquals(1, onMain { engine.webViewCount })
-        // The page that asked is as it was, and can ask again; the next window has a new id.
-        assertEquals("Opener", lastTitle(1))
+        // The page that asked can ask again; the next window has a new id. (That page is not
+        // said to be as it was: the WebView makes a window and starts its page before the core
+        // can refuse it, and once in a few dozen runs the page opened had already run, and
+        // spoken to the page that opened it, by the time it was destroyed. 006 §8.)
         tap(1, "open")
         val next = awaitWindow(askedBy = 1, count = 2).new_web_view_id
         assertNotEquals(new, next)

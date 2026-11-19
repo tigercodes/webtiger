@@ -129,6 +129,7 @@ A refused navigation was already reported as `net.cancelled` (engine.proto's sec
 - Windows asked for with a size and a place (`window.open` with features): every one becomes a tab.
 - An address for the system is still only refused: handing it to the system (the mail app, the dialler) is the System host service's, later in W1. The tab that would have been left behind is closed; nothing is opened in its place yet.
 - A refusal while another load is on its way in a window that has never had a page: not marked, by design, and not seen in any test page.
+- **That a window the core refuses never ran its page.** On Android the WebView makes the window and starts its page at once; the refusal destroys it a moment later. A test that destroys such a window, as the core does, said the page that asked was "as it was" afterwards; on 2026-11-19, once in a few dozen runs, the page opened had already loaded, run its script and sent its opener a message. The test no longer says so. With the real core the refusal follows the request without waiting for anything, but nothing holds the page back until then: doing that needs the shell to be told a window was accepted, which the contract does not say.
 - Windows: not started.
 
 ## 9. Done checklist
