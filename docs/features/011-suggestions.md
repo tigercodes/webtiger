@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built and tested in the store, the core, the Apple shell and the Android shell (on an emulator). The Mac app's own test of it has not run yet (§8). Windows is not started |
+| **Status** | Built and tested in the store, the core, the Apple shell and the Android shell (on an emulator). Windows is not started. What it leaves out is in §2 |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "the address field with fix-up and search". Local suggestions (000 §5.10: "local suggestions always") |
 | **Contract** | 1.7: `SuggestAddresses`, `AddressSuggestions`, `AddressSuggestion` |
 | **Builds on** | [008](008-history.md): history and its words |
@@ -90,7 +90,7 @@ On a Mac the arrow keys move through the list and Return goes to the one marked;
 | The shells' models | Apple (`SuggestionModelTests`, 8): typing asks, each letter, and what the model itself puts in the field does not; the last answer is shown; the list goes when the field is emptied or loses the keyboard, and an answer that comes after is dropped; choosing goes there and puts the list away; the arrow keys mark, go round, and Return goes to the place marked or sends what was typed; typing again unmarks; another tab in front puts the list away; what was typed before the first snapshot stays; the padlock is the page's. Android (`SuggestionModelTest`, 8): the same but the keys, with an answer held back by the test and let go late, and a picture's model keeping what it was made with |
 | The list drawn | Android (`SuggestionListTest`, 3, on the JVM): nothing is listed, and nothing asked, until something is typed; what is typed is asked about and the places are listed by title and address, with no padlock beside what was typed; choosing one sends its address and the list is gone |
 | Pictures | The list under the field, with a title, a title too long for the list, and a place with none: light and dark, on the Mac, the iPhone and Android |
-| The apps, with the real core and engine | A page is visited, the start of a word of its title is typed, it alone is offered, and choosing it goes there. iPhone simulator: with Apple's audit over the list. Android emulator: with Android's accessibility checks, the keyboard alone offering nothing, and the system's Back putting the list away; and a long press on the field at rest, which is not typing (it fails with the field as it was). The Mac: written, with Escape and the arrow key and Return; **not yet run** (§8) |
+| The apps, with the real core and engine | A page is visited, the start of a word of its title is typed, it alone is offered, and choosing it goes there. iPhone simulator: with Apple's audit over the list. Android emulator: with Android's accessibility checks, the keyboard alone offering nothing, and the system's Back putting the list away; and a long press on the field at rest, which is not typing (it fails with the field as it was). The Mac: the same, and Escape puts the list away and leaves what was typed, typing on brings it back, and the arrow key and Return go to the place marked |
 
 ## 7. Measured
 
@@ -109,7 +109,7 @@ Within the budget, on a Mac. Not measured: a phone. What bounds the cost is look
 
 ## 8. What is not verified
 
-- **The Mac app's own test.** It was written and started, and did not get as far as the app: three dialogs of the system's were on this Mac's screen (put there by another test, [007](007-outside-links.md) §8), and the Mac's UI suite cannot run until somebody answers them. The Mac's list is tested through its model and its pictures, and the same test passes on the iPhone simulator; Escape, the arrow key and Return in the Mac app itself are what was not seen.
+- **The arrow keys beyond the first place.** The Mac app's test marks the first place and goes there; going down the list, round, and up again is the model's test, not the app's. (The app's test ran a few hours after the rest: dialogs of the system's were on this Mac's screen, put there by another test, [007](007-outside-links.md) §8, and the Mac's UI suite waited for a person to answer them.)
 - **A phone.** The budget was measured on a Mac (§7); the Android list ran on an emulator.
 - **Much history.** The order was tested with a handful of visits and measured with 100,000 made up ones; nobody has looked at what it offers for a real year of browsing.
 - **Other scripts.** The words are history's (008): what is offered for text in a script without spaces between words was not tried.
@@ -120,8 +120,7 @@ Within the budget, on a Mac. Not measured: a phone. What bounds the cost is look
 - [x] Contract 1.7 and its version in every place it is written.
 - [x] The core: the request. 6 tests through `FakeShell`.
 - [x] The measurement (§7).
-- [x] Apple: the list, the keys, the model's tests (8), pictures, a UI test on the iPhone simulator.
-- [ ] The Mac app's UI test, run (§8).
+- [x] Apple: the list, the keys, the model's tests (8), pictures, a UI test on the Mac and the iPhone simulator.
 - [x] Android: the list, the model's tests (8) and the list's (3), pictures, a device test.
-- [ ] `Tools/test.sh all` green: every stage but the Mac's UI suite (§8). `android-device` green.
+- [x] `Tools/test.sh all` green, and `android-device` (78 on the emulator).
 - [ ] Windows shell.
