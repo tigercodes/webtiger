@@ -174,6 +174,7 @@ internal abstract class AdapterTestCase {
                 report.history_changed != null -> "history"
                 report.renderer_gone != null -> "gone"
                 report.new_window_requested != null -> "window"
+                report.find_result != null -> "found(${report.find_result?.current} of ${report.find_result?.matches})"
                 report.close_requested != null -> "close"
                 report.outside_link_requested != null -> "outside"
                 else -> null

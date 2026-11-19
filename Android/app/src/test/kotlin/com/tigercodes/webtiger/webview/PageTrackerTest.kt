@@ -487,4 +487,47 @@ class PageTrackerTest {
         assertEquals(1, said.count { it == "finished" })
         assertTrue(said.none { it.startsWith("failed") })
     }
+
+    @Test
+    fun aCommitSaysWhetherItIsANewPage() {
+        val reported = ArrayList<EngineEvent>()
+        val tracker = PageTracker(7) { reported.add(it) }
+        tracker.willLoad("https://example.com/")
+        tracker.pageStarted("https://example.com/")
+        assertEquals("a load that commits is a new page", true, tracker.committed("https://example.com/", canGoBack = false, canGoForward = false))
+        tracker.pageFinished("https://example.com/")
+
+        // The page changes its own address: the document is the same one, and so is what
+        // was found in it (010 §3).
+        assertEquals(false, tracker.committed("https://example.com/#part", canGoBack = true, canGoForward = false))
+        assertEquals(false, tracker.committed("https://example.com/pushed", canGoBack = true, canGoForward = false))
+
+        tracker.pageStarted("https://example.com/next")
+        assertEquals(true, tracker.committed("https://example.com/next", canGoBack = true, canGoForward = false))
+    }
+
+    @Test
+    fun whatIsFoundWhileANewPageIsOnItsWayIsNotPassedOn() {
+        val reported = ArrayList<EngineEvent>()
+        val tracker = PageTracker(7) { reported.add(it) }
+        tracker.willLoad("https://example.com/")
+        tracker.pageStarted("https://example.com/")
+        tracker.committed("https://example.com/", canGoBack = false, canGoForward = false)
+        tracker.pageFinished("https://example.com/")
+        tracker.findResult(activeOrdinal = 1, matches = 3)
+        assertEquals("in a page that is there, a find's result is reported", 1, reported.count { it.find_result != null })
+
+        // Another page is on its way: the WebView finds the old text in the new document
+        // before it says the page committed, and nobody asked.
+        tracker.pageStarted("https://example.com/next")
+        tracker.findResult(activeOrdinal = 0, matches = 0)
+        tracker.findResult(activeOrdinal = 0, matches = 3)
+        assertEquals(1, reported.count { it.find_result != null })
+
+        // Once it is there, a find in it is reported again.
+        tracker.committed("https://example.com/next", canGoBack = true, canGoForward = false)
+        tracker.findResult(activeOrdinal = 0, matches = 2)
+        assertEquals(2, reported.count { it.find_result != null })
+        assertEquals(2, reported.last { it.find_result != null }.find_result?.matches)
+    }
 }

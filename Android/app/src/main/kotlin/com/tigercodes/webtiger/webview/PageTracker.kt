@@ -135,8 +135,11 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
         begin(url)
     }
 
-    /** `doUpdateVisitedHistory`: a main-frame navigation committed at `url`. */
-    fun committed(url: String, canGoBack: Boolean, canGoForward: Boolean) {
+    /**
+     * `doUpdateVisitedHistory`: a main-frame navigation committed at `url`. True when it is a
+     * new page, and not the page changing its own address.
+     */
+    fun committed(url: String, canGoBack: Boolean, canGoForward: Boolean): Boolean {
         val newDocument = awaitingCommit || url == lateCommit
         awaitingCommit = false
         lateCommit = null
@@ -149,6 +152,7 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
         }
         pageUrl = url
         emit(EngineEvent(web_view_id = webViewId, history_changed = HistoryChanged(can_go_back = canGoBack, can_go_forward = canGoForward)))
+        return newDocument
     }
 
     /** `onPageFinished`. */
@@ -224,8 +228,13 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
     /**
      * `FindListener`, once the engine has finished counting: which match is shown, counted
      * from 0, and how many there are (010). The WebView counts, so the report says so.
+     *
+     * Nothing is passed on while a new page is on its way: the WebView goes on with a find in
+     * the new document before it says the page has committed, and reports what it finds there
+     * unasked. The commit ends the find.
      */
     fun findResult(activeOrdinal: Int, matches: Int) {
+        if (awaitingCommit) return
         val total = matches.coerceAtLeast(0)
         val current = if (total > 0) (activeOrdinal + 1).coerceIn(1, total) else 0
         emit(EngineEvent(web_view_id = webViewId, find_result = FindResult(found = total > 0, counted = true, matches = total, current = current)))

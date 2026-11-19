@@ -106,6 +106,22 @@ internal class SystemWebViewFindTest : AdapterTestCase() {
     }
 
     @Test
+    fun aNewPageIsNotLookedInUntilItIsAsked() {
+        page()
+        found("needle")
+        assertEquals("2 of 3", found("needle"))
+        val loads = reports(1).count { it.navigation_finished != null }
+        val said = results().size
+
+        load(1, site.url("/find"))
+        await(1, "the page again") { finished(it, times = loads + 1) }
+        // Long enough for a WebView that goes on finding by itself to have said so.
+        Thread.sleep(1_500)
+
+        assertEquals("nothing is found that nobody looked for; reported: ${names(reports(1)).takeLast(12)}", said, results().size)
+    }
+
+    @Test
     fun aWebViewThatIsNotThereIsRefusedWithACode() {
         assertEquals("webview.unknown", find("needle", id = 99).error?.code)
     }

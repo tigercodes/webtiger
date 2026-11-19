@@ -206,7 +206,8 @@ internal class WebViewPage(
         // anew has found nothing.
         finding = ""
         view.setFindListener { activeMatchOrdinal, numberOfMatches, isDoneCounting ->
-            if (view === webView && isDoneCounting) tracker.findResult(activeMatchOrdinal, numberOfMatches)
+            // Only of a find that is on: what the WebView reports with none is nobody's answer.
+            if (view === webView && isDoneCounting && finding.isNotEmpty()) tracker.findResult(activeMatchOrdinal, numberOfMatches)
         }
     }
 
@@ -239,10 +240,14 @@ internal class WebViewPage(
 
         override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) {
             if (view !== webView) return
-            // A new page: the same text looked for in it is a new find, not the next match.
-            finding = ""
             topUrl = url
-            tracker.committed(url, view.canGoBack(), view.canGoForward())
+            val newPage = tracker.committed(url, view.canGoBack(), view.canGoForward())
+            if (newPage && finding.isNotEmpty()) {
+                // A new page ends the find (010 §3). Left alone, the WebView goes on with it:
+                // it looks for the old text in the new page, unasked, and marks what it finds.
+                finding = ""
+                view.clearMatches()
+            }
         }
 
         override fun onPageFinished(view: WebView, url: String) {
