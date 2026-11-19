@@ -11,6 +11,7 @@ import android.view.ViewGroup
 import android.webkit.WebView
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotFocused
@@ -228,6 +229,35 @@ internal class AppWindowTest {
         } finally {
             compose.disableAccessibilityChecks()
         }
+    }
+
+    /**
+     * Several tabs (005): a new one is empty and in front; each tab is where it was left; closing
+     * the one in front brings the other forward.
+     */
+    @Test
+    fun tabsOpenSwitchAndClose() {
+        awaitPage("Home")
+        compose.onAllNodesWithTag("tab").assertCountEquals(1)
+
+        compose.onNodeWithTag("new-tab").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("empty-tab").fetchSemanticsNodes().isNotEmpty() }
+        compose.onAllNodesWithTag("tab").assertCountEquals(2)
+        assertEquals("an empty tab has no web view in the window", null, shownWebView())
+        // The new tab loads what is typed in it.
+        compose.onNodeWithTag("address-field").performTextReplacement(site.url("/landed"))
+        compose.onNodeWithTag("address-field").performImeAction()
+        awaitPage("Landed")
+
+        // The first tab is where it was left, and its web view is the one in the window again.
+        compose.onAllNodesWithTag("tab")[0].performClick()
+        awaitPage("Home")
+        awaitAddress(shown("/"))
+
+        // Closing the tab in front brings the other forward.
+        compose.onAllNodesWithTag("close-tab")[0].performClick()
+        awaitPage("Landed")
+        compose.onAllNodesWithTag("tab").assertCountEquals(1)
     }
 
     @Test

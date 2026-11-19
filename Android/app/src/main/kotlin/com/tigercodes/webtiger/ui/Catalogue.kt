@@ -56,6 +56,7 @@ import com.tigercodes.webtiger.core.v1.AddressView
 import com.tigercodes.webtiger.core.v1.LoadState
 import com.tigercodes.webtiger.core.v1.Response
 import com.tigercodes.webtiger.core.v1.Subscribed
+import com.tigercodes.webtiger.core.v1.TabSummary
 import com.tigercodes.webtiger.core.v1.TabView
 import com.tigercodes.webtiger.core.v1.WindowOpened
 import com.tigercodes.webtiger.core.v1.WindowSnapshot
@@ -72,6 +73,7 @@ internal enum class CatalogueState(@StringRes val title: Int) {
     LONG(R.string.catalogue_state_long),
     FAILED(R.string.catalogue_state_failed),
     HISTORY(R.string.catalogue_state_history),
+    TABS(R.string.catalogue_state_tabs),
     ;
 
     /** What a core would publish for the state. The addresses are the documentation's own. */
@@ -88,8 +90,29 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                             .let { path -> page("https://$path", path) }
                     FAILED -> page("https://nowhere.example.com/", "nowhere.example.com").copy(load_state = LoadState.LOAD_STATE_FAILED, error_code = "net.dns")
                     HISTORY -> page("https://example.com/second", "example.com/second").copy(can_go_back = true, can_go_forward = true)
+                    TABS -> page("https://example.com/", "example.com").copy(title = "Example Domain")
                 }
-            return WindowSnapshot(window_id = 1, tab = tab)
+            // The strip names every tab: the one in front, and for "several tabs" its neighbours,
+            // one with a title, one still loading and known only by its site, one with no page.
+            val front =
+                TabSummary(
+                    tab_id = tab.tab_id,
+                    title = tab.title,
+                    host = tab.address?.host.orEmpty(),
+                    loading = tab.load_state == LoadState.LOAD_STATE_LOADING,
+                )
+            val tabs =
+                if (this == TABS) {
+                    listOf(
+                        TabSummary(tab_id = 11, title = "A page whose title is longer than a tab is wide"),
+                        front,
+                        TabSummary(tab_id = 12, host = "example.org", loading = true),
+                        TabSummary(tab_id = 13),
+                    )
+                } else {
+                    listOf(front)
+                }
+            return WindowSnapshot(window_id = 1, tab = tab, tabs = tabs)
         }
 
     private fun page(url: String, display: String, security: AddressView.Security = AddressView.Security.SECURITY_SECURE): TabView =
@@ -97,7 +120,7 @@ internal enum class CatalogueState(@StringRes val title: Int) {
             tab_id = 2,
             web_view_id = 4,
             load_state = LoadState.LOAD_STATE_IDLE,
-            address = AddressView(url = url, display = display, host = "example.com", registrable_domain = "example.com", security = security),
+            address = AddressView(url = url, display = display, host = java.net.URI(url.substringBefore('?')).host.orEmpty(), registrable_domain = "example.com", security = security),
         )
 
     /**

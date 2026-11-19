@@ -5,7 +5,12 @@ package com.tigercodes.webtiger.ui
 
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotFocused
@@ -22,6 +27,7 @@ import com.tigercodes.webtiger.core.ScriptedCore
 import com.tigercodes.webtiger.core.v1.AddressView
 import com.tigercodes.webtiger.core.v1.LoadState
 import com.tigercodes.webtiger.core.v1.NavigationCommand
+import com.tigercodes.webtiger.core.v1.TabSummary
 import com.tigercodes.webtiger.design.WebTigerTheme
 import com.tigercodes.webtiger.webview.FakePages
 import com.tigercodes.webtiger.webview.SystemWebViewEngine
@@ -202,6 +208,43 @@ class BrowserWindowTest {
         // A field scrolls to its caret: at the start, the site is what stays in view.
         val selection = compose.onNodeWithTag("address-field").fetchSemanticsNode().config.getOrNull(SemanticsProperties.TextSelectionRange)
         assertEquals("an address too long for the field loses its tail, never its site", TextRange.Zero, selection)
+    }
+
+    @Test
+    fun theStripNamesTheWindowsTabsAndSendsWhatIsDoneToThem() {
+        show()
+        compose.runOnIdle {
+            core.emit(
+                snapshot(url = "https://example.com/", display = "example.com", title = "Example Domain", webView = 4).copy(
+                    tabs =
+                        listOf(
+                            TabSummary(tab_id = 2, title = "Example Domain", host = "example.com"),
+                            TabSummary(tab_id = 5, host = "example.org", loading = true),
+                            TabSummary(tab_id = 6),
+                        ),
+                ),
+                subscription = 3,
+            )
+        }
+        compose.waitForIdle()
+        // Each tab by its title, or its site, or the words for a tab with no page.
+        compose.onAllNodesWithTag("tab").assertCountEquals(3)
+        compose.onAllNodesWithTag("tab")[0].assertTextEquals("Example Domain").assertIsSelected()
+        compose.onAllNodesWithTag("tab")[1].assertTextEquals("example.org").assertIsNotSelected()
+        compose.onAllNodesWithTag("tab")[2].assertTextEquals("New Tab")
+        compose.onNodeWithContentDescription("Tabs").assertExists()
+
+        compose.onAllNodesWithTag("tab")[1].performClick()
+        compose.waitForIdle()
+        assertEquals(5L, core.requests.last().activate_tab?.tab_id)
+        compose.onAllNodesWithTag("close-tab")[2].performClick()
+        compose.waitForIdle()
+        assertEquals(6L, core.requests.last().close_tab?.tab_id)
+        compose.onNodeWithTag("new-tab").performClick()
+        compose.waitForIdle()
+        assertEquals(1L, core.requests.last().open_tab?.window_id)
+        compose.onAllNodesWithContentDescription("Close Tab").assertCountEquals(3)
+        compose.onNodeWithContentDescription("New Tab").assertExists()
     }
 
     @Test

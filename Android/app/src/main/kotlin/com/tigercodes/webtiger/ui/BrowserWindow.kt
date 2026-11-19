@@ -1,5 +1,6 @@
-// A browser window: a toolbar, a progress line, and the page. W0 has one tab; the sidebar and
-// the tab strip arrive in W2.
+// A browser window: its tabs in a strip, a toolbar, a progress line, and the page of the tab in
+// front (005). The strip is one plain row on every size of window; the sidebar and the tab
+// strip proper arrive in W2.
 package com.tigercodes.webtiger.ui
 
 import androidx.activity.compose.BackHandler
@@ -22,6 +23,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
+import com.tigercodes.webtiger.core.v1.TabSummary
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -83,11 +96,23 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
     LaunchedEffect(model.hasPage) {
         if (model.hasPage && model.isEditingAddress && !model.hasTypedAddress) page.requestFocus()
     }
+    // Another tab came in front. An empty one is given the keyboard in its address field: there
+    // is nothing else to do in an empty tab. One with a page keeps the keyboard out of the
+    // field. (The window's first snapshot names its first tab, and is no switch.)
+    val addressField = remember { FocusRequester() }
+    var shownTab by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(model.tab.tab_id) {
+        if (shownTab != 0L) {
+            if (model.hasPage) page.requestFocus() else addressField.requestFocus()
+        }
+        shownTab = model.tab.tab_id
+    }
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         // The window draws edge to edge; its content keeps clear of the system's bars, the
         // cutout and the keyboard.
         Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-            Toolbar(model, onSubmitted = { page.requestFocus() })
+            TabStrip(model)
+            Toolbar(model, addressField, onSubmitted = { page.requestFocus() })
             ProgressLine(model)
             Box(modifier = Modifier.fillMaxWidth().weight(1f).focusRequester(page).focusable()) {
                 when {
@@ -101,8 +126,80 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
     }
 }
 
+/**
+ * The window's tabs in a row: each by its name, the one in front marked, a button to close each
+ * and one to open another (005 §5).
+ */
 @Composable
-private fun Toolbar(model: BrowserModel, onSubmitted: () -> Unit) {
+private fun TabStrip(model: BrowserModel) {
+    val list = stringResource(R.string.tabs_list)
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = Tokens.Space.xs)
+                .semantics { contentDescription = list }
+                .testTag("tab-strip"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Tokens.Space.xs),
+    ) {
+        for (tab in model.tabs) {
+            key(tab.tab_id) {
+                TabChip(tab, inFront = tab.tab_id == model.tab.tab_id, onActivate = { model.activate(tab.tab_id) }, onClose = { model.closeTab(tab.tab_id) })
+            }
+        }
+        IconButton(onClick = model::openTab, modifier = Modifier.testTag("new-tab")) {
+            Icon(painter = painterResource(R.drawable.ic_add), contentDescription = stringResource(R.string.tabs_new))
+        }
+    }
+}
+
+/** One tab in the strip: its name, which brings it in front, and a button that closes it. */
+@Composable
+private fun TabChip(tab: TabSummary, inFront: Boolean, onActivate: () -> Unit, onClose: () -> Unit) {
+    // The tab that comes in front is brought into view.
+    val place = remember { BringIntoViewRequester() }
+    LaunchedEffect(inFront) { if (inFront) place.bringIntoView() }
+    Row(
+        modifier =
+            Modifier
+                .bringIntoViewRequester(place)
+                .clip(RoundedCornerShape(Tokens.Radius.field))
+                .background(if (inFront) Tokens.Palette.fieldFill.current else Color.Transparent),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .heightIn(min = LocalMinimumInteractiveComponentSize.current)
+                    .selectable(selected = inFront, role = Role.Tab, onClick = onActivate)
+                    .padding(start = Tokens.Space.m)
+                    .testTag("tab"),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Tokens.Space.xs),
+        ) {
+            if (tab.loading) {
+                // A dot, not a spinner: a tab that is loading is marked, and stays still.
+                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Tokens.Palette.accent.current))
+            }
+            Text(
+                // A tab's name: its page's title, or its site, or the words for a tab with no page.
+                text = tab.title.ifEmpty { tab.host.ifEmpty { stringResource(R.string.tabs_untitled) } },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                fontWeight = if (inFront) FontWeight.SemiBold else FontWeight.Normal,
+                modifier = Modifier.widthIn(max = 180.dp),
+            )
+        }
+        IconButton(onClick = onClose, modifier = Modifier.testTag("close-tab")) {
+            Icon(painter = painterResource(R.drawable.ic_close), contentDescription = stringResource(R.string.tabs_close), modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+@Composable
+private fun Toolbar(model: BrowserModel, addressField: FocusRequester, onSubmitted: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.Size.toolbarHeight).padding(horizontal = Tokens.Space.xs, vertical = Tokens.Space.xs),
         verticalAlignment = Alignment.CenterVertically,
@@ -122,7 +219,7 @@ private fun Toolbar(model: BrowserModel, onSubmitted: () -> Unit) {
                 model.perform(NavigationCommand.NAVIGATION_COMMAND_RELOAD)
             }
         }
-        AddressField(model, onSubmitted, Modifier.weight(1f).padding(start = Tokens.Space.xs))
+        AddressField(model, addressField, onSubmitted, Modifier.weight(1f).padding(start = Tokens.Space.xs))
     }
 }
 
@@ -138,7 +235,7 @@ private fun ToolbarButton(@StringRes title: Int, @DrawableRes icon: Int, tag: St
  * with the keyboard it holds the whole address, selected, so typing replaces it.
  */
 @Composable
-private fun AddressField(model: BrowserModel, onSubmitted: () -> Unit, modifier: Modifier = Modifier) {
+private fun AddressField(model: BrowserModel, focus: FocusRequester, onSubmitted: () -> Unit, modifier: Modifier = Modifier) {
     val label = stringResource(R.string.address_label)
     // The text is the model's; the selection and what the keyboard is composing are the field's.
     var field by remember { mutableStateOf(TextFieldValue(model.addressText)) }
@@ -215,6 +312,7 @@ private fun AddressField(model: BrowserModel, onSubmitted: () -> Unit, modifier:
                 modifier =
                     Modifier
                         .fillMaxWidth()
+                        .focusRequester(focus)
                         .onFocusChanged { state ->
                             if (state.isFocused == model.isEditingAddress) return@onFocusChanged
                             val atRest = model.addressText

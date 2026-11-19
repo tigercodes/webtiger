@@ -10,6 +10,7 @@ import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.core.v1.Request
 import com.tigercodes.webtiger.core.v1.Response
 import com.tigercodes.webtiger.core.v1.Subscribed
+import com.tigercodes.webtiger.core.v1.TabSummary
 import com.tigercodes.webtiger.core.v1.TabView
 import com.tigercodes.webtiger.core.v1.WindowOpened
 import com.tigercodes.webtiger.core.v1.WindowSnapshot
@@ -134,6 +135,78 @@ class BrowserModelTest {
             assertTrue(model.hasTypedAddress)
             core.emit(snapshot(url = "https://example.com/sent", display = "example.com/sent", title = "Sent"), subscription = 3)
             assertEquals("until something is typed", "exam", model.addressText)
+        }
+
+    // Tabs (005)
+
+    /** A snapshot whose tab in front is `front`, with `others` beside it in the strip. */
+    private fun tabs(front: Long, url: String, display: String, others: List<Long> = emptyList()): WindowSnapshot =
+        snapshot(url = url, display = display) { it.copy(tab_id = front) }
+            .copy(tabs = (listOf(front) + others).map { TabSummary(tab_id = it) })
+
+    @Test
+    fun theWindowsControlsActOnTheTabInFront() =
+        runTest {
+            val core = ScriptedCore(::windowScript)
+            val model = BrowserModel(session(core))
+            model.open()
+            // Before any snapshot, the tab the window opened with.
+            model.perform(NavigationCommand.NAVIGATION_COMMAND_STOP)
+            assertEquals(2L, core.requests.last().tab_command?.tab_id)
+
+            // Another tab is in front now: the controls are its.
+            core.emit(tabs(front = 9, url = "https://example.org/", display = "example.org", others = listOf(2)), subscription = 3)
+            assertEquals("the strip lists the window's tabs in their order", listOf(9L, 2L), model.tabs.map { it.tab_id })
+            model.perform(NavigationCommand.NAVIGATION_COMMAND_RELOAD)
+            assertEquals(9L, core.requests.last().tab_command?.tab_id)
+            model.isEditingAddress = true
+            model.addressText = "example.com"
+            model.submit()
+            assertEquals(9L, core.requests.last().submit_address?.tab_id)
+        }
+
+    @Test
+    fun openingClosingAndActivatingTabsAskTheCore() =
+        runTest {
+            val core = ScriptedCore(::windowScript)
+            val model = BrowserModel(session(core))
+            model.open()
+            core.emit(tabs(front = 2, url = "", display = "", others = listOf(5)), subscription = 3)
+
+            model.openTab()
+            val open = core.requests.last().open_tab
+            assertEquals(1L, open?.window_id)
+            assertEquals("a new tab is empty", "", open?.text)
+            assertEquals("and in front", false, open?.background)
+            model.activate(5)
+            assertEquals(5L, core.requests.last().activate_tab?.tab_id)
+            model.closeTab(5)
+            assertEquals(5L, core.requests.last().close_tab?.tab_id)
+
+            // The tab in front is in front already: nothing is asked.
+            val asked = core.requests.size
+            model.activate(2)
+            assertEquals(asked, core.requests.size)
+        }
+
+    @Test
+    fun whatWasTypedIsDroppedWhenAnotherTabComesInFront() =
+        runTest {
+            val core = ScriptedCore(::windowScript)
+            val model = BrowserModel(session(core))
+            model.open()
+            core.emit(tabs(front = 2, url = "https://example.com/", display = "example.com"), subscription = 3)
+            model.isEditingAddress = true
+            model.addressText = "half an addr"
+
+            // The same tab, changed: what is being typed stays.
+            core.emit(tabs(front = 2, url = "https://example.com/next", display = "example.com/next"), subscription = 3)
+            assertEquals("half an addr", model.addressText)
+
+            // Another tab in front: it was typed for the tab that was there.
+            core.emit(tabs(front = 9, url = "https://example.org/", display = "example.org", others = listOf(2)), subscription = 3)
+            assertEquals("the field shows the tab that is in front", "https://example.org/", model.addressText)
+            assertFalse(model.hasTypedAddress)
         }
 
     @Test

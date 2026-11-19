@@ -114,5 +114,5 @@ The empty tab, the failed page and the start failure now keep their words in the
 - [x] `WEBTIGER_CATALOGUE=1` opens it; the UI tests audit it.
 - [x] Snapshot helper and tests; pictures recorded for macOS 27 and iOS 27 (42 pictures since the tab strip, 005), each looked at.
 - [x] `Tools/test.sh all` green.
-- [x] Android catalogue: the screen, `--ez webtiger.catalogue true`, 19 pictures drawn on the JVM, each looked at; a device test opens it.
+- [x] Android catalogue: the screen, `--ez webtiger.catalogue true`, 21 pictures drawn on the JVM (since the tab strip, 005), each looked at; a device test opens it.
 - [ ] Windows catalogue.
