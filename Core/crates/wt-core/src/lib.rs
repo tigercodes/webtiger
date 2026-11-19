@@ -3,6 +3,7 @@
 
 pub mod address;
 pub mod clock;
+pub mod download;
 pub mod id;
 pub mod policy;
 pub mod uuid;
@@ -10,6 +11,7 @@ pub mod zoom;
 
 pub use address::{Address, AddressError, Input, Security, classify, search_address};
 pub use clock::{Clock, ManualClock, SystemClock, Timestamp};
+pub use download::download_file_name;
 pub use id::{IdMint, LoginSetId, SpaceId, SubscriptionId, TabId, WebViewId, WindowId};
 pub use policy::{NavigationAction, check_navigation, opens_outside};
 pub use uuid::Uuid;

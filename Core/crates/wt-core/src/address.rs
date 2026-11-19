@@ -86,6 +86,13 @@ impl Address {
         }
     }
 
+    /// The path, as it is written in the address: escapes and all, without
+    /// what follows a `?` or a `#`.
+    #[must_use]
+    pub fn path(&self) -> &str {
+        self.url.path()
+    }
+
     /// The site a page of this address is of (012): what someone registered,
     /// or, for a host with nothing registered (an IP address, `localhost`),
     /// the host itself. Whatever the scheme and the port. `None` for an
