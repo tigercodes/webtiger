@@ -166,6 +166,14 @@ internal object TestSitePages {
                 delayMilliseconds = 0,
             ),
             TestSitePage(
+                path = "/find",
+                status = "200 OK",
+                type = "text/html",
+                headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
+                body = listOf(TestSitePiece.Text("<!doctype html><title>Find</title><h1>Find</h1><p id=\"one\">A needle in a haystack.</p>\n<p id=\"two\">Another Needle here.</p>\n<p id=\"three\">And a third needle.</p>")),
+                delayMilliseconds = 0,
+            ),
+            TestSitePage(
                 path = "/rings",
                 status = "200 OK",
                 type = "text/html",

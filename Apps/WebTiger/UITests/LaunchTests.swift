@@ -303,6 +303,47 @@ final class LaunchTests: XCTestCase {
         expect(field, toShow: "http://127.0.0.1:\(site.port)/landed")
     }
 
+    /// Find on the page (010), with the real core and the real engine: text that is on the
+    /// page is found without a word (WebKit does not count), text that is not there is said
+    /// not to be, and closing the bar ends it.
+    func testFindOnThePageSaysWhenTheTextIsNotThere() {
+        let app = launch(start: site.url("/find"))
+        XCTAssertTrue(pageShows("Find", in: app), "the page loaded")
+        let field = app.textFields["find-field"]
+        XCTAssertFalse(field.exists, "the find bar is shut until it is asked for")
+
+        press(app.buttons["find"])
+        XCTAssertTrue(field.waitForExistence(timeout: 30), "the find bar opened")
+        press(field)
+        field.typeText("needle")
+        // Long enough for the engine to have answered: the text is there, and nothing is said.
+        let outcome = app.staticTexts["find-outcome"]
+        XCTAssertFalse(outcome.waitForExistence(timeout: 2), "text that is on the page is not \"not found\"")
+        XCTAssertTrue(app.buttons["find-next"].isEnabled)
+        press(app.buttons["find-next"])
+        press(app.buttons["find-previous"])
+        XCTAssertFalse(outcome.exists)
+        audit(app, "the find bar")
+
+        // Closing the bar ends the find; opened again it is empty.
+        press(app.buttons["find-done"])
+        let gone = NSPredicate(format: "exists == false")
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: gone, object: field)], timeout: 30), .completed)
+        press(app.buttons["find"])
+        XCTAssertTrue(field.waitForExistence(timeout: 30))
+        // An empty field's value is nothing on a Mac and its placeholder on an iPhone.
+        XCTAssertTrue(["", "Find on page"].contains(value(of: field)), "the bar opens empty: \(value(of: field))")
+        press(field)
+        field.typeText("zebra")
+
+        XCTAssertTrue(outcome.waitForExistence(timeout: 30), "text that is not on the page is said not to be")
+        // A text's words are its label on an iPhone and its value on a Mac.
+        XCTAssertEqual(outcome.label.isEmpty ? value(of: outcome) : outcome.label, "Not found")
+        press(app.buttons["find-done"])
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: gone, object: field)], timeout: 30), .completed)
+        XCTAssertTrue(pageShows("Find", in: app), "and the page is as it was")
+    }
+
     #if os(macOS)
         /// ⌘T opens a tab; ⌘W closes the one in front, and on the last tab the window.
         func testTheMacsTabShortcuts() {
@@ -387,6 +428,18 @@ final class LaunchTests: XCTestCase {
                     }
                     // A tab in the strip shows one line of its title, and is read out whole.
                     if issue.auditType == .textClipped, element?.identifier == "tab" {
+                        return true
+                    }
+                    // What a page draws is the page's own, and the audit is of the app's
+                    // controls: the test site's pages are plain small text, and a real page is
+                    // whatever its author made it. WebKit's elements say what they are.
+                    if issue.detailedDescription.contains("WebAccessibilityObjectWrapper") {
+                        return true
+                    }
+                    // The system's keyboard is the system's: its row of suggested words is on
+                    // the screen whenever a field of the app's has the keyboard.
+                    if issue.detailedDescription.contains("TUIPrediction") || element?.elementType == .key
+                        || element?.elementType == .keyboard {
                         return true
                     }
                     // A visit's address in the History list may be any length: it is cut to

@@ -59,13 +59,15 @@ struct CatalogueWindow: View {
     static let height: CGFloat = 300
 
     @State private var session: BrowserSession
+    private let finding: String?
 
     init(state: CatalogueState) {
         _session = State(initialValue: state.session())
+        finding = state.finding
     }
 
     var body: some View {
-        BrowserWindowView(session: session)
+        BrowserWindowView(session: session, finding: finding)
     }
 }
 

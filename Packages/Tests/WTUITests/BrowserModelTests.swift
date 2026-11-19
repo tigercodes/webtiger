@@ -26,10 +26,17 @@ final class BrowserModelTests: XCTestCase {
         return (BrowserSession(core: core, engine: WebKitEngine()), core)
     }
 
-    private func snapshot(url: String, display: String, title: String = "", state: WTLoadState = .idle) -> WTWindowSnapshot {
+    private func snapshot(
+        url: String,
+        display: String,
+        title: String = "",
+        state: WTLoadState = .idle,
+        webView: UInt64 = 0
+    ) -> WTWindowSnapshot {
         var window = WTWindowSnapshot()
         window.windowID = 1
         window.tab.tabID = 2
+        window.tab.webViewID = webView
         window.tab.title = title
         window.tab.loadState = state
         window.tab.address.url = url
@@ -237,6 +244,139 @@ final class BrowserModelTests: XCTestCase {
             }
         }
         XCTAssertEqual(Array(heard), made)
+    }
+
+    // MARK: Find on the page (010)
+
+    /// A window whose tab in front has a page, in which things can be found.
+    private func finding() async -> (BrowserModel, ScriptedCore) {
+        let (session, core) = session()
+        let model = BrowserModel(session: session)
+        await model.open()
+        core.emit(snapshot(url: "https://example.com/", display: "example.com", webView: 4), subscription: 3)
+        await settle { model.hasPage }
+        return (model, core)
+    }
+
+    private func finds(_ core: ScriptedCore) -> [String] {
+        core.requests.compactMap { request -> String? in
+            if case let .findInPage(find) = request {
+                "\(find.tabID) \(find.text.isEmpty ? "(stop)" : find.text)\(find.backwards ? " back" : "")"
+            } else {
+                nil
+            }
+        }
+    }
+
+    func testWhatIsTypedInTheFindBarIsLookedForAtOnce() async {
+        let (model, core) = await finding()
+        XCTAssertFalse(model.isFinding)
+        // Nothing is looked for while the bar is shut.
+        model.findText = "stray"
+        model.findText = ""
+
+        model.openFind()
+        model.findText = "n"
+        model.findText = "ne"
+        model.findNext()
+        model.findPrevious()
+
+        XCTAssertTrue(model.isFinding)
+        XCTAssertEqual(finds(core), ["2 n", "2 ne", "2 ne", "2 ne back"], "each letter, then the next match, then the one before")
+    }
+
+    func testClosingTheFindBarStopsTheFind() async {
+        let (model, core) = await finding()
+        model.openFind()
+        model.findText = "needle"
+
+        model.closeFind()
+
+        XCTAssertFalse(model.isFinding)
+        XCTAssertEqual(model.findText, "", "the bar opens empty the next time")
+        XCTAssertEqual(finds(core), ["2 needle", "2 (stop)"])
+        // Closed already: nothing more is sent.
+        model.closeFind()
+        XCTAssertEqual(finds(core).count, 2)
+    }
+
+    func testEmptyingTheFieldStopsTheFindAndTheBarStaysOpen() async {
+        let (model, core) = await finding()
+        model.openFind()
+        model.findText = "needle"
+
+        model.findText = ""
+
+        XCTAssertTrue(model.isFinding)
+        XCTAssertEqual(finds(core), ["2 needle", "2 (stop)"])
+        // There is no find left to stop when the bar is closed.
+        model.closeFind()
+        XCTAssertEqual(finds(core).count, 2)
+    }
+
+    func testAnotherTabInFrontStopsTheFindInTheTabThatHadIt() async {
+        let (model, core) = await finding()
+        model.openFind()
+        model.findText = "needle"
+
+        core.emit(tabs(front: 9, url: "https://example.org/", display: "example.org", others: [2]), subscription: 3)
+        await settle { model.tab.tabID == 9 }
+
+        XCTAssertFalse(model.isFinding, "the bar closes")
+        XCTAssertEqual(finds(core), ["2 needle", "2 (stop)"], "and the find stops in the tab it was in, not the one in front")
+    }
+
+    func testThereIsNothingToFindInATabWithNoPage() async {
+        let (session, core) = session()
+        let model = BrowserModel(session: session)
+        await model.open()
+
+        model.openFind()
+        model.findText = "needle"
+
+        XCTAssertFalse(model.isFinding)
+        XCTAssertEqual(finds(core), [])
+    }
+
+    func testTheFindBarSaysWhatTheCoreSaysWasFound() async {
+        let (model, core) = await finding()
+        model.openFind()
+        model.findText = "needle"
+        XCTAssertEqual(model.findOutcome, .nothing, "nothing is known yet: that is not \"not found\"")
+
+        func publish(_ change: (inout WTFindView) -> Void) async {
+            var window = snapshot(url: "https://example.com/", display: "example.com", webView: 4)
+            window.tab.find.text = "needle"
+            change(&window.tab.find)
+            let before = model.tab
+            core.emit(window, subscription: 3)
+            await settle { model.tab != before }
+        }
+
+        await publish { find in
+            find.answered = true
+            find.found = true
+            find.counted = true
+            find.matches = 12
+            find.current = 3
+        }
+        XCTAssertEqual(model.findOutcome, .match(3, of: 12))
+
+        // An engine that does not count: found, and nothing more to say.
+        await publish { find in
+            find.answered = true
+            find.found = true
+        }
+        XCTAssertEqual(model.findOutcome, .nothing)
+
+        await publish { find in
+            find.answered = true
+        }
+        XCTAssertEqual(model.findOutcome, .notFound)
+
+        // Another letter typed: what the core said was of the text before.
+        model.findText = "needles"
+        XCTAssertEqual(model.findOutcome, .nothing)
     }
 
     func testWhatWasTypedIsDroppedWhenAnotherTabComesInFront() async {

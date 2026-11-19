@@ -32,6 +32,17 @@ public final class BrowserModel {
         self.session = session
     }
 
+    /// A model whose find bar is open on `finding` from the start, before anything has been
+    /// asked of the core: for a picture of the bar (004), which must not depend on when the
+    /// window got round to opening it.
+    init(session: BrowserSession, finding: String?) {
+        self.session = session
+        if let finding {
+            isFinding = true
+            findText = finding
+        }
+    }
+
     /// Opens the window in the core. Call once, when the view appears.
     public func open() async {
         guard window == nil else { return }
@@ -93,6 +104,82 @@ public final class BrowserModel {
         send(.activateTab(activate))
     }
 
+    // MARK: Find on the page (010)
+
+    /// The find bar is open.
+    public private(set) var isFinding = false
+    /// What is typed in the find bar. Each change is looked for at once.
+    public var findText = "" {
+        didSet {
+            if findText != oldValue, isFinding {
+                look(backwards: false)
+            }
+        }
+    }
+
+    /// The tab the find is in: where it must be stopped when the bar closes or another tab
+    /// comes in front.
+    private var findingTabID: UInt64?
+
+    /// What the find bar says of what was found.
+    public enum FindOutcome: Equatable {
+        /// Nothing to say: nothing looked for, nothing known yet, or found by an engine that
+        /// does not count.
+        case nothing
+        case notFound
+        /// Which match is shown, and how many there are.
+        case match(Int, of: Int)
+    }
+
+    /// What the core says was found of what is now in the bar. The model keeps no count of
+    /// its own.
+    public var findOutcome: FindOutcome {
+        guard isFinding, tab.hasFind, tab.find.answered, tab.find.text == findText else { return .nothing }
+        guard tab.find.found else { return .notFound }
+        return tab.find.counted ? .match(Int(tab.find.current), of: Int(tab.find.matches)) : .nothing
+    }
+
+    /// Opens the find bar. There is nothing to find in a tab with no page.
+    public func openFind() {
+        guard hasPage else { return }
+        isFinding = true
+    }
+
+    /// Closes the find bar: the find stops, and its marks go.
+    public func closeFind() {
+        guard isFinding else { return }
+        isFinding = false
+        findText = ""
+        stopFinding()
+    }
+
+    public func findNext() {
+        look(backwards: false)
+    }
+
+    public func findPrevious() {
+        look(backwards: true)
+    }
+
+    private func look(backwards: Bool) {
+        guard isFinding, hasPage, let frontTabID else { return }
+        var find = WTFindInPage()
+        find.tabID = frontTabID
+        find.text = findText
+        find.backwards = backwards
+        // Empty text is "stop": the tab then has no find to stop later.
+        findingTabID = findText.isEmpty ? nil : frontTabID
+        send(.findInPage(find))
+    }
+
+    private func stopFinding() {
+        guard let finding = findingTabID else { return }
+        findingTabID = nil
+        var find = WTFindInPage()
+        find.tabID = finding
+        send(.findInPage(find))
+    }
+
     public var isLoading: Bool {
         tab.loadState == .loading
     }
@@ -108,6 +195,11 @@ public final class BrowserModel {
     private func apply(_ snapshot: WTWindowSnapshot) {
         // Another tab came in front: what was typed was typed for the tab that was there.
         let switched = snapshot.tab.tabID != tab.tabID
+        if switched, tab.tabID != 0 {
+            // The find was in the tab that was in front: it stops there, and the bar closes.
+            // (The window's first snapshot names its first tab, and is no switch.)
+            closeFind()
+        }
         tab = snapshot.tab
         tabs = snapshot.tabs
         // A field with the keyboard still follows the page until something is typed in it: one

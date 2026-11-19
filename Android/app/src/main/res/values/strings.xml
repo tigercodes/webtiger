@@ -26,6 +26,10 @@
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_failed">A page that failed</string>
     <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_find">Find on the page, with a count</string>
+    <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_find_none">Find on the page, not found</string>
+    <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_history">Back and forward offered</string>
     <!-- Design catalogue: the History list before anything has been visited. -->
     <string name="catalogue_state_history_empty">The History list, nothing visited</string>
@@ -75,6 +79,20 @@
     <string name="error_start_title">WebTiger couldn’t start</string>
     <!-- Heading shown over a page that failed to load. -->
     <string name="error_title">This page didn’t load</string>
+    <!-- Shown in the find bar where the engine counts: which match is shown, and how many there are. First %ld is the match's number, second the total. -->
+    <string name="find_count">%1$d of %2$d</string>
+    <!-- Button that closes the find bar. -->
+    <string name="find_done">Done</string>
+    <!-- Placeholder and accessibility label of the find bar's field. -->
+    <string name="find_field">Find on page</string>
+    <!-- Button in the find bar: go to the next match. -->
+    <string name="find_next">Next Match</string>
+    <!-- Shown in the find bar when the text is not on the page. -->
+    <string name="find_none">Not found</string>
+    <!-- Label of the button, beside the tabs, that opens the find bar; and the command (Command-F on a Mac). -->
+    <string name="find_open">Find on Page</string>
+    <!-- Button in the find bar: go to the match before. -->
+    <string name="find_previous">Previous Match</string>
     <!-- Button in the History list that asks which visits to forget. -->
     <string name="history_clear">Clear…</string>
     <!-- Choice: leave history as it is. -->

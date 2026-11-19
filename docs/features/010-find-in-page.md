@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress. The contract (1.6) and the core are built and tested; no shell finds anything yet (§9) |
+| **Status** | In progress. The contract (1.6), the core and the Apple shell (the WebKit adapter and the find bar) are built and tested. The Android shell does not find yet (§9) |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "find". The `WebViews` host service's find (000 §5.5) |
 | **Contract** | 1.6: `FindInPage`; the host request `WebViewFind`; `FindResult`; `TabView.find` |
 | **Last updated** | 2026-11-19 |
@@ -86,15 +86,23 @@ A find bar under the toolbar: a field, "previous" and "next", what was found, an
 
 What the bar says: "3 of 12" where the engine counts; "Not found" when the text is not there; nothing otherwise.
 
+**As built on Apple** (`Page.find` in the WebKit adapter; the bar in `BrowserWindowView`, its state in `BrowserModel`):
+
+- WebKit's own find, as the adapter suite found it: it ignores case, goes round from the last match to the first and back, and shows a match by making it the page's selection. Stopping lets go of that selection, asked in a world of the app's own where no script of the page's runs. It says found or not, and no more: the bar says "Not found", or nothing.
+- ⌘F opens the bar, ⌘G and ⇧⌘G go to the next match and the one before, Return goes to the next, Escape closes. The bar takes the keyboard when it opens.
+- The find is the tab's it was begun in: another tab coming in front closes the bar and stops the find there, not in the tab that came forward. There is nothing to find in a tab with no page, and the button says so by being off.
+- A picture of the bar must not depend on when the window got round to opening it: the first time, one of four pictures was taken before the bar was there. The catalogue's model starts with its bar open.
+- On an iPhone Apple's audit, run with the bar open, faulted the test page's own small text and the system keyboard's row of suggestions. Neither is the app's: the helper passes over what WebKit's elements and the keyboard's say they are, with the reason beside each.
+
 ## 6. Tests
 
 | Where | What |
 |---|---|
 | Core (`wt-app/tests/find.rs`, 10 through `FakeShell`) | The request reaches the tab's web view with its text and direction; the same text again, and backwards. A tab with no page, and no such tab. What the engine reports is the tab's find: found, counted, how many, which; not found; an engine that does not count. Other text starts from nothing known. A result after finding stopped is dropped. Empty text stops, and asks the web view to clear. A new page ends the find, and the page changing its own address does not. A tab behind keeps its own find. A count the engine cannot mean (the seventh of three) is not passed on. Four of the rules checked by breaking them |
-| WebKit adapter suite | Text that is there is found, and is the page's selection; again finds the next; backwards the one before; text that is not there is not found; stopping clears the selection |
+| WebKit adapter suite (`WebKitFindTests`, 6) | Text that is there is found, not counted, and is the page's selection; the same text again goes to the next, whatever its case, and round to the first; backwards goes to the one before, and round to the last; text that is not there is not found and nothing is shown; empty text clears what was shown and reports nothing; a web view that is not there is refused with a code |
 | System WebView adapter | The same, on the JVM (what is asked of the page) and on the device, with the counts |
-| The shells' models and bars | What the bar sends for typing, Return, previous, next and closing; what it says for a count, for not found, and for nothing; pictures |
-| The apps | With the real core and engine: open Find, look for a word that is there and one that is not, close |
+| The shells' models and bars | Apple (`BrowserModelTests`, 6 more): what is typed is looked for at once, and nothing while the bar is shut; next and previous; closing stops the find and empties the bar; emptying the field stops it and leaves the bar open; another tab in front stops it in the tab that had it; nothing to find in a tab with no page; what the bar says is what the core says, for a count, for an engine that does not count, for not found, and for text the core has not spoken of yet. Pictures of the bar with a count and with "Not found", light and dark, on the Mac and the iPhone |
+| The apps | Apple, on the Mac and the iPhone simulator, with the real core and engine: the bar is shut until asked for; a word that is there is found without a word from the bar; next and previous; the bar passes Apple's audit; closed and opened again it is empty; a word that is not there is said not to be |
 
 ## 7. Decisions
 
@@ -106,13 +114,14 @@ What the bar says: "3 of 12" where the engine counts; "Not found" when the text 
 
 ## 8. What is not verified
 
-- Written when built.
+- **That the match is shown where a person looks.** The adapter suite reads the page's selection, which is how WebKit shows a match; that it is scrolled into view and drawn was not looked at by a test.
+- **A page in frames**, and text across elements: WebKit's own find decides, and was not tried.
 
 ## 9. Done checklist
 
 - [x] Contract 1.6 and its version in every place it is written.
 - [x] The core: the request, the tab's find, the rules of §3.
 - [x] Core tests through `FakeShell`: 10.
-- [ ] Apple: the adapter and its suite; the bar; pictures; a UI test.
+- [x] Apple: the adapter and its suite (6); the bar and the model's tests (6); pictures; a UI test on the Mac and the iPhone simulator.
 - [ ] Android: the adapter, on the JVM and the device; the bar; pictures; a device test.
 - [ ] `Tools/test.sh all` green, and `android-device`.

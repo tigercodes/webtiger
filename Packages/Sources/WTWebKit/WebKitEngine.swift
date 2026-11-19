@@ -93,9 +93,10 @@ public final class WebKitEngine: HostServices {
             // The System service's, which the shell answers itself (007): opening a link
             // with another app is nothing to do with a web engine.
             return failure("host.unsupported")
-        case .webViewFind:
-            // Find on the page (010): not built in this adapter yet.
-            return failure("host.unsupported")
+        case let .webViewFind(find):
+            guard let page = pages[find.webViewID] else { return failure("webview.unknown") }
+            page.find(find.text, backwards: find.backwards)
+            return .ack(WTAck())
         }
     }
 
@@ -297,6 +298,30 @@ private final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
         webView.navigationDelegate = self
         webView.uiDelegate = self
         observe()
+    }
+
+    /// Finds text in the page and shows the match, or with empty text clears what a find
+    /// showed (010). WebKit's own find: it ignores case, wraps round, shows a match by
+    /// selecting it, and says whether there was one. It does not count them.
+    func find(_ text: String, backwards: Bool) {
+        guard !text.isEmpty else {
+            // What a find showed is the page's selection: letting go of it is how the marks
+            // go. Asked in a world of the app's own, where no script of the page's runs.
+            webView.evaluateJavaScript("getSelection().removeAllRanges()", in: nil, in: .defaultClient) { _ in }
+            return
+        }
+        let configuration = WKFindConfiguration()
+        configuration.backwards = backwards
+        configuration.caseSensitive = false
+        configuration.wraps = true
+        webView.find(text, configuration: configuration) { [weak self] result in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                var found = WTFindResult()
+                found.found = result.matchFound
+                self.engine?.report(self.id, .findResult(found))
+            }
+        }
     }
 
     func close() {

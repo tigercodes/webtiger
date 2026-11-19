@@ -147,6 +147,16 @@
       "note": "Links for the system, each followed a different way: a letter by a plain link, a number by a button's script, a message by a link that fills a frame."
     },
     {
+      "path": "/find",
+      "title": "Find",
+      "body": [
+        "<p id=\"one\">A needle in a haystack.</p>",
+        "<p id=\"two\">Another Needle here.</p>",
+        "<p id=\"three\">And a third needle.</p>"
+      ],
+      "note": "One word three times, once with a capital, each in a paragraph of its own: for find on the page."
+    },
+    {
       "path": "/rings",
       "title": "Rings",
       "body": "<script>location.href = 'tel:+15550100'; document.title = 'rang';</script>",

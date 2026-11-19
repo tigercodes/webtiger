@@ -145,6 +145,30 @@
         }
       }
     },
+    "catalogue.state.find": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find on the page, with a count"
+          }
+        }
+      }
+    },
+    "catalogue.state.find_none": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find on the page, not found"
+          }
+        }
+      }
+    },
     "catalogue.state.history": {
       "comment": "Design catalogue: a state of the window.",
       "extractionState": "manual",
@@ -441,6 +465,90 @@
           "stringUnit": {
             "state": "translated",
             "value": "This page didn’t load"
+          }
+        }
+      }
+    },
+    "find.count": {
+      "comment": "Shown in the find bar where the engine counts: which match is shown, and how many there are. First %ld is the match's number, second the total.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%ld of %ld"
+          }
+        }
+      }
+    },
+    "find.done": {
+      "comment": "Button that closes the find bar.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        }
+      }
+    },
+    "find.field": {
+      "comment": "Placeholder and accessibility label of the find bar's field.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find on page"
+          }
+        }
+      }
+    },
+    "find.next": {
+      "comment": "Button in the find bar: go to the next match.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next Match"
+          }
+        }
+      }
+    },
+    "find.none": {
+      "comment": "Shown in the find bar when the text is not on the page.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not found"
+          }
+        }
+      }
+    },
+    "find.open": {
+      "comment": "Label of the button, beside the tabs, that opens the find bar; and the command (Command-F on a Mac).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find on Page"
+          }
+        }
+      }
+    },
+    "find.previous": {
+      "comment": "Button in the find bar: go to the match before.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Previous Match"
           }
         }
       }

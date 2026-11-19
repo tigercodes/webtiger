@@ -16,6 +16,8 @@ enum CatalogueState: String, CaseIterable, Identifiable {
     case failed
     case history
     case tabs
+    case find
+    case findNone = "find-none"
 
     var id: String {
         rawValue
@@ -32,6 +34,17 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         case .failed: "catalogue.state.failed"
         case .history: "catalogue.state.history"
         case .tabs: "catalogue.state.tabs"
+        case .find: "catalogue.state.find"
+        case .findNone: "catalogue.state.find_none"
+        }
+    }
+
+    /// What the window's find bar is open on in this state, when it is.
+    var finding: String? {
+        switch self {
+        case .find: "needle"
+        case .findNone: "zebra"
+        default: nil
         }
     }
 
@@ -66,6 +79,19 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         case .tabs:
             page(&window, url: "https://example.com/", display: "example.com", security: .secure)
             window.tab.title = "Example Domain"
+        case .find:
+            // An engine that counts: the third of twelve.
+            page(&window, url: "https://example.com/", display: "example.com", security: .secure)
+            window.tab.find.text = "needle"
+            window.tab.find.answered = true
+            window.tab.find.found = true
+            window.tab.find.counted = true
+            window.tab.find.matches = 12
+            window.tab.find.current = 3
+        case .findNone:
+            page(&window, url: "https://example.com/", display: "example.com", security: .secure)
+            window.tab.find.text = "zebra"
+            window.tab.find.answered = true
         }
         // The strip names every tab: the one in front, and for "several tabs" its neighbours,
         // one with a title, one still loading and known only by its site, one with no page.

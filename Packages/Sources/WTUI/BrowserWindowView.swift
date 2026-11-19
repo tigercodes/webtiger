@@ -12,23 +12,41 @@ public struct BrowserWindowView: View {
     @State private var addressSelection: TextSelection?
     /// The History list is open over the window (008).
     @State private var showingHistory = false
+    @FocusState private var findFocused: Bool
+    /// What the find bar opens on, once the window has opened: for a picture of the bar.
+    private let finding: String?
     @Environment(\.dismiss) private var dismiss
 
     public init(session: BrowserSession) {
+        self.init(session: session, finding: nil)
+    }
+
+    /// A window whose find bar is open on `finding`: the design catalogue's (004).
+    init(session: BrowserSession, finding: String?) {
         self.session = session
-        _model = State(initialValue: BrowserModel(session: session))
+        self.finding = finding
+        _model = State(initialValue: BrowserModel(session: session, finding: finding))
     }
 
     public var body: some View {
         VStack(spacing: 0) {
-            TabStrip(model: model) { showingHistory = true }
+            TabStrip(model: model, onFind: { model.openFind() }, onHistory: { showingHistory = true })
             toolbar
+            if model.isFinding {
+                findBar
+            }
             progress
             content
         }
         .background { tabShortcuts }
         .task { await model.open() }
         .onDisappear { model.close() }
+        // The find bar takes the keyboard when it opens, unless it is only a picture of one.
+        .onChange(of: model.isFinding) { _, isFinding in
+            if finding == nil {
+                findFocused = isFinding
+            }
+        }
         .sheet(isPresented: $showingHistory) { history }
         // Another tab came in front. An empty one is given the keyboard in its address field:
         // there is nothing else to do in an empty tab. One with a page keeps the keyboard out
@@ -98,6 +116,76 @@ public struct BrowserWindowView: View {
         .frame(minHeight: Tokens.Size.toolbarHeight)
     }
 
+    /// The find bar (010): a field, what was found, the match before and the next, and Done.
+    private var findBar: some View {
+        HStack(spacing: Tokens.Space.s) {
+            HStack(spacing: Tokens.Space.xs) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                TextField(text: $model.findText) {
+                    Text("find.field", bundle: .module)
+                }
+                .textFieldStyle(.plain)
+                .focused($findFocused)
+                .autocorrectionDisabled()
+                #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    .submitLabel(.search)
+                #endif
+                    // Return goes to the next match, and the keyboard stays in the field.
+                    .onSubmit {
+                        model.findNext()
+                        findFocused = true
+                    }
+                    .accessibilityLabel(Text("find.field", bundle: .module))
+                    .accessibilityIdentifier("find-field")
+                findOutcome
+            }
+            .padding(.horizontal, Tokens.Space.s)
+            .padding(.vertical, Tokens.Space.xs)
+            .frame(minHeight: Tokens.Size.fieldHeight)
+            .background(Tokens.Palette.fieldFill, in: RoundedRectangle(cornerRadius: Tokens.Radius.field))
+            toolbarButton("find.previous", symbol: "chevron.up", identifier: "find-previous", enabled: !model.findText.isEmpty) {
+                model.findPrevious()
+            }
+            toolbarButton("find.next", symbol: "chevron.down", identifier: "find-next", enabled: !model.findText.isEmpty) {
+                model.findNext()
+            }
+            Button {
+                model.closeFind()
+            } label: {
+                Text("find.done", bundle: .module)
+            }
+            // Neutral, as every button with words is (F14).
+            .buttonStyle(.bordered)
+            .tint(.primary)
+            .keyboardShortcut(.cancelAction)
+            .accessibilityIdentifier("find-done")
+        }
+        .padding(.horizontal, Tokens.Space.m)
+        .frame(minHeight: Tokens.Size.toolbarHeight)
+    }
+
+    /// What was found, in words: how many where the engine counts, and that there is none.
+    @ViewBuilder private var findOutcome: some View {
+        switch model.findOutcome {
+        case .nothing:
+            EmptyView()
+        case .notFound:
+            Text("find.none", bundle: .module)
+                .lineLimit(1)
+                .fixedSize()
+                .accessibilityIdentifier("find-outcome")
+        case let .match(current, total):
+            Text(String(format: String(localized: "find.count", bundle: .module), current, total))
+                .monospacedDigit()
+                .lineLimit(1)
+                .fixedSize()
+                .accessibilityIdentifier("find-outcome")
+        }
+    }
+
     private func toolbarButton(
         _ title: LocalizedStringKey,
         symbol: String,
@@ -132,6 +220,25 @@ public struct BrowserWindowView: View {
                 Text("history.open", bundle: .module)
             }
             .keyboardShortcut("y", modifiers: .command)
+            Button {
+                model.openFind()
+                findFocused = true
+            } label: {
+                Text("find.open", bundle: .module)
+            }
+            .keyboardShortcut("f", modifiers: .command)
+            Button {
+                model.findNext()
+            } label: {
+                Text("find.next", bundle: .module)
+            }
+            .keyboardShortcut("g", modifiers: .command)
+            Button {
+                model.findPrevious()
+            } label: {
+                Text("find.previous", bundle: .module)
+            }
+            .keyboardShortcut("g", modifiers: [.command, .shift])
             Button {
                 // On a window's last tab ⌘W closes the window, as it does everywhere on a Mac.
                 // The core's own rule is only that a window is never left empty (005, T1).
@@ -258,8 +365,9 @@ public struct BrowserWindowView: View {
 /// and one to open another (005 §5).
 struct TabStrip: View {
     let model: BrowserModel
-    /// Opens the History list: its button stands at the end of the row, beside the tabs and
-    /// not among them, where it stays when the tabs scroll.
+    /// Opens the find bar (010), and the History list (008): their buttons stand at the end of
+    /// the row, beside the tabs and not among them, where they stay when the tabs scroll.
+    var onFind: () -> Void = {}
     var onHistory: () -> Void = {}
     /// How wide a tab's name may be. It grows with the text's size, so that at the largest
     /// sizes a short name is still whole; a long title is cut to one line at any size.
@@ -268,6 +376,16 @@ struct TabStrip: View {
     var body: some View {
         HStack(spacing: 0) {
             tabs
+            Button(action: onFind) {
+                Label { Text("find.open", bundle: .module) } icon: { Image(systemName: "magnifyingglass") }
+                    .labelStyle(.iconOnly)
+                    .frame(minWidth: BrowserWindowView.hitSize, minHeight: BrowserWindowView.hitSize)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            // There is nothing to find in a tab with no page.
+            .disabled(!model.hasPage)
+            .accessibilityIdentifier("find")
             Button(action: onHistory) {
                 Label { Text("history.open", bundle: .module) } icon: { Image(systemName: "clock.arrow.circlepath") }
                     .labelStyle(.iconOnly)
