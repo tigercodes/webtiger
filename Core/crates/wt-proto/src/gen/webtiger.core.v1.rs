@@ -406,6 +406,42 @@ pub struct FindView {
     #[prost(uint32, tag = "6")]
     pub current: u32,
 }
+/// Asks what to offer for what is typed in a window's address field: places
+/// from its Space's own history, best first. Nothing typed leaves the
+/// device. Answered with AddressSuggestions, or "window.unknown".
+///
+/// Asked for, not subscribed to: each letter typed is a question, and a shell
+/// shows only the answer to what is now in its field.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SuggestAddresses {
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
+    #[prost(string, tag = "2")]
+    pub text: ::prost::alloc::string::String,
+    /// At most this many. 0 asks for the core's own number (6); more than 20
+    /// is 20.
+    #[prost(uint32, tag = "3")]
+    pub limit: u32,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AddressSuggestions {
+    /// Best first.
+    #[prost(message, repeated, tag = "1")]
+    pub suggestions: ::prost::alloc::vec::Vec<AddressSuggestion>,
+}
+/// A place that was visited, offered again.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct AddressSuggestion {
+    /// Where choosing it goes.
+    #[prost(string, tag = "1")]
+    pub url: ::prost::alloc::string::String,
+    /// The title it last had. Empty when it had none: a shell shows `display`.
+    #[prost(string, tag = "2")]
+    pub title: ::prost::alloc::string::String,
+    /// The address as the address field shows it.
+    #[prost(string, tag = "3")]
+    pub display: ::prost::alloc::string::String,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum LoadState {
@@ -893,7 +929,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -934,12 +970,15 @@ pub mod request {
         /// browser.proto, since 1.6
         #[prost(message, tag = "14")]
         FindInPage(super::FindInPage),
+        /// browser.proto, since 1.7
+        #[prost(message, tag = "15")]
+        SuggestAddresses(super::SuggestAddresses),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Response {
-    #[prost(oneof = "response::Kind", tags = "1, 2, 3, 4, 5, 6, 7")]
+    #[prost(oneof = "response::Kind", tags = "1, 2, 3, 4, 5, 6, 7, 8")]
     pub kind: ::core::option::Option<response::Kind>,
 }
 /// Nested message and enum types in `Response`.
@@ -962,6 +1001,9 @@ pub mod response {
         /// Since 1.5
         #[prost(message, tag = "7")]
         HistoryPage(super::HistoryPage),
+        /// Since 1.7
+        #[prost(message, tag = "8")]
+        AddressSuggestions(super::AddressSuggestions),
     }
 }
 /// Core → shell, unasked.

@@ -26,6 +26,7 @@ import com.tigercodes.webtiger.core.v1.Platform
 import com.tigercodes.webtiger.core.v1.QueryHistory
 import com.tigercodes.webtiger.core.v1.Request
 import com.tigercodes.webtiger.core.v1.SubmitAddress
+import com.tigercodes.webtiger.core.v1.SuggestAddresses
 import com.tigercodes.webtiger.core.v1.Subscribe
 import com.tigercodes.webtiger.core.v1.TabView
 import com.tigercodes.webtiger.core.v1.TestMode
@@ -234,6 +235,9 @@ class NativeCoreTest {
             val history = core.request(Request(query_history = QueryHistory(window_id = opened.window_id))).history_page
             assertNotNull("a page of history is a page, also when nothing was visited", history)
             assertTrue(history!!.entries.isEmpty())
+            val offered = core.request(Request(suggest_addresses = SuggestAddresses(window_id = opened.window_id, text = "example"))).address_suggestions
+            assertNotNull("what is offered is an answer, also when nothing is", offered)
+            assertTrue(offered!!.suggestions.isEmpty())
             assertNotNull(core.request(Request(close_tab = CloseTab(tab_id = tab.tab_id))).ack)
             assertNotNull(core.request(Request(forget_history = ForgetHistory(window_id = opened.window_id, everything = true))).ack)
         }

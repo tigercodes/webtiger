@@ -11,6 +11,7 @@
 mod history;
 mod schema;
 mod session;
+mod suggest;
 
 use std::path::Path;
 
@@ -20,6 +21,7 @@ use wt_core::{LoginSetId, SpaceId, Timestamp, Uuid};
 pub use history::{MAX_VISITS_PER_PAGE, Visit, VisitPage};
 pub use schema::SCHEMA_VERSION;
 pub use session::SavedTab;
+pub use suggest::{MAX_SUGGESTIONS, Suggested};
 
 /// Why the store could not do what was asked, as the code a shell is told
 /// ("store.open"). Never carries the user's data.

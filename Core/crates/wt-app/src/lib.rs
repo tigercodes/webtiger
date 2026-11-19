@@ -22,6 +22,7 @@ mod model;
 
 pub use app::{
     App, AppFuture, AppOptions, DEFAULT_SEARCH_TEMPLATE, HISTORY_PAGE, OUTSIDE_LINK_INTERVAL,
+    SUGGESTIONS,
 };
 pub use dispatch::{CORE_VERSION, Dispatcher, MAX_PING_PAYLOAD, Outbox, StartError};
 pub use error::{AppError, HostError, is_code};

@@ -243,3 +243,34 @@ message FindView {
   // Which match is shown, counted from 1. 0 when none is.
   uint32 current = 6;
 }
+
+// Places offered as the address field is typed in (011). Since 1.7.
+
+// Asks what to offer for what is typed in a window's address field: places
+// from its Space's own history, best first. Nothing typed leaves the
+// device. Answered with AddressSuggestions, or "window.unknown".
+//
+// Asked for, not subscribed to: each letter typed is a question, and a shell
+// shows only the answer to what is now in its field.
+message SuggestAddresses {
+  uint64 window_id = 1;
+  string text = 2 [(wt.redact) = true];
+  // At most this many. 0 asks for the core's own number (6); more than 20
+  // is 20.
+  uint32 limit = 3;
+}
+
+message AddressSuggestions {
+  // Best first.
+  repeated AddressSuggestion suggestions = 1;
+}
+
+// A place that was visited, offered again.
+message AddressSuggestion {
+  // Where choosing it goes.
+  string url = 1 [(wt.redact) = true];
+  // The title it last had. Empty when it had none: a shell shows `display`.
+  string title = 2 [(wt.redact) = true];
+  // The address as the address field shows it.
+  string display = 3 [(wt.redact) = true];
+}

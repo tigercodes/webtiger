@@ -10,7 +10,7 @@
 
 /// WebTiger Core ↔ shell contract (docs/features/000-master-plan.md §5.5,
 /// docs/features/001-foundations.md §4).
-/// Contract version: 1.6 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
+/// Contract version: 1.7 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
 ///   1.1  Tabs: OpenTab, CloseTab, ActivateTab, TabOpened; WindowSnapshot.tabs.
 ///   1.2  A page that asks for a new window: NewWindowRequested, CloseRequested;
 ///        web view ids with their top bit set are the shell's.
@@ -21,6 +21,8 @@
 ///   1.5  History: QueryHistory, HistoryPage, HistoryEntry, ForgetHistory.
 ///   1.6  Find on the page: FindInPage, FindView (TabView.find); the host
 ///        request WebViewFind; FindResult.
+///   1.7  Places offered as the address field is typed in: SuggestAddresses,
+///        AddressSuggestions, AddressSuggestion.
 ///
 /// Every message crosses the C ABI as protobuf bytes:
 ///   wt_core_start(CoreConfig)   config.proto
@@ -258,6 +260,15 @@ public nonisolated struct WTRequest: Sendable {
     set {kind = .findInPage(newValue)}
   }
 
+  /// browser.proto, since 1.7
+  public var suggestAddresses: WTSuggestAddresses {
+    get {
+      if case .suggestAddresses(let v)? = kind {return v}
+      return WTSuggestAddresses()
+    }
+    set {kind = .suggestAddresses(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -280,6 +291,8 @@ public nonisolated struct WTRequest: Sendable {
     case forgetHistory(WTForgetHistory)
     /// browser.proto, since 1.6
     case findInPage(WTFindInPage)
+    /// browser.proto, since 1.7
+    case suggestAddresses(WTSuggestAddresses)
 
   }
 
@@ -352,6 +365,15 @@ public nonisolated struct WTResponse: Sendable {
     set {kind = .historyPage(newValue)}
   }
 
+  /// Since 1.7
+  public var addressSuggestions: WTAddressSuggestions {
+    get {
+      if case .addressSuggestions(let v)? = kind {return v}
+      return WTAddressSuggestions()
+    }
+    set {kind = .addressSuggestions(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -364,6 +386,8 @@ public nonisolated struct WTResponse: Sendable {
     case tabOpened(WTTabOpened)
     /// Since 1.5
     case historyPage(WTHistoryPage)
+    /// Since 1.7
+    case addressSuggestions(WTAddressSuggestions)
 
   }
 
@@ -724,7 +748,7 @@ nonisolated extension WTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Request"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0\u{3}open_tab\0\u{3}close_tab\0\u{3}activate_tab\0\u{3}query_history\0\u{3}forget_history\0\u{3}find_in_page\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0\u{3}open_tab\0\u{3}close_tab\0\u{3}activate_tab\0\u{3}query_history\0\u{3}forget_history\0\u{3}find_in_page\0\u{3}suggest_addresses\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -914,6 +938,19 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
           self.kind = .findInPage(v)
         }
       }()
+      case 15: try {
+        var v: WTSuggestAddresses?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .suggestAddresses(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .suggestAddresses(v)
+        }
+      }()
       default: break
       }
     }
@@ -981,6 +1018,10 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       guard case .findInPage(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
     }()
+    case .suggestAddresses?: try {
+      guard case .suggestAddresses(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 15)
+    }()
     case nil: break
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -995,7 +1036,7 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 nonisolated extension WTResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Response"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}error\0\u{1}ack\0\u{1}pong\0\u{1}subscribed\0\u{3}window_opened\0\u{3}tab_opened\0\u{3}history_page\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}error\0\u{1}ack\0\u{1}pong\0\u{1}subscribed\0\u{3}window_opened\0\u{3}tab_opened\0\u{3}history_page\0\u{3}address_suggestions\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1094,6 +1135,19 @@ nonisolated extension WTResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
           self.kind = .historyPage(v)
         }
       }()
+      case 8: try {
+        var v: WTAddressSuggestions?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .addressSuggestions(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .addressSuggestions(v)
+        }
+      }()
       default: break
       }
     }
@@ -1132,6 +1186,10 @@ nonisolated extension WTResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     case .historyPage?: try {
       guard case .historyPage(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
+    }()
+    case .addressSuggestions?: try {
+      guard case .addressSuggestions(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
     }()
     case nil: break
     }

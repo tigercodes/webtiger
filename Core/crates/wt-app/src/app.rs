@@ -13,11 +13,11 @@ use wt_core::{
     search_address,
 };
 use wt_proto::v1::{
-    Ack, ActivateTab, CloseTab, CloseWindow, EngineEvent, EngineKind, FindInPage, ForgetHistory,
-    HistoryEntry, HistoryPage, LoginSet, NavigationCommand, OpenOutside, OpenTab,
-    OutsideLinkRequested, QueryHistory, SubmitAddress, TabCommand, TabOpened, WebViewCommand,
-    WebViewCreate, WebViewDestroy, WebViewFind, WebViewLoad, WindowOpened, WindowSnapshot,
-    engine_event, forget_history, host_request, request, response,
+    Ack, ActivateTab, AddressSuggestion, AddressSuggestions, CloseTab, CloseWindow, EngineEvent,
+    EngineKind, FindInPage, ForgetHistory, HistoryEntry, HistoryPage, LoginSet, NavigationCommand,
+    OpenOutside, OpenTab, OutsideLinkRequested, QueryHistory, SubmitAddress, SuggestAddresses,
+    TabCommand, TabOpened, WebViewCommand, WebViewCreate, WebViewDestroy, WebViewFind, WebViewLoad,
+    WindowOpened, WindowSnapshot, engine_event, forget_history, host_request, request, response,
 };
 use wt_store::{SavedTab, Space, Store};
 
@@ -33,6 +33,10 @@ pub const DEFAULT_SEARCH_TEMPLATE: &str = "https://duckduckgo.com/?q={query}";
 /// How many visits a page of history holds when the shell does not say
 /// (008).
 pub const HISTORY_PAGE: u32 = 100;
+
+/// How many places are offered for what is typed when the shell does not
+/// say (011).
+pub const SUGGESTIONS: u32 = 6;
 
 /// How long after a web view had an address handed to the system before it
 /// may have another (007). A click's permission lasts a few seconds in an
@@ -111,7 +115,8 @@ impl App {
     /// Handles one of the app's requests: a window's (`OpenWindow`,
     /// `CloseWindow`), a tab's (`OpenTab`, `CloseTab`, `ActivateTab`,
     /// `SubmitAddress`, `TabCommand`, `FindInPage`) or history's
-    /// (`QueryHistory`, `ForgetHistory`). The dispatcher answers the rest.
+    /// (`QueryHistory`, `ForgetHistory`, `SuggestAddresses`). The dispatcher
+    /// answers the rest.
     pub fn request(&self, kind: request::Kind) -> AppFuture {
         match kind {
             request::Kind::OpenWindow(_) => self.open_window(),
@@ -123,6 +128,7 @@ impl App {
             request::Kind::TabCommand(command) => self.tab_command(&command),
             request::Kind::FindInPage(find) => self.find_in_page(&find),
             request::Kind::QueryHistory(query) => answer(self.query_history(&query)),
+            request::Kind::SuggestAddresses(suggest) => answer(self.suggest_addresses(&suggest)),
             request::Kind::ForgetHistory(forget) => answer(self.forget_history(&forget)),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
@@ -240,6 +246,38 @@ impl App {
         Ok(response::Kind::HistoryPage(HistoryPage {
             entries,
             more: page.more,
+        }))
+    }
+
+    /// What to offer for what is typed in a window's address field (011):
+    /// places from its Space's own history, best first.
+    fn suggest_addresses(&self, suggest: &SuggestAddresses) -> Result<response::Kind, AppError> {
+        let login_set = self
+            .state
+            .borrow()
+            .history_of(WindowId(suggest.window_id))
+            .ok_or_else(|| AppError::new("window.unknown").field("window_id"))?;
+        let limit = if suggest.limit == 0 {
+            SUGGESTIONS
+        } else {
+            suggest.limit
+        };
+        let places = self
+            .store
+            .borrow()
+            .suggestions(login_set, &suggest.text, limit)
+            .map_err(|error| AppError::new(error.code()))?;
+        let suggestions = places
+            .into_iter()
+            .map(|place| AddressSuggestion {
+                display: Address::parse(&place.url)
+                    .map_or_else(|_| place.url.clone(), |address| address.display()),
+                url: place.url,
+                title: place.title,
+            })
+            .collect();
+        Ok(response::Kind::AddressSuggestions(AddressSuggestions {
+            suggestions,
         }))
     }
 

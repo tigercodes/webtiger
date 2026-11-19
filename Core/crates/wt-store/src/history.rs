@@ -205,7 +205,7 @@ impl Store {
 /// the index has a syntax of its own (`OR`, `NEAR`, `*`, quotes, columns):
 /// it is cut into words, which are letters and digits and nothing else, and
 /// each is quoted. `None` when there is no word in it.
-fn match_expression(text: &str) -> Option<String> {
+pub(crate) fn match_expression(text: &str) -> Option<String> {
     let words: Vec<&str> = text
         .split(|c: char| !c.is_alphanumeric())
         .filter(|word| !word.is_empty())
