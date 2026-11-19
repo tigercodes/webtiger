@@ -114,6 +114,16 @@ run_ui() {
   ensure_tools
   ensure_core
   step "app UI tests (fake mode), macOS"
+  # XCUITest answers a dialog of the system's that is in its way by pressing its Cancel
+  # button, whoever the dialog was for; with two in its way it goes round between them until
+  # each test's ten minutes are up. So the Mac's suite is not started while one is on the
+  # screen: somebody answers it first.
+  local dialogs
+  dialogs=$(swift Tools/apple/system-dialogs.swift 2>/dev/null || echo 0)
+  if [[ "$dialogs" != 0 ]]; then
+    echo "ui: $dialogs dialog(s) of the system's are on this Mac's screen; answer them, then run this again" >&2
+    exit 1
+  fi
   "${XC[@]}" -scheme WebTiger-macOS -destination 'platform=macOS,arch=arm64' "${DIAG[@]}" test 2>&1 | xcbeautify --quiet
   step "app UI tests (fake mode), $IOS_SIM"
   "${XC[@]}" -scheme WebTiger-iOS -destination "platform=iOS Simulator,name=$IOS_SIM" CODE_SIGNING_ALLOWED=NO "${DIAG[@]}" test 2>&1 | xcbeautify --quiet

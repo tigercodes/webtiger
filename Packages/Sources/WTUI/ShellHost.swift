@@ -22,12 +22,22 @@ public struct OutsideOpener: Sendable {
         self.open = open
     }
 
-    /// The system's own.
-    public static let system = OutsideOpener { url in
+    /// The system's own. On a Mac, when nothing opens the address, the system says so itself
+    /// in a dialog of its own, and offers to choose an app: that is what a person is told.
+    public static let system = OutsideOpener { url in await openWithTheSystem(url, prompting: true) }
+
+    /// The system's own, asked not to put anything of its own on the screen when nothing opens
+    /// the address. A test's: the system's dialog stays on the screen of the machine a suite
+    /// runs on until somebody answers it (007 §6).
+    static let systemWithoutItsPrompt = OutsideOpener { url in await openWithTheSystem(url, prompting: false) }
+
+    @MainActor private static func openWithTheSystem(_ url: URL, prompting: Bool) async -> Bool {
         #if os(macOS)
-            NSWorkspace.shared.open(url)
+            let configuration = NSWorkspace.OpenConfiguration()
+            configuration.promptsUserIfNeeded = prompting
+            return await (try? NSWorkspace.shared.open(url, configuration: configuration)) != nil
         #else
-            await UIApplication.shared.open(url)
+            return await UIApplication.shared.open(url)
         #endif
     }
 

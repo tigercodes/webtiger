@@ -110,10 +110,12 @@ final class ShellHostTests: XCTestCase {
 
     #if os(macOS)
         /// The system's own opener, asked for real, about a scheme nothing is registered for:
-        /// it says so, and shows nothing. (What it does with a letter to write is to start the
-        /// mail app, which no test does.)
+        /// it says so. It is asked without the system's prompt: asked as the app asks, the
+        /// system puts up a dialog of its own each time ("There is no application set to open
+        /// the URL"), which stays on the screen of whoever's machine this runs on. (What it
+        /// does with a letter to write is to start the mail app, which no test does.)
         func testTheSystemsOpenerSaysWhenNothingOpensAnAddress() async {
-            let host = ShellHost(engine: Engine(), opener: .system)
+            let host = ShellHost(engine: Engine(), opener: .systemWithoutItsPrompt)
             let answer = await host.answer(openOutside("x-webtiger-test-no-such-scheme:1"))
             XCTAssertEqual(code(answer), "system.no_handler")
         }
