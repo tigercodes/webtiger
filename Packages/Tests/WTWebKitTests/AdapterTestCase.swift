@@ -138,7 +138,7 @@ class AdapterTestCase: XCTestCase {
         core.reports.filter { $0.webViewID == id }.compactMap(\.kind)
     }
 
-    /// Waits until the reports about a web view satisfy `done`, for up to fifteen seconds.
+    /// Waits until the reports about a web view satisfy `done`, for up to a minute (`Patience`).
     func wait(
         _ id: UInt64,
         _ what: String,
@@ -146,7 +146,7 @@ class AdapterTestCase: XCTestCase {
         line: UInt = #line,
         until done: ([WTEngineEvent.OneOf_Kind]) -> Bool
     ) async {
-        for _ in 0 ..< 1500 {
+        for _ in 0 ..< Patience.steps {
             if done(reports(id)) {
                 return
             }

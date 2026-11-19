@@ -39,7 +39,7 @@ final class WebKitRestoreTests: XCTestCase {
     /// machine finds that moment: GitHub's runner did. So the document itself is asked.
     private func wait(for webView: WKWebView, toShow path: String, file: StaticString = #filePath, line: UInt = #line) async {
         let wanted = site.url(path)
-        for _ in 0 ..< 1500 {
+        for _ in 0 ..< Patience.steps {
             if !webView.isLoading, webView.url?.absoluteString == wanted {
                 let shown = try? await webView.evaluateJavaScript("document.readyState + ' ' + location.href") as? String
                 if shown == "complete \(wanted)" {
@@ -48,13 +48,21 @@ final class WebKitRestoreTests: XCTestCase {
             }
             try? await Task.sleep(for: .milliseconds(10))
         }
-        XCTFail("the web view shows \(webView.url?.path ?? "nothing"), not \(path)", file: file, line: line)
+        // The document's own word for where it is and how far it has loaded: the web view's
+        // `url` alone has been right while the page was not there.
+        let shown = await (try? webView.evaluateJavaScript("document.readyState + ' ' + location.pathname + location.search") as? String) ??
+            "nothing"
+        XCTFail(
+            "the web view never showed \(path) loaded; its document says: \(shown); loading: \(webView.isLoading)",
+            file: file,
+            line: line
+        )
     }
 
     /// The page's title once WebKit has it. It arrives a moment after the load ends, so reading
     /// it at once is a race a slower machine loses.
     private func title(of webView: WKWebView) async -> String {
-        for _ in 0 ..< 1000 {
+        for _ in 0 ..< Patience.steps {
             if let title = webView.title, !title.isEmpty {
                 return title
             }

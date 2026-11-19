@@ -11,6 +11,18 @@ import WebKit
 /// that was not there yet has been seen never to end, so the page is asked for again every
 /// half minute. Eight minutes, because a test may take ten (`Tools/test.sh`): a runner that
 /// slow is a slow runner, and what it says about WebTiger is nothing.
+/// How long a test of WebKit waits for something WebKit does before it gives up: a minute.
+///
+/// Fifteen seconds was plenty on any Mac, where these tests take a second each. GitHub's
+/// simulator has been seen to stall WebKit for most of a minute in the middle of a run, long
+/// after it had started: one test waited 37 seconds for a page and failed, in a run where
+/// another, which waits on nothing of ours, took two minutes and passed. A wait lasts only as
+/// long as what it waits for, so a generous one costs a test that passes nothing.
+enum Patience {
+    /// The steps of ten milliseconds in a minute.
+    static let steps = 6000
+}
+
 @MainActor
 enum WebKitWarmUp {
     private static var done = false
