@@ -396,6 +396,130 @@ public nonisolated struct WTAddressView: Sendable {
   public init() {}
 }
 
+/// Asks for a page of a window's history: the visits of its Space's login
+/// set, newest first. Answered with HistoryPage, or "window.unknown".
+///
+/// History is asked for, not subscribed to: a list that is being read does
+/// not move under the reader.
+public nonisolated struct WTQueryHistory: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var windowID: UInt64 = 0
+
+  /// Words to look for. Each must be found in a visit's title or address, as
+  /// a word or the start of one, whatever its case. Empty: every visit.
+  public var text: String = String()
+
+  /// At most this many. 0 asks for the core's own page (100); more than 500
+  /// is 500.
+  public var limit: UInt32 = 0
+
+  /// Only visits older than this one: the last entry of the page before. 0:
+  /// from the newest.
+  public var beforeVisitID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct WTHistoryPage: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var entries: [WTHistoryEntry] = []
+
+  /// There are older visits than these that match.
+  public var more: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// A page that was seen.
+public nonisolated struct WTHistoryEntry: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Never used twice. A later visit has a greater one.
+  public var visitID: UInt64 = 0
+
+  public var url: String = String()
+
+  /// The page's title. Empty when it had none: a shell shows `display`.
+  public var title: String = String()
+
+  /// The address as the address field shows it.
+  public var display: String = String()
+
+  /// When, in milliseconds since 1970-01-01 UTC.
+  public var visitedAtMs: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Forgets visits of a window's Space's login set: gone from the store's
+/// files, not only from the list. Answered with Ack (also when there was
+/// nothing to forget), "window.unknown", or "history.nothing_named" when
+/// `what` is not set.
+public nonisolated struct WTForgetHistory: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var windowID: UInt64 = 0
+
+  public var what: WTForgetHistory.OneOf_What? = nil
+
+  /// This visit.
+  public var visitID: UInt64 {
+    get {
+      if case .visitID(let v)? = what {return v}
+      return 0
+    }
+    set {what = .visitID(newValue)}
+  }
+
+  /// Every visit at or after this time, in milliseconds since 1970 UTC.
+  public var sinceMs: Int64 {
+    get {
+      if case .sinceMs(let v)? = what {return v}
+      return 0
+    }
+    set {what = .sinceMs(newValue)}
+  }
+
+  /// Every visit. Only `true` means it.
+  public var everything: Bool {
+    get {
+      if case .everything(let v)? = what {return v}
+      return false
+    }
+    set {what = .everything(newValue)}
+  }
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public nonisolated enum OneOf_What: Equatable, Sendable {
+    /// This visit.
+    case visitID(UInt64)
+    /// Every visit at or after this time, in milliseconds since 1970 UTC.
+    case sinceMs(Int64)
+    /// Every visit. Only `true` means it.
+    case everything(Bool)
+
+  }
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
@@ -958,4 +1082,208 @@ nonisolated extension WTAddressView: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 nonisolated extension WTAddressView.Security: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SECURITY_UNSPECIFIED\0\u{1}SECURITY_SECURE\0\u{1}SECURITY_INSECURE\0\u{1}SECURITY_LOCAL\0")
+}
+
+nonisolated extension WTQueryHistory: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".QueryHistory"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}text\0\u{1}limit\0\u{3}before_visit_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.windowID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.text) }()
+      case 3: try { try decoder.decodeSingularUInt32Field(value: &self.limit) }()
+      case 4: try { try decoder.decodeSingularUInt64Field(value: &self.beforeVisitID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.windowID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.windowID, fieldNumber: 1)
+    }
+    if !self.text.isEmpty {
+      try visitor.visitSingularStringField(value: self.text, fieldNumber: 2)
+    }
+    if self.limit != 0 {
+      try visitor.visitSingularUInt32Field(value: self.limit, fieldNumber: 3)
+    }
+    if self.beforeVisitID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.beforeVisitID, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTQueryHistory, rhs: WTQueryHistory) -> Bool {
+    if lhs.windowID != rhs.windowID {return false}
+    if lhs.text != rhs.text {return false}
+    if lhs.limit != rhs.limit {return false}
+    if lhs.beforeVisitID != rhs.beforeVisitID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTHistoryPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".HistoryPage"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}entries\0\u{1}more\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.entries) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.more) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.entries.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.entries, fieldNumber: 1)
+    }
+    if self.more != false {
+      try visitor.visitSingularBoolField(value: self.more, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTHistoryPage, rhs: WTHistoryPage) -> Bool {
+    if lhs.entries != rhs.entries {return false}
+    if lhs.more != rhs.more {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTHistoryEntry: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".HistoryEntry"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}visit_id\0\u{1}url\0\u{1}title\0\u{1}display\0\u{3}visited_at_ms\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.visitID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.title) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.display) }()
+      case 5: try { try decoder.decodeSingularInt64Field(value: &self.visitedAtMs) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.visitID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.visitID, fieldNumber: 1)
+    }
+    if !self.url.isEmpty {
+      try visitor.visitSingularStringField(value: self.url, fieldNumber: 2)
+    }
+    if !self.title.isEmpty {
+      try visitor.visitSingularStringField(value: self.title, fieldNumber: 3)
+    }
+    if !self.display.isEmpty {
+      try visitor.visitSingularStringField(value: self.display, fieldNumber: 4)
+    }
+    if self.visitedAtMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.visitedAtMs, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTHistoryEntry, rhs: WTHistoryEntry) -> Bool {
+    if lhs.visitID != rhs.visitID {return false}
+    if lhs.url != rhs.url {return false}
+    if lhs.title != rhs.title {return false}
+    if lhs.display != rhs.display {return false}
+    if lhs.visitedAtMs != rhs.visitedAtMs {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTForgetHistory: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ForgetHistory"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{3}visit_id\0\u{3}since_ms\0\u{1}everything\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.windowID) }()
+      case 2: try {
+        var v: UInt64?
+        try decoder.decodeSingularUInt64Field(value: &v)
+        if let v = v {
+          if self.what != nil {try decoder.handleConflictingOneOf()}
+          self.what = .visitID(v)
+        }
+      }()
+      case 3: try {
+        var v: Int64?
+        try decoder.decodeSingularInt64Field(value: &v)
+        if let v = v {
+          if self.what != nil {try decoder.handleConflictingOneOf()}
+          self.what = .sinceMs(v)
+        }
+      }()
+      case 4: try {
+        var v: Bool?
+        try decoder.decodeSingularBoolField(value: &v)
+        if let v = v {
+          if self.what != nil {try decoder.handleConflictingOneOf()}
+          self.what = .everything(v)
+        }
+      }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if self.windowID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.windowID, fieldNumber: 1)
+    }
+    switch self.what {
+    case .visitID?: try {
+      guard case .visitID(let v)? = self.what else { preconditionFailure() }
+      try visitor.visitSingularUInt64Field(value: v, fieldNumber: 2)
+    }()
+    case .sinceMs?: try {
+      guard case .sinceMs(let v)? = self.what else { preconditionFailure() }
+      try visitor.visitSingularInt64Field(value: v, fieldNumber: 3)
+    }()
+    case .everything?: try {
+      guard case .everything(let v)? = self.what else { preconditionFailure() }
+      try visitor.visitSingularBoolField(value: v, fieldNumber: 4)
+    }()
+    case nil: break
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTForgetHistory, rhs: WTForgetHistory) -> Bool {
+    if lhs.windowID != rhs.windowID {return false}
+    if lhs.what != rhs.what {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
 }

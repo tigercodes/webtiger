@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use crate::StoreError;
 
 /// The version this build's store is at.
-pub const SCHEMA_VERSION: u32 = 1;
+pub const SCHEMA_VERSION: u32 = 2;
 
 /// The migrations, in order: `MIGRATIONS[n]` takes version `n` to `n + 1`.
 const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
@@ -27,6 +27,37 @@ const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
          created_at INTEGER NOT NULL
      ) STRICT;
      CREATE INDEX space_login_set ON space (login_set_id);",
+    // 2 (W1, 008): history. A visit names its login set, so a private one,
+    // which has no row, can have none. Ids are never used twice: newest
+    // first is by id, and a visit that was forgotten names nothing after.
+    // The words of a visit's address and title are indexed beside it, kept
+    // in step by triggers, and the index forgets what a row forgets.
+    "CREATE TABLE visit (
+         id INTEGER PRIMARY KEY AUTOINCREMENT,
+         login_set_id BLOB NOT NULL REFERENCES login_set (id),
+         url TEXT NOT NULL,
+         title TEXT NOT NULL,
+         visited_at INTEGER NOT NULL
+     ) STRICT;
+     CREATE INDEX visit_login_set ON visit (login_set_id, id);
+     CREATE VIRTUAL TABLE visit_text USING fts5 (
+         url, title,
+         content = 'visit', content_rowid = 'id',
+         tokenize = 'unicode61 remove_diacritics 2'
+     );
+     INSERT INTO visit_text (visit_text, rank) VALUES ('secure-delete', 1);
+     CREATE TRIGGER visit_text_insert AFTER INSERT ON visit BEGIN
+         INSERT INTO visit_text (rowid, url, title) VALUES (new.id, new.url, new.title);
+     END;
+     CREATE TRIGGER visit_text_delete AFTER DELETE ON visit BEGIN
+         INSERT INTO visit_text (visit_text, rowid, url, title)
+         VALUES ('delete', old.id, old.url, old.title);
+     END;
+     CREATE TRIGGER visit_text_update AFTER UPDATE OF url, title ON visit BEGIN
+         INSERT INTO visit_text (visit_text, rowid, url, title)
+         VALUES ('delete', old.id, old.url, old.title);
+         INSERT INTO visit_text (rowid, url, title) VALUES (new.id, new.url, new.title);
+     END;",
 ];
 
 pub(crate) fn version(connection: &Connection) -> Result<u32, StoreError> {

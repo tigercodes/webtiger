@@ -13,7 +13,7 @@ use std::path::Path;
 use std::rc::Rc;
 use std::time::Duration;
 
-use wt_core::{Clock as _, SystemClock, Timestamp, Uuid, WindowId};
+use wt_core::{Clock, ManualClock, SystemClock, Timestamp, Uuid, WindowId};
 use wt_proto::v1::{
     Ack, CoreConfig, CoreStatus, EngineKind, Envelope, Event, HostPing, Ping, Pong, Request,
     Response, Snapshot, Subscribe, Subscribed, TestMode, Unsubscribe, WindowSnapshot, core_status,
@@ -44,6 +44,19 @@ const STORE_FILE: &str = "webtiger.sqlite";
 const FAKE_LOGIN_SET: Uuid = Uuid::from_random_bytes([0x57; 16]);
 /// Fake mode's "now": 2026-01-01T12:00:00Z.
 const FAKE_NOW: Timestamp = Timestamp(1_767_268_800_000);
+
+/// Fake mode's clock: it starts at [`FAKE_NOW`] and moves on a second each
+/// time it is read, so what a run writes down has the same times on every
+/// run, and in the order it was written.
+struct FakeClock(ManualClock);
+
+impl Clock for FakeClock {
+    fn now(&self) -> Timestamp {
+        let now = self.0.now();
+        self.0.advance_millis(1_000);
+        now
+    }
+}
 
 /// Why the core refused to start, as the code `CoreStatus` carries.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -79,9 +92,6 @@ pub struct Dispatcher {
     subscriptions: RefCell<BTreeMap<u64, Subscription>>,
     next_subscription: std::cell::Cell<u64>,
     fake: bool,
-    /// Held so the database stays open, and locked, for as long as the core
-    /// runs. W1's models read and write through it.
-    _store: Store,
 }
 
 impl Dispatcher {
@@ -132,6 +142,11 @@ impl Dispatcher {
         let space = store
             .default_space(new_login_set, now)
             .map_err(|e| StartError::new(e.code()))?;
+        let clock: Rc<dyn Clock> = if fake {
+            Rc::new(FakeClock(ManualClock::new(FAKE_NOW)))
+        } else {
+            Rc::new(SystemClock)
+        };
 
         let bridge = Rc::new(HostBridge::new(Rc::clone(&outbox), host_timeout));
         let options = AppOptions {
@@ -142,8 +157,16 @@ impl Dispatcher {
                 .as_ref()
                 .map(|options| options.start_address.clone())
                 .filter(|start| fake && !start.is_empty()),
+            clock,
         };
-        let app = App::new(options, space, Rc::clone(&bridge) as Rc<dyn crate::Host>);
+        // The app holds the store: the database stays open, and locked, for
+        // as long as the core runs.
+        let app = App::new(
+            options,
+            space,
+            Rc::new(RefCell::new(store)),
+            Rc::clone(&bridge) as Rc<dyn crate::Host>,
+        );
         let dispatcher = Rc::new(Dispatcher {
             app,
             bridge,
@@ -151,7 +174,6 @@ impl Dispatcher {
             subscriptions: RefCell::new(BTreeMap::new()),
             next_subscription: std::cell::Cell::new(1),
             fake,
-            _store: store,
         });
         dispatcher.send_event(event::Kind::Status(CoreStatus {
             state: core_status::State::Ready as i32,

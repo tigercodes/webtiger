@@ -291,6 +291,80 @@ pub mod address_view {
         }
     }
 }
+/// Asks for a page of a window's history: the visits of its Space's login
+/// set, newest first. Answered with HistoryPage, or "window.unknown".
+///
+/// History is asked for, not subscribed to: a list that is being read does
+/// not move under the reader.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct QueryHistory {
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
+    /// Words to look for. Each must be found in a visit's title or address, as
+    /// a word or the start of one, whatever its case. Empty: every visit.
+    #[prost(string, tag = "2")]
+    pub text: ::prost::alloc::string::String,
+    /// At most this many. 0 asks for the core's own page (100); more than 500
+    /// is 500.
+    #[prost(uint32, tag = "3")]
+    pub limit: u32,
+    /// Only visits older than this one: the last entry of the page before. 0:
+    /// from the newest.
+    #[prost(uint64, tag = "4")]
+    pub before_visit_id: u64,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct HistoryPage {
+    #[prost(message, repeated, tag = "1")]
+    pub entries: ::prost::alloc::vec::Vec<HistoryEntry>,
+    /// There are older visits than these that match.
+    #[prost(bool, tag = "2")]
+    pub more: bool,
+}
+/// A page that was seen.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct HistoryEntry {
+    /// Never used twice. A later visit has a greater one.
+    #[prost(uint64, tag = "1")]
+    pub visit_id: u64,
+    #[prost(string, tag = "2")]
+    pub url: ::prost::alloc::string::String,
+    /// The page's title. Empty when it had none: a shell shows `display`.
+    #[prost(string, tag = "3")]
+    pub title: ::prost::alloc::string::String,
+    /// The address as the address field shows it.
+    #[prost(string, tag = "4")]
+    pub display: ::prost::alloc::string::String,
+    /// When, in milliseconds since 1970-01-01 UTC.
+    #[prost(int64, tag = "5")]
+    pub visited_at_ms: i64,
+}
+/// Forgets visits of a window's Space's login set: gone from the store's
+/// files, not only from the list. Answered with Ack (also when there was
+/// nothing to forget), "window.unknown", or "history.nothing_named" when
+/// `what` is not set.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ForgetHistory {
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
+    #[prost(oneof = "forget_history::What", tags = "2, 3, 4")]
+    pub what: ::core::option::Option<forget_history::What>,
+}
+/// Nested message and enum types in `ForgetHistory`.
+pub mod forget_history {
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum What {
+        /// This visit.
+        #[prost(uint64, tag = "2")]
+        VisitId(u64),
+        /// Every visit at or after this time, in milliseconds since 1970 UTC.
+        #[prost(int64, tag = "3")]
+        SinceMs(i64),
+        /// Every visit. Only `true` means it.
+        #[prost(bool, tag = "4")]
+        Everything(bool),
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum LoadState {
@@ -740,7 +814,7 @@ pub mod envelope {
 /// request that waits (on the shell) never holds up others.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Request {
-    #[prost(oneof = "request::Kind", tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11")]
+    #[prost(oneof = "request::Kind", tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13")]
     pub kind: ::core::option::Option<request::Kind>,
 }
 /// Nested message and enum types in `Request`.
@@ -772,17 +846,22 @@ pub mod request {
         CloseTab(super::CloseTab),
         #[prost(message, tag = "11")]
         ActivateTab(super::ActivateTab),
+        /// browser.proto, since 1.5
+        #[prost(message, tag = "12")]
+        QueryHistory(super::QueryHistory),
+        #[prost(message, tag = "13")]
+        ForgetHistory(super::ForgetHistory),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Response {
-    #[prost(oneof = "response::Kind", tags = "1, 2, 3, 4, 5, 6")]
+    #[prost(oneof = "response::Kind", tags = "1, 2, 3, 4, 5, 6, 7")]
     pub kind: ::core::option::Option<response::Kind>,
 }
 /// Nested message and enum types in `Response`.
 pub mod response {
-    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Kind {
         #[prost(message, tag = "1")]
         Error(super::Error),
@@ -797,6 +876,9 @@ pub mod response {
         WindowOpened(super::WindowOpened),
         #[prost(message, tag = "6")]
         TabOpened(super::TabOpened),
+        /// Since 1.5
+        #[prost(message, tag = "7")]
+        HistoryPage(super::HistoryPage),
     }
 }
 /// Core → shell, unasked.

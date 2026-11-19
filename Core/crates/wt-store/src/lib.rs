@@ -2,11 +2,13 @@
 //!
 //! W0 has the first two tables, `login_set` and `space`, because a web view
 //! cannot be created without knowing whose logins it runs in, and that
-//! answer has to be the same tomorrow. The tabs, history, the journal and
-//! the one-writer-many-readers arrangement arrive with W1.
+//! answer has to be the same tomorrow. W1 adds history (`visit`, 008). The
+//! tabs, the journal and the one-writer-many-readers arrangement are still
+//! to come.
 //!
 //! Private login sets are never written here: they live and die in memory.
 
+mod history;
 mod schema;
 
 use std::path::Path;
@@ -14,6 +16,7 @@ use std::path::Path;
 use rusqlite::{Connection, OptionalExtension as _, params};
 use wt_core::{LoginSetId, SpaceId, Timestamp, Uuid};
 
+pub use history::{MAX_VISITS_PER_PAGE, Visit, VisitPage};
 pub use schema::SCHEMA_VERSION;
 
 /// Why the store could not do what was asked, as the code a shell is told
@@ -97,8 +100,11 @@ impl Store {
     }
 
     fn prepare(mut connection: Connection) -> Result<Store, StoreError> {
+        // What is deleted is overwritten, not only unlinked: history that is
+        // forgotten is gone from the file (008).
         connection
             .pragma_update(None, "foreign_keys", "ON")
+            .and_then(|()| connection.pragma_update(None, "secure_delete", "ON"))
             .map_err(|_| StoreError::Open)?;
         schema::migrate(&mut connection)?;
         Ok(Store { connection })

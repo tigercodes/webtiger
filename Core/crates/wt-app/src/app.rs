@@ -9,15 +9,17 @@ use std::time::Duration;
 
 use tokio::time::Instant;
 use wt_core::{
-    Address, Input, TabId, WebViewId, WindowId, classify, opens_outside, search_address,
+    Address, Clock, Input, TabId, Timestamp, WebViewId, WindowId, classify, opens_outside,
+    search_address,
 };
 use wt_proto::v1::{
-    Ack, ActivateTab, CloseTab, CloseWindow, EngineEvent, EngineKind, LoginSet, NavigationCommand,
-    OpenOutside, OpenTab, OutsideLinkRequested, SubmitAddress, TabCommand, TabOpened,
-    WebViewCommand, WebViewCreate, WebViewDestroy, WebViewLoad, WindowOpened, WindowSnapshot,
-    engine_event, host_request, request, response,
+    Ack, ActivateTab, CloseTab, CloseWindow, EngineEvent, EngineKind, ForgetHistory, HistoryEntry,
+    HistoryPage, LoginSet, NavigationCommand, OpenOutside, OpenTab, OutsideLinkRequested,
+    QueryHistory, SubmitAddress, TabCommand, TabOpened, WebViewCommand, WebViewCreate,
+    WebViewDestroy, WebViewLoad, WindowOpened, WindowSnapshot, engine_event, forget_history,
+    host_request, request, response,
 };
-use wt_store::Space;
+use wt_store::{Space, Store};
 
 use crate::error::AppError;
 use crate::host::{Host, HostFuture};
@@ -27,6 +29,10 @@ use crate::model::{LoadTarget, State};
 /// provider (WT-D17, W1). Chosen for W0 because it needs no account and no
 /// agreement; it is a placeholder, not a default the product has decided on.
 pub const DEFAULT_SEARCH_TEMPLATE: &str = "https://duckduckgo.com/?q={query}";
+
+/// How many visits a page of history holds when the shell does not say
+/// (008).
+pub const HISTORY_PAGE: u32 = 100;
 
 /// How long after a web view had an address handed to the system before it
 /// may have another (007). A click's permission lasts a few seconds in an
@@ -40,7 +46,7 @@ pub const OUTSIDE_LINK_INTERVAL: Duration = Duration::from_secs(1);
 pub type AppFuture = Pin<Box<dyn Future<Output = Result<response::Kind, AppError>>>>;
 
 /// What the app is started with.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct AppOptions {
     /// The engine new tabs use: the shell's first.
     pub engine: EngineKind,
@@ -48,6 +54,8 @@ pub struct AppOptions {
     pub search_template: String,
     /// Fake mode: what every new window's first tab opens.
     pub fake_start: Option<String>,
+    /// Where the app reads the time: a visit's (008).
+    pub clock: Rc<dyn Clock>,
 }
 
 /// The models and what changes them.
@@ -60,24 +68,36 @@ pub struct App {
     /// When each web view last had an address handed to the system, for
     /// those that had one within [`OUTSIDE_LINK_INTERVAL`].
     outside: Rc<RefCell<BTreeMap<WebViewId, Instant>>>,
+    /// The store, for what browsing writes: history (008).
+    store: Rc<RefCell<Store>>,
+    clock: Rc<dyn Clock>,
 }
 
 impl App {
-    /// An app with no windows, whose tabs open in `space`.
+    /// An app with no windows, whose tabs open in `space`, a Space of
+    /// `store`'s.
     #[must_use]
-    pub fn new(options: AppOptions, space: Space, host: Rc<dyn Host>) -> App {
+    pub fn new(
+        options: AppOptions,
+        space: Space,
+        store: Rc<RefCell<Store>>,
+        host: Rc<dyn Host>,
+    ) -> App {
         App {
             state: Rc::new(RefCell::new(State::new(space, options.engine))),
             host,
             search_template: options.search_template.into(),
             fake_start: options.fake_start.map(Into::into),
             outside: Rc::new(RefCell::new(BTreeMap::new())),
+            store,
+            clock: options.clock,
         }
     }
 
     /// Handles one of the app's requests: a window's (`OpenWindow`,
-    /// `CloseWindow`) or a tab's (`OpenTab`, `CloseTab`, `ActivateTab`,
-    /// `SubmitAddress`, `TabCommand`). The dispatcher answers the rest.
+    /// `CloseWindow`), a tab's (`OpenTab`, `CloseTab`, `ActivateTab`,
+    /// `SubmitAddress`, `TabCommand`) or history's (`QueryHistory`,
+    /// `ForgetHistory`). The dispatcher answers the rest.
     pub fn request(&self, kind: request::Kind) -> AppFuture {
         match kind {
             request::Kind::OpenWindow(_) => self.open_window(),
@@ -87,6 +107,8 @@ impl App {
             request::Kind::ActivateTab(activate) => self.activate_tab(&activate),
             request::Kind::SubmitAddress(submit) => self.submit_address(&submit),
             request::Kind::TabCommand(command) => self.tab_command(&command),
+            request::Kind::QueryHistory(query) => answer(self.query_history(&query)),
+            request::Kind::ForgetHistory(forget) => answer(self.forget_history(&forget)),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
             | request::Kind::Unsubscribe(_)
@@ -105,7 +127,23 @@ impl App {
             self.outside_link(web_view, &asked);
             return;
         }
+        // History (008): a page that commits, or changes its own address, is
+        // a visit; the page before it is left, and takes the title it ended
+        // with. A title that arrives is the visit's when it is its first.
+        let arrives = matches!(
+            kind,
+            engine_event::Kind::NavigationCommitted(_) | engine_event::Kind::AddressChanged(_)
+        );
+        let titled = matches!(kind, engine_event::Kind::TitleChanged(_));
+        if arrives {
+            self.write_title(web_view, true);
+        }
         let unwanted = self.state.borrow_mut().apply(web_view, kind);
+        if arrives {
+            self.record_visit(web_view);
+        } else if titled {
+            self.write_title(web_view, false);
+        }
         if let Some(web_view) = unwanted {
             let destroying =
                 self.host
@@ -118,6 +156,104 @@ impl App {
                 let _ = destroying.await;
             });
         }
+    }
+
+    /// Writes the page a web view now shows into history, when it is a visit
+    /// (008 §3). A store that refuses loses the visit and nothing else:
+    /// there is nobody to tell, and no log an address may go in.
+    fn record_visit(&self, web_view: WebViewId) {
+        let Some((login_set, url)) = self.state.borrow().visit_to_record(web_view) else {
+            return;
+        };
+        let recorded = self
+            .store
+            .borrow_mut()
+            .record_visit(login_set, &url, "", self.clock.now());
+        if let Ok(id) = recorded {
+            self.state.borrow_mut().visit_recorded(web_view, id, url);
+        }
+    }
+
+    /// Writes the title of a web view's visit when it is time to (008 §3):
+    /// its first, or, with `leaving`, the one it ended with.
+    fn write_title(&self, web_view: WebViewId, leaving: bool) {
+        let Some((visit, title)) = self.state.borrow_mut().title_to_write(web_view, leaving) else {
+            return;
+        };
+        let _ = self.store.borrow_mut().retitle_visit(visit, &title);
+    }
+
+    /// A page of a window's history (008): its Space's login set's visits,
+    /// newest first.
+    fn query_history(&self, query: &QueryHistory) -> Result<response::Kind, AppError> {
+        let login_set = self
+            .state
+            .borrow()
+            .history_of(WindowId(query.window_id))
+            .ok_or_else(|| AppError::new("window.unknown").field("window_id"))?;
+        let limit = if query.limit == 0 {
+            HISTORY_PAGE
+        } else {
+            query.limit
+        };
+        // An id beyond any the store could have given is "from the newest".
+        let before = i64::try_from(query.before_visit_id)
+            .ok()
+            .filter(|before| *before > 0);
+        let page = self
+            .store
+            .borrow()
+            .visits(login_set, &query.text, before, limit)
+            .map_err(|error| AppError::new(error.code()))?;
+        let entries = page
+            .visits
+            .into_iter()
+            .map(|visit| HistoryEntry {
+                visit_id: u64::try_from(visit.id).unwrap_or_default(),
+                // The address as the field shows it; one the parser no
+                // longer takes is shown whole.
+                display: Address::parse(&visit.url)
+                    .map_or_else(|_| visit.url.clone(), |address| address.display()),
+                url: visit.url,
+                title: visit.title,
+                visited_at_ms: visit.visited_at.unix_millis(),
+            })
+            .collect();
+        Ok(response::Kind::HistoryPage(HistoryPage {
+            entries,
+            more: page.more,
+        }))
+    }
+
+    /// Forgets visits of a window's history (008): one, those since a time,
+    /// or all of them.
+    fn forget_history(&self, forget: &ForgetHistory) -> Result<response::Kind, AppError> {
+        let login_set = self
+            .state
+            .borrow()
+            .history_of(WindowId(forget.window_id))
+            .ok_or_else(|| AppError::new("window.unknown").field("window_id"))?;
+        let mut store = self.store.borrow_mut();
+        let forgotten = match forget.what {
+            Some(forget_history::What::VisitId(visit)) => match i64::try_from(visit) {
+                Ok(visit) => store.forget_visit(login_set, visit).map(|_| ()),
+                // No visit has such an id: there is nothing to forget.
+                Err(_) => Ok(()),
+            },
+            Some(forget_history::What::SinceMs(since)) => {
+                store.forget_visits_since(login_set, Timestamp(since))
+            }
+            Some(forget_history::What::Everything(true)) => store.forget_all_visits(login_set),
+            Some(forget_history::What::Everything(false)) | None => {
+                return Err(AppError::new("history.nothing_named").field("what"));
+            }
+        };
+        forgotten.map_err(|error| AppError::new(error.code()))?;
+        drop(store);
+        // No tab's page is a visit any more, as far as writing its title
+        // goes: one that was forgotten must stay forgotten.
+        self.state.borrow_mut().visits_forgotten();
+        Ok(response::Kind::Ack(Ack {}))
     }
 
     /// A page tried to go to an address that is not a browser's, and the
@@ -388,4 +524,9 @@ impl App {
 
 fn refuse(error: AppError) -> AppFuture {
     Box::pin(std::future::ready(Err(error)))
+}
+
+/// The answer to a request that waits for nothing.
+fn answer(result: Result<response::Kind, AppError>) -> AppFuture {
+    Box::pin(std::future::ready(result))
 }

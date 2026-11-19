@@ -20,7 +20,9 @@ mod fence;
 mod host;
 mod model;
 
-pub use app::{App, AppFuture, AppOptions, DEFAULT_SEARCH_TEMPLATE, OUTSIDE_LINK_INTERVAL};
+pub use app::{
+    App, AppFuture, AppOptions, DEFAULT_SEARCH_TEMPLATE, HISTORY_PAGE, OUTSIDE_LINK_INTERVAL,
+};
 pub use dispatch::{CORE_VERSION, Dispatcher, MAX_PING_PAYLOAD, Outbox, StartError};
 pub use error::{AppError, HostError, is_code};
 pub use host::{HOST_TIMEOUT, Host, HostBridge, HostFuture};

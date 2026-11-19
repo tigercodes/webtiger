@@ -155,3 +155,58 @@ message AddressView {
     SECURITY_LOCAL = 3;
   }
 }
+
+// History (008). Since 1.5.
+
+// Asks for a page of a window's history: the visits of its Space's login
+// set, newest first. Answered with HistoryPage, or "window.unknown".
+//
+// History is asked for, not subscribed to: a list that is being read does
+// not move under the reader.
+message QueryHistory {
+  uint64 window_id = 1;
+  // Words to look for. Each must be found in a visit's title or address, as
+  // a word or the start of one, whatever its case. Empty: every visit.
+  string text = 2 [(wt.redact) = true];
+  // At most this many. 0 asks for the core's own page (100); more than 500
+  // is 500.
+  uint32 limit = 3;
+  // Only visits older than this one: the last entry of the page before. 0:
+  // from the newest.
+  uint64 before_visit_id = 4;
+}
+
+message HistoryPage {
+  repeated HistoryEntry entries = 1;
+  // There are older visits than these that match.
+  bool more = 2;
+}
+
+// A page that was seen.
+message HistoryEntry {
+  // Never used twice. A later visit has a greater one.
+  uint64 visit_id = 1;
+  string url = 2 [(wt.redact) = true];
+  // The page's title. Empty when it had none: a shell shows `display`.
+  string title = 3 [(wt.redact) = true];
+  // The address as the address field shows it.
+  string display = 4 [(wt.redact) = true];
+  // When, in milliseconds since 1970-01-01 UTC.
+  int64 visited_at_ms = 5;
+}
+
+// Forgets visits of a window's Space's login set: gone from the store's
+// files, not only from the list. Answered with Ack (also when there was
+// nothing to forget), "window.unknown", or "history.nothing_named" when
+// `what` is not set.
+message ForgetHistory {
+  uint64 window_id = 1;
+  oneof what {
+    // This visit.
+    uint64 visit_id = 2;
+    // Every visit at or after this time, in milliseconds since 1970 UTC.
+    int64 since_ms = 3;
+    // Every visit. Only `true` means it.
+    bool everything = 4;
+  }
+}

@@ -50,6 +50,22 @@ pub(crate) struct Tab {
     /// The click that opened this tab's window has been used to hand an
     /// address to the system (007): it is good for one.
     click_spent: bool,
+    /// The page the tab shows, as history has it (008).
+    visit: Option<TabVisit>,
+}
+
+/// The visit a tab's page is in the store, and what has been written of it.
+#[derive(Clone, Debug, PartialEq)]
+struct TabVisit {
+    id: i64,
+    /// The address it was written with: the same address again, straight
+    /// after, is the same visit.
+    url: String,
+    /// The title the store has for it.
+    title: String,
+    /// The page has said a title since the visit was written, and it has
+    /// been written: later changes wait until the tab goes on.
+    titled: bool,
 }
 
 impl Tab {
@@ -71,6 +87,7 @@ impl Tab {
             opened_by_page: false,
             had_page: false,
             click_spent: false,
+            visit: None,
         }
     }
 
@@ -489,6 +506,84 @@ impl State {
             .get(&web_view)
             .and_then(|tab_id| self.tabs.get(tab_id))
             .is_some_and(|tab| tab.opened_by_page && !tab.had_page && tab.pending.is_none())
+    }
+
+    fn tab_of(&self, web_view: WebViewId) -> Option<&Tab> {
+        self.web_views
+            .get(&web_view)
+            .and_then(|tab_id| self.tabs.get(tab_id))
+    }
+
+    fn tab_of_mut(&mut self, web_view: WebViewId) -> Option<&mut Tab> {
+        self.web_views
+            .get(&web_view)
+            .and_then(|tab_id| self.tabs.get_mut(tab_id))
+    }
+
+    /// The login set a window's history is: its Space's.
+    pub(crate) fn history_of(&self, window: WindowId) -> Option<LoginSetId> {
+        self.windows
+            .contains_key(&window)
+            .then_some(self.space.login_set)
+    }
+
+    /// The visit to write for the page a web view now shows (008): its login
+    /// set and address. `None` when the page is not a visit: it has no
+    /// address of the web's, or it is the visit the tab is already at (the
+    /// same address again, straight after).
+    pub(crate) fn visit_to_record(&self, web_view: WebViewId) -> Option<(LoginSetId, String)> {
+        let tab = self.tab_of(web_view)?;
+        let address = tab.committed.as_ref()?;
+        if !matches!(address.scheme(), "http" | "https") {
+            return None;
+        }
+        let url = address.as_str();
+        if tab.visit.as_ref().is_some_and(|visit| visit.url == url) {
+            return None;
+        }
+        Some((tab.login_set, url.to_owned()))
+    }
+
+    /// The store has written the page a web view shows as the visit `id`.
+    pub(crate) fn visit_recorded(&mut self, web_view: WebViewId, id: i64, url: String) {
+        if let Some(tab) = self.tab_of_mut(web_view) {
+            tab.visit = Some(TabVisit {
+                id,
+                url,
+                title: String::new(),
+                titled: false,
+            });
+        }
+    }
+
+    /// The title to write for a web view's visit, and the visit: when the
+    /// page has said its first title since the visit was written, or, with
+    /// `leaving`, when the tab goes on and the title is no longer the one
+    /// written. A page that changes its title all the time costs the store
+    /// two writes.
+    pub(crate) fn title_to_write(
+        &mut self,
+        web_view: WebViewId,
+        leaving: bool,
+    ) -> Option<(i64, String)> {
+        let tab = self.tab_of_mut(web_view)?;
+        let title = tab.title.clone();
+        let visit = tab.visit.as_mut()?;
+        if visit.title == title || (visit.titled && !leaving) {
+            return None;
+        }
+        visit.title.clone_from(&title);
+        visit.titled = true;
+        Some((visit.id, title))
+    }
+
+    /// Every tab forgets which visit its page is: history was forgotten, and
+    /// a title must not be written to a visit that is gone, nor a reload be
+    /// taken for a visit that is no longer there.
+    pub(crate) fn visits_forgotten(&mut self) {
+        for tab in self.tabs.values_mut() {
+            tab.visit = None;
+        }
     }
 
     /// Whether an address a web view's page asked for may be handed to the
