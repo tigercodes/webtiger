@@ -40,6 +40,11 @@ pub(crate) struct Tab {
     error: String,
     engine: EngineKind,
     login_set: LoginSetId,
+    /// The tab whose page opened this one, while that tab is there to go
+    /// back to (006).
+    opener: Option<TabId>,
+    /// A page opened this tab, and so a page may close it.
+    opened_by_page: bool,
 }
 
 impl Tab {
@@ -57,6 +62,8 @@ impl Tab {
             error: String::new(),
             engine,
             login_set,
+            opener: None,
+            opened_by_page: false,
         }
     }
 
@@ -131,6 +138,9 @@ impl Tab {
                 self.can_go_forward = changed.can_go_forward;
             }
             Kind::RendererGone(_) => self.fail("page.renderer_gone"),
+            // About windows, not about this tab's page: `State::apply` has
+            // dealt with them.
+            Kind::NewWindowRequested(_) | Kind::CloseRequested(_) => {}
         }
     }
 
@@ -318,10 +328,13 @@ impl State {
                 window.tabs.push(fresh);
                 window.front = fresh;
             } else if window.front == tab_id {
-                // What was after it is now where it was; past the end, the last.
+                // Back to the tab whose page opened it, when that is still
+                // here. Otherwise what was after it, which is now where it
+                // was; past the end, the last.
+                let opener = tab.opener.filter(|opener| window.tabs.contains(opener));
                 let next = index.unwrap_or(0).min(window.tabs.len() - 1);
-                if let Some(next) = window.tabs.get(next) {
-                    window.front = *next;
+                if let Some(next) = opener.or_else(|| window.tabs.get(next).copied()) {
+                    window.front = next;
                 }
             }
             self.dirty.insert(tab.window);
@@ -400,21 +413,94 @@ impl State {
         self.tabs.get(&tab).ok_or(false)?.web_view.ok_or(true)
     }
 
+    /// A page asked for a new window, and the shell made `new` for it (006).
+    /// With a gesture, from a tab that is here, the web view is adopted: a
+    /// new tab has it, after the tab that asked and in front. Otherwise it
+    /// is refused, and this returns it to be destroyed. An id the shell had
+    /// no right to choose is not acted on at all.
+    fn new_window(
+        &mut self,
+        asking: WebViewId,
+        new: WebViewId,
+        user_gesture: bool,
+    ) -> Option<WebViewId> {
+        if !new.is_the_shells() || self.web_views.contains_key(&new) {
+            return None;
+        }
+        let refused = Some(new);
+        if !user_gesture {
+            return refused;
+        }
+        let Some(opener_id) = self.web_views.get(&asking).copied() else {
+            return refused;
+        };
+        let Some(opener) = self.tabs.get(&opener_id) else {
+            return refused;
+        };
+        let window_id = opener.window;
+        let mut tab = Tab::new(window_id, opener.engine, opener.login_set);
+        tab.web_view = Some(new);
+        tab.opener = Some(opener_id);
+        tab.opened_by_page = true;
+        let Some(window) = self.windows.get_mut(&window_id) else {
+            return refused;
+        };
+        let tab_id = TabId(self.ids.mint());
+        let place = window
+            .tabs
+            .iter()
+            .position(|id| *id == opener_id)
+            .map_or(window.tabs.len(), |index| index + 1);
+        window.tabs.insert(place, tab_id);
+        window.front = tab_id;
+        self.tabs.insert(tab_id, tab);
+        self.web_views.insert(new, tab_id);
+        self.dirty.insert(window_id);
+        None
+    }
+
+    /// A page asked for its own window to be closed. A tab a page opened is
+    /// closed, and its web view is returned to be destroyed; a tab the user
+    /// opened is not a page's to close.
+    fn close_requested(&mut self, web_view: WebViewId) -> Option<WebViewId> {
+        let tab_id = *self.web_views.get(&web_view)?;
+        if !self.tabs.get(&tab_id)?.opened_by_page {
+            return None;
+        }
+        self.close_tab(tab_id).flatten()
+    }
+
     /// A shell's report about a web view. One the model no longer has (its
-    /// window closed while the report was on its way) is ignored.
-    pub(crate) fn apply(&mut self, web_view: WebViewId, event: engine_event::Kind) {
-        let Some(tab) = self
+    /// window closed while the report was on its way) is ignored. Returns a
+    /// web view the shell must now be told to destroy, when the report
+    /// leaves one that no tab has.
+    pub(crate) fn apply(
+        &mut self,
+        web_view: WebViewId,
+        event: engine_event::Kind,
+    ) -> Option<WebViewId> {
+        match event {
+            engine_event::Kind::NewWindowRequested(asked) => {
+                return self.new_window(
+                    web_view,
+                    WebViewId(asked.new_web_view_id),
+                    asked.user_gesture,
+                );
+            }
+            engine_event::Kind::CloseRequested(_) => return self.close_requested(web_view),
+            _ => {}
+        }
+        // A web view no tab has: nothing changes, and nothing is destroyed.
+        let tab = self
             .web_views
             .get(&web_view)
-            .and_then(|tab_id| self.tabs.get_mut(tab_id))
-        else {
-            return;
-        };
+            .and_then(|tab_id| self.tabs.get_mut(tab_id))?;
         let before = tab.clone();
         tab.apply(event);
         if *tab != before {
             self.dirty.insert(tab.window);
         }
+        None
     }
 
     pub(crate) fn window_snapshot(&self, window_id: WindowId) -> Option<WindowSnapshot> {

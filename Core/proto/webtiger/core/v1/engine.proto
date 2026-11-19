@@ -35,6 +35,9 @@ message EngineEvent {
     ProgressChanged progress_changed = 8;
     HistoryChanged history_changed = 9;
     RendererGone renderer_gone = 10;
+    // Since 1.2
+    NewWindowRequested new_window_requested = 11;
+    CloseRequested close_requested = 12;
   }
 }
 
@@ -82,3 +85,27 @@ message HistoryChanged {
 // The process drawing the page died. The web view shows nothing until it is
 // loaded again.
 message RendererGone {}
+
+// A page asked for a new window: a link with a target, or window.open
+// (006). `EngineEvent.web_view_id` is the web view that asked.
+//
+// The page keeps a hold on the window it opens, so the engine itself must
+// make the new web view, at once. This is the one web view a shell makes
+// unasked. It makes it in the asking web view's login set, shows it nowhere,
+// and names it itself: an id with its top bit set, which the core's own ids
+// never have, and which it never uses again.
+//
+// The core answers by what it does next. It adopts the web view: a tab has
+// it, and a snapshot says so. Or it refuses it: WebViewDestroy.
+message NewWindowRequested {
+  uint64 new_web_view_id = 1;
+  // Where the page wants the new window to go, when the engine says. It is
+  // the asking page's claim, and is never shown as the new page's address.
+  string url = 2 [(wt.redact) = true];
+  // The page asked while the user was doing something to it: a click, a key.
+  bool user_gesture = 3;
+}
+
+// The page asked for its own window to be closed (window.close()). The core
+// closes the tab when a page opened it, and not otherwise.
+message CloseRequested {}

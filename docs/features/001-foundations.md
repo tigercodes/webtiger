@@ -84,7 +84,7 @@ This is built in from the first commit, because it is the one thing that cannot 
 
 ## 5. The contract, version 1.0
 
-(W0's contract. W1 has added to it since: 1.1 is tabs, in [005](005-tabs.md) §4.)
+(W0's contract. W1 has added to it since: 1.1 is tabs, in [005](005-tabs.md) §4; 1.2 is a page that asks for a new window, in [006](006-new-windows.md) §4.)
 
 `Core/proto/webtiger/core/v1`. The C ABI is `Core/crates/wt-ffi/include/webtiger_core.h`.
 
@@ -160,9 +160,9 @@ Tools/test.sh lint | core | unit | ios | build | ui | all
 
 | Suite | Count | What it shows |
 |---|---|---|
-| `wt-core` | 27 | Address fix-up, the registrable domain, the navigation policy, ids |
+| `wt-core` | 28 | Address fix-up, the registrable domain, the navigation policy, ids |
 | `wt-store` | 7 | Migrations, a newer store refused, SQLite's build flags |
-| `wt-app` | 45 | A tab's life and the contract's rules, through `FakeShell` |
+| `wt-app` | 80 | A tab's life and the contract's rules, through `FakeShell` (45); several tabs (21, [005](005-tabs.md)); a page that asks for a new window (14, [006](006-new-windows.md)) |
 | `wt-ffi` | 21 | The header matches the exports; the core through its C functions, from many threads |
 | `wt-proto` | 3 | The contract's version is the same in three places |
 | `wt-import`, `wt-cli` | 36 | 002 |

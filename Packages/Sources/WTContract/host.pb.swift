@@ -194,7 +194,9 @@ public nonisolated struct WTWebViewCreate: Sendable {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  /// Chosen by the core, never 0, never reused.
+  /// Chosen by the core, never 0, never reused, and never with its top bit
+  /// set: those ids are the shell's, for the one web view it makes unasked
+  /// (NewWindowRequested, engine.proto).
   public var webViewID: UInt64 = 0
 
   public var engine: WTEngineKind = .unspecified

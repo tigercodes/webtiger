@@ -5,10 +5,10 @@
 use std::collections::BTreeMap;
 
 use wt_proto::v1::{
-    Ack, AddressChanged, EngineEvent, EngineKind, Error, HistoryChanged, HostPong,
+    Ack, AddressChanged, CloseRequested, EngineEvent, EngineKind, Error, HistoryChanged, HostPong,
     NavigationCommand, NavigationCommitted, NavigationFailed, NavigationFinished,
-    NavigationStarted, ProgressChanged, RendererGone, TitleChanged, engine_event, host_request,
-    host_response,
+    NavigationStarted, NewWindowRequested, ProgressChanged, RendererGone, TitleChanged,
+    engine_event, host_request, host_response,
 };
 
 /// A page of the scripted web.
@@ -41,6 +41,9 @@ pub struct FakeEngine {
     pub web_views: BTreeMap<u64, FakeWebView>,
     /// The engines this shell has. `WebViewCreate` for another is refused.
     pub engines: Vec<EngineKind>,
+    /// How many web views this shell has made unasked: each is named by the
+    /// next id of the shell's own.
+    own_web_views: u64,
 }
 
 impl FakeEngine {
@@ -49,7 +52,71 @@ impl FakeEngine {
             pages: BTreeMap::new(),
             web_views: BTreeMap::new(),
             engines,
+            own_web_views: 0,
         }
+    }
+
+    /// A page in the web view `asking` asks for a new window (006). As a
+    /// real engine demands, the shell makes the web view at once, in the
+    /// asking web view's login set and under an id of its own. The new web
+    /// view's id, and the report of it.
+    pub fn ask_for_window(
+        &mut self,
+        asking: u64,
+        url: &str,
+        user_gesture: bool,
+    ) -> (u64, EngineEvent) {
+        self.own_web_views += 1;
+        let new = (1 << 63) | self.own_web_views;
+        let (engine, login_set, ephemeral) = self
+            .web_views
+            .get(&asking)
+            .map_or((EngineKind::Unspecified, String::new(), false), |asker| {
+                (asker.engine, asker.login_set.clone(), asker.ephemeral)
+            });
+        self.web_views.insert(
+            new,
+            FakeWebView {
+                engine,
+                login_set,
+                ephemeral,
+                history: Vec::new(),
+                index: 0,
+            },
+        );
+        let report = event(
+            asking,
+            engine_event::Kind::NewWindowRequested(NewWindowRequested {
+                new_web_view_id: new,
+                url: url.to_owned(),
+                user_gesture,
+            }),
+        );
+        (new, report)
+    }
+
+    /// A web view goes to an address by itself, as a window a page opened
+    /// does, or a page that follows a link: nobody asked the shell to load
+    /// it. What the engine then reports.
+    pub fn goes_to(&mut self, id: u64, url: &str) -> Vec<EngineEvent> {
+        self.load(id, url)
+    }
+
+    /// The report of a page asking for its own window to be closed.
+    #[must_use]
+    pub fn close_requested(id: u64) -> EngineEvent {
+        event(id, engine_event::Kind::CloseRequested(CloseRequested {}))
+    }
+
+    /// The report of a page's title.
+    #[must_use]
+    pub fn title(id: u64, title: &str) -> EngineEvent {
+        event(
+            id,
+            engine_event::Kind::TitleChanged(TitleChanged {
+                title: title.to_owned(),
+            }),
+        )
     }
 
     /// Serves a page with a title at an address.

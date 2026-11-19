@@ -62,7 +62,9 @@ message LoginSet {
 // names it. Answered with Ack, or "engine.unavailable" when the shell has no
 // such engine.
 message WebViewCreate {
-  // Chosen by the core, never 0, never reused.
+  // Chosen by the core, never 0, never reused, and never with its top bit
+  // set: those ids are the shell's, for the one web view it makes unasked
+  // (NewWindowRequested, engine.proto).
   uint64 web_view_id = 1;
   EngineKind engine = 2;
   LoginSet login_set = 3;

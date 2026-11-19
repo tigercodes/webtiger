@@ -117,6 +117,23 @@ public nonisolated struct WTEngineEvent: Sendable {
     set {kind = .rendererGone(newValue)}
   }
 
+  /// Since 1.2
+  public var newWindowRequested: WTNewWindowRequested {
+    get {
+      if case .newWindowRequested(let v)? = kind {return v}
+      return WTNewWindowRequested()
+    }
+    set {kind = .newWindowRequested(newValue)}
+  }
+
+  public var closeRequested: WTCloseRequested {
+    get {
+      if case .closeRequested(let v)? = kind {return v}
+      return WTCloseRequested()
+    }
+    set {kind = .closeRequested(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -129,6 +146,9 @@ public nonisolated struct WTEngineEvent: Sendable {
     case progressChanged(WTProgressChanged)
     case historyChanged(WTHistoryChanged)
     case rendererGone(WTRendererGone)
+    /// Since 1.2
+    case newWindowRequested(WTNewWindowRequested)
+    case closeRequested(WTCloseRequested)
 
   }
 
@@ -254,13 +274,55 @@ public nonisolated struct WTRendererGone: Sendable {
   public init() {}
 }
 
+/// A page asked for a new window: a link with a target, or window.open
+/// (006). `EngineEvent.web_view_id` is the web view that asked.
+///
+/// The page keeps a hold on the window it opens, so the engine itself must
+/// make the new web view, at once. This is the one web view a shell makes
+/// unasked. It makes it in the asking web view's login set, shows it nowhere,
+/// and names it itself: an id with its top bit set, which the core's own ids
+/// never have, and which it never uses again.
+///
+/// The core answers by what it does next. It adopts the web view: a tab has
+/// it, and a snapshot says so. Or it refuses it: WebViewDestroy.
+public nonisolated struct WTNewWindowRequested: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var newWebViewID: UInt64 = 0
+
+  /// Where the page wants the new window to go, when the engine says. It is
+  /// the asking page's claim, and is never shown as the new page's address.
+  public var url: String = String()
+
+  /// The page asked while the user was doing something to it: a click, a key.
+  public var userGesture: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// The page asked for its own window to be closed (window.close()). The core
+/// closes the tab when a page opened it, and not otherwise.
+public nonisolated struct WTCloseRequested: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
 
 nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EngineEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{3}navigation_started\0\u{3}navigation_committed\0\u{3}navigation_finished\0\u{3}navigation_failed\0\u{3}address_changed\0\u{3}title_changed\0\u{3}progress_changed\0\u{3}history_changed\0\u{3}renderer_gone\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{3}navigation_started\0\u{3}navigation_committed\0\u{3}navigation_finished\0\u{3}navigation_failed\0\u{3}address_changed\0\u{3}title_changed\0\u{3}progress_changed\0\u{3}history_changed\0\u{3}renderer_gone\0\u{3}new_window_requested\0\u{3}close_requested\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -386,6 +448,32 @@ nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
           self.kind = .rendererGone(v)
         }
       }()
+      case 11: try {
+        var v: WTNewWindowRequested?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .newWindowRequested(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .newWindowRequested(v)
+        }
+      }()
+      case 12: try {
+        var v: WTCloseRequested?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .closeRequested(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .closeRequested(v)
+        }
+      }()
       default: break
       }
     }
@@ -435,6 +523,14 @@ nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
     case .rendererGone?: try {
       guard case .rendererGone(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
+    }()
+    case .newWindowRequested?: try {
+      guard case .newWindowRequested(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
+    }()
+    case .closeRequested?: try {
+      guard case .closeRequested(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
     }()
     case nil: break
     }
@@ -702,6 +798,65 @@ nonisolated extension WTRendererGone: SwiftProtobuf.Message, SwiftProtobuf._Mess
   }
 
   public static func ==(lhs: WTRendererGone, rhs: WTRendererGone) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTNewWindowRequested: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".NewWindowRequested"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}new_web_view_id\0\u{1}url\0\u{3}user_gesture\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.newWebViewID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.userGesture) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.newWebViewID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.newWebViewID, fieldNumber: 1)
+    }
+    if !self.url.isEmpty {
+      try visitor.visitSingularStringField(value: self.url, fieldNumber: 2)
+    }
+    if self.userGesture != false {
+      try visitor.visitSingularBoolField(value: self.userGesture, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTNewWindowRequested, rhs: WTNewWindowRequested) -> Bool {
+    if lhs.newWebViewID != rhs.newWebViewID {return false}
+    if lhs.url != rhs.url {return false}
+    if lhs.userGesture != rhs.userGesture {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTCloseRequested: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CloseRequested"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTCloseRequested, rhs: WTCloseRequested) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

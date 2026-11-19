@@ -79,12 +79,27 @@ impl App {
         }
     }
 
-    /// Takes a shell's report about a web view.
+    /// Takes a shell's report about a web view. Must be called from inside
+    /// a `LocalSet`: a report can leave a web view that no tab has (a window
+    /// a page asked for and was refused, a tab a page closed), and the shell
+    /// is told to destroy it.
     pub fn notify(&self, event: EngineEvent) {
-        if let Some(kind) = event.kind {
-            self.state
-                .borrow_mut()
-                .apply(WebViewId(event.web_view_id), kind);
+        let Some(kind) = event.kind else { return };
+        let unwanted = self
+            .state
+            .borrow_mut()
+            .apply(WebViewId(event.web_view_id), kind);
+        if let Some(web_view) = unwanted {
+            let destroying =
+                self.host
+                    .request(host_request::Kind::WebViewDestroy(WebViewDestroy {
+                        web_view_id: web_view.get(),
+                    }));
+            // Asked already; this only waits for the answer, so that a shell
+            // that never gives one is given up on like any other.
+            tokio::task::spawn_local(async move {
+                let _ = destroying.await;
+            });
         }
     }
 

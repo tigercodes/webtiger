@@ -448,7 +448,7 @@ impl TestMode {
 pub struct EngineEvent {
     #[prost(uint64, tag = "1")]
     pub web_view_id: u64,
-    #[prost(oneof = "engine_event::Kind", tags = "2, 3, 4, 5, 6, 7, 8, 9, 10")]
+    #[prost(oneof = "engine_event::Kind", tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12")]
     pub kind: ::core::option::Option<engine_event::Kind>,
 }
 /// Nested message and enum types in `EngineEvent`.
@@ -473,6 +473,11 @@ pub mod engine_event {
         HistoryChanged(super::HistoryChanged),
         #[prost(message, tag = "10")]
         RendererGone(super::RendererGone),
+        /// Since 1.2
+        #[prost(message, tag = "11")]
+        NewWindowRequested(super::NewWindowRequested),
+        #[prost(message, tag = "12")]
+        CloseRequested(super::CloseRequested),
     }
 }
 /// A load began. The page it asks for does not own the web view yet.
@@ -529,6 +534,33 @@ pub struct HistoryChanged {
 /// loaded again.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct RendererGone {}
+/// A page asked for a new window: a link with a target, or window.open
+/// (006). `EngineEvent.web_view_id` is the web view that asked.
+///
+/// The page keeps a hold on the window it opens, so the engine itself must
+/// make the new web view, at once. This is the one web view a shell makes
+/// unasked. It makes it in the asking web view's login set, shows it nowhere,
+/// and names it itself: an id with its top bit set, which the core's own ids
+/// never have, and which it never uses again.
+///
+/// The core answers by what it does next. It adopts the web view: a tab has
+/// it, and a snapshot says so. Or it refuses it: WebViewDestroy.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct NewWindowRequested {
+    #[prost(uint64, tag = "1")]
+    pub new_web_view_id: u64,
+    /// Where the page wants the new window to go, when the engine says. It is
+    /// the asking page's claim, and is never shown as the new page's address.
+    #[prost(string, tag = "2")]
+    pub url: ::prost::alloc::string::String,
+    /// The page asked while the user was doing something to it: a click, a key.
+    #[prost(bool, tag = "3")]
+    pub user_gesture: bool,
+}
+/// The page asked for its own window to be closed (window.close()). The core
+/// closes the tab when a page opened it, and not otherwise.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CloseRequested {}
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct HostRequest {
     #[prost(oneof = "host_request::Kind", tags = "1, 2, 3, 4, 5")]
@@ -597,7 +629,9 @@ pub struct LoginSet {
 /// such engine.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct WebViewCreate {
-    /// Chosen by the core, never 0, never reused.
+    /// Chosen by the core, never 0, never reused, and never with its top bit
+    /// set: those ids are the shell's, for the one web view it makes unasked
+    /// (NewWindowRequested, engine.proto).
     #[prost(uint64, tag = "1")]
     pub web_view_id: u64,
     #[prost(enumeration = "EngineKind", tag = "2")]

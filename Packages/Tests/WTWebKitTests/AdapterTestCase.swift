@@ -153,6 +153,8 @@ class AdapterTestCase: XCTestCase {
             case .titleChanged: "title"
             case .historyChanged: "history"
             case .rendererGone: "gone"
+            case .newWindowRequested: "window"
+            case .closeRequested: "close"
             case .progressChanged: nil
             }
         }
