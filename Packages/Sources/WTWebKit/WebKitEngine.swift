@@ -93,7 +93,7 @@ public final class WebKitEngine: HostServices {
             // then what is in its memory (its cookies) is given to a store made anew for the
             // same login set.
             let store = stores[loginSet] ?? WKWebsiteDataStore(forIdentifier: loginSet)
-            await store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)
+            guard await Self.clear(store, within: .seconds(20)) else { return false }
             stores[loginSet] = nil
         }
         // WebKit refuses while the store is in use, and a released store lets go a moment later.
@@ -106,6 +106,37 @@ public final class WebKitEngine: HostServices {
             }
         }
         return false
+    }
+
+    /// Clears everything a store holds, and says whether WebKit was done within `limit`. WebKit
+    /// sets no limit of its own: on a busy machine a clear has been seen not to end for minutes,
+    /// and whoever asked for a login set to be deleted must be answered.
+    private static func clear(_ store: WKWebsiteDataStore, within limit: Duration) async -> Bool {
+        await withCheckedContinuation { continuation in
+            let answer = Answer(continuation)
+            store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast) {
+                MainActor.assumeIsolated { answer.give(true) }
+            }
+            Task { @MainActor in
+                try? await Task.sleep(for: limit)
+                answer.give(false)
+            }
+        }
+    }
+
+    /// An answer given once: by WebKit when it is done, or by the clock when it is not.
+    @MainActor
+    private final class Answer {
+        private var continuation: CheckedContinuation<Bool, Never>?
+
+        init(_ continuation: CheckedContinuation<Bool, Never>) {
+            self.continuation = continuation
+        }
+
+        func give(_ done: Bool) {
+            continuation?.resume(returning: done)
+            continuation = nil
+        }
     }
 
     private func create(_ create: WTWebViewCreate) -> WTHostResponse.OneOf_Kind {

@@ -83,6 +83,8 @@ let package = Package(
         .testTarget(
             name: "WTUITests",
             dependencies: ["WTUI", "WTCoreClient", "WTContract"],
+            // The snapshots' pictures are read from the source tree, not built into the tests.
+            exclude: ["__Snapshots__"],
             swiftSettings: strict + coreSettings
         ),
     ]
