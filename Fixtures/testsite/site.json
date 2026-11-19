@@ -135,6 +135,22 @@
         "<script>document.getElementById('blank').click(); document.title = 'clicked';</script>"
       ],
       "note": "Clicks its own link to a new window as it loads, with nobody clicking."
+    },
+    {
+      "path": "/contact",
+      "title": "Contact",
+      "body": [
+        "<p><a id=\"letter\" href=\"mailto:ada@example.com\">write a letter</a></p>",
+        "<p><button id=\"script\" onclick=\"location.href = 'tel:+15550100'\">ring</button></p>",
+        "<iframe id=\"frame\" srcdoc=\"<a id='framed' href='sms:+15550100' style='display: block; height: 100%'>send a message</a>\"></iframe>"
+      ],
+      "note": "Links for the system, each followed a different way: a letter by a plain link, a number by a button's script, a message by a link that fills a frame."
+    },
+    {
+      "path": "/rings",
+      "title": "Rings",
+      "body": "<script>location.href = 'tel:+15550100'; document.title = 'rang';</script>",
+      "note": "Goes to a number to ring by itself as it loads, with nobody clicking."
     }
   ],
   "not_found": {

@@ -140,11 +140,12 @@ Two rules every adapter keeps, found while building the first (and now in `engin
 `WTUI → WTWebKit → WTCoreClient → WTContract`, with `WTDesign` beside. The app targets hold one file.
 
 - **`NativeCore`** wraps the C ABI. Its handle is immutable, so the fast path takes no lock on the Swift side either. One task answers host requests in order. **A request is handed to the core before `send` returns** (F20): what was done first, the core hears first.
+- **`ShellHost`** answers the core's host requests: the System service itself ([007](007-outside-links.md)), the rest through the engine adapter.
 - **`WebKitEngine`** answers the WebViews host service. A login set is `WKWebsiteDataStore(forIdentifier:)`; a private one is `.nonPersistent()`. The engine holds each login set's store itself, one for all of its web views (F17).
 - **`BrowserWindowView`**: back, forward, reload or stop, the address field with its security mark, a progress line, and the page, an empty tab, or a failed page in words. ⌘L goes to the address field.
 - The package builds **without** the Rust core too (`ScriptedCore`), so a screen can be worked on first.
 
-**Verified:** the package's tests on macOS (73) and on the iPhone 17 simulator (74); the app's UI tests on macOS (9) and the iPhone 17 simulator (8); the five there were before tabs also on the iPhone Duo and iPad Air 11-inch simulators. The Duo's run is where the audit found the failed page's words cut short at the largest text sizes (004 §5.1). **Not yet looked at:** what the iPad's window should be (it is the phone's, larger), Stage Manager, multiple windows, the Duo folded.
+**Verified:** the package's tests on macOS (86) and on the iPhone 17 simulator (86); the app's UI tests on macOS (10) and the iPhone 17 simulator (9); the five there were before tabs also on the iPhone Duo and iPad Air 11-inch simulators. The Duo's run is where the audit found the failed page's words cut short at the largest text sizes (004 §5.1). **Not yet looked at:** what the iPad's window should be (it is the phone's, larger), Stage Manager, multiple windows, the Duo folded.
 
 ## 7. Fake mode
 
@@ -166,10 +167,10 @@ Tools/test.sh lint | core | unit | ios | build | ui | all
 | `wt-ffi` | 21 | The header matches the exports; the core through its C functions, from many threads |
 | `wt-proto` | 3 | The contract's version is the same in three places |
 | `wt-import`, `wt-cli` | 36 | 002 |
-| Swift package | 73 (74 on the iPhone simulator) | The real core through Swift (11); the WebKit adapter, isolation and restore (28), and a page that asks for a new window (11, [006](006-new-windows.md)); the window's model (13); the design catalogue as pictures (5, and one more on the iPhone for the largest text size); `ScriptedCore` (5) |
+| Swift package | 86 on the Mac and on the iPhone simulator | The real core through Swift (11); the WebKit adapter, isolation and restore (28), a page that asks for a new window (11, [006](006-new-windows.md)) and a link for the system (7, [007](007-outside-links.md)); the window's model (13); the shell's own host (5, and one more on the Mac); the design catalogue as pictures (5, and one more on the iPhone for the largest text size); `ScriptedCore` (5) |
 | Android (JVM) | 125 | The real core through JNI from Kotlin (28); the adapter's rules, the error codes, the window's model; the design catalogue as pictures (9) |
 | Android (on an emulator) | 57 | The adapter suite against the real System WebView (19); a page that asks for a new window (10, [006](006-new-windows.md)); isolation between login sets (12); sleep and wake (3); the app's window in fake mode (13), with Android's accessibility checks. `Tools/test.sh android-device`, not part of `all` |
-| App UI tests | 9 on the Mac, 8 on the iPhone | A page loads through the core; typing an address; a failure in words; Apple's accessibility audit over the empty tab and the failed page; the design catalogue opens and passes the audit; tabs open, switch and close (005), and the Mac's ⌘T and ⌘W; a link that opens a window opens a tab, and a window refused its address leaves none (006) |
+| App UI tests | 10 on the Mac, 9 on the iPhone | A page loads through the core; typing an address; a failure in words; Apple's accessibility audit over the empty tab and the failed page; the design catalogue opens and passes the audit; tabs open, switch and close (005), and the Mac's ⌘T and ⌘W; a link that opens a window opens a tab, and a window refused its address leaves none (006); a link for the system leaves the page as it was and starts no other app (007) |
 
 **The adapter suite** (`Packages/Tests/WTWebKitTests`) is the bar every engine adapter must clear (000 §8.3): event order, redirects, address changes, history, failures as codes, the navigation policy, host requests for web views that do not exist, release on destroy, and **isolation**: sign in under one login set and another sees no cookie, no local storage, no database, no cache, no service worker and no copy in the HTTP cache; the web views of one private login set share it, and it is forgotten with the last of them; a sign-in for the session outlives the last web view of its login set; a deleted login set leaves nothing.
 

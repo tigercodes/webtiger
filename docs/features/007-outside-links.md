@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress. The contract (1.4) and the core are built and tested; no shell reports such a link or opens one yet, so in the apps a click on one still does nothing (§9) |
+| **Status** | In progress. The contract (1.4), the core and the Apple shell are built and tested. The Android shell does not report such a link or open one yet: there a click on one still does nothing (§9) |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "outside links". The `System` host service's first request (000 §5.5) |
 | **Contract** | 1.4: `OutsideLinkRequested`; the host request `OpenOutside` |
 | **Builds on** | [006](006-new-windows.md): a window refused the only place it was going |
@@ -81,16 +81,23 @@ A shell built before 1.4 answers a host request it does not know with `host.unsu
 
 The System service is answered by the shell itself, not by an engine adapter: opening a link is nothing to do with a web engine. Each shell gives its host a small opener, which a test replaces with one that only writes down what it was asked.
 
+**As built on Apple** (`WebKitEngine`'s policy callback; `ShellHost` and `OutsideOpener` in `WTUI`):
+
+- The adapter reports the link first and then refuses the navigation as it always did, so the core hears of the link before the refusal that may close a window (006).
+- A link that opens a window on such an address is reported for the page that asked, and no window is made: WebKit asks about a link's address before it asks for a window. A window script opens is made first, and the link is reported in it, with no gesture; the click that opened the window is what the core counts (§3).
+- `ShellHost` answers `OpenOutside` and passes every other request to the engine; the engine itself answers `OpenOutside` with `host.unsupported`. An address the system cannot read is answered like one nothing opens.
+- The Mac's own opener was asked for real about a scheme nothing is registered for: it says so and shows nothing. With a letter to write it starts the mail app, which no test does (§8).
+
 ## 6. Tests
 
 | Where | What |
 |---|---|
 | Core (`wt-core`, 2) | Which addresses may be handed on: the three schemes, in any case; nothing else, look-alikes among them |
 | Core (`wt-app/tests/outside_links.rs`, 12 through `FakeShell`) | A clicked link is handed to the system, once, and its tab is as it was. Each row of §3's table: not external by the core's own policy; another scheme; an unknown web view; no gesture; ten within one click, one a millisecond short of a second later, and one after it; another tab's page is not held back. A window opened by a click on such a link: handed on, and the window closed. The click that opened a window is good for one address. A window that has had a page does not carry the click. A shell that says nothing opens it, or that does not know the request: nothing breaks, nothing waits |
-| WebKit adapter suite | A clicked link to such an address reports it, with a gesture, before any failure; a script's navigation reports it without one; in a frame too; the web view stays where it was |
+| WebKit adapter suite (`WebKitOutsideLinkTests`, 7) | A clicked link to such an address reports it, with a gesture, before its refusal, and the web view stays where it was. A script's navigation, and a page that goes there by itself as it loads, report it without one. A link in a frame reports it, and nothing is said of the page. A link that opens a window on one reports it and opens no window; a window script opens reports it in the window, before the refusal. The engine itself opens nothing |
 | System WebView adapter | The same on the JVM (the tracker and the engine) and on the device, with a finger on the link |
-| Each shell's host | `OpenOutside` reaches the opener with the address; the opener's "nothing opens it" is `system.no_handler`; every other request still reaches the engine. Android: the intent that is started, on the JVM and, on the device, caught before it leaves the app |
-| The apps | With the real core, in fake mode: a click on a link to write a letter leaves the page as it was and opens nothing real |
+| Each shell's host (Apple: `ShellHostTests`, 5, and one more on the Mac) | `OpenOutside` reaches the opener with the address as it was given; the opener's "nothing opens it" is `system.no_handler`; what is not an address is not given to the system; every other request still reaches the engine; fake mode's opener opens nothing and says it did. On the Mac, the system's own opener says when nothing opens an address. Android: the intent that is started, on the JVM and, on the device, caught before it leaves the app |
+| The apps | With the real core, in fake mode: a click on a link to write a letter leaves the page as it was, opens no tab, and leaves the app in front; on the Mac, the mail app is not running afterwards unless it was before |
 
 ## 7. Decisions
 
@@ -105,13 +112,14 @@ The System service is answered by the shell itself, not by an engine adapter: op
 
 ## 8. What is not verified
 
-- Written when built.
+- **The system's opener with a real letter, number or message.** Every test replaces the opener or runs in fake mode, on purpose: none starts another app. That `NSWorkspace.open` and `UIApplication.open` then start the mail app or the dialler is those calls' own behaviour, and was not tried from WebTiger on this machine.
+- **A button whose script goes to such an address** (`location = 'mailto:…'`) opens nothing on Apple: WebKit does not tell an app whether a script's navigation was clicked for, and the adapter does not say it was. A plain link works. Telling the two apart needs the page's own clicks to be watched, which is not built.
 
 ## 9. Done checklist
 
 - [x] Contract 1.4 and its version in every place it is written.
 - [x] The core: the rules of §3; `OpenOutside` asked of the host.
 - [x] Core tests through `FakeShell`: 12, and each rule checked by breaking it (the shell's word; the gesture; the limit; the carried click; its being spent).
-- [ ] Apple: the adapter's report; the shell's host and opener; their tests; the UI test.
+- [x] Apple: the adapter's report (7 tests, its gesture and its frames checked by breaking them); the shell's host and opener (5 tests, 6 on the Mac); a UI test with the real core on the Mac and the iPhone simulator.
 - [ ] Android: the adapter's report; the shell's host and opener; their tests, on the JVM and on a device.
 - [ ] `Tools/test.sh all` green, and `android-device`.

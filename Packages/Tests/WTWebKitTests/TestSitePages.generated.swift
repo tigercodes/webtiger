@@ -155,6 +155,22 @@ enum TestSitePages {
             body: [.text("<!doctype html><title>Clicks</title><h1>Clicks</h1><p><a id=\"blank\" href=\"/opened\" target=\"_blank\">new window</a></p>\n<script>document.getElementById('blank').click(); document.title = 'clicked';</script>")],
             delayMilliseconds: 0
         ),
+        TestSitePage(
+            path: "/contact",
+            status: "200 OK",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("<!doctype html><title>Contact</title><h1>Contact</h1><p><a id=\"letter\" href=\"mailto:ada@example.com\">write a letter</a></p>\n<p><button id=\"script\" onclick=\"location.href = 'tel:+15550100'\">ring</button></p>\n<iframe id=\"frame\" srcdoc=\"<a id='framed' href='sms:+15550100' style='display: block; height: 100%'>send a message</a>\"></iframe>")],
+            delayMilliseconds: 0
+        ),
+        TestSitePage(
+            path: "/rings",
+            status: "200 OK",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("<!doctype html><title>Rings</title><h1>Rings</h1><script>location.href = 'tel:+15550100'; document.title = 'rang';</script>")],
+            delayMilliseconds: 0
+        ),
     ]
 
     /// What every other path is answered with.

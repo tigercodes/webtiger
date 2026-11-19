@@ -34,7 +34,7 @@ public final class BrowserSession {
         ///
         /// Fake mode, for UI suites and screenshots: `WEBTIGER_FAKE=1` keeps the store in memory
         /// and makes ids deterministic; `WEBTIGER_FAKE_START` names an address every new window
-        /// opens.
+        /// opens. Nothing leaves the app in it: a link for the system opens no other app.
         public static func live(environment: [String: String] = ProcessInfo.processInfo.environment) throws -> BrowserSession {
             let engine = WebKitEngine()
             var config = WTCoreConfig()
@@ -46,14 +46,17 @@ public final class BrowserSession {
             config.locale = Locale.current.identifier(.bcp47)
             config.appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
             config.engines = [WebKitEngine.info]
+            let opener: OutsideOpener
             if environment["WEBTIGER_FAKE"] == "1" {
                 config.testMode = .fake
                 config.fake.startAddress = environment["WEBTIGER_FAKE_START"] ?? ""
+                opener = .nothing
             } else {
                 config.testMode = .live
                 config.dataDir = try dataDirectory().path(percentEncoded: false)
+                opener = .system
             }
-            let core = try NativeCore.start(config: config, host: engine)
+            let core = try NativeCore.start(config: config, host: ShellHost(engine: engine, opener: opener))
             return BrowserSession(core: core, engine: engine)
         }
 

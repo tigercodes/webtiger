@@ -173,6 +173,41 @@ final class LaunchTests: XCTestCase {
         XCTAssertEqual(tabs.count, 2, "the page and what its link opened: the refused window left no tab")
     }
 
+    /// A link for the system (007), with the real core: a click on a link to write a letter
+    /// leaves the page as it was. In fake mode the shell opens nothing, so the suite starts no
+    /// mail app on the machine it runs on.
+    func testALinkForTheSystemLeavesThePageAsItWas() {
+        #if os(macOS)
+            // Whether the mail app is running before, to know afterwards that this did not
+            // start it. (If it was running already, that much cannot be told.)
+            let mail = "com.apple.mail"
+            let wasRunning = !NSRunningApplication.runningApplications(withBundleIdentifier: mail).isEmpty
+        #endif
+        let app = launch(start: site.url("/contact"))
+        XCTAssertTrue(pageShows("Contact", in: app), "the page loaded")
+        let field = app.textFields["address-field"]
+        expect(field, toShow: "http://127.0.0.1:\(site.port)/contact")
+
+        let link = app.webViews.links["write a letter"]
+        XCTAssertTrue(link.waitForExistence(timeout: 30), "the page's link is there to click")
+        press(link)
+
+        // Long enough for the core to have heard of the link and asked the shell to open it.
+        _ = app.webViews.links["no such link"].waitForExistence(timeout: 2)
+        XCTAssertTrue(pageShows("Contact", in: app), "the page is still the one on screen")
+        expect(field, toShow: "http://127.0.0.1:\(site.port)/contact")
+        XCTAssertEqual(app.buttons.matching(identifier: "tab").count, 1, "and no tab was opened for it")
+        XCTAssertEqual(app.state, .runningForeground, "the app is still in front")
+        #if os(macOS)
+            if !wasRunning {
+                XCTAssertTrue(
+                    NSRunningApplication.runningApplications(withBundleIdentifier: mail).isEmpty,
+                    "fake mode started the mail app"
+                )
+            }
+        #endif
+    }
+
     #if os(macOS)
         /// ⌘T opens a tab; ⌘W closes the one in front, and on the last tab the window.
         func testTheMacsTabShortcuts() {

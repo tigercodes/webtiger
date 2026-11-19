@@ -376,10 +376,19 @@ private final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
         // A navigation with no target frame opens a new window; it is decided as a top-level one.
         let mainFrame = action.targetFrame?.isMainFrame ?? true
         let userGesture = action.navigationType == .linkActivated || action.navigationType == .formSubmitted
-        switch engine?.verdict(for: action.request.url, webViewID: id, mainFrame: mainFrame, userGesture: userGesture) {
+        let verdict = engine?.verdict(for: action.request.url, webViewID: id, mainFrame: mainFrame, userGesture: userGesture)
+        if verdict == .external {
+            // An address for the system, not for a browser: refused here like any other, and
+            // reported first, for a frame as for the page. Whether it is handed to the system
+            // is the core's to say (007); the adapter opens nothing.
+            var asked = WTOutsideLinkRequested()
+            asked.url = action.request.url?.absoluteString ?? ""
+            asked.userGesture = userGesture
+            engine?.report(id, .outsideLinkRequested(asked))
+        }
+        switch verdict {
         case .allow:
             return .allow
-        // W1 hands an external address to the system; until then it is only refused.
         case .cancel, .external, nil:
             // A refused navigation with no target frame was for a new window: nothing of this
             // web view's own was going anywhere, and nothing is said about it.
