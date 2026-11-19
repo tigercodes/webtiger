@@ -175,6 +175,7 @@ internal abstract class AdapterTestCase {
                 report.renderer_gone != null -> "gone"
                 report.new_window_requested != null -> "window"
                 report.close_requested != null -> "close"
+                report.outside_link_requested != null -> "outside"
                 else -> null
             }
         }

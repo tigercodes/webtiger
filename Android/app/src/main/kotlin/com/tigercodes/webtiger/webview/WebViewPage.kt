@@ -195,11 +195,14 @@ internal class WebViewPage(
             if (view !== webView) return true
             val url = request.url.toString()
             val mainFrame = request.isForMainFrame
-            if (host.navigationVerdict(url, id, mainFrame, request.hasGesture()) == NavigationVerdict.ALLOW) {
+            val verdict = host.navigationVerdict(url, id, mainFrame, request.hasGesture())
+            if (verdict == NavigationVerdict.ALLOW) {
                 if (mainFrame) tracker.navigationAllowed(url)
                 return false
             }
-            // W1 hands an external address to the system; until then it is only refused.
+            // An address for the system is refused here like any other, and reported first, for
+            // a frame as for the page: the adapter opens nothing (007).
+            if (verdict == NavigationVerdict.EXTERNAL) tracker.outsideLink(url, request.hasGesture())
             if (mainFrame) tracker.navigationRefused(url, request.isRedirect)
             return true
         }

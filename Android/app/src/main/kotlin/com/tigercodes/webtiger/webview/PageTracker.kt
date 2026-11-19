@@ -8,6 +8,7 @@ import com.tigercodes.webtiger.core.v1.NavigationCommitted
 import com.tigercodes.webtiger.core.v1.NavigationFailed
 import com.tigercodes.webtiger.core.v1.NavigationFinished
 import com.tigercodes.webtiger.core.v1.NavigationStarted
+import com.tigercodes.webtiger.core.v1.OutsideLinkRequested
 import com.tigercodes.webtiger.core.v1.ProgressChanged
 import com.tigercodes.webtiger.core.v1.RendererGone
 import com.tigercodes.webtiger.core.v1.TitleChanged
@@ -95,6 +96,16 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
 
     /** `shouldOverrideUrlLoading`: the policy let a main-frame navigation go ahead. */
     fun navigationAllowed(url: String) = begin(url)
+
+    /**
+     * `shouldOverrideUrlLoading`: the page, or a frame of it, tried to go to an address that is
+     * for the system and not for a browser (007). It is refused like any other; this reports
+     * it, before the refusal, so the core hears of the link before a refusal that may close a
+     * window. Whether it is handed to the system is the core's to say.
+     */
+    fun outsideLink(url: String, userGesture: Boolean) {
+        emit(EngineEvent(web_view_id = webViewId, outside_link_requested = OutsideLinkRequested(url = url, user_gesture = userGesture)))
+    }
 
     /**
      * `shouldOverrideUrlLoading`: a main-frame navigation was refused on the core's verdict.

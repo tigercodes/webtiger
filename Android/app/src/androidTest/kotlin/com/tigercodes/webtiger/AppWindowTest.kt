@@ -5,6 +5,7 @@ package com.tigercodes.webtiger
 
 import android.app.Activity
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ActivityInfo
 import android.view.View
 import android.view.ViewGroup
@@ -319,6 +320,43 @@ internal class AppWindowTest {
 
         awaitPage("Opened")
         compose.onAllNodesWithTag("tab").assertCountEquals(2)
+    }
+
+    /**
+     * A link for the system (007), with the real core: a touch on a link to write a letter
+     * leaves the page as it was. In fake mode the shell opens nothing, so the suite starts no
+     * mail app on the device it runs on; an activity that tried to start would be caught here.
+     */
+    @Test
+    fun aLinkForTheSystemLeavesThePageAsItWas() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val letters =
+            instrumentation.addMonitor(
+                IntentFilter(Intent.ACTION_VIEW).apply {
+                    addCategory(Intent.CATEGORY_BROWSABLE)
+                    addDataScheme("mailto")
+                },
+                null,
+                true,
+            )
+        try {
+            awaitPage("Home")
+            type(site.url("/contact"))
+            awaitPage("Contact")
+            val page = checkNotNull(shownWebView())
+
+            PageTouch.tap(page, "letter")
+            // Long enough for the core to have heard of the link and asked the shell to open it.
+            Thread.sleep(1_500)
+
+            awaitPage("Contact")
+            awaitAddress(shown("/contact"))
+            assertSame(page, shownWebView())
+            compose.onAllNodesWithTag("tab").assertCountEquals(1)
+            assertEquals("fake mode started no activity for the letter", 0, letters.hits)
+        } finally {
+            instrumentation.removeMonitor(letters)
+        }
     }
 
     @Test

@@ -162,7 +162,7 @@ internal object TestSitePages {
                 status = "200 OK",
                 type = "text/html",
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
-                body = listOf(TestSitePiece.Text("<!doctype html><title>Contact</title><h1>Contact</h1><p><a id=\"letter\" href=\"mailto:ada@example.com\">write a letter</a></p>\n<p><button id=\"script\" onclick=\"location.href = 'tel:+15550100'\">ring</button></p>\n<iframe id=\"frame\" srcdoc=\"<a id='framed' href='sms:+15550100' style='display: block; height: 100%'>send a message</a>\"></iframe>")),
+                body = listOf(TestSitePiece.Text("<!doctype html><title>Contact</title><h1>Contact</h1><p><a id=\"letter\" href=\"mailto:ada@example.com\">write a letter</a></p>\n<p><button id=\"script\" onclick=\"location.href = 'tel:+15550100'\">ring</button></p>\n<iframe id=\"frame\" srcdoc=\"<a id='framed' href='sms:+15550100' style='position: fixed; inset: 0'>send a message</a>\"></iframe>")),
                 delayMilliseconds = 0,
             ),
             TestSitePage(

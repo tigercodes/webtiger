@@ -142,7 +142,7 @@
       "body": [
         "<p><a id=\"letter\" href=\"mailto:ada@example.com\">write a letter</a></p>",
         "<p><button id=\"script\" onclick=\"location.href = 'tel:+15550100'\">ring</button></p>",
-        "<iframe id=\"frame\" srcdoc=\"<a id='framed' href='sms:+15550100' style='display: block; height: 100%'>send a message</a>\"></iframe>"
+        "<iframe id=\"frame\" srcdoc=\"<a id='framed' href='sms:+15550100' style='position: fixed; inset: 0'>send a message</a>\"></iframe>"
       ],
       "note": "Links for the system, each followed a different way: a letter by a plain link, a number by a button's script, a message by a link that fills a frame."
     },

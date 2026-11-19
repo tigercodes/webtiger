@@ -119,8 +119,10 @@ class BrowserSession(val core: CoreClient, val engine: SystemWebViewEngine, inte
                     // The app's own files, which no other app can read. The core makes the folder.
                     dataDir = File(application.filesDir, "core").path,
                 )
+            // In fake mode nothing leaves the app: a link for the system opens no other app (007).
+            val opener = if (launch.fake) OutsideOpener.nothing else SystemOpener(application)
             // Host requests are answered on the main thread, where a WebView must be used.
-            val core = NativeCore.start(config, engine, Dispatchers.Main)
+            val core = NativeCore.start(config, ShellHost(engine, opener), Dispatchers.Main)
             return BrowserSession(core, engine, MainScope())
         }
 

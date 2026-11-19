@@ -14,6 +14,7 @@ import com.tigercodes.webtiger.core.v1.HostResponse
 import com.tigercodes.webtiger.core.v1.LoginSet
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.core.v1.NavigationFinished
+import com.tigercodes.webtiger.core.v1.OpenOutside
 import com.tigercodes.webtiger.core.v1.WebViewCommand
 import com.tigercodes.webtiger.core.v1.WebViewCreate
 import com.tigercodes.webtiger.core.v1.WebViewDestroy
@@ -266,6 +267,13 @@ class SystemWebViewEngineTest {
     fun aRequestThisShellDoesNotKnowIsRefusedWithACode() =
         runTest {
             assertRefused("host.unsupported", engine.answer(HostRequest()))
+        }
+
+    @Test
+    fun theEngineItselfOpensNothingOutside() =
+        runTest {
+            // The System service is the shell's own to answer (007), not a web engine's.
+            assertRefused("host.unsupported", engine.answer(HostRequest(open_outside = OpenOutside(url = "mailto:ada@example.com"))))
         }
 
     @Test

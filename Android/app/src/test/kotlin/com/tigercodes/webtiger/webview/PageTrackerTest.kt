@@ -33,6 +33,7 @@ class PageTrackerTest {
         event.progress_changed?.let { return "progress ${it.fraction}" }
         event.history_changed?.let { return "history ${it.can_go_back} ${it.can_go_forward}" }
         event.renderer_gone?.let { return "gone" }
+        event.outside_link_requested?.let { return "outside ${it.url}" + if (it.user_gesture) " (asked)" else "" }
         return "nothing"
     }
 
@@ -141,6 +142,23 @@ class PageTrackerTest {
         tracker.progress(10)
         tracker.progress(100)
         assertEquals("and nothing more is said of it", emptyList<String>(), told())
+    }
+
+    @Test
+    fun aLinkForTheSystemIsReportedAndThenRefused() {
+        load(A)
+        // As the WebView's client calls them: the link first, then its refusal (007).
+        tracker.outsideLink("mailto:ada@example.com", userGesture = true)
+        tracker.navigationRefused("mailto:ada@example.com", isRedirect = false)
+        assertEquals(listOf("outside mailto:ada@example.com (asked)", "failed net.cancelled mailto:ada@example.com (refused)"), told())
+    }
+
+    @Test
+    fun aLinkForTheSystemNobodyAskedForSaysSo() {
+        load(A)
+        // In a frame: nothing of the page itself was going anywhere, and nothing more is said.
+        tracker.outsideLink("tel:+15550100", userGesture = false)
+        assertEquals(listOf("outside tel:+15550100"), told())
     }
 
     @Test
