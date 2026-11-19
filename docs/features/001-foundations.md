@@ -144,7 +144,7 @@ Two rules every adapter keeps, found while building the first (and now in `engin
 - **`BrowserWindowView`**: back, forward, reload or stop, the address field with its security mark, a progress line, and the page, an empty tab, or a failed page in words. ⌘L goes to the address field.
 - The package builds **without** the Rust core too (`ScriptedCore`), so a screen can be worked on first.
 
-**Verified:** the package's tests on macOS (57) and on the iPhone 17 simulator (58); the app's UI tests on macOS (7) and the iPhone 17 simulator (6); the five there were before tabs also on the iPhone Duo and iPad Air 11-inch simulators. The Duo's run is where the audit found the failed page's words cut short at the largest text sizes (004 §5.1). **Not yet looked at:** what the iPad's window should be (it is the phone's, larger), Stage Manager, multiple windows, the Duo folded.
+**Verified:** the package's tests on macOS (65) and on the iPhone 17 simulator (66); the app's UI tests on macOS (8) and the iPhone 17 simulator (7); the five there were before tabs also on the iPhone Duo and iPad Air 11-inch simulators. The Duo's run is where the audit found the failed page's words cut short at the largest text sizes (004 §5.1). **Not yet looked at:** what the iPad's window should be (it is the phone's, larger), Stage Manager, multiple windows, the Duo folded.
 
 ## 7. Fake mode
 
@@ -166,10 +166,10 @@ Tools/test.sh lint | core | unit | ios | build | ui | all
 | `wt-ffi` | 21 | The header matches the exports; the core through its C functions, from many threads |
 | `wt-proto` | 3 | The contract's version is the same in three places |
 | `wt-import`, `wt-cli` | 36 | 002 |
-| Swift package | 57 (58 on the iPhone simulator) | The real core through Swift (8); the WebKit adapter, isolation and restore (28); the window's model (12); the design catalogue as pictures (5, and one more on the iPhone for the largest text size); `ScriptedCore` (4) |
+| Swift package | 65 (66 on the iPhone simulator) | The real core through Swift (8); the WebKit adapter, isolation and restore (28), and a page that asks for a new window (8, [006](006-new-windows.md)); the window's model (12); the design catalogue as pictures (5, and one more on the iPhone for the largest text size); `ScriptedCore` (4) |
 | Android (JVM) | 120 | The real core through JNI from Kotlin (28); the adapter's rules, the error codes, the window's model; the design catalogue as pictures (9) |
 | Android (on an emulator) | 45 | The adapter suite against the real System WebView (19); isolation between login sets (12); sleep and wake (3); the app's window in fake mode (11), with Android's accessibility checks. `Tools/test.sh android-device`, not part of `all` |
-| App UI tests | 7 on the Mac, 6 on the iPhone | A page loads through the core; typing an address; a failure in words; Apple's accessibility audit over the empty tab and the failed page; the design catalogue opens and passes the audit; tabs open, switch and close (005), and the Mac's ⌘T and ⌘W |
+| App UI tests | 8 on the Mac, 7 on the iPhone | A page loads through the core; typing an address; a failure in words; Apple's accessibility audit over the empty tab and the failed page; the design catalogue opens and passes the audit; tabs open, switch and close (005), and the Mac's ⌘T and ⌘W; a link that opens a window opens a tab (006) |
 
 **The adapter suite** (`Packages/Tests/WTWebKitTests`) is the bar every engine adapter must clear (000 §8.3): event order, redirects, address changes, history, failures as codes, the navigation policy, host requests for web views that do not exist, release on destroy, and **isolation**: sign in under one login set and another sees no cookie, no local storage, no database, no cache, no service worker and no copy in the HTTP cache; the web views of one private login set share it, and it is forgotten with the last of them; a sign-in for the session outlives the last web view of its login set; a deleted login set leaves nothing.
 
@@ -187,7 +187,7 @@ Small ones, each made where the plan was silent or wrong. None changes a decisio
 | F2 | Address fix-up lives in `wt-core` for now; `wt-omnibox` arrives with suggestions (W1) | No crate with one function in it |
 | F3 | Searches go to DuckDuckGo until the first-run chooser exists (W1, WT-D17) | It needs no account and no agreement. A placeholder, not a product decision |
 | F4 | `file:` addresses and top-level `data:` navigations are refused; other schemes are for the system, which W0 only refuses | WebTiger opens no local files yet; the System host service is W1 |
-| F5 | A page that asks for a new window gets its address loaded in the same tab | W0 has one tab |
+| F5 | A page that asks for a new window gets its address loaded in the same tab | W0 has one tab. Replaced by [006](006-new-windows.md): it opens in a tab of its own (on Apple so far) |
 | F6 | No envelope is logged. Fields are marked `(wt.redact)` already; the generated redactor arrives with logging | Nothing logged, nothing leaked |
 | F7 | The store has one connection, held by the dispatcher | The one-writer, many-readers arrangement is for W1's load |
 | F8 | The contract's C code for Windows (nanopb) is generated when the Windows shell is built; Android generates Kotlin at build time with Wire | No generated code without something that compiles it |

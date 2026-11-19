@@ -94,6 +94,45 @@
       "title": "Slow",
       "delay_ms": 3000,
       "note": "Answers after three seconds: a load that is still going when a test stops it."
+    },
+    {
+      "path": "/opener",
+      "title": "Opener",
+      "body": [
+        "<p><a id=\"blank\" href=\"/opened\" target=\"_blank\">new window</a></p>",
+        "<p><button id=\"open\" onclick=\"window.open('/opened')\">open</button></p>",
+        "<script>addEventListener('message', (said) => { document.title = 'heard=' + said.data; });</script>"
+      ],
+      "note": "Asks for new windows when clicked: a link with a target, and a button that calls window.open. Says in its title what a window it opened told it."
+    },
+    {
+      "path": "/opened",
+      "title": "Opened",
+      "body": [
+        "<p><button id=\"close\" onclick=\"window.close()\">close</button></p>",
+        "<script>",
+        "if (window.opener) {",
+        "  document.title = 'Opened by a page';",
+        "  window.opener.postMessage('hello', '*');",
+        "}",
+        "</script>"
+      ],
+      "note": "What /opener opens. When the page that opened it has a hold on it, says so in its title and tells that page hello. Its button asks for its own window to be closed."
+    },
+    {
+      "path": "/pops",
+      "title": "Pops",
+      "body": "<script>document.title = window.open('/opened') ? 'popped' : 'blocked';</script>",
+      "note": "Asks for a window by itself as it loads, with nobody clicking, and says in its title whether it got one."
+    },
+    {
+      "path": "/clicks",
+      "title": "Clicks",
+      "body": [
+        "<p><a id=\"blank\" href=\"/opened\" target=\"_blank\">new window</a></p>",
+        "<script>document.getElementById('blank').click(); document.title = 'clicked';</script>"
+      ],
+      "note": "Clicks its own link to a new window as it loads, with nobody clicking."
     }
   ],
   "not_found": {

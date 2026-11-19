@@ -83,6 +83,49 @@ class AdapterTestCase: XCTestCase {
         created.removeAll { $0 == id }
     }
 
+    /// Has a web view the engine made unasked destroyed with the others when the test ends.
+    func track(_ id: UInt64) {
+        created.append(id)
+    }
+
+    /// Runs script in a web view's page, as if somebody had clicked: WebKit runs what an app
+    /// asks it to evaluate with a user's gesture.
+    @discardableResult
+    func run(_ script: String, in id: UInt64, file: StaticString = #filePath, line: UInt = #line) async -> Any? {
+        guard let webView = engine.webView(for: id) else {
+            XCTFail("no web view \(id)", file: file, line: line)
+            return nil
+        }
+        return try? await webView.evaluateJavaScript(script)
+    }
+
+    /// The windows a web view's page has asked for, in order.
+    func windowsAsked(by id: UInt64) -> [WTNewWindowRequested] {
+        reports(id).compactMap {
+            if case let .newWindowRequested(asked) = $0 {
+                asked
+            } else {
+                nil
+            }
+        }
+    }
+
+    /// Waits for a web view's page to have asked for `count` windows, and has the last one
+    /// destroyed when the test ends. The last one asked for.
+    func awaitWindow(
+        askedBy id: UInt64,
+        count: Int = 1,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async -> WTNewWindowRequested {
+        await wait(id, "a window asked for", file: file, line: line) { _ in self.windowsAsked(by: id).count >= count }
+        let asked = windowsAsked(by: id).last ?? WTNewWindowRequested()
+        if asked.newWebViewID != 0 {
+            track(asked.newWebViewID)
+        }
+        return asked
+    }
+
     /// Deletes a login set, as the engine does it. False while a web view still uses it.
     @discardableResult
     func remove(_ loginSet: UUID) async -> Bool {

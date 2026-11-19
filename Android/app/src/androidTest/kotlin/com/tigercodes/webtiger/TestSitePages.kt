@@ -125,6 +125,38 @@ internal object TestSitePages {
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Slow</title><h1>Slow</h1>")),
                 delayMilliseconds = 3000,
             ),
+            TestSitePage(
+                path = "/opener",
+                status = "200 OK",
+                type = "text/html",
+                headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
+                body = listOf(TestSitePiece.Text("<!doctype html><title>Opener</title><h1>Opener</h1><p><a id=\"blank\" href=\"/opened\" target=\"_blank\">new window</a></p>\n<p><button id=\"open\" onclick=\"window.open('/opened')\">open</button></p>\n<script>addEventListener('message', (said) => { document.title = 'heard=' + said.data; });</script>")),
+                delayMilliseconds = 0,
+            ),
+            TestSitePage(
+                path = "/opened",
+                status = "200 OK",
+                type = "text/html",
+                headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
+                body = listOf(TestSitePiece.Text("<!doctype html><title>Opened</title><h1>Opened</h1><p><button id=\"close\" onclick=\"window.close()\">close</button></p>\n<script>\nif (window.opener) {\n  document.title = 'Opened by a page';\n  window.opener.postMessage('hello', '*');\n}\n</script>")),
+                delayMilliseconds = 0,
+            ),
+            TestSitePage(
+                path = "/pops",
+                status = "200 OK",
+                type = "text/html",
+                headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
+                body = listOf(TestSitePiece.Text("<!doctype html><title>Pops</title><h1>Pops</h1><script>document.title = window.open('/opened') ? 'popped' : 'blocked';</script>")),
+                delayMilliseconds = 0,
+            ),
+            TestSitePage(
+                path = "/clicks",
+                status = "200 OK",
+                type = "text/html",
+                headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
+                body = listOf(TestSitePiece.Text("<!doctype html><title>Clicks</title><h1>Clicks</h1><p><a id=\"blank\" href=\"/opened\" target=\"_blank\">new window</a></p>\n<script>document.getElementById('blank').click(); document.title = 'clicked';</script>")),
+                delayMilliseconds = 0,
+            ),
         )
 
     /** What every other path is answered with. */

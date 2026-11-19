@@ -122,6 +122,37 @@ final class LaunchTests: XCTestCase {
         XCTAssertEqual(tabs.count, 1)
     }
 
+    /// A page that asks for a new window (006): a link with a target opens in a tab of its own,
+    /// in front, beside the tab it came from; closing it brings that tab forward again.
+    func testALinkThatOpensAWindowOpensATab() {
+        let app = launch(start: site.url("/opener"))
+        XCTAssertTrue(pageShows("Opener", in: app), "the first tab's page loaded")
+        let tabs = app.buttons.matching(identifier: "tab")
+        // A tab after the first, so that "beside" is not "at the end", and "the tab it came
+        // from" is not "the tab after it".
+        press(app.buttons["new-tab"])
+        XCTAssertTrue(app.staticTexts["empty-tab"].waitForExistence(timeout: 30))
+        press(tabs.element(boundBy: 0))
+        XCTAssertTrue(pageShows("Opener", in: app), "the first tab is in front again")
+
+        let link = app.webViews.links["new window"]
+        XCTAssertTrue(link.waitForExistence(timeout: 30), "the page's link is there to click")
+        press(link)
+
+        XCTAssertTrue(pageShows("Opened", in: app), "the link's page is in front")
+        XCTAssertEqual(tabs.count, 3, "in a tab of its own")
+        XCTAssertTrue(tabs.element(boundBy: 1).isSelected, "beside the tab it came from")
+        let field = app.textFields["address-field"]
+        expect(field, toShow: "http://127.0.0.1:\(site.port)/opened")
+
+        // Closing it brings forward the tab it came from, not the tab after it.
+        press(app.buttons.matching(identifier: "close-tab").element(boundBy: 1))
+        XCTAssertTrue(pageShows("Opener", in: app), "back in the tab the link was in")
+        XCTAssertEqual(tabs.count, 2)
+        XCTAssertTrue(tabs.element(boundBy: 0).isSelected)
+        expect(field, toShow: "http://127.0.0.1:\(site.port)/opener")
+    }
+
     #if os(macOS)
         /// ⌘T opens a tab; ⌘W closes the one in front, and on the last tab the window.
         func testTheMacsTabShortcuts() {

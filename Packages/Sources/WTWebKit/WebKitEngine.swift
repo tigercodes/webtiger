@@ -3,6 +3,10 @@
 // The adapter creates, loads and destroys web views when the core asks, and reports what each
 // one does. It decides nothing: whether a navigation may happen is the core's answer
 // (`navigationVerdict`), and what the address field shows is the core's snapshot.
+//
+// One web view is made unasked: the one a page asks for as a new window, which WebKit must be
+// handed at once (006). The adapter makes it, names it and reports it; what becomes of it is
+// the core's to say.
 public import WebKit
 public import WTContract
 public import WTCoreClient
@@ -19,6 +23,13 @@ public final class WebKitEngine: HostServices {
     /// The stores of private login sets, which exist nowhere else: one for all of a login
     /// set's web views, forgotten when the last of them is destroyed.
     private var privateStores: [UUID: WKWebsiteDataStore] = [:]
+    /// How many web views this engine has made unasked, for pages that asked for a window.
+    /// Each is named by the next id of the shell's own, and no id is used twice.
+    private var ownWebViews: UInt64 = 0
+
+    /// The bit that marks a web view's id as the shell's own: the core's ids never have it
+    /// (`NewWindowRequested`, engine.proto).
+    public static let ownID: UInt64 = 1 << 63
 
     public init() {}
 
@@ -147,15 +158,47 @@ public final class WebKitEngine: HostServices {
         // One data store per login set: cookies, storage, cache, service workers and
         // permissions are all kept apart by WebKit itself.
         configuration.websiteDataStore = dataStore(for: loginSet, private: create.loginSet.ephemeral)
+        // A page gets a window when somebody clicked for one, and not by asking as it loads:
+        // WebKit's own blocker, which is off by default on a Mac.
+        configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
+        pages[create.webViewID] = Page(
+            id: create.webViewID,
+            webView: Self.webView(configuration),
+            loginSet: loginSet,
+            isPrivate: create.loginSet.ephemeral,
+            engine: self
+        )
+        return .ack(WTAck())
+    }
+
+    private static func webView(_ configuration: WKWebViewConfiguration) -> WKWebView {
         let webView = WKWebView(frame: .zero, configuration: configuration)
         #if os(macOS)
             webView.allowsMagnification = true
         #endif
         webView.allowsBackForwardNavigationGestures = true
-        pages[create.webViewID] = Page(
-            id: create.webViewID, webView: webView, loginSet: loginSet, isPrivate: create.loginSet.ephemeral, engine: self
+        return webView
+    }
+
+    /// A page asked for a new window, and WebKit must be handed its web view before the call
+    /// returns: that is what lets the page that asked keep its hold on the one it opened. The
+    /// web view is made from the configuration WebKit gives (the asking page's, and so its
+    /// login set's data store), named with an id of the shell's own, shown nowhere, and
+    /// reported. The core adopts it into a tab or has it destroyed (006).
+    fileprivate func newWindow(askedBy asking: Page, configuration: WKWebViewConfiguration, url: URL?) -> WKWebView {
+        ownWebViews += 1
+        let id = Self.ownID | ownWebViews
+        let page = Page(
+            id: id, webView: Self.webView(configuration), loginSet: asking.loginSet, isPrivate: asking.isPrivate, engine: self
         )
-        return .ack(WTAck())
+        pages[id] = page
+        var asked = WTNewWindowRequested()
+        asked.newWebViewID = id
+        asked.url = url?.absoluteString ?? ""
+        // WebKit asks only for the windows its blocker let through: those somebody clicked for.
+        asked.userGesture = true
+        report(asking.id, .newWindowRequested(asked))
+        return page.webView
     }
 
     /// A login set's data store: the one already held, or a new one, held from now on.
@@ -330,7 +373,9 @@ private final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
             return .allow
         // W1 hands an external address to the system; until then it is only refused.
         case .cancel, .external, nil:
-            if mainFrame {
+            // A refused navigation with no target frame was for a new window: nothing of this
+            // web view's own was going anywhere, and nothing is said about it.
+            if mainFrame, action.targetFrame != nil {
                 // WebKit reports nothing about a navigation refused here, so the adapter says
                 // it ended: otherwise a tab the user sent somewhere would wait for ever.
                 var failed = WTNavigationFailed()
@@ -387,17 +432,21 @@ private final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     // MARK: WKUIDelegate
 
-    /// A page asked for a new window. W0 has one tab, so the address opens in this one; W1 gives
-    /// it a tab of its own.
+    /// A page asked for a new window: a link with a target, or `window.open`. The engine makes
+    /// the web view and reports it; WebKit loads the address in it. Its size and place, when
+    /// the page asked for any, are not followed: every window a page opens is a tab.
     func webView(
-        _ webView: WKWebView,
-        createWebViewWith _: WKWebViewConfiguration,
+        _: WKWebView,
+        createWebViewWith configuration: WKWebViewConfiguration,
         for action: WKNavigationAction,
         windowFeatures _: WKWindowFeatures
     ) -> WKWebView? {
-        if action.targetFrame == nil {
-            webView.load(action.request)
-        }
-        return nil
+        engine?.newWindow(askedBy: self, configuration: configuration, url: action.request.url)
+    }
+
+    /// The page asked for its own window to be closed (`window.close()`). Whether it may is
+    /// the core's answer: it closes a tab a page opened, and no other.
+    func webViewDidClose(_: WKWebView) {
+        engine?.report(id, .closeRequested(WTCloseRequested()))
     }
 }

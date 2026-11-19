@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress. The contract (1.2) and the core are built and tested; no shell reports a window asked for yet, so in the apps such a link still loads in the tab that asked (§9) |
+| **Status** | In progress. The contract (1.2), the core and the Apple shell (the WebKit adapter) are built and tested. The Android shell does not report a window asked for yet: there such a link still loads in the tab that asked (§9) |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "navigation, new windows and popups" |
 | **Contract** | 1.2: `NewWindowRequested`, `CloseRequested`; a web view the shell names |
 | **Builds on** | [005](005-tabs.md): tabs |
@@ -68,15 +68,23 @@ message CloseRequested {}
 | The address | The request's | Not given: empty |
 | `window.close()` | `webViewDidClose` | `onCloseWindow` |
 
+**As built on WebKit** (`WebKitEngine.newWindow`, and `Page`'s `WKUIDelegate`), and what the adapter suite found there:
+
+- The web view is made from the configuration WebKit hands over, which carries the asking page's data store: the new web view is in the same login set without the adapter choosing one.
+- `window.open` keeps the hold: the new page has an `opener` and reaches it. **A link with a target does not**: WebKit gives the page such a link opens no opener, as if the link said `noopener`.
+- WebKit's blocker is switched on for every web view (it is off by default on a Mac). A page that calls `window.open` as it loads is given nothing, and a page that clicks its own link is given nothing either: in both cases WebKit never asks the adapter, so nothing is reported and no web view is made. WebKit does not tell an app whether somebody clicked, so every window it does ask for is reported with a gesture.
+- The navigation policy is asked about a link with a target in the web view that asked, before WebKit asks for a window. A refusal opens no window, and says nothing of the page that asked, which went nowhere.
+- The shell needed no change: a window shows the web view its tab names, whoever made it.
+
 ## 6. Tests
 
 | Where | What |
 |---|---|
 | Core (`wt-app/tests/new_windows.rs`, 14 tests through `FakeShell`) | A window asked for with a gesture becomes a tab after the asking tab, in front, with the shell's web view and no `WebViewCreate`; it is a tab like any other, and can open another. Without a gesture, or from a web view the core no longer has: no tab, and the web view destroyed. Under an id that is not a shell's, or one reported twice: nothing, and nothing destroyed. The new tab's address is empty until it commits. `CloseRequested` closes a tab a page opened and not one the user opened; on a window's only tab it leaves an empty one. Closing an opened tab brings its opener forward; with the opener gone, the next. Closing the window destroys the shell's web views too |
 | Core (`wt-core`) | The mint never gives out an id in the shell's half, even at the end of its own |
-| WebKit adapter suite | A link with a target and `window.open` each report `NewWindowRequested` with a top-bit id and make a web view in the same login set; the new page has an `opener` and can reach it; `window.close()` reports `CloseRequested`; a refused web view is destroyed |
+| WebKit adapter suite (`WebKitNewWindowTests`, 8) | A link with a target reports `NewWindowRequested` with an id of the shell's own, and its address loads in the new web view and not in the one that asked. `window.open` keeps the hold both ways. The new web view is in the asking page's login set, and another login set's is in its own; the core's requests about it are answered. `window.close()` reports `CloseRequested` and destroys nothing. A page that asks as it loads, or clicks its own link, gets nothing. A refused web view is destroyed and released, and the next has a new id. A navigation the policy refuses opens no window |
 | System WebView adapter suite | The same, on the device |
-| The apps | A UI test: click a link that opens a new window; a second tab is in front with the page; close it; the first is in front again |
+| The apps | A UI test, with the real core and the real engine: click a link that opens a new window; its page is in front, in a tab of its own beside the tab it came from; close it; the tab it came from is in front again, not the tab after it |
 
 ## 7. Decisions
 
@@ -98,8 +106,9 @@ message CloseRequested {}
 - [x] Contract 1.2 and its version in every place it is written.
 - [x] The core: adopt or refuse; the opener; `CloseRequested`.
 - [x] Core tests through `FakeShell`: 14, and four of its rules checked by breaking them (no gesture, the opener, who may close, whose ids).
-- [ ] The test site's pages for it.
-- [ ] WebKit adapter and its suite.
+- [x] The test site's pages for it: `/opener`, `/opened`, `/pops`, `/clicks`.
+- [x] WebKit adapter and its suite: 8 tests, and two of its rules checked by breaking them (the blocker; a refused navigation).
+- [x] A UI test in the Apple app, on the Mac and the iPhone simulator.
 - [ ] System WebView adapter and its suite, on a device.
-- [ ] A UI test in each app.
+- [ ] A device test in the Android app.
 - [ ] `Tools/test.sh all` green, and `android-device`.
