@@ -84,7 +84,7 @@ This is built in from the first commit, because it is the one thing that cannot 
 
 ## 5. The contract, version 1.0
 
-(W0's contract. W1 has added to it since: 1.1 is tabs, in [005](005-tabs.md) §4; 1.2 and 1.3 are a page that asks for a new window, in [006](006-new-windows.md) §4.)
+(W0's contract. W1 has added to it since: 1.1 is tabs, in [005](005-tabs.md) §4; 1.2 and 1.3 are a page that asks for a new window, in [006](006-new-windows.md) §4; 1.4 is a link for the system, in [007](007-outside-links.md) §4.)
 
 `Core/proto/webtiger/core/v1`. The C ABI is `Core/crates/wt-ffi/include/webtiger_core.h`.
 
@@ -160,9 +160,9 @@ Tools/test.sh lint | core | unit | ios | build | ui | all
 
 | Suite | Count | What it shows |
 |---|---|---|
-| `wt-core` | 28 | Address fix-up, the registrable domain, the navigation policy, ids |
+| `wt-core` | 30 | Address fix-up, the registrable domain, the navigation policy, ids |
 | `wt-store` | 7 | Migrations, a newer store refused, SQLite's build flags |
-| `wt-app` | 85 | A tab's life and the contract's rules, through `FakeShell` (45); several tabs (21, [005](005-tabs.md)); a page that asks for a new window (19, [006](006-new-windows.md)) |
+| `wt-app` | 97 | A tab's life and the contract's rules, through `FakeShell` (45); several tabs (21, [005](005-tabs.md)); a page that asks for a new window (19, [006](006-new-windows.md)); a link for the system (12, [007](007-outside-links.md)) |
 | `wt-ffi` | 21 | The header matches the exports; the core through its C functions, from many threads |
 | `wt-proto` | 3 | The contract's version is the same in three places |
 | `wt-import`, `wt-cli` | 36 | 002 |
@@ -186,7 +186,7 @@ Small ones, each made where the plan was silent or wrong. None changes a decisio
 | F1 | `psl` (the list compiled into code) instead of `publicsuffix` (000 §5.1) | Nothing is parsed at start-up |
 | F2 | Address fix-up lives in `wt-core` for now; `wt-omnibox` arrives with suggestions (W1) | No crate with one function in it |
 | F3 | Searches go to DuckDuckGo until the first-run chooser exists (W1, WT-D17) | It needs no account and no agreement. A placeholder, not a product decision |
-| F4 | `file:` addresses and top-level `data:` navigations are refused; other schemes are for the system, which W0 only refuses | WebTiger opens no local files yet; the System host service is W1 |
+| F4 | `file:` addresses and top-level `data:` navigations are refused; other schemes are for the system, which W0 only refuses | WebTiger opens no local files yet; the System host service is W1 ([007](007-outside-links.md)) |
 | F5 | A page that asks for a new window gets its address loaded in the same tab | W0 has one tab. Replaced by [006](006-new-windows.md): it opens in a tab of its own |
 | F6 | No envelope is logged. Fields are marked `(wt.redact)` already; the generated redactor arrives with logging | Nothing logged, nothing leaked |
 | F7 | The store has one connection, held by the dispatcher | The one-writer, many-readers arrangement is for W1's load |

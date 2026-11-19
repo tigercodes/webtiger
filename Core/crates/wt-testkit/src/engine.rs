@@ -7,8 +7,8 @@ use std::collections::BTreeMap;
 use wt_proto::v1::{
     Ack, AddressChanged, CloseRequested, EngineEvent, EngineKind, Error, HistoryChanged, HostPong,
     NavigationCommand, NavigationCommitted, NavigationFailed, NavigationFinished,
-    NavigationStarted, NewWindowRequested, ProgressChanged, RendererGone, TitleChanged,
-    engine_event, host_request, host_response,
+    NavigationStarted, NewWindowRequested, OutsideLinkRequested, ProgressChanged, RendererGone,
+    TitleChanged, engine_event, host_request, host_response,
 };
 
 /// A page of the scripted web.
@@ -44,6 +44,12 @@ pub struct FakeEngine {
     /// How many web views this shell has made unasked: each is named by the
     /// next id of the shell's own.
     own_web_views: u64,
+    /// The addresses this shell was asked to open with the system, in order.
+    /// It opens nothing.
+    pub opened_outside: Vec<String>,
+    /// Nothing on this device opens an outside link: `OpenOutside` is
+    /// answered with "system.no_handler".
+    pub nothing_opens_outside: bool,
 }
 
 impl FakeEngine {
@@ -53,7 +59,22 @@ impl FakeEngine {
             web_views: BTreeMap::new(),
             engines,
             own_web_views: 0,
+            opened_outside: Vec::new(),
+            nothing_opens_outside: false,
         }
+    }
+
+    /// The report of a page trying to go to an address that is not a
+    /// browser's, which the shell refused in the web view (007).
+    #[must_use]
+    pub fn outside_link(id: u64, url: &str, user_gesture: bool) -> EngineEvent {
+        event(
+            id,
+            engine_event::Kind::OutsideLinkRequested(OutsideLinkRequested {
+                url: url.to_owned(),
+                user_gesture,
+            }),
+        )
     }
 
     /// A page in the web view `asking` asks for a new window (006). As a
@@ -200,6 +221,13 @@ impl FakeEngine {
             }
             Kind::WebViewDestroy(destroy) => {
                 self.web_views.remove(&destroy.web_view_id);
+                (ack, Vec::new())
+            }
+            Kind::OpenOutside(open) => {
+                if self.nothing_opens_outside {
+                    return (error("system.no_handler"), Vec::new());
+                }
+                self.opened_outside.push(open.url);
                 (ack, Vec::new())
             }
         }

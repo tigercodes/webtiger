@@ -1,16 +1,21 @@
 //! The app: what a shell's requests and reports do to the models.
 
 use std::cell::RefCell;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::future::Future;
 use std::pin::Pin;
 use std::rc::Rc;
+use std::time::Duration;
 
-use wt_core::{Address, Input, TabId, WebViewId, WindowId, classify, search_address};
+use tokio::time::Instant;
+use wt_core::{
+    Address, Input, TabId, WebViewId, WindowId, classify, opens_outside, search_address,
+};
 use wt_proto::v1::{
     Ack, ActivateTab, CloseTab, CloseWindow, EngineEvent, EngineKind, LoginSet, NavigationCommand,
-    OpenTab, SubmitAddress, TabCommand, TabOpened, WebViewCommand, WebViewCreate, WebViewDestroy,
-    WebViewLoad, WindowOpened, WindowSnapshot, host_request, request, response,
+    OpenOutside, OpenTab, OutsideLinkRequested, SubmitAddress, TabCommand, TabOpened,
+    WebViewCommand, WebViewCreate, WebViewDestroy, WebViewLoad, WindowOpened, WindowSnapshot,
+    engine_event, host_request, request, response,
 };
 use wt_store::Space;
 
@@ -22,6 +27,12 @@ use crate::model::{LoadTarget, State};
 /// provider (WT-D17, W1). Chosen for W0 because it needs no account and no
 /// agreement; it is a placeholder, not a default the product has decided on.
 pub const DEFAULT_SEARCH_TEMPLATE: &str = "https://duckduckgo.com/?q={query}";
+
+/// How long after a web view had an address handed to the system before it
+/// may have another (007). A click's permission lasts a few seconds in an
+/// engine, and a page can ask many times within it: one click opens one
+/// thing.
+pub const OUTSIDE_LINK_INTERVAL: Duration = Duration::from_secs(1);
 
 /// A request's answer, when it is ready. Whatever the request changes in the
 /// models it changes before this is returned, so requests take effect in the
@@ -46,6 +57,9 @@ pub struct App {
     host: Rc<dyn Host>,
     search_template: Rc<str>,
     fake_start: Option<Rc<str>>,
+    /// When each web view last had an address handed to the system, for
+    /// those that had one within [`OUTSIDE_LINK_INTERVAL`].
+    outside: Rc<RefCell<BTreeMap<WebViewId, Instant>>>,
 }
 
 impl App {
@@ -57,6 +71,7 @@ impl App {
             host,
             search_template: options.search_template.into(),
             fake_start: options.fake_start.map(Into::into),
+            outside: Rc::new(RefCell::new(BTreeMap::new())),
         }
     }
 
@@ -85,10 +100,12 @@ impl App {
     /// is told to destroy it.
     pub fn notify(&self, event: EngineEvent) {
         let Some(kind) = event.kind else { return };
-        let unwanted = self
-            .state
-            .borrow_mut()
-            .apply(WebViewId(event.web_view_id), kind);
+        let web_view = WebViewId(event.web_view_id);
+        if let engine_event::Kind::OutsideLinkRequested(asked) = kind {
+            self.outside_link(web_view, &asked);
+            return;
+        }
+        let unwanted = self.state.borrow_mut().apply(web_view, kind);
         if let Some(web_view) = unwanted {
             let destroying =
                 self.host
@@ -101,6 +118,45 @@ impl App {
                 let _ = destroying.await;
             });
         }
+    }
+
+    /// A page tried to go to an address that is not a browser's, and the
+    /// shell refused it in the web view (007). It is handed to the system
+    /// when it is one that may be (a letter, a number, a message), a person
+    /// asked, and the web view has not just had one. The page that asked is
+    /// left as it is.
+    fn outside_link(&self, web_view: WebViewId, asked: &OutsideLinkRequested) {
+        // Checked against the core's own policy: what the shell calls an
+        // outside link is not taken on its word.
+        if !opens_outside(&asked.url) {
+            return;
+        }
+        let now = Instant::now();
+        {
+            let mut opened = self.outside.borrow_mut();
+            opened.retain(|_, at| now.duration_since(*at) < OUTSIDE_LINK_INTERVAL);
+            if opened.contains_key(&web_view) {
+                return;
+            }
+            if !self
+                .state
+                .borrow_mut()
+                .may_open_outside(web_view, asked.user_gesture)
+            {
+                return;
+            }
+            opened.insert(web_view, now);
+        }
+        let opening = self
+            .host
+            .request(host_request::Kind::OpenOutside(OpenOutside {
+                url: asked.url.clone(),
+            }));
+        // Asked already. Nothing is said when nothing opens it: there is
+        // nowhere to say it until W1's prompts.
+        tokio::task::spawn_local(async move {
+            let _ = opening.await;
+        });
     }
 
     /// A window as its subscribers see it, or `None` when there is none.

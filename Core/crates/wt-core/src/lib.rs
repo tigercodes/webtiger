@@ -10,5 +10,5 @@ pub mod uuid;
 pub use address::{Address, AddressError, Input, Security, classify, search_address};
 pub use clock::{Clock, ManualClock, SystemClock, Timestamp};
 pub use id::{IdMint, LoginSetId, SpaceId, SubscriptionId, TabId, WebViewId, WindowId};
-pub use policy::{NavigationAction, check_navigation};
+pub use policy::{NavigationAction, check_navigation, opens_outside};
 pub use uuid::Uuid;

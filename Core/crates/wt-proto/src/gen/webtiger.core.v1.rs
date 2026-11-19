@@ -448,7 +448,10 @@ impl TestMode {
 pub struct EngineEvent {
     #[prost(uint64, tag = "1")]
     pub web_view_id: u64,
-    #[prost(oneof = "engine_event::Kind", tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12")]
+    #[prost(
+        oneof = "engine_event::Kind",
+        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13"
+    )]
     pub kind: ::core::option::Option<engine_event::Kind>,
 }
 /// Nested message and enum types in `EngineEvent`.
@@ -478,6 +481,9 @@ pub mod engine_event {
         NewWindowRequested(super::NewWindowRequested),
         #[prost(message, tag = "12")]
         CloseRequested(super::CloseRequested),
+        /// Since 1.4
+        #[prost(message, tag = "13")]
+        OutsideLinkRequested(super::OutsideLinkRequested),
     }
 }
 /// A load began. The page it asks for does not own the web view yet.
@@ -569,9 +575,25 @@ pub struct NewWindowRequested {
 /// closes the tab when a page opened it, and not otherwise.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CloseRequested {}
+/// A page tried to go to an address that is not a browser's: wt_nav_check
+/// answered EXTERNAL for it (a letter to write, a number to ring, another
+/// app's own scheme), and the shell refused it in the web view (007).
+/// Reported for a frame as for the page itself, and before the
+/// NavigationFailed that the refusal may also be reported as.
+///
+/// The shell opens nothing by itself. Whether the address is handed to the
+/// system is the core's to say: it asks with OpenOutside (host.proto).
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct OutsideLinkRequested {
+    #[prost(string, tag = "1")]
+    pub url: ::prost::alloc::string::String,
+    /// A person asked: a click or a key, as far as the engine says.
+    #[prost(bool, tag = "2")]
+    pub user_gesture: bool,
+}
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct HostRequest {
-    #[prost(oneof = "host_request::Kind", tags = "1, 2, 3, 4, 5")]
+    #[prost(oneof = "host_request::Kind", tags = "1, 2, 3, 4, 5, 6")]
     pub kind: ::core::option::Option<host_request::Kind>,
 }
 /// Nested message and enum types in `HostRequest`.
@@ -588,6 +610,9 @@ pub mod host_request {
         WebViewCommand(super::WebViewCommand),
         #[prost(message, tag = "5")]
         WebViewDestroy(super::WebViewDestroy),
+        /// Since 1.4
+        #[prost(message, tag = "6")]
+        OpenOutside(super::OpenOutside),
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -672,6 +697,17 @@ pub struct WebViewCommand {
 pub struct WebViewDestroy {
     #[prost(uint64, tag = "1")]
     pub web_view_id: u64,
+}
+/// System: opens an address that is not a browser's with whatever the system
+/// has for it: the mail app for a letter, the dialler for a number (007).
+/// The core asks only for addresses it has decided may leave the browser; a
+/// shell opens nothing of the kind unasked. Answered with Ack once the system
+/// has taken the address, or with "system.no_handler" when nothing on the
+/// device opens it. In fake mode a shell opens nothing and answers Ack.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct OpenOutside {
+    #[prost(string, tag = "1")]
+    pub url: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Envelope {

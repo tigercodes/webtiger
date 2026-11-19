@@ -38,6 +38,8 @@ message EngineEvent {
     // Since 1.2
     NewWindowRequested new_window_requested = 11;
     CloseRequested close_requested = 12;
+    // Since 1.4
+    OutsideLinkRequested outside_link_requested = 13;
   }
 }
 
@@ -116,3 +118,17 @@ message NewWindowRequested {
 // The page asked for its own window to be closed (window.close()). The core
 // closes the tab when a page opened it, and not otherwise.
 message CloseRequested {}
+
+// A page tried to go to an address that is not a browser's: wt_nav_check
+// answered EXTERNAL for it (a letter to write, a number to ring, another
+// app's own scheme), and the shell refused it in the web view (007).
+// Reported for a frame as for the page itself, and before the
+// NavigationFailed that the refusal may also be reported as.
+//
+// The shell opens nothing by itself. Whether the address is handed to the
+// system is the core's to say: it asks with OpenOutside (host.proto).
+message OutsideLinkRequested {
+  string url = 1 [(wt.redact) = true];
+  // A person asked: a click or a key, as far as the engine says.
+  bool user_gesture = 2;
+}

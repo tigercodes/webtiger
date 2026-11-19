@@ -198,6 +198,7 @@ class AdapterTestCase: XCTestCase {
             case .rendererGone: "gone"
             case .newWindowRequested: "window"
             case .closeRequested: "close"
+            case .outsideLinkRequested: "outside"
             case .progressChanged: nil
             }
         }

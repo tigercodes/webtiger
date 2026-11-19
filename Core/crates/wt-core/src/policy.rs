@@ -43,6 +43,18 @@ pub fn check_navigation(url: &str, main_frame: bool) -> NavigationAction {
     }
 }
 
+/// Whether an address is one WebTiger hands to the system without asking
+/// first (007): a letter to write, a number to ring, a message to send. Each
+/// opens something that does nothing until the person confirms there. Every
+/// other scheme the policy calls external can make another app act, and
+/// waits for a prompt.
+#[must_use]
+pub fn opens_outside(url: &str) -> bool {
+    check_navigation(url, true) == NavigationAction::External
+        && scheme_of(url)
+            .is_some_and(|scheme| is(scheme, "mailto") || is(scheme, "tel") || is(scheme, "sms"))
+}
+
 /// The scheme of an absolute address: the letters, digits, `+`, `-` and `.`
 /// before its first colon, starting with a letter (RFC 3986). Leading
 /// whitespace and control characters are skipped, as the URL Standard strips
@@ -103,6 +115,46 @@ mod tests {
         ] {
             assert_eq!(check_navigation(url, true), Cancel, "{url:?}");
             assert_eq!(check_navigation(url, false), Cancel, "{url:?}");
+        }
+    }
+
+    #[test]
+    fn a_letter_a_number_and_a_message_open_outside() {
+        for url in [
+            "mailto:ada@example.com",
+            "MAILTO:ada@example.com?subject=Hello",
+            "tel:+15551234567",
+            "Tel:5551234567",
+            "sms:+15551234567",
+            "sms:+15551234567?body=hello",
+        ] {
+            assert!(opens_outside(url), "{url}");
+        }
+    }
+
+    #[test]
+    fn nothing_else_opens_outside() {
+        for url in [
+            // Another app's own scheme: it can make that app act.
+            "zoommtg://zoom.us/join?confno=1",
+            "itms-apps://apps.apple.com/app/id1",
+            "intent://scan/#Intent;scheme=zxing;end",
+            "x-my.app+v2://open",
+            // A browser's own, and what a browser refuses.
+            "https://example.com/",
+            "about:blank",
+            "javascript:alert(1)",
+            "file:///etc/passwd",
+            "data:text/html,x",
+            // Not an address with a scheme at all, or one that only looks like ours.
+            "",
+            "mailto",
+            "ada@example.com",
+            "mailtoo:ada@example.com",
+            "x-mailto:ada@example.com",
+            "//mailto:ada@example.com",
+        ] {
+            assert!(!opens_outside(url), "{url:?}");
         }
     }
 

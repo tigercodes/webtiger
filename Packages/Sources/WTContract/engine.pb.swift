@@ -134,6 +134,15 @@ public nonisolated struct WTEngineEvent: Sendable {
     set {kind = .closeRequested(newValue)}
   }
 
+  /// Since 1.4
+  public var outsideLinkRequested: WTOutsideLinkRequested {
+    get {
+      if case .outsideLinkRequested(let v)? = kind {return v}
+      return WTOutsideLinkRequested()
+    }
+    set {kind = .outsideLinkRequested(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -149,6 +158,8 @@ public nonisolated struct WTEngineEvent: Sendable {
     /// Since 1.2
     case newWindowRequested(WTNewWindowRequested)
     case closeRequested(WTCloseRequested)
+    /// Since 1.4
+    case outsideLinkRequested(WTOutsideLinkRequested)
 
   }
 
@@ -324,13 +335,36 @@ public nonisolated struct WTCloseRequested: Sendable {
   public init() {}
 }
 
+/// A page tried to go to an address that is not a browser's: wt_nav_check
+/// answered EXTERNAL for it (a letter to write, a number to ring, another
+/// app's own scheme), and the shell refused it in the web view (007).
+/// Reported for a frame as for the page itself, and before the
+/// NavigationFailed that the refusal may also be reported as.
+///
+/// The shell opens nothing by itself. Whether the address is handed to the
+/// system is the core's to say: it asks with OpenOutside (host.proto).
+public nonisolated struct WTOutsideLinkRequested: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var url: String = String()
+
+  /// A person asked: a click or a key, as far as the engine says.
+  public var userGesture: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
 
 nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EngineEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{3}navigation_started\0\u{3}navigation_committed\0\u{3}navigation_finished\0\u{3}navigation_failed\0\u{3}address_changed\0\u{3}title_changed\0\u{3}progress_changed\0\u{3}history_changed\0\u{3}renderer_gone\0\u{3}new_window_requested\0\u{3}close_requested\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{3}navigation_started\0\u{3}navigation_committed\0\u{3}navigation_finished\0\u{3}navigation_failed\0\u{3}address_changed\0\u{3}title_changed\0\u{3}progress_changed\0\u{3}history_changed\0\u{3}renderer_gone\0\u{3}new_window_requested\0\u{3}close_requested\0\u{3}outside_link_requested\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -482,6 +516,19 @@ nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
           self.kind = .closeRequested(v)
         }
       }()
+      case 13: try {
+        var v: WTOutsideLinkRequested?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .outsideLinkRequested(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .outsideLinkRequested(v)
+        }
+      }()
       default: break
       }
     }
@@ -539,6 +586,10 @@ nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
     case .closeRequested?: try {
       guard case .closeRequested(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
+    }()
+    case .outsideLinkRequested?: try {
+      guard case .outsideLinkRequested(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
     }()
     case nil: break
     }
@@ -870,6 +921,41 @@ nonisolated extension WTCloseRequested: SwiftProtobuf.Message, SwiftProtobuf._Me
   }
 
   public static func ==(lhs: WTCloseRequested, rhs: WTCloseRequested) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTOutsideLinkRequested: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".OutsideLinkRequested"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}url\0\u{3}user_gesture\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.userGesture) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.url.isEmpty {
+      try visitor.visitSingularStringField(value: self.url, fieldNumber: 1)
+    }
+    if self.userGesture != false {
+      try visitor.visitSingularBoolField(value: self.userGesture, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTOutsideLinkRequested, rhs: WTOutsideLinkRequested) -> Bool {
+    if lhs.url != rhs.url {return false}
+    if lhs.userGesture != rhs.userGesture {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

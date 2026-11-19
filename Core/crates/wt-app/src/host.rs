@@ -107,7 +107,8 @@ impl Expected {
             host_request::Kind::WebViewCreate(_)
             | host_request::Kind::WebViewLoad(_)
             | host_request::Kind::WebViewCommand(_)
-            | host_request::Kind::WebViewDestroy(_) => Expected::Ack,
+            | host_request::Kind::WebViewDestroy(_)
+            | host_request::Kind::OpenOutside(_) => Expected::Ack,
         }
     }
 

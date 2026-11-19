@@ -26,6 +26,8 @@ message HostRequest {
     WebViewLoad web_view_load = 3;
     WebViewCommand web_view_command = 4;
     WebViewDestroy web_view_destroy = 5;
+    // Since 1.4
+    OpenOutside open_outside = 6;
   }
 }
 
@@ -89,4 +91,14 @@ message WebViewCommand {
 // with Ack, also when the shell no longer had it.
 message WebViewDestroy {
   uint64 web_view_id = 1;
+}
+
+// System: opens an address that is not a browser's with whatever the system
+// has for it: the mail app for a letter, the dialler for a number (007).
+// The core asks only for addresses it has decided may leave the browser; a
+// shell opens nothing of the kind unasked. Answered with Ack once the system
+// has taken the address, or with "system.no_handler" when nothing on the
+// device opens it. In fake mode a shell opens nothing and answers Ack.
+message OpenOutside {
+  string url = 1 [(wt.redact) = true];
 }

@@ -83,6 +83,15 @@ public nonisolated struct WTHostRequest: Sendable {
     set {kind = .webViewDestroy(newValue)}
   }
 
+  /// Since 1.4
+  public var openOutside: WTOpenOutside {
+    get {
+      if case .openOutside(let v)? = kind {return v}
+      return WTOpenOutside()
+    }
+    set {kind = .openOutside(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -91,6 +100,8 @@ public nonisolated struct WTHostRequest: Sendable {
     case webViewLoad(WTWebViewLoad)
     case webViewCommand(WTWebViewCommand)
     case webViewDestroy(WTWebViewDestroy)
+    /// Since 1.4
+    case openOutside(WTOpenOutside)
 
   }
 
@@ -264,13 +275,31 @@ public nonisolated struct WTWebViewDestroy: Sendable {
   public init() {}
 }
 
+/// System: opens an address that is not a browser's with whatever the system
+/// has for it: the mail app for a letter, the dialler for a number (007).
+/// The core asks only for addresses it has decided may leave the browser; a
+/// shell opens nothing of the kind unasked. Answered with Ack once the system
+/// has taken the address, or with "system.no_handler" when nothing on the
+/// device opens it. In fake mode a shell opens nothing and answers Ack.
+public nonisolated struct WTOpenOutside: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var url: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
 
 nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".HostRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{3}web_view_create\0\u{3}web_view_load\0\u{3}web_view_command\0\u{3}web_view_destroy\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{3}web_view_create\0\u{3}web_view_load\0\u{3}web_view_command\0\u{3}web_view_destroy\0\u{3}open_outside\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -343,6 +372,19 @@ nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
           self.kind = .webViewDestroy(v)
         }
       }()
+      case 6: try {
+        var v: WTOpenOutside?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .openOutside(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .openOutside(v)
+        }
+      }()
       default: break
       }
     }
@@ -373,6 +415,10 @@ nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
     case .webViewDestroy?: try {
       guard case .webViewDestroy(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
+    }()
+    case .openOutside?: try {
+      guard case .openOutside(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
     }()
     case nil: break
     }
@@ -704,6 +750,36 @@ nonisolated extension WTWebViewDestroy: SwiftProtobuf.Message, SwiftProtobuf._Me
 
   public static func ==(lhs: WTWebViewDestroy, rhs: WTWebViewDestroy) -> Bool {
     if lhs.webViewID != rhs.webViewID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTOpenOutside: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".OpenOutside"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}url\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.url.isEmpty {
+      try visitor.visitSingularStringField(value: self.url, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTOpenOutside, rhs: WTOpenOutside) -> Bool {
+    if lhs.url != rhs.url {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

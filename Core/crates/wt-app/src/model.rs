@@ -47,6 +47,9 @@ pub(crate) struct Tab {
     opened_by_page: bool,
     /// A page has owned the web view at some time.
     had_page: bool,
+    /// The click that opened this tab's window has been used to hand an
+    /// address to the system (007): it is good for one.
+    click_spent: bool,
 }
 
 impl Tab {
@@ -67,6 +70,7 @@ impl Tab {
             opener: None,
             opened_by_page: false,
             had_page: false,
+            click_spent: false,
         }
     }
 
@@ -143,8 +147,11 @@ impl Tab {
             }
             Kind::RendererGone(_) => self.fail("page.renderer_gone"),
             // About windows, not about this tab's page: `State::apply` has
-            // dealt with them.
-            Kind::NewWindowRequested(_) | Kind::CloseRequested(_) => {}
+            // dealt with them. And an address for the system changes nothing
+            // of the page that asked for it: the app has dealt with that.
+            Kind::NewWindowRequested(_)
+            | Kind::CloseRequested(_)
+            | Kind::OutsideLinkRequested(_) => {}
         }
     }
 
@@ -482,6 +489,30 @@ impl State {
             .get(&web_view)
             .and_then(|tab_id| self.tabs.get(tab_id))
             .is_some_and(|tab| tab.opened_by_page && !tab.had_page && tab.pending.is_none())
+    }
+
+    /// Whether an address a web view's page asked for may be handed to the
+    /// system (007), as far as who asked goes: the web view must be a tab's,
+    /// and a person must have asked. A window a page opened exists only
+    /// because somebody clicked, so the first address of one that has had no
+    /// page counts as asked for, once.
+    pub(crate) fn may_open_outside(&mut self, web_view: WebViewId, user_gesture: bool) -> bool {
+        let carried = self.has_nothing_to_show(web_view);
+        let Some(tab) = self
+            .web_views
+            .get(&web_view)
+            .and_then(|tab_id| self.tabs.get_mut(tab_id))
+        else {
+            return false;
+        };
+        if user_gesture {
+            return true;
+        }
+        if carried && !tab.click_spent {
+            tab.click_spent = true;
+            return true;
+        }
+        false
     }
 
     /// A shell's report about a web view. One the model no longer has (its
