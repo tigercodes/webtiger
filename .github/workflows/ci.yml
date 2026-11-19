@@ -128,6 +128,7 @@ jobs:
           name: ui-test-results
           path: |
             .build/DerivedData/Logs/Test/*.xcresult
+            .build/DerivedData-ios/Logs/Test/*.xcresult
             Packages/Tests/WTUITests/__Snapshots__/**/*.actual.png
             Packages/Tests/WTUITests/__Snapshots__/**/*.diff.png
           if-no-files-found: ignore
