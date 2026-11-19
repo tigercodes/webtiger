@@ -199,7 +199,8 @@ final class BrowserModelTests: XCTestCase {
         model.openTab()
         model.activate(5)
         model.closeTab(5)
-        await settle { core.requests.count == 5 }
+        // Each has been sent by the time its call returns: nothing is waited for here.
+        XCTAssertEqual(core.requests.count, 5)
         guard case let .openTab(open) = core.requests[2], case let .activateTab(activate) = core.requests[3],
               case let .closeTab(close) = core.requests[4]
         else { return XCTFail("expected OpenTab, ActivateTab and CloseTab, in that order") }
@@ -213,6 +214,29 @@ final class BrowserModelTests: XCTestCase {
         model.activate(2)
         await settle()
         XCTAssertEqual(core.requests.count, 5)
+    }
+
+    /// What a person does first, the core hears first. (Each gesture used to start a task of
+    /// its own to send its request, and two tasks may run in either order.)
+    func testGesturesReachTheCoreInTheOrderTheyWereMade() async {
+        let (session, core) = session()
+        let model = BrowserModel(session: session)
+        await model.open()
+        let commands: [WTNavigationCommand] = [.reload, .stop, .back, .forward]
+
+        let made = (0 ..< 200).map { commands[$0 % commands.count] }
+        for command in made {
+            model.perform(command)
+        }
+
+        let heard = core.requests.dropFirst(2).map { request -> WTNavigationCommand in
+            if case let .tabCommand(command) = request {
+                command.command
+            } else {
+                .unspecified
+            }
+        }
+        XCTAssertEqual(Array(heard), made)
     }
 
     func testWhatWasTypedIsDroppedWhenAnotherTabComesInFront() async {

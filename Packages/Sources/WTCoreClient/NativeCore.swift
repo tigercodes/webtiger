@@ -67,24 +67,21 @@
             stop()
         }
 
-        public func request(_ kind: WTRequest.OneOf_Kind) async throws -> WTResponse.OneOf_Kind {
+        public func send(_ kind: WTRequest.OneOf_Kind) -> CoreAnswer {
             var request = WTRequest()
             request.kind = kind
-            let handle = handle
             let receiver = receiver
-            return try await withCheckedThrowingContinuation { continuation in
-                guard let id = receiver.wait(continuation) else {
-                    continuation.resume(throwing: CoreError.stopped)
-                    return
-                }
-                var envelope = WTEnvelope()
-                envelope.id = id
-                envelope.request = request
-                let status = Self.send(envelope, to: handle)
-                if status != WT_OK {
-                    receiver.fail(id, with: status == WT_UNKNOWN_CORE ? CoreError.stopped : CoreError.notSent(status: status))
-                }
+            // Handed to the core here, on the caller's thread, before anything is waited for:
+            // that is what keeps requests in the order they were made.
+            guard let id = receiver.expect() else { return Task { throw CoreError.stopped } }
+            var envelope = WTEnvelope()
+            envelope.id = id
+            envelope.request = request
+            let status = Self.send(envelope, to: handle)
+            if status != WT_OK {
+                receiver.settle(id, with: .failure(status == WT_UNKNOWN_CORE ? CoreError.stopped : CoreError.notSent(status: status)))
             }
+            return Task { try await receiver.answer(to: id) }
         }
 
         public func report(_ event: WTEngineEvent) {
@@ -150,9 +147,22 @@
     /// What the sink delivers to: the requests waiting for an answer, and the streams events and
     /// host requests leave through.
     private final class Receiver: Sendable {
+        private typealias Answer = Result<WTResponse.OneOf_Kind, any Error>
+
+        /// A request that has been sent. Its answer may come before anyone waits for it, or
+        /// after.
+        private enum Sent {
+            /// Nobody waits yet, and no answer has come.
+            case unanswered
+            /// Somebody waits.
+            case awaited(CheckedContinuation<WTResponse.OneOf_Kind, any Error>)
+            /// The answer came first, and is kept for whoever waits.
+            case answered(Answer)
+        }
+
         private struct State {
             var nextID: UInt64 = 1
-            var waiting: [UInt64: CheckedContinuation<WTResponse.OneOf_Kind, any Error>] = [:]
+            var sent: [UInt64: Sent] = [:]
             var finished = false
             var fatalCode: String?
         }
@@ -173,30 +183,67 @@
             state.withLock { $0.fatalCode }
         }
 
-        /// Registers a request's continuation. Its id, or nil when the core has stopped.
-        func wait(_ continuation: CheckedContinuation<WTResponse.OneOf_Kind, any Error>) -> UInt64? {
+        /// The id for a request about to be sent, whose answer is now expected. Nil when the
+        /// core has stopped.
+        func expect() -> UInt64? {
             state.withLock { state in
                 guard !state.finished else { return nil }
                 let id = state.nextID
                 state.nextID += 1
-                state.waiting[id] = continuation
+                state.sent[id] = .unanswered
                 return id
             }
         }
 
-        func fail(_ id: UInt64, with error: CoreError) {
-            state.withLock { $0.waiting.removeValue(forKey: id) }?.resume(throwing: error)
+        /// Waits for the answer to a request `expect` gave an id for. Each answer is given
+        /// once.
+        func answer(to id: UInt64) async throws -> WTResponse.OneOf_Kind {
+            try await withCheckedThrowingContinuation { continuation in
+                let ready: Answer? = state.withLock { state in
+                    switch state.sent[id] {
+                    case let .answered(answer):
+                        state.sent[id] = nil
+                        return answer
+                    case .unanswered:
+                        state.sent[id] = .awaited(continuation)
+                        return nil
+                    case .awaited, nil:
+                        // Waited for twice, or never expected.
+                        return .failure(CoreError.stopped)
+                    }
+                }
+                if let ready {
+                    continuation.resume(with: ready)
+                }
+            }
+        }
+
+        /// Gives a request its answer: to whoever waits, or kept until somebody does.
+        func settle(_ id: UInt64, with answer: Result<WTResponse.OneOf_Kind, any Error>) {
+            let waiting: CheckedContinuation<WTResponse.OneOf_Kind, any Error>? = state.withLock { state in
+                switch state.sent[id] {
+                case let .awaited(continuation):
+                    state.sent[id] = nil
+                    return continuation
+                case .unanswered:
+                    state.sent[id] = .answered(answer)
+                    return nil
+                case .answered, nil:
+                    // Answered twice, or an answer to nothing: dropped.
+                    return nil
+                }
+            }
+            waiting?.resume(with: answer)
         }
 
         func receive(_ data: Data) {
             guard let envelope = try? WTEnvelope(serializedBytes: data) else { return }
             switch envelope.body {
             case let .response(response):
-                let waiting = state.withLock { $0.waiting.removeValue(forKey: envelope.id) }
                 switch response.kind {
-                case let .error(error): waiting?.resume(throwing: CoreError.refused(code: error.code, field: error.field))
-                case let .some(kind): waiting?.resume(returning: kind)
-                case nil: waiting?.resume(throwing: CoreError.refused(code: "response.empty", field: ""))
+                case let .error(error): settle(envelope.id, with: .failure(CoreError.refused(code: error.code, field: error.field)))
+                case let .some(kind): settle(envelope.id, with: .success(kind))
+                case nil: settle(envelope.id, with: .failure(CoreError.refused(code: "response.empty", field: "")))
                 }
             case let .event(event):
                 guard let kind = event.kind else { return }
@@ -214,12 +261,24 @@
 
         /// The core has stopped: nothing more will arrive.
         func finish() {
-            let waiting = state.withLock { state in
+            let waiting: [CheckedContinuation<WTResponse.OneOf_Kind, any Error>] = state.withLock { state in
                 state.finished = true
-                defer { state.waiting = [:] }
-                return state.waiting
+                var waiting: [CheckedContinuation<WTResponse.OneOf_Kind, any Error>] = []
+                for (id, sent) in state.sent {
+                    switch sent {
+                    case let .awaited(continuation):
+                        waiting.append(continuation)
+                        state.sent[id] = nil
+                    case .unanswered:
+                        // Its wait has not begun: it finds this when it does.
+                        state.sent[id] = .answered(.failure(CoreError.stopped))
+                    case .answered:
+                        break
+                    }
+                }
+                return waiting
             }
-            for continuation in waiting.values {
+            for continuation in waiting {
                 continuation.resume(throwing: CoreError.stopped)
             }
             eventsContinuation.finish()

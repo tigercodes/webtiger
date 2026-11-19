@@ -79,6 +79,11 @@ class BrowserSession(val core: CoreClient, val engine: SystemWebViewEngine, inte
      * Sends a request whose answer nobody waits for. A refusal shows in the next snapshot (a
      * failed load) or changes nothing (a command for a tab with no page); there is nothing
      * more to tell the user here.
+     *
+     * What was done first reaches the core first: each request is sent from a coroutine of its
+     * own, but the main thread starts them one after the other, in the order they were
+     * launched, and a request is handed to the core before its coroutine first waits. A scope
+     * on a pool of threads would not keep that order.
      */
     internal fun send(request: Request) {
         scope.launch {

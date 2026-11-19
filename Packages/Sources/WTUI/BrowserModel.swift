@@ -124,9 +124,9 @@ public final class BrowserModel {
     }
 
     private func send(_ request: WTRequest.OneOf_Kind) {
-        let core = session.core
-        // A refusal shows in the next snapshot (a failed load) or changes nothing (a command
-        // for a tab with no page); there is nothing more to tell the user here.
-        Task { try? await core.perform(request) }
+        // Sent here and now, so what was done first reaches the core first. The answer is not
+        // waited for: a refusal shows in the next snapshot (a failed load) or changes nothing
+        // (a command for a tab with no page), and there is nothing more to tell the user here.
+        _ = session.core.send(request)
     }
 }

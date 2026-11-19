@@ -99,8 +99,7 @@ public final class BrowserSession {
         windows[window.subscriptionID] = nil
         var close = WTCloseWindow()
         close.windowID = window.windowID
-        let core = core
-        Task { try? await core.perform(.closeWindow(close)) }
+        _ = core.send(.closeWindow(close))
     }
 
     private func receive(_ event: WTEvent.OneOf_Kind) {

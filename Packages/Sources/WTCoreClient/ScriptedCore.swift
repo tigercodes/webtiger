@@ -58,15 +58,14 @@ public final class ScriptedCore: CoreClient {
         state.withLock { $0.verdicts[url] = verdict }
     }
 
-    public func request(_ kind: WTRequest.OneOf_Kind) async throws -> WTResponse.OneOf_Kind {
+    public func send(_ kind: WTRequest.OneOf_Kind) -> CoreAnswer {
+        // Taken down, and answered, before this returns: `requests` is in the order sent.
         let stopped = state.withLock { state in
             state.requests.append(kind)
             return state.stopped
         }
-        if stopped {
-            throw CoreError.stopped
-        }
-        return try script(kind)
+        let answer: Result<WTResponse.OneOf_Kind, any Error> = stopped ? .failure(CoreError.stopped) : Result { try script(kind) }
+        return Task { try answer.get() }
     }
 
     public func report(_ event: WTEngineEvent) {

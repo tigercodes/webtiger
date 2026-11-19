@@ -18,6 +18,19 @@ final class ScriptedCoreTests: XCTestCase {
         XCTAssertEqual(core.requests.count, 2)
     }
 
+    func testARequestIsTakenDownWhenItIsSentNotWhenItIsWaitedFor() async throws {
+        let core = ScriptedCore()
+        let first = core.send(.ping(WTPing()))
+        _ = core.send(.openWindow(WTOpenWindow()))
+        _ = core.send(.closeWindow(WTCloseWindow()))
+        // Nothing has been waited for, and all three are there, in the order sent.
+        XCTAssertEqual(core.requests.count, 3)
+        guard case .ping = core.requests[0], case .openWindow = core.requests[1], case .closeWindow = core.requests[2] else {
+            return XCTFail("expected the requests in the order they were sent")
+        }
+        guard case .ack = try await first.value else { return XCTFail("the script's answer") }
+    }
+
     func testAScriptCanRefuse() async {
         let core = ScriptedCore { _ in throw CoreError.refused(code: "tab.unknown", field: "tab_id") }
         do {

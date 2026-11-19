@@ -34,9 +34,14 @@ public protocol HostServices: AnyObject, Sendable {
 
 /// The core. `NativeCore` is the real one; `ScriptedCore` stands in for it in tests.
 public protocol CoreClient: AnyObject, Sendable {
-    /// Sends a request and waits for its answer. Throws `CoreError.refused` when the answer
-    /// is an error.
-    func request(_ kind: WTRequest.OneOf_Kind) async throws -> WTResponse.OneOf_Kind
+    /// Sends a request now, and returns the wait for its answer. The request has left for the
+    /// core when this returns, so requests sent one after the other from one thread reach the
+    /// core in that order: what a person did first, the core hears first. (An `async` function
+    /// does not promise that by itself: two tasks that each call one may run in either order.)
+    ///
+    /// The answer's wait throws `CoreError.refused` when the answer is an error. It need not
+    /// be waited for.
+    func send(_ kind: WTRequest.OneOf_Kind) -> CoreAnswer
     /// Reports what a web view did. A notification: nothing comes back.
     func report(_ event: WTEngineEvent)
     /// Everything the core says unasked, in order. One consumer.
@@ -48,7 +53,16 @@ public protocol CoreClient: AnyObject, Sendable {
     func stop()
 }
 
+/// The wait for the answer to a request that has been sent.
+public typealias CoreAnswer = Task<WTResponse.OneOf_Kind, any Error>
+
 public extension CoreClient {
+    /// Sends a request and waits for its answer. Throws `CoreError.refused` when the answer
+    /// is an error.
+    func request(_ kind: WTRequest.OneOf_Kind) async throws -> WTResponse.OneOf_Kind {
+        try await send(kind).value
+    }
+
     /// Sends a request whose answer must be an Ack.
     func perform(_ kind: WTRequest.OneOf_Kind) async throws {
         _ = try await request(kind)

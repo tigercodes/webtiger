@@ -152,6 +152,50 @@
             }
         }
 
+        /// What is sent first, the core hears first: `send` hands the request to the core before
+        /// it returns. Sixty tabs are opened without one answer being waited for; the core
+        /// numbers tabs as it makes them, so the ids say in what order it heard.
+        func testRequestsReachTheCoreInTheOrderTheyWereSent() async throws {
+            let core = try NativeCore.start(config: fakeConfig(), host: RecordingHost())
+            defer { core.stop() }
+            guard case let .windowOpened(window) = try await core.request(.openWindow(WTOpenWindow())) else {
+                return XCTFail("expected WindowOpened")
+            }
+            var open = WTOpenTab()
+            open.windowID = window.windowID
+
+            let answers = (0 ..< 60).map { _ in core.send(.openTab(open)) }
+
+            var ids: [UInt64] = []
+            for answer in answers {
+                guard case let .tabOpened(opened) = try await answer.value else { return XCTFail("expected TabOpened") }
+                ids.append(opened.tabID)
+            }
+            XCTAssertEqual(ids, ids.sorted(), "each tab was made after the one sent before it")
+            XCTAssertEqual(Set(ids).count, 60)
+        }
+
+        /// An answer that comes before anyone waits for it is kept, and one nobody waits for
+        /// is harmless.
+        func testAnAnswerNeedNotBeWaitedForAtOnce() async throws {
+            let core = try NativeCore.start(config: fakeConfig(), host: RecordingHost())
+            defer { core.stop() }
+            _ = core.send(.ping(WTPing()))
+            let answer = core.send(.openWindow(WTOpenWindow()))
+            try await Task.sleep(for: .milliseconds(200))
+            guard case .windowOpened = try await answer.value else { return XCTFail("the answer was kept") }
+            // A refusal is the wait's to throw.
+            var close = WTCloseTab()
+            close.tabID = 9999
+            let refused = core.send(.closeTab(close))
+            do {
+                _ = try await refused.value
+                XCTFail("expected a refusal")
+            } catch {
+                XCTAssertEqual(error as? CoreError, .refused(code: "tab.unknown", field: "tab_id"))
+            }
+        }
+
         func testARefusedStartSaysWhy() {
             var config = fakeConfig()
             config.testMode = .live // and no data folder
@@ -203,6 +247,20 @@
                 XCTAssertEqual(error as? CoreError, .stopped)
             }
             XCTAssertEqual(core.navigationVerdict(for: "https://example.com/", webViewID: 1, mainFrame: true, userGesture: false), .cancel)
+        }
+
+        func testStoppingAnswersWhatWasSentAndNotYetAnswered() async throws {
+            let core = try NativeCore.start(config: fakeConfig(), host: RecordingHost())
+            let sent = (0 ..< 20).map { _ in core.send(.ping(WTPing())) }
+            core.stop()
+            // Each was answered, or says the core stopped: none waits for ever.
+            for answer in sent {
+                do {
+                    _ = try await answer.value
+                } catch {
+                    XCTAssertEqual(error as? CoreError, .stopped)
+                }
+            }
         }
     }
 #endif
