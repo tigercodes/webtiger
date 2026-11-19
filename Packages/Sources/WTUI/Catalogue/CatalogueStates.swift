@@ -19,6 +19,7 @@ enum CatalogueState: String, CaseIterable, Identifiable {
     case find
     case findNone = "find-none"
     case suggestions
+    case zoom
 
     var id: String {
         rawValue
@@ -38,7 +39,13 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         case .find: "catalogue.state.find"
         case .findNone: "catalogue.state.find_none"
         case .suggestions: "catalogue.state.suggestions"
+        case .zoom: "catalogue.state.zoom"
         }
+    }
+
+    /// The window's zoom bar is open in this state.
+    var zooming: Bool {
+        self == .zoom
     }
 
     /// What is typed in the address field in this state, when something is.
@@ -97,6 +104,8 @@ enum CatalogueState: String, CaseIterable, Identifiable {
             page(&window, url: "https://nowhere.example.com/", display: "nowhere.example.com", security: .secure)
             window.tab.loadState = .failed
             window.tab.errorCode = "net.dns"
+            // No page arrived, and there is nothing to zoom.
+            window.tab.clearZoom()
         case .history:
             page(&window, url: "https://example.com/second", display: "example.com/second", security: .secure)
             window.tab.canGoBack = true
@@ -119,6 +128,11 @@ enum CatalogueState: String, CaseIterable, Identifiable {
             window.tab.find.answered = true
         case .suggestions:
             page(&window, url: "https://example.org/", display: "example.org", security: .secure)
+        case .zoom:
+            page(&window, url: "https://example.com/", display: "example.com", security: .secure)
+            window.tab.zoom.percent = 125
+            window.tab.zoom.canZoomIn = true
+            window.tab.zoom.canZoomOut = true
         }
         // The strip names every tab: the one in front, and for "several tabs" its neighbours,
         // one with a title, one still loading and known only by its site, one with no page.
@@ -155,6 +169,10 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         window.tab.address.host = URLComponents(string: url)?.host ?? ""
         window.tab.address.registrableDomain = "example.com"
         window.tab.address.security = security
+        // What a core says of any page with a site (012): at actual size until it is zoomed.
+        window.tab.zoom.percent = 100
+        window.tab.zoom.canZoomIn = true
+        window.tab.zoom.canZoomOut = true
     }
 
     /// A session whose core opens one window and publishes this state for it, and nothing else:

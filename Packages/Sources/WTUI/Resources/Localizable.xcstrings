@@ -289,6 +289,18 @@
         }
       }
     },
+    "catalogue.state.zoom": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The zoom bar, on a page made bigger"
+          }
+        }
+      }
+    },
     "catalogue.states": {
       "comment": "Design catalogue: heading of the browser window's states.",
       "extractionState": "manual",
@@ -885,6 +897,78 @@
           "stringUnit": {
             "state": "translated",
             "value": "Stop"
+          }
+        }
+      }
+    },
+    "zoom.done": {
+      "comment": "Button that closes the zoom bar.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        }
+      }
+    },
+    "zoom.in": {
+      "comment": "Button in the zoom bar, and the command (Command-plus on a Mac): make the page bigger.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom In"
+          }
+        }
+      }
+    },
+    "zoom.level": {
+      "comment": "The zoom bar's level, in per cent. %ld is the number; %% is a per cent sign.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%ld%%"
+          }
+        }
+      }
+    },
+    "zoom.open": {
+      "comment": "Label of the button, beside the tabs, that opens the zoom bar.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom"
+          }
+        }
+      }
+    },
+    "zoom.out": {
+      "comment": "Button in the zoom bar, and the command (Command-minus on a Mac): make the page smaller.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom Out"
+          }
+        }
+      }
+    },
+    "zoom.reset": {
+      "comment": "Accessibility label of the zoom bar's level, which puts the page back to 100% when pressed; and the command (Command-0 on a Mac).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actual Size"
           }
         }
       }

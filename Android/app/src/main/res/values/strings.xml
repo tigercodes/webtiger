@@ -49,6 +49,8 @@
     <string name="catalogue_state_suggestions">Places offered as an address is typed</string>
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_tabs">Several tabs</string>
+    <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_zoom">The zoom bar, on a page made bigger</string>
     <!-- Design catalogue: heading of the browser window's states. -->
     <string name="catalogue_states">The Window</string>
     <!-- Title of the design catalogue: a screen for designers that shows every design token and every state of the window. -->
@@ -149,4 +151,16 @@
     <string name="toolbar_reload">Reload</string>
     <!-- Button: stop loading the page. -->
     <string name="toolbar_stop">Stop</string>
+    <!-- Button that closes the zoom bar. -->
+    <string name="zoom_done">Done</string>
+    <!-- Button in the zoom bar, and the command (Command-plus on a Mac): make the page bigger. -->
+    <string name="zoom_in">Zoom In</string>
+    <!-- The zoom bar's level, in per cent. %ld is the number; %% is a per cent sign. -->
+    <string name="zoom_level">%d%%</string>
+    <!-- Label of the button, beside the tabs, that opens the zoom bar. -->
+    <string name="zoom_open">Zoom</string>
+    <!-- Button in the zoom bar, and the command (Command-minus on a Mac): make the page smaller. -->
+    <string name="zoom_out">Zoom Out</string>
+    <!-- Accessibility label of the zoom bar's level, which puts the page back to 100% when pressed; and the command (Command-0 on a Mac). -->
+    <string name="zoom_reset">Actual Size</string>
 </resources>

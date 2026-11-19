@@ -55,8 +55,9 @@ public final class BrowserModel {
     /// A model whose find bar is open on `finding` from the start, before anything has been
     /// asked of the core: for a picture of the bar (004), which must not depend on when the
     /// window got round to opening it.
-    init(session: BrowserSession, finding: String?, typing: String? = nil, offered: [WTAddressSuggestion] = []) {
+    init(session: BrowserSession, finding: String?, typing: String? = nil, offered: [WTAddressSuggestion] = [], zooming: Bool = false) {
         self.session = session
+        isZooming = zooming
         if let finding {
             isFinding = true
             findText = finding
@@ -200,6 +201,40 @@ public final class BrowserModel {
         }
     }
 
+    // MARK: Zoom (012)
+
+    /// The zoom bar is open. A model made with `zooming` starts with it open: for a picture of
+    /// the bar (004).
+    public private(set) var isZooming = false
+
+    /// What the page of the tab in front is zoomed to: the core's word for it, with whether
+    /// there is a level above and one below. `nil` while there is no page that can be zoomed.
+    public var zoom: WTZoomView? {
+        tab.hasZoom ? tab.zoom : nil
+    }
+
+    /// Opens the zoom bar, in place of the find bar: one bar at a time. There is nothing to
+    /// zoom without a page.
+    public func openZoom() {
+        guard zoom != nil else { return }
+        closeFind()
+        isZooming = true
+    }
+
+    public func closeZoom() {
+        isZooming = false
+    }
+
+    /// Asks the core to make the page of the tab in front bigger or smaller, or to put it
+    /// back. Which level that is, and which other tabs have it, is the core's.
+    public func zoom(_ change: WTZoomChange) {
+        guard let frontTabID, zoom != nil else { return }
+        var ask = WTZoomPage()
+        ask.tabID = frontTabID
+        ask.change = change
+        send(.zoomPage(ask))
+    }
+
     // MARK: Find on the page (010)
 
     /// The find bar is open.
@@ -235,9 +270,11 @@ public final class BrowserModel {
         return tab.find.counted ? .match(Int(tab.find.current), of: Int(tab.find.matches)) : .nothing
     }
 
-    /// Opens the find bar. There is nothing to find in a tab with no page.
+    /// Opens the find bar, in place of the zoom bar: one bar at a time. There is nothing to
+    /// find in a tab with no page.
     public func openFind() {
         guard hasPage else { return }
+        isZooming = false
         isFinding = true
     }
 
@@ -301,6 +338,11 @@ public final class BrowserModel {
         }
         tab = snapshot.tab
         tabs = snapshot.tabs
+        // The zoom bar is the window's, and says the level of the page in front: with no page
+        // there that can be zoomed, it has nothing to say.
+        if isZooming, !tab.hasZoom {
+            isZooming = false
+        }
         // A field with the keyboard still follows the page until something is typed in it: one
         // that was given the focus and left alone must not go on showing what was there then.
         if switched || !isEditingAddress || !hasTypedAddress {

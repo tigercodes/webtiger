@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress. The store, the contract (1.8) and the core are built and tested; no shell zooms yet, and each answers the core's request as a shell built before 1.8 does (§9) |
+| **Status** | In progress. Built and tested in the store, the core and the Apple shell. The Android shell does not zoom yet, and answers the core's request as a shell built before 1.8 does (§9) |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "zoom". The `WebViews` host service's zoom (000 §5.5), and the store's `site_setting` table (000 §5.6) in its first form |
 | **Contract** | 1.8: `ZoomPage`; the host request `WebViewSetZoom`; `TabView.zoom` |
 | **Last updated** | 2026-11-19 |
@@ -89,7 +89,13 @@ Bigger, smaller, and the level between them, which put back to 100% when pressed
 |---|---|---|
 | Zooms | `WKWebView.pageZoom`: the page is laid out again at the level | `WebSettings.textZoom`: the text is scaled. The WebView has no public way to zoom the whole page |
 
-Written out when the shells are built.
+**As built on Apple** (`WebKitEngine`'s answer to `WebViewSetZoom`; `ZoomBar`; the model's part in `BrowserModel`):
+
+- WebKit's own page zoom, as the adapter suite found it: the page is laid out again in the web view's width divided by the level, with its text the size it was in the page's own units; the web view keeps the level for the page it goes on to, so the core asks only for a change; one web view's level is not another's. A level the core does not have is held to between half and five times.
+- **A page that does not say how wide it is to be laid out** is laid out 980 wide on an iPhone and shrunk to fit, as in Safari; its own measures change with the level in a way the suite could not make sense of, and a picture of it could not be taken off screen (§8). The suite's page says it is as wide as the device, as pages made for phones do, and measures the same on the iPhone as on the Mac.
+- The zoom bar is under the toolbar, where the find bar is when that is open instead: one bar at a time. Smaller, the level, bigger, Done; pressing the level puts the page back, and at 100% there is nothing to press. It is opened by a button beside the tabs, which is off without a page that can be zoomed. On a Mac ⌘+ (and ⌘=), ⌘− and ⌘0 zoom with the bar open or shut.
+- The bar says what the core says: the model keeps no level, and which buttons can be pressed is the snapshot's "one above" and "one below". It closes when the page in front cannot be zoomed.
+- **The catalogue's pictures did not notice the new button.** A button in the strip is a thousandth of a picture, and the pictures match within one part in a hundred ([004](004-design-catalogue.md) §4.1): every window picture went on matching without it. They were all recorded again and looked at. The catalogue's pages now say the zoom a core would say of them, so the button is drawn on where a real window's is.
 
 ## 7. Tests
 
@@ -98,20 +104,25 @@ Written out when the shells are built.
 | Store (`wt-store`, 5) | The migration from version 3, which keeps what was there, and the level is there when the store is opened again. A site's level is written, read and replaced; at 100% nothing is left written of the site; another site's and another login set's are not touched; a level the store cannot mean, and a login set it does not have, are refused and change nothing |
 | The levels and the site (`wt-core`, 5) | Up one level at a time to the largest, and down to the smallest; actual size has one on each side; a level that is none of them goes to its neighbours. A site is what was registered, or else the host, whatever the scheme and the port; an address with no host has none |
 | Core (`wt-app/tests/zoom.rs`, 10 through `FakeShell`) | Bigger, smaller and actual size each ask the tab's web view, one level at a time, and the snapshot says the level. The ends: nothing asked, and the snapshot says there is nothing above, or below. Actual size at actual size asks nothing. No such tab; a tab with no page; a page with no site; a change that is none of the three. Every tab of the site is told, in the order they were opened, and a tab of another site is not; a tab behind has its own page's level. A page that arrives is given its site's level, in the same tab and in a new one, and one whose site is at the level the web view has is told nothing. The site: another host of it by another scheme and port; an IP address is its own. A page changing its own address asks nothing. Started again, the tab that came back is given the level its site was left at; a site put back to 100% is told nothing. Six of the rules checked by breaking them |
-| The shells | Written when built |
+| WebKit adapter suite (`WebKitZoomTests`, 5, on the Mac and the iPhone simulator) | A zoomed page is laid out in half the room at 200% and twice at 50%, with its text as tall as it was in the page's units, and in all of it again at 100%; the zoom stays for the page the web view goes on to; one web view's zoom is not another's; a level no page can be read at is held to half, and to five times; a web view that is not there is refused with a code |
+| The Apple model and bar | `ZoomModelTests` (5): nothing to zoom, and nothing asked, without a page; bigger, smaller and actual size ask the core for the tab in front, with the bar shut too; the bar says what the core says, and nothing of its own until then; one bar at a time; the bar follows the page in front and closes when that cannot be zoomed. Pictures of the bar at 125%, light and dark, on the Mac and the iPhone |
+| The Apple apps, with the real core and engine | On the Mac and the iPhone simulator: the bar is shut until asked for; bigger twice, smaller once, with the level the core says after each; Apple's audit over the bar; pressing the level puts the page back, and at 100% it cannot be pressed; left at 110%, another page of the site has the level. On the Mac also the four keys |
 
 ## 8. What is not verified
 
 - **Another login set, through the core.** There is one Space and one login set until W2: that a site's level in one is not another's is the store's test, not the core's.
 - **A shell that refuses.** When a web view cannot be zoomed the level is still the site's and the snapshot still says it: an engine does not report its zoom, so the core cannot know. No shell asks yet.
-- The shells: written when built.
+- **What a zoomed page looks like.** The adapter suite measures how wide a page is laid out; nothing looked at a page to see it bigger. The app's test reads the bar, which says what the core asked for.
+- **A page that does not say how wide it is, on an iPhone** (above): zoomed through the same call, with measures the suite does not assert.
+- **Text sizes.** The bar was audited at the size the simulator starts with; the level's button at the largest text sizes was not looked at.
+- The Android shell: written when built.
 
 ## 9. Done checklist
 
 - [x] The store: migration 4; a site's zoom. 5 tests.
 - [x] Contract 1.8 and its version in every place it is written.
 - [x] The core: the request, the levels, the site, the rules of §3. 10 tests through `FakeShell`, 5 of the levels and the site.
-- [ ] Apple: the adapter and its suite; the control; pictures; a UI test.
+- [x] Apple: the adapter and its suite (5); the bar and the model's tests (5); pictures; a UI test on the Mac and the iPhone simulator.
 - [ ] Android: the adapter, on the JVM and the device; the control; pictures; a device test.
 - [ ] `Tools/test.sh all` green, and `android-device`.
 - [ ] Windows shell.

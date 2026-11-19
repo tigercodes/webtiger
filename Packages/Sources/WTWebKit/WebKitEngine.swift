@@ -97,10 +97,14 @@ public final class WebKitEngine: HostServices {
             guard let page = pages[find.webViewID] else { return failure("webview.unknown") }
             page.find(find.text, backwards: find.backwards)
             return .ack(WTAck())
-        case .webViewSetZoom:
-            // Zoom (012) is in the contract and the core; this adapter does not zoom yet, and
-            // answers as a shell built before 1.8 does. Nothing asks until a shell can.
-            return failure("host.unsupported")
+        case let .webViewSetZoom(zoom):
+            guard let page = pages[zoom.webViewID] else { return failure("webview.unknown") }
+            // WebKit's own page zoom (012): the page is laid out again at the level, and the
+            // web view keeps it for whatever page it goes on to. The core sends its own
+            // levels, which lie between half and three times; anything else is held to half
+            // and five times, as far as the suite has tried WebKit on a Mac and an iPhone.
+            page.webView.pageZoom = CGFloat(min(max(zoom.percent, 50), 500)) / 100
+            return .ack(WTAck())
         }
     }
 

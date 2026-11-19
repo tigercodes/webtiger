@@ -67,7 +67,7 @@ struct CatalogueWindow: View {
     }
 
     var body: some View {
-        BrowserWindowView(session: session, finding: state.finding, typing: state.typing, offered: state.offered)
+        BrowserWindowView(session: session, finding: state.finding, typing: state.typing, offered: state.offered, zooming: state.zooming)
     }
 }
 

@@ -268,47 +268,6 @@ final class LaunchTests: XCTestCase {
         XCTAssertTrue(pageShows("Home", in: app), "and the page is as it was")
     }
 
-    /// Places offered as the address field is typed in (011), with the real core: a page that
-    /// was visited is offered by the start of a word of its title, and choosing it goes there.
-    func testAPlaceVisitedIsOfferedWhenPartOfItsNameIsTyped() {
-        let app = launch(start: site.url("/"))
-        XCTAssertTrue(pageShows("Home", in: app), "the first page loaded")
-        let field = app.textFields["address-field"]
-        let offered = app.buttons.matching(identifier: "suggestion")
-        openLocation(field, in: app)
-        XCTAssertEqual(offered.count, 0, "nothing is offered for what nobody typed")
-        field.typeText("127.0.0.1:\(site.port)/landed\n")
-        XCTAssertTrue(pageShows("Landed", in: app), "the second page loaded")
-
-        // The start of a word of the first page's title: that page, and only it.
-        openLocation(field, in: app)
-        field.typeText("hom")
-        XCTAssertTrue(offered.firstMatch.waitForExistence(timeout: 30), "a place is offered")
-        XCTAssertEqual(offered.count, 1)
-        XCTAssertTrue(offered.firstMatch.label.contains("Home"), "by its title: \(offered.firstMatch.label)")
-        XCTAssertFalse(app.images["security-secure"].exists || app.images["security-insecure"].exists, "no mark vouches for what was typed")
-        audit(app, "the places offered")
-
-        #if os(macOS)
-            // Escape puts the list away and leaves what was typed; typing on brings it back.
-            app.typeKey(.escape, modifierFlags: [])
-            let none = NSPredicate(format: "count == 0")
-            XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: none, object: offered)], timeout: 30), .completed)
-            XCTAssertEqual(value(of: field), "hom")
-            field.typeText("e")
-            XCTAssertTrue(offered.firstMatch.waitForExistence(timeout: 30), "it is offered again for what is typed now")
-            // The arrow key marks it, and Return goes there.
-            app.typeKey(.downArrow, modifierFlags: [])
-            app.typeKey(.return, modifierFlags: [])
-        #else
-            press(offered.firstMatch)
-        #endif
-
-        XCTAssertTrue(pageShows("Home", in: app), "the place chosen is the page on screen")
-        expect(field, toShow: "http://127.0.0.1:\(site.port)")
-        XCTAssertEqual(offered.count, 0, "and the list is gone")
-    }
-
     /// The tabs come back (009), with the app itself: it is ended without a word, as a crash
     /// or the system ends it, and started again; its tabs are there, the one that was in front
     /// is in front and loaded, and the other loads when it is chosen.
@@ -535,5 +494,102 @@ final class LaunchTests: XCTestCase {
         let failed = launch(start: "http://webtiger-test.invalid/")
         XCTAssertTrue(failed.buttons["retry"].waitForExistence(timeout: 30))
         audit(failed, "a failed page")
+    }
+}
+
+/// The app's tests of what W1 added last: in an extension, where the class's own helpers reach,
+/// because a class is only allowed to be so long.
+extension LaunchTests {
+    /// Places offered as the address field is typed in (011), with the real core: a page that
+    /// was visited is offered by the start of a word of its title, and choosing it goes there.
+    func testAPlaceVisitedIsOfferedWhenPartOfItsNameIsTyped() {
+        let app = launch(start: site.url("/"))
+        XCTAssertTrue(pageShows("Home", in: app), "the first page loaded")
+        let field = app.textFields["address-field"]
+        let offered = app.buttons.matching(identifier: "suggestion")
+        openLocation(field, in: app)
+        XCTAssertEqual(offered.count, 0, "nothing is offered for what nobody typed")
+        field.typeText("127.0.0.1:\(site.port)/landed\n")
+        XCTAssertTrue(pageShows("Landed", in: app), "the second page loaded")
+
+        // The start of a word of the first page's title: that page, and only it.
+        openLocation(field, in: app)
+        field.typeText("hom")
+        XCTAssertTrue(offered.firstMatch.waitForExistence(timeout: 30), "a place is offered")
+        XCTAssertEqual(offered.count, 1)
+        XCTAssertTrue(offered.firstMatch.label.contains("Home"), "by its title: \(offered.firstMatch.label)")
+        XCTAssertFalse(app.images["security-secure"].exists || app.images["security-insecure"].exists, "no mark vouches for what was typed")
+        audit(app, "the places offered")
+
+        #if os(macOS)
+            // Escape puts the list away and leaves what was typed; typing on brings it back.
+            app.typeKey(.escape, modifierFlags: [])
+            let none = NSPredicate(format: "count == 0")
+            XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: none, object: offered)], timeout: 30), .completed)
+            XCTAssertEqual(value(of: field), "hom")
+            field.typeText("e")
+            XCTAssertTrue(offered.firstMatch.waitForExistence(timeout: 30), "it is offered again for what is typed now")
+            // The arrow key marks it, and Return goes there.
+            app.typeKey(.downArrow, modifierFlags: [])
+            app.typeKey(.return, modifierFlags: [])
+        #else
+            press(offered.firstMatch)
+        #endif
+
+        XCTAssertTrue(pageShows("Home", in: app), "the place chosen is the page on screen")
+        expect(field, toShow: "http://127.0.0.1:\(site.port)")
+        XCTAssertEqual(offered.count, 0, "and the list is gone")
+    }
+
+    /// Zoom (012), with the real core and engine: the bar is shut until asked for; bigger,
+    /// smaller and actual size go to the core, and the bar says the level the core says; the
+    /// level is the site's, and is there on another page of it.
+    func testZoomGoesThroughTheCoreAndTheBarSaysTheLevel() {
+        let app = launch(start: site.url("/"))
+        XCTAssertTrue(pageShows("Home", in: app), "the first page loaded")
+        let level = app.buttons["zoom-level"]
+        XCTAssertFalse(level.exists, "the bar is shut until asked for")
+
+        press(app.buttons["zoom"])
+        XCTAssertTrue(level.waitForExistence(timeout: 30), "the bar opened")
+        expect(level, toShow: "100%")
+        XCTAssertFalse(level.isEnabled, "at actual size there is nothing to put back")
+        press(app.buttons["zoom-in"])
+        expect(level, toShow: "110%")
+        press(app.buttons["zoom-in"])
+        expect(level, toShow: "125%")
+        press(app.buttons["zoom-out"])
+        expect(level, toShow: "110%")
+        audit(app, "the zoom bar")
+
+        // Pressing the level puts the page back.
+        press(level)
+        expect(level, toShow: "100%")
+
+        #if os(macOS)
+            // The keys, as in every browser; ⌘= is ⌘+ without Shift.
+            app.typeKey("+", modifierFlags: .command)
+            expect(level, toShow: "110%")
+            app.typeKey("=", modifierFlags: .command)
+            expect(level, toShow: "125%")
+            app.typeKey("-", modifierFlags: .command)
+            expect(level, toShow: "110%")
+            app.typeKey("0", modifierFlags: .command)
+            expect(level, toShow: "100%")
+        #endif
+
+        // The level is the site's: left at 110%, it is there on another page of the site.
+        press(app.buttons["zoom-in"])
+        expect(level, toShow: "110%")
+        press(app.buttons["zoom-done"])
+        let gone = NSPredicate(format: "exists == false")
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: gone, object: level)], timeout: 30), .completed)
+        let field = app.textFields["address-field"]
+        openLocation(field, in: app)
+        field.typeText("127.0.0.1:\(site.port)/landed\n")
+        XCTAssertTrue(pageShows("Landed", in: app), "the second page loaded")
+        press(app.buttons["zoom"])
+        XCTAssertTrue(level.waitForExistence(timeout: 30))
+        expect(level, toShow: "110%")
     }
 }

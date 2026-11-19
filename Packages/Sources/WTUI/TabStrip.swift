@@ -7,9 +7,10 @@ import WTDesign
 /// and one to open another (005 §5).
 struct TabStrip: View {
     let model: BrowserModel
-    /// Opens the find bar (010), and the History list (008): their buttons stand at the end of
+    /// Opens the find bar (010), the zoom bar (012) and the History list (008): their buttons stand at the end of
     /// the row, beside the tabs and not among them, where they stay when the tabs scroll.
     var onFind: () -> Void = {}
+    var onZoom: () -> Void = {}
     var onHistory: () -> Void = {}
     /// How wide a tab's name may be. It grows with the text's size, so that at the largest
     /// sizes a short name is still whole; a long title is cut to one line at any size.
@@ -28,6 +29,16 @@ struct TabStrip: View {
             // There is nothing to find in a tab with no page.
             .disabled(!model.hasPage)
             .accessibilityIdentifier("find")
+            Button(action: onZoom) {
+                Label { Text("zoom.open", bundle: .module) } icon: { Image(systemName: "textformat.size") }
+                    .labelStyle(.iconOnly)
+                    .frame(minWidth: BrowserWindowView.hitSize, minHeight: BrowserWindowView.hitSize)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            // There is nothing to zoom without a page that can be.
+            .disabled(model.zoom == nil)
+            .accessibilityIdentifier("zoom")
             Button(action: onHistory) {
                 Label { Text("history.open", bundle: .module) } icon: { Image(systemName: "clock.arrow.circlepath") }
                     .labelStyle(.iconOnly)

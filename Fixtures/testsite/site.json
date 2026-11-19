@@ -161,6 +161,15 @@
       "title": "Rings",
       "body": "<script>location.href = 'tel:+15550100'; document.title = 'rang';</script>",
       "note": "Goes to a number to ring by itself as it loads, with nobody clicking."
+    },
+    {
+      "path": "/sized",
+      "content": [
+        "<!doctype html><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">",
+        "<title>Sized</title><h1>Sized</h1>",
+        "<p id=\"line\" style=\"font-size: 16px; line-height: 20px; margin: 0\">A line of words to measure.</p>"
+      ],
+      "note": "A page that says it is as wide as the device, as pages made for phones do, with one line of text of a known size: for zoom."
     }
   ],
   "not_found": {

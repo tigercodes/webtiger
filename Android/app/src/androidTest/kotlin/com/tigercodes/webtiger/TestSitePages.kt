@@ -181,6 +181,14 @@ internal object TestSitePages {
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Rings</title><h1>Rings</h1><script>location.href = 'tel:+15550100'; document.title = 'rang';</script>")),
                 delayMilliseconds = 0,
             ),
+            TestSitePage(
+                path = "/sized",
+                status = "200 OK",
+                type = "text/html",
+                headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
+                body = listOf(TestSitePiece.Text("<!doctype html><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Sized</title><h1>Sized</h1>\n<p id=\"line\" style=\"font-size: 16px; line-height: 20px; margin: 0\">A line of words to measure.</p>")),
+                delayMilliseconds = 0,
+            ),
         )
 
     /** What every other path is answered with. */

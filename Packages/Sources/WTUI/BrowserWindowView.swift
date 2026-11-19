@@ -21,20 +21,23 @@ public struct BrowserWindowView: View {
         self.init(session: session, finding: nil)
     }
 
-    /// A window as a picture of one (004): its find bar open on `finding`, or its address
-    /// field holding `typing` with places `offered` for it.
-    init(session: BrowserSession, finding: String?, typing: String? = nil, offered: [WTAddressSuggestion] = []) {
+    /// A window as a picture of one (004): its find bar open on `finding`, its address field
+    /// holding `typing` with places `offered` for it, or its zoom bar open.
+    init(session: BrowserSession, finding: String?, typing: String? = nil, offered: [WTAddressSuggestion] = [], zooming: Bool = false) {
         self.session = session
         self.finding = finding
-        _model = State(initialValue: BrowserModel(session: session, finding: finding, typing: typing, offered: offered))
+        _model = State(initialValue: BrowserModel(session: session, finding: finding, typing: typing, offered: offered, zooming: zooming))
     }
 
     public var body: some View {
         VStack(spacing: 0) {
-            TabStrip(model: model, onFind: { model.openFind() }, onHistory: { showingHistory = true })
+            TabStrip(model: model, onFind: { model.openFind() }, onZoom: { model.openZoom() }, onHistory: { showingHistory = true })
             toolbar
             if model.isFinding {
                 findBar
+            }
+            if model.isZooming {
+                ZoomBar(model: model)
             }
             progress
             content
@@ -234,6 +237,15 @@ public struct BrowserWindowView: View {
                 Text("find.open", bundle: .module)
             }
             .keyboardShortcut("f", modifiers: .command)
+            // Zoom (012): ⌘+ (and ⌘=, the same key without Shift), ⌘− and ⌘0, bar or no bar.
+            Button { model.zoom(.in) } label: { Text("zoom.in", bundle: .module) }
+                .keyboardShortcut("+", modifiers: .command)
+            Button { model.zoom(.in) } label: { Text("zoom.in", bundle: .module) }
+                .keyboardShortcut("=", modifiers: .command)
+            Button { model.zoom(.out) } label: { Text("zoom.out", bundle: .module) }
+                .keyboardShortcut("-", modifiers: .command)
+            Button { model.zoom(.reset) } label: { Text("zoom.reset", bundle: .module) }
+                .keyboardShortcut("0", modifiers: .command)
             Button {
                 model.findNext()
             } label: {
