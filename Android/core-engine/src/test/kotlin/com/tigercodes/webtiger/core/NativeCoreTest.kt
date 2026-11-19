@@ -4,6 +4,7 @@ package com.tigercodes.webtiger.core
 
 import com.tigercodes.webtiger.core.v1.Ack
 import com.tigercodes.webtiger.core.v1.AddressView
+import com.tigercodes.webtiger.core.v1.CloseTab
 import com.tigercodes.webtiger.core.v1.CoreConfig
 import com.tigercodes.webtiger.core.v1.CoreStatus
 import com.tigercodes.webtiger.core.v1.EngineEvent
@@ -11,15 +12,18 @@ import com.tigercodes.webtiger.core.v1.EngineInfo
 import com.tigercodes.webtiger.core.v1.EngineKind
 import com.tigercodes.webtiger.core.v1.Event
 import com.tigercodes.webtiger.core.v1.FakeOptions
+import com.tigercodes.webtiger.core.v1.ForgetHistory
 import com.tigercodes.webtiger.core.v1.HostPong
 import com.tigercodes.webtiger.core.v1.HostRequest
 import com.tigercodes.webtiger.core.v1.HostResponse
 import com.tigercodes.webtiger.core.v1.LoadState
 import com.tigercodes.webtiger.core.v1.NavigationCommitted
 import com.tigercodes.webtiger.core.v1.NavigationFinished
+import com.tigercodes.webtiger.core.v1.OpenTab
 import com.tigercodes.webtiger.core.v1.OpenWindow
 import com.tigercodes.webtiger.core.v1.Ping
 import com.tigercodes.webtiger.core.v1.Platform
+import com.tigercodes.webtiger.core.v1.QueryHistory
 import com.tigercodes.webtiger.core.v1.Request
 import com.tigercodes.webtiger.core.v1.SubmitAddress
 import com.tigercodes.webtiger.core.v1.Subscribe
@@ -211,6 +215,47 @@ class NativeCoreTest {
             assertEquals("example.com", tab?.address?.registrable_domain)
             assertEquals(AddressView.Security.SECURITY_SECURE, tab?.address?.security)
             assertEquals(EngineKind.ENGINE_KIND_CHROMIUM, tab?.engine)
+        }
+
+    /**
+     * Every kind of answer the core gives comes back as what it is. (The client named the kinds
+     * it knew, and took any other for no answer at all: a new tab's, and a page of history.)
+     */
+    @Test
+    fun everyKindOfAnswerComesBackAsWhatItIs() =
+        runBlocking {
+            val core = start()
+            val opened = openWindow(core)
+
+            assertNotNull(core.request(Request(ping = Ping())).pong)
+            val tab = core.request(Request(open_tab = OpenTab(window_id = opened.window_id))).tab_opened
+            assertNotNull("a new tab's answer names the tab", tab)
+            assertTrue(tab!!.tab_id != 0L && tab.tab_id != opened.tab_id)
+            val history = core.request(Request(query_history = QueryHistory(window_id = opened.window_id))).history_page
+            assertNotNull("a page of history is a page, also when nothing was visited", history)
+            assertTrue(history!!.entries.isEmpty())
+            assertNotNull(core.request(Request(close_tab = CloseTab(tab_id = tab.tab_id))).ack)
+            assertNotNull(core.request(Request(forget_history = ForgetHistory(window_id = opened.window_id, everything = true))).ack)
+        }
+
+    /** History through the contract (008): a page that committed is a visit, found by a word. */
+    @Test
+    fun aVisitIsWrittenAndFoundThroughTheContract() =
+        runBlocking {
+            val host = RecordingHost()
+            val core = start(host = host)
+            val opened = openWindow(core)
+            core.perform(Request(submit_address = SubmitAddress(tab_id = opened.tab_id, text = "example.com")))
+            val id = host.requests[0].web_view_create!!.web_view_id
+            core.report(EngineEvent(web_view_id = id, navigation_committed = NavigationCommitted(url = "https://example.com/")))
+            core.report(EngineEvent(web_view_id = id, title_changed = TitleChanged(title = "Example Domain")))
+            core.report(EngineEvent(web_view_id = id, navigation_finished = NavigationFinished()))
+
+            val found = core.request(Request(query_history = QueryHistory(window_id = opened.window_id, text = "exam"))).history_page
+
+            assertEquals(listOf("https://example.com/"), found?.entries?.map { it.url })
+            assertEquals("Example Domain", found?.entries?.first()?.title)
+            assertEquals("example.com", found?.entries?.first()?.display)
         }
 
     @Test
