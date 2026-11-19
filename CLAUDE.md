@@ -63,7 +63,8 @@ Android/app              the System WebView adapter, the Compose window; src/and
 - Engine adapters are tested by the **adapter suite** against a real engine and the test site, served from inside the test's process (`Packages/Tests/WTWebKitTests`; `Android/app/src/androidTest`, on a device). A new page goes in `Fixtures/testsite/site.json`, never in one shell's server. The same behaviours are the bar for every adapter; isolation between login sets is tested as a security property.
 - Screens are tested against `ScriptedCore`, without the Rust core.
 - **Snapshots** (`Packages/Tests/WTUITests/__Snapshots__/<system>/`, `Android/app/src/test/snapshots/`, 004): a screen's states as pictures, compared within a stated tolerance. `WEBTIGER_RECORD_SNAPSHOTS=1 Tools/test.sh unit` (or `ios`, or `android`) records them. Look at every picture you record before committing it: a blank one matches itself for ever.
-- **Fake mode**: `WEBTIGER_FAKE=1` keeps the store in memory and makes ids deterministic; `WEBTIGER_FAKE_START=<address>` is opened in every new window. UI suites run in it.
+- **Fake mode**: `WEBTIGER_FAKE=1` keeps the store in memory and makes ids deterministic; `WEBTIGER_FAKE_START=<address>` is opened in every new window. UI suites run in it. It keeps no session and opens no other app.
+- **A profile** (Apple): `WEBTIGER_PROFILE=<name>` runs the real app with its data in a folder of that name, apart from the usual one; `WEBTIGER_PROFILE_FRESH=1` empties it first. For a test that must outlive a quit (009), and for running the app without touching your own data.
 - Test hostnames must sit under a real public suffix (`shop.example.com`, not `shop.example`): the address fix-up treats an unknown suffix as a search.
 - Never dump a whole macOS accessibility tree in a UI test (`app.debugDescription`): it includes the system menu bar and its recent items. Query the app's own window.
 

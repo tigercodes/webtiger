@@ -35,6 +35,12 @@ public final class BrowserSession {
         /// Fake mode, for UI suites and screenshots: `WEBTIGER_FAKE=1` keeps the store in memory
         /// and makes ids deterministic; `WEBTIGER_FAKE_START` names an address every new window
         /// opens. Nothing leaves the app in it: a link for the system opens no other app.
+        ///
+        /// A profile, for a test that must outlive a quit, or for running the app without
+        /// touching one's own data: `WEBTIGER_PROFILE=<name>` keeps everything in a folder of
+        /// that name, apart from the usual one; with `WEBTIGER_PROFILE_FRESH=1` the folder is
+        /// emptied first. It is the real app otherwise: the store is on disk, and the tabs come
+        /// back (009).
         public static func live(environment: [String: String] = ProcessInfo.processInfo.environment) throws -> BrowserSession {
             let engine = WebKitEngine()
             var config = WTCoreConfig()
@@ -53,22 +59,41 @@ public final class BrowserSession {
                 opener = .nothing
             } else {
                 config.testMode = .live
-                config.dataDir = try dataDirectory().path(percentEncoded: false)
+                let profile = Self.profileName(environment["WEBTIGER_PROFILE"])
+                let folder = try dataDirectory(profile: profile)
+                if profile != nil, environment["WEBTIGER_PROFILE_FRESH"] == "1" {
+                    // Only ever a named profile's folder: never the usual one.
+                    try? FileManager.default.removeItem(at: folder)
+                }
+                config.dataDir = folder.path(percentEncoded: false)
                 opener = .system
             }
             let core = try NativeCore.start(config: config, host: ShellHost(engine: engine, opener: opener))
             return BrowserSession(core: core, engine: engine)
         }
 
-        /// Application Support/WebTiger, made if it is not there.
-        private static func dataDirectory() throws -> URL {
+        /// Application Support/WebTiger, made if it is not there; a profile's data is in
+        /// Application Support/WebTiger Profiles/<name>.
+        private static func dataDirectory(profile: String?) throws -> URL {
             let support = try FileManager.default.url(
                 for: .applicationSupportDirectory,
                 in: .userDomainMask,
                 appropriateFor: nil,
                 create: true
             )
-            return support.appending(path: "WebTiger", directoryHint: .isDirectory)
+            guard let profile else { return support.appending(path: "WebTiger", directoryHint: .isDirectory) }
+            return support.appending(path: "WebTiger Profiles", directoryHint: .isDirectory)
+                .appending(path: profile, directoryHint: .isDirectory)
+        }
+
+        /// A profile's name as a folder's: letters, digits and hyphens, at most forty. Anything
+        /// else is no profile at all, and the usual data is used: a name is never a path.
+        static func profileName(_ text: String?) -> String? {
+            guard let text, !text.isEmpty, text.count <= 40 else { return nil }
+            let allowed = text.unicodeScalars.allSatisfy { scalar in
+                scalar.isASCII && (scalar.properties.isAlphabetic || scalar.properties.numericType != nil || scalar == "-")
+            }
+            return allowed ? text : nil
         }
     #endif
 

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built and tested in the store and the core, and through each shell's client with the real core. The shells needed no change. The apps themselves were not quit and started again by a test (§7) |
+| **Status** | Built and tested in the store and the core, through each shell's client with the real core, and with the Apple apps themselves, ended and started again. The Android app was not (§7) |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "session restore after a crash". The store's `tab` table (000 §5.6), in its first form |
 | **Contract** | No change: a restored tab is a tab |
 | **Builds on** | [005](005-tabs.md): tabs; [008](008-history.md): the store written while browsing |
@@ -75,11 +75,14 @@ A Space's tabs are replaced as a whole, in one transaction: they are few, and a 
 |---|---|
 | Store (`wt-store`, 5) | The migration from version 2, which keeps its history. Tabs are saved and read back in order, with which is in front; saving again replaces them; no tabs is no rows; another Space's are not touched, and a Space the store does not have can have none; they survive the store being dropped without a word |
 | Core (`wt-app/tests/session.rs`, 16 through `FakeShell` over a store on disk, started twice) | Each row of §3's table, the store itself read for what it holds. The tabs come back in order with the same one in front; only it is loaded; another is loaded when it comes in front, by being chosen and by the one in front being closed, and once. Typing into a tab that has not loaded; closing one. A crash (no window closed, nothing said) is how every one of these tests ends its first run. A window closed and opened again has its tabs. A second window starts empty and is not the session. The title kept is the first a page said. Loading a page that came back is a visit. Fake mode is as it was. Six of the rules checked by breaking them |
+| The Apple apps themselves, on the Mac and the iPhone simulator | The app is started on a profile of the suite's own (below), two tabs are loaded, and the app is ended without a word; started again, both tabs are there in order by their names, the one that was in front is in front and loaded, and the other loads when it is chosen |
 | Each shell's client, with the real core | Swift (`NativeCoreTests`) and Kotlin (`NativeCoreTest`, through JNI): a core is stopped and another started on the same folder; the tabs are there in order, the one that was in front is in front, and the host was asked for one web view and one load |
+
+**A profile.** The UI suites run in fake mode, which keeps no session, so a test that must outlive a quit needs the real app on a store of its own. `WEBTIGER_PROFILE=<name>` gives the Apple apps one: the same app, with its data in a folder of that name, apart from the usual one; `WEBTIGER_PROFILE_FRESH=1` empties that folder first, and never the usual one. A name is letters, digits and hyphens: it is never a path. It is also how to run the app without touching one's own data.
 
 ## 7. What is not verified
 
-- **The apps, quit and started again.** The UI suites run in fake mode, which keeps no session, and no test starts an app twice on a store of its own: that needs a way to give an app a data folder for a test, which it does not have. What was tested is everything beneath the window: the core, and each shell's client over it. The windows draw whatever tabs the core says, as they have since 005.
+- **The Android app, ended and started again.** Its tests run inside the app's own process, which cannot end and go on testing; what was tested there is the Kotlin client over the real core, started twice on one folder. The window draws whatever tabs the core says, as it has since 005.
 - **A real quit on a phone**, where the system ends the app without a word: it is what the tests' "dropped without a word" stands for, and was not tried on a device.
 - **Many tabs.** The session is rewritten whole when it changes; with hundreds of tabs that was not measured.
 
@@ -89,5 +92,6 @@ A Space's tabs are replaced as a whole, in one transaction: they are few, and a 
 - [x] The core: writing the session as it changes; giving it back; waking a tab that comes in front.
 - [x] Core tests through `FakeShell`, over a store on disk: 16.
 - [x] Through each shell's client with the real core: Swift and Kotlin.
-- [ ] The apps: quit and start again, on the Mac, the iPhone simulator and the Android emulator (§7).
+- [x] The Apple apps, ended and started again, on the Mac and the iPhone simulator.
+- [ ] The Android app, ended and started again (§7).
 - [x] `Tools/test.sh all` green, and `android-device`.

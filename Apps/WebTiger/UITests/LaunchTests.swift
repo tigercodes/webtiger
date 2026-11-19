@@ -25,6 +25,18 @@ final class LaunchTests: XCTestCase {
         return app
     }
 
+    /// Launches the app itself, not in fake mode, on a profile of the suite's own: a store on
+    /// disk in a folder apart from anyone's data, which the next launch finds as it was left.
+    private func launch(onProfile profile: String, fresh: Bool) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchEnvironment["WEBTIGER_PROFILE"] = profile
+        if fresh {
+            app.launchEnvironment["WEBTIGER_PROFILE_FRESH"] = "1"
+        }
+        app.launch()
+        return app
+    }
+
     /// Waits for the page titled `title` to be the one on screen.
     private func pageShows(_ title: String, in app: XCUIApplication) -> Bool {
         #if os(macOS)
@@ -254,6 +266,41 @@ final class LaunchTests: XCTestCase {
         XCTAssertEqual(visits.count, 0)
         press(app.buttons["history-done"])
         XCTAssertTrue(pageShows("Home", in: app), "and the page is as it was")
+    }
+
+    /// The tabs come back (009), with the app itself: it is ended without a word, as a crash
+    /// or the system ends it, and started again; its tabs are there, the one that was in front
+    /// is in front and loaded, and the other loads when it is chosen.
+    func testTheTabsComeBackWhenTheAppStartsAgain() {
+        var app = launch(onProfile: "ui-test-session", fresh: true)
+        XCTAssertTrue(app.staticTexts["empty-tab"].waitForExistence(timeout: 30), "a fresh profile opens one empty tab")
+        var field = app.textFields["address-field"]
+        openLocation(field, in: app)
+        field.typeText("127.0.0.1:\(site.port)/landed\n")
+        XCTAssertTrue(pageShows("Landed", in: app), "the first tab's page loaded")
+        press(app.buttons["new-tab"])
+        XCTAssertTrue(app.staticTexts["empty-tab"].waitForExistence(timeout: 30))
+        field.typeText("127.0.0.1:\(site.port)/\n")
+        XCTAssertTrue(pageShows("Home", in: app), "the second tab's page loaded")
+
+        app.terminate()
+        app = launch(onProfile: "ui-test-session", fresh: false)
+
+        let tabs = app.buttons.matching(identifier: "tab")
+        XCTAssertTrue(pageShows("Home", in: app), "the tab that was in front is in front, and loaded")
+        XCTAssertEqual(tabs.count, 2, "both tabs are back")
+        XCTAssertTrue(
+            tabs.element(boundBy: 0).label.contains("Landed"),
+            "in their order, by their names: \(tabs.element(boundBy: 0).label)"
+        )
+        XCTAssertTrue(tabs.element(boundBy: 1).isSelected)
+        field = app.textFields["address-field"]
+        expect(field, toShow: "http://127.0.0.1:\(site.port)")
+
+        // The other was asleep: it loads now that it is chosen.
+        press(tabs.element(boundBy: 0))
+        XCTAssertTrue(pageShows("Landed", in: app), "the tab behind loads when it comes in front")
+        expect(field, toShow: "http://127.0.0.1:\(site.port)/landed")
     }
 
     #if os(macOS)
