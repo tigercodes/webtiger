@@ -329,6 +329,36 @@ fn a_visit_takes_its_pages_first_title_and_the_one_it_is_left_with() {
 }
 
 #[test]
+fn a_title_cleared_as_the_next_page_arrives_is_not_the_title_a_page_was_left_with() {
+    run(async {
+        let (mut shell, window, tab, subscription) = browser().await;
+        shell.submit(tab, "example.com").await;
+        let web_view = front(&shell, subscription).web_view_id;
+        shell.report(FakeEngine::title(web_view, "(3) Example Domain"));
+        shell.settle().await;
+
+        // As WebKit does: the title goes blank before the next page is said
+        // to have committed.
+        shell.report(FakeEngine::navigation_started(
+            web_view,
+            "https://example.org/",
+        ));
+        shell.report(FakeEngine::title(web_view, ""));
+        for report in shell.engine.goes_to(web_view, "https://example.org/") {
+            shell.report(report);
+        }
+        shell.settle().await;
+
+        let entries = history(&mut shell, window).await;
+        assert_eq!(entries[0].title, "Another Place");
+        assert_eq!(
+            entries[1].title, "(3) Example Domain",
+            "the last title the page said, not the blank that followed it"
+        );
+    });
+}
+
+#[test]
 fn a_page_with_no_title_is_shown_by_its_address() {
     run(async {
         let (mut shell, window, tab, _) = browser().await;

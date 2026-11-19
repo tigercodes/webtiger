@@ -66,6 +66,10 @@ struct TabVisit {
     /// The page has said a title since the visit was written, and it has
     /// been written: later changes wait until the tab goes on.
     titled: bool,
+    /// The last title the page said that was one. An engine clears the
+    /// title as the next page arrives, sometimes before it says the page
+    /// has committed: no title is not the title a page was left with.
+    latest: String,
 }
 
 impl Tab {
@@ -552,29 +556,33 @@ impl State {
                 url,
                 title: String::new(),
                 titled: false,
+                latest: String::new(),
             });
         }
     }
 
     /// The title to write for a web view's visit, and the visit: when the
     /// page has said its first title since the visit was written, or, with
-    /// `leaving`, when the tab goes on and the title is no longer the one
-    /// written. A page that changes its title all the time costs the store
-    /// two writes.
+    /// `leaving`, when the tab goes on and the last title the page said is
+    /// no longer the one written. A page that changes its title all the time
+    /// costs the store two writes. No title is never written.
     pub(crate) fn title_to_write(
         &mut self,
         web_view: WebViewId,
         leaving: bool,
     ) -> Option<(i64, String)> {
         let tab = self.tab_of_mut(web_view)?;
-        let title = tab.title.clone();
+        let said = tab.title.clone();
         let visit = tab.visit.as_mut()?;
-        if visit.title == title || (visit.titled && !leaving) {
+        if !said.is_empty() {
+            visit.latest = said;
+        }
+        if visit.latest.is_empty() || visit.title == visit.latest || (visit.titled && !leaving) {
             return None;
         }
-        visit.title.clone_from(&title);
+        visit.title.clone_from(&visit.latest);
         visit.titled = true;
-        Some((visit.id, title))
+        Some((visit.id, visit.latest.clone()))
     }
 
     /// Every tab forgets which visit its page is: history was forgotten, and
