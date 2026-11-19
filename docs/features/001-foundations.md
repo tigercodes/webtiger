@@ -205,7 +205,7 @@ Small ones, each made where the plan was silent or wrong. None changes a decisio
 
 | # | Question | State | Answer so far |
 |---|---|---|---|
-| Q1 | CEF on the Mac | **Pack size answered**; the rest not started | CEF 156 (Chromium 156.0.8078.100, published 2026-11-18): the *minimal* distribution, which is the framework and its resources without debug symbols, is **135 MB** compressed for Apple silicon and 142 MB for Intel. So the Chromium pack is about 135 MB per architecture to download, not the 100 MB 000 §13 guessed, and a universal pack would be about 277 MB: the pack should be per architecture. Not yet: in-process loading, memory once loaded, crash containment, loading from outside the app bundle under the hardened runtime |
+| Q1 | CEF on the Mac | **Pack size answered; the pack's shape read from CEF's own sources; nothing built or run** | §11.5. Not yet: in-process loading, memory once loaded, crash containment, the hardened runtime. They need the distribution built and run, which was not done |
 | Q2 | Isolation on all four engines | **WebKit answered; Android answered for WebView 133** | On macOS 27.2 and the iOS 27 simulator, two `WKWebsiteDataStore(forIdentifier:)` stores share no cookie, no local storage, no IndexedDB database, no Cache API cache and (on macOS, where a test process has them) no service worker; a non-persistent store is gone with its web view; `remove(forIdentifier:)` leaves nothing, and refuses while a web view still uses the store (it succeeds a moment after the last one is released). **Android** (System WebView 133 on an Android 16 emulator, 003 §5.2 and §8.1): two WebView profiles share no cookie, no local storage, no IndexedDB database, no Cache API cache and no service worker, and nothing reaches the default profile. A profile that has been used cannot be deleted until the app starts again; its data can be cleared at once, completely only with `WebStorageCompat.deleteBrowsingData`. **Both:** the HTTP cache is each login set's own, and its web views share it: a script that may be kept is fetched once for a login set and again for another. **Deleting on WebKit has a trap:** WebKit lets a store's session go a moment after the store, and a store made anew for the same login set in that moment is given the old one's cookies, though the files are gone. The adapter clears a login set through its store before deleting it (F17), and waits no more than twenty seconds for WebKit to say the clearing is done: WebKit sets no limit, and on GitHub's runner a test once hung for its whole ten minutes, by the timings in that clearing. **Not yet tested:** permissions; the cost of each extra store; the lowest Android WebView that has profiles; WebView2 and CEF |
 | Q3 | WebKit rule lists: compile time, chunk size | **Answered for this Mac** | §11.1. Not yet: the oldest supported iPhone; exceptions across chunks; the corpus difference |
 | Q4 | Request callback cost | Not started; needs the Windows and Android shells | — |
@@ -298,6 +298,23 @@ Asked of a page on the loopback address (a secure context) in each adapter's web
 
 **What it says.** 000 §4.7's rows hold where they could be checked: no web push in either engine, none of the device interfaces in either, and no web notifications at all on Android. **FairPlay is offered to a page in a WKWebView of an ordinary app**, which is the first half of 000 §4.4's "DRM video: FairPlay (W0 verifies)"; the second half, a protected stream playing, needs a stream and its licence server and was not tried. **Widevine on Android is not answered**: the WebView asks the app before it grants a page protected media (`onPermissionRequest`), the adapter does not answer permission requests yet (W1), and an emulator image may have no Widevine to offer in any case.
 
+### 11.5 Q1: the Chromium pack, as far as reading goes
+
+CEF 156.0.31 (Chromium 156.0.8078.100), the *minimal* distribution for Apple silicon, downloaded and checked against its published SHA-1 on 2026-11-19. **It was read, not built and not run**: everything below is from its files, its headers and the sources of the loader it ships.
+
+| | |
+|---|---|
+| To download | 134.9 MB compressed (the 135 MB of 000 §13) |
+| On disk | 352 MB, of which the framework is 340 MB: its one library 240 MB, its resources 84 MB (220 folders of localised strings among them), its other libraries 16 MB |
+| Its signature | Ad hoc, by the linker, with no team. A pack WebTiger ships is signed by WebTiger |
+| Where an app may load it from | Anywhere: `cef_load_library(path)` takes a path, and `CefSettings` has `framework_dir_path`, `browser_subprocess_path` and `main_bundle_path` for an app whose framework and helpers are not in its bundle |
+| Where its helpers look for it | Three folders up from their own executable (`../../..`), for the framework and for the sandbox's library. That is fixed in the loader CEF ships |
+| What it asks of the app | The app's `NSApplication` must implement CEF's `CefAppProtocol`. To live in an app that runs its own loop, `external_message_pump` and `CefDoMessageLoopWork` |
+
+**What it says.** A pack outside the app bundle (000 §4.6, WT-D3) is a shape CEF provides for, not one to be forced: **the pack is a folder with the framework and the helper apps side by side**, which is where the helpers look, and the app names that folder in three settings. Two things follow that the plan had not said. The pack must hold WebTiger's own helper apps as well as CEF's framework, so it is built and signed here, not fetched from CEF. And WebTiger's application object must speak CEF's protocol from its launch, though no Chromium is loaded then: a few methods, compiled in always.
+
+**Not answered, and not answerable by reading:** whether the stock loaders are in fact content with that folder; what Chromium costs in memory once loaded, in WebTiger's process and in its helpers'; what a crash in each process takes down; and the hardened runtime. For the last, this Mac has no signing identity at all, so library validation against a team's signature cannot be tried here even when the rest is.
+
 **iPhone Duo.** The app builds for the iPhone Duo simulator and its five UI tests pass there, on the display the simulator starts with. Nothing in the app yet adapts to the fold, and no test folds the device: that is W5.
 
 ## 12. What is not done, in order
@@ -306,7 +323,7 @@ Asked of a page on the loopback address (a secure context) in each adapter's web
 2. **The Windows shell**, on the Windows PC: C++/WinRT, WinUI 3, WebView2 with a profile per login set, nanopb, the adapter suite, `Tools/test.ps1`.
 3. ~~`Tools/testsite`, shared by all three adapter suites.~~ Done for the two that exist (F12); the Windows suite will read the same definition. The plan's longer list (000 §8.2: several hostnames, third-party trackers, downloads, uploads, permissions, media) arrives with the features that need each page.
 4. ~~The design catalogue, snapshot-tested.~~ Done for the Apple and the Android shell (004); the Windows one comes with that shell.
-5. **The spikes**, starting with those a Mac can answer alone. Q2 and Q5 are answered for WebKit and for the System WebView as far as §10 says; Q1 is next.
+5. **The spikes**, starting with those a Mac can answer alone. Q2 and Q5 are answered for WebKit and for the System WebView as far as §10 says. Q1 is read (§11.5) and waits to be built and run.
 6. **The Arc importer against a real Arc folder** (002 §8).
 
 ## 13. For the owner
