@@ -4,6 +4,10 @@
 // The adapter creates, loads and destroys web views when the core asks, and reports what each
 // one does. It decides nothing: whether a navigation may happen is the core's answer
 // (`navigationVerdict`), and what the address field shows is the core's snapshot.
+//
+// One web view is made unasked: the one a page asks for as a new window, which the WebView
+// must be handed at once (006). The adapter makes it, names it and reports it; what becomes
+// of it is the core's to say.
 package com.tigercodes.webtiger.webview
 
 import android.content.Context
@@ -26,6 +30,7 @@ import com.tigercodes.webtiger.core.v1.HostPong
 import com.tigercodes.webtiger.core.v1.HostRequest
 import com.tigercodes.webtiger.core.v1.HostResponse
 import com.tigercodes.webtiger.core.v1.NavigationCommand
+import com.tigercodes.webtiger.core.v1.NewWindowRequested
 import com.tigercodes.webtiger.core.v1.WebViewCommand
 import com.tigercodes.webtiger.core.v1.WebViewCreate
 import com.tigercodes.webtiger.core.v1.WebViewLoad
@@ -39,6 +44,15 @@ class SystemWebViewEngine internal constructor(private val factory: PageFactory)
     constructor(context: Context) : this(WebViewPages(context.applicationContext))
 
     private val pages = HashMap<Long, Page>()
+
+    /** The login set each web view's pages run in. A window a page asks for is in the asking page's. */
+    private val loginSets = HashMap<Long, String>()
+
+    /**
+     * How many web views this engine has made unasked, for pages that asked for a window. Each
+     * is named by the next id of the shell's own, and no id is used twice.
+     */
+    private var ownWebViews = 0L
 
     @Volatile private var core: CoreClient? = null
 
@@ -74,6 +88,7 @@ class SystemWebViewEngine internal constructor(private val factory: PageFactory)
                 command != null -> command(command)
                 destroy != null -> {
                     pages.remove(destroy.web_view_id)?.close()
+                    loginSets.remove(destroy.web_view_id)
                     done
                 }
                 // A request from a core newer than this shell.
@@ -104,7 +119,33 @@ class SystemWebViewEngine internal constructor(private val factory: PageFactory)
                 return failure("engine.unavailable")
             }
         pages[create.web_view_id] = page
+        loginSets[create.web_view_id] = name
         return done
+    }
+
+    /**
+     * A page asked for a new window, and the WebView must be handed the web view at once: that
+     * is what lets the page that asked keep its hold on the one it opened. The web view is made
+     * in the asking page's login set, named with an id of the shell's own, shown nowhere, and
+     * reported. The core adopts it into a tab or has it destroyed (006).
+     */
+    private fun newWindow(askingId: Long, userGesture: Boolean): Page? {
+        val loginSet = loginSets[askingId] ?: return null
+        if (!factory.keepsLoginSetsApart) return null
+        val id = OWN_ID or (ownWebViews + 1)
+        val page =
+            try {
+                factory.create(id, loginSet, Reports())
+            } catch (_: RuntimeException) {
+                return null
+            }
+        ownWebViews += 1
+        pages[id] = page
+        loginSets[id] = loginSet
+        generation += 1
+        // The WebView does not say where the page wants the window to go.
+        core?.report(EngineEvent(web_view_id = askingId, new_window_requested = NewWindowRequested(new_web_view_id = id, user_gesture = userGesture)))
+        return page
     }
 
     private fun load(load: WebViewLoad): HostResponse {
@@ -147,9 +188,18 @@ class SystemWebViewEngine internal constructor(private val factory: PageFactory)
 
         override fun requestVerdict(url: String, sourceUrl: String, webViewId: Long, resource: ResourceType): RequestVerdict =
             core?.requestVerdict(url, sourceUrl, webViewId, resource) ?: RequestVerdict.ALLOW
+
+        override fun newWindow(askingId: Long, userGesture: Boolean): Page? = this@SystemWebViewEngine.newWindow(askingId, userGesture)
     }
 
     companion object {
+        /**
+         * The bit that marks a web view's id as the shell's own: the core's ids never have it
+         * (`NewWindowRequested`, engine.proto). It is the sign bit of a Long, so these ids are
+         * the negative ones.
+         */
+        const val OWN_ID = Long.MIN_VALUE
+
         /** What this engine is, for `CoreConfig.engines`. */
         fun info(context: Context): EngineInfo =
             EngineInfo(

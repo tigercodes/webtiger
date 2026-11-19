@@ -14,6 +14,7 @@ import java.net.Socket
 import java.net.SocketException
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 
 /** A piece of a header or a body: words as they are, or a value the request brought. */
 internal sealed interface TestSitePiece {
@@ -56,7 +57,14 @@ internal class TestSite : Closeable {
                     } catch (_: SocketException) {
                         break
                     }
-                workers.execute { serve(connection) }
+                try {
+                    workers.execute { serve(connection) }
+                } catch (_: RejectedExecutionException) {
+                    // The site was closed between the connection arriving and its being served:
+                    // a web view still asking as its test ends. Nobody is left to answer.
+                    connection.close()
+                    break
+                }
             }
         }
     }

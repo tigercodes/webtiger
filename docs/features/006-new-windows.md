@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress. The contract (1.2), the core and the Apple shell (the WebKit adapter) are built and tested. The Android shell does not report a window asked for yet: there such a link still loads in the tab that asked (§9) |
+| **Status** | Built and tested in the core, the Apple shell (the WebKit adapter) and the Android shell (the System WebView adapter, on an emulator). One thing the Android suite found is still open: a window whose first load is refused is left as an empty tab (§5, §9). Windows is not started |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "navigation, new windows and popups" |
 | **Contract** | 1.2: `NewWindowRequested`, `CloseRequested`; a web view the shell names |
 | **Builds on** | [005](005-tabs.md): tabs |
@@ -76,6 +76,15 @@ message CloseRequested {}
 - The navigation policy is asked about a link with a target in the web view that asked, before WebKit asks for a window. A refusal opens no window, and says nothing of the page that asked, which went nowhere.
 - The shell needed no change: a window shows the web view its tab names, whoever made it.
 
+**As built on the System WebView** (`SystemWebViewEngine.newWindow`, and `WebViewPage`'s `onCreateWindow`), and what the adapter suite found there:
+
+- The WebView is told that its pages may ask for windows (`setSupportMultipleWindows`); without that it loads the address in the web view that asked, which is what it did until now. Its blocker is on (`javaScriptCanOpenWindowsAutomatically` is false, and stays so).
+- The new web view is made in the asking page's profile, by the adapter, and handed to the WebView through the transport it gives. The engine keeps which login set each web view is in, to know.
+- Ids of the shell's own have the top bit set, which in Kotlin's `Long` is the sign: they are the negative ones.
+- The same as on WebKit: `window.open` keeps the hold both ways; a link with a target gives the page it opens no opener; a page that asks as it loads, or clicks its own link, gets nothing and nothing is reported. The WebView says whether somebody touched the page, and the adapter reports what it says.
+- **Not the same as on WebKit:** the WebView asks for the window before it says where the window goes, and never tells the adapter the address. So the navigation policy is asked in the new web view, after it is made: a refusal there is a load reported as cancelled in a web view that already exists, and that the core may already have put in a tab. On WebKit a refused link opens no window at all. The core should close a tab a page opened whose first load is cancelled before anything committed; that rule is not written yet (§9).
+- A page is given a window only when somebody touched it, and a WebView takes nothing a test's script does for a touch. The device tests put the web view in a window on the screen and send it a touch down and up at the link's middle (`PageTouch`).
+
 ## 6. Tests
 
 | Where | What |
@@ -83,8 +92,9 @@ message CloseRequested {}
 | Core (`wt-app/tests/new_windows.rs`, 14 tests through `FakeShell`) | A window asked for with a gesture becomes a tab after the asking tab, in front, with the shell's web view and no `WebViewCreate`; it is a tab like any other, and can open another. Without a gesture, or from a web view the core no longer has: no tab, and the web view destroyed. Under an id that is not a shell's, or one reported twice: nothing, and nothing destroyed. The new tab's address is empty until it commits. `CloseRequested` closes a tab a page opened and not one the user opened; on a window's only tab it leaves an empty one. Closing an opened tab brings its opener forward; with the opener gone, the next. Closing the window destroys the shell's web views too |
 | Core (`wt-core`) | The mint never gives out an id in the shell's half, even at the end of its own |
 | WebKit adapter suite (`WebKitNewWindowTests`, 8) | A link with a target reports `NewWindowRequested` with an id of the shell's own, and its address loads in the new web view and not in the one that asked. `window.open` keeps the hold both ways. The new web view is in the asking page's login set, and another login set's is in its own; the core's requests about it are answered. `window.close()` reports `CloseRequested` and destroys nothing. A page that asks as it loads, or clicks its own link, gets nothing. A refused web view is destroyed and released, and the next has a new id. A navigation the policy refuses opens no window |
-| System WebView adapter suite | The same, on the device |
-| The apps | A UI test, with the real core and the real engine: click a link that opens a new window; its page is in front, in a tab of its own beside the tab it came from; close it; the tab it came from is in front again, not the tab after it |
+| System WebView adapter, on the JVM (`SystemWebViewEngineTest`, 3 more) | The web view for a window is made in the asking page's login set, named with an id of the shell's own, never twice, and reported with what the WebView said of a gesture; the core's requests about it are answered; none is made for a web view that is gone, or when the WebView has no profiles or cannot be made |
+| System WebView adapter suite, on the device (`SystemWebViewNewWindowTest`, 8) | The same behaviours as the WebKit run, with a finger on the page; and that the navigation policy is asked about where a new window goes |
+| The apps (Mac, iPhone simulator, Android emulator) | With the real core and the real engine: click or touch a link that opens a new window; its page is in front, in a tab of its own beside the tab it came from; close it; the tab it came from is in front again, not the tab after it |
 
 ## 7. Decisions
 
@@ -98,6 +108,8 @@ message CloseRequested {}
 ## 8. What is not verified
 
 - Sign-in windows of real sites. The tests' pages hold on to each other the way those do; no real provider was tried.
+- A physical Android device, and any WebView but the emulator's (133). What a finger does there was a test's touch on an emulator.
+- Whether WebKit ever asks for a window nobody clicked for. The two ways tried (asking as the page loads; the page clicking its own link) were both stopped by its blocker, and WebKit gives an app no way to tell, so anything it does let through is reported as clicked for.
 - Windows asked for with a size and a place (`window.open` with features): every one becomes a tab.
 - Windows: not started.
 
@@ -109,6 +121,8 @@ message CloseRequested {}
 - [x] The test site's pages for it: `/opener`, `/opened`, `/pops`, `/clicks`.
 - [x] WebKit adapter and its suite: 8 tests, and two of its rules checked by breaking them (the blocker; a refused navigation).
 - [x] A UI test in the Apple app, on the Mac and the iPhone simulator.
-- [ ] System WebView adapter and its suite, on a device.
-- [ ] A device test in the Android app.
-- [ ] `Tools/test.sh all` green, and `android-device`.
+- [x] System WebView adapter: 3 tests on the JVM, and its suite on the emulator (8), one of its rules checked by breaking it (the blocker).
+- [x] A device test in the Android app.
+- [x] `Tools/test.sh all` green, and `android-device` (54 on the emulator).
+- [ ] The core closes a tab a page opened whose first load is cancelled before anything committed (§5).
+- [ ] Windows shell.

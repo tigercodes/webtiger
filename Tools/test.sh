@@ -164,15 +164,30 @@ run_android_device() {
   step "android: the adapter suite, isolation and the window, on the device"
   # Without mDNS, as the adb server was started (Tools/android/emulator.sh says why).
   ADB_MDNS=0 android_gradle :app:connectedDebugAndroidTest
+  # Gradle has been seen to end well when the tests' process crashed part of the way through:
+  # the run is then written down as one failure ("Test run failed to complete") and the tests
+  # after the crash are simply missing. What the results say is what counts.
   python3 -I - <<'PY'
 import glob
 import os
+import sys
 import xml.etree.ElementTree as ET
 
-for path in glob.glob("Android/app/build/outputs/androidTest-results/connected/debug/*.xml"):
+paths = glob.glob("Android/app/build/outputs/androidTest-results/connected/debug/*.xml")
+bad = not paths
+if not paths:
+    print("android-device: no results were written", file=sys.stderr)
+for path in paths:
     suite = ET.parse(path).getroot()
     device = os.path.basename(path).removeprefix("TEST-").removesuffix(".xml")
-    print(f"{device}: {suite.get('tests')} tests, {suite.get('failures')} failures, {suite.get('skipped', '0')} skipped")
+    failures = int(suite.get("failures", "0")) + int(suite.get("errors", "0"))
+    print(f"{device}: {suite.get('tests')} tests, {failures} failures, {suite.get('skipped', '0')} skipped")
+    for case in suite.iter("testcase"):
+        for problem in list(case.iter("failure")) + list(case.iter("error")):
+            first = (problem.text or "").strip().splitlines()[:1]
+            print(f"  failed: {case.get('classname', '').rsplit('.', 1)[-1]}.{case.get('name')}: {' '.join(first)}", file=sys.stderr)
+    bad = bad or failures > 0
+sys.exit(1 if bad else 0)
 PY
 }
 

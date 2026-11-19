@@ -32,6 +32,13 @@ internal interface PageHost {
 
     /** Called on the WebView's own threads. */
     fun requestVerdict(url: String, sourceUrl: String, webViewId: Long, resource: ResourceType): RequestVerdict
+
+    /**
+     * The page of the web view `askingId` asked for a new window (006). The engine makes the
+     * page the window's web view is, in the asking page's login set, and reports it; what
+     * becomes of it is the core's to say. Null when none could be made.
+     */
+    fun newWindow(askingId: Long, userGesture: Boolean): Page?
 }
 
 /** Makes pages. [WebViewPages] makes real ones. */

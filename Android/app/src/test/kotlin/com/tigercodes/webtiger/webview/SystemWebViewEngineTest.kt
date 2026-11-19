@@ -187,6 +187,81 @@ class SystemWebViewEngineTest {
             assertDone(engine.answer(create(4)))
         }
 
+    // A page that asks for a new window (006)
+
+    private fun windowsAsked(by: Long) = core.reports.filter { it.web_view_id == by }.mapNotNull { it.new_window_requested }
+
+    @Test
+    fun aWindowAPageAsksForIsMadeInItsLoginSetNamedByTheShellAndReported() =
+        runTest {
+            engine.answer(create(4))
+            engine.answer(create(5, LoginSet(id = OTHER_LOGIN_SET)))
+            val before = engine.generation
+
+            val first = pages.made[0].host.newWindow(4, userGesture = true)
+            val second = pages.made[1].host.newWindow(5, userGesture = false)
+
+            assertNotNull(first)
+            assertNotNull(second)
+            assertEquals(4, engine.webViewCount)
+            val made = pages.made.drop(2)
+            assertEquals("each in the login set of the page that asked", listOf(LOGIN_SET, OTHER_LOGIN_SET), made.map { it.loginSet })
+            assertTrue("named with ids of the shell's own", made.all { it.id and SystemWebViewEngine.OWN_ID != 0L })
+            assertTrue("and no id twice", made[0].id != made[1].id)
+            // Reported for the web view that asked, with what the WebView said of a gesture.
+            assertEquals(listOf(made[0].id to true), windowsAsked(by = 4).map { it.new_web_view_id to it.user_gesture })
+            assertEquals(listOf(made[1].id to false), windowsAsked(by = 5).map { it.new_web_view_id to it.user_gesture })
+            assertTrue("a window draws again when the web views change", engine.generation > before)
+        }
+
+    @Test
+    fun theCoresRequestsAboutAWindowAPageAskedForAreAnswered() =
+        runTest {
+            engine.answer(create(4))
+            pages.made[0].host.newWindow(4, userGesture = true)
+            val window = pages.made[1]
+
+            assertDone(engine.answer(load(window.id, "https://example.com/")))
+            assertEquals(listOf("https://example.com/"), window.loaded)
+            assertRefused("webview.exists", engine.answer(create(window.id)))
+
+            // What the core sends for a window it refuses.
+            assertDone(engine.answer(destroy(window.id)))
+            assertTrue(window.closed)
+            assertEquals(1, engine.webViewCount)
+            assertFalse("the page that asked is as it was", pages.made[0].closed)
+
+            // The next window has an id of its own; a window's page can ask for one too.
+            pages.made[0].host.newWindow(4, userGesture = true)
+            assertTrue(pages.made[2].id != window.id)
+            pages.made[2].host.newWindow(pages.made[2].id, userGesture = true)
+            assertEquals(LOGIN_SET, pages.made[3].loginSet)
+            assertEquals(3, engine.webViewCount)
+        }
+
+    @Test
+    fun noWindowIsMadeForAWebViewThatIsGoneOrWhenNoneCanBeMade() =
+        runTest {
+            engine.answer(create(4))
+            val host = pages.made[0].host
+
+            // Its own web view was destroyed while it asked.
+            engine.answer(destroy(4))
+            assertNull(host.newWindow(4, userGesture = true))
+
+            engine.answer(create(5))
+            // The WebView lost its profiles, or itself, since the page was made.
+            pages.keepsLoginSetsApart = false
+            assertNull(pages.made[1].host.newWindow(5, userGesture = true))
+            pages.keepsLoginSetsApart = true
+            pages.failure = IllegalStateException("no WebView")
+            assertNull(pages.made[1].host.newWindow(5, userGesture = true))
+
+            assertEquals(1, engine.webViewCount)
+            assertEquals(2, pages.made.size)
+            assertTrue("nothing was reported", core.reports.none { it.new_window_requested != null })
+        }
+
     @Test
     fun aRequestThisShellDoesNotKnowIsRefusedWithACode() =
         runTest {

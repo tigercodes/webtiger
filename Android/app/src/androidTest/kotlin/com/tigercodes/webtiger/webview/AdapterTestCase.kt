@@ -4,9 +4,13 @@
 package com.tigercodes.webtiger.webview
 
 import android.content.Context
+import android.view.ViewGroup
 import android.webkit.WebView
+import androidx.activity.ComponentActivity
+import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
+import com.tigercodes.webtiger.PageTouch
 import com.tigercodes.webtiger.TestSite
 import com.tigercodes.webtiger.core.ScriptedCore
 import com.tigercodes.webtiger.core.v1.EngineEvent
@@ -15,6 +19,7 @@ import com.tigercodes.webtiger.core.v1.HostRequest
 import com.tigercodes.webtiger.core.v1.HostResponse
 import com.tigercodes.webtiger.core.v1.LoginSet
 import com.tigercodes.webtiger.core.v1.NavigationCommand
+import com.tigercodes.webtiger.core.v1.NewWindowRequested
 import com.tigercodes.webtiger.core.v1.WebViewCommand
 import com.tigercodes.webtiger.core.v1.WebViewCreate
 import com.tigercodes.webtiger.core.v1.WebViewDestroy
@@ -34,6 +39,9 @@ internal abstract class AdapterTestCase {
     protected lateinit var engine: SystemWebViewEngine
     private val created = ArrayList<Long>()
 
+    /** A window on the screen for the web views a test touches, opened when one first is. */
+    private var stage: ActivityScenario<ComponentActivity>? = null
+
     @Before
     fun attach() {
         onMain {
@@ -45,6 +53,7 @@ internal abstract class AdapterTestCase {
     @After
     fun release() {
         for (id in created.toList()) destroy(id)
+        stage?.close()
         // The login sets' profiles stay behind: the WebView deletes none that was used since the
         // app started (SystemWebViewIsolationTest). They go with the app's data, which the
         // runner removes when it uninstalls the app after the run.
@@ -89,6 +98,45 @@ internal abstract class AdapterTestCase {
     /** The real WebView behind a web view the engine holds. */
     protected fun webView(id: Long): WebView? = onMain { engine.webView(id) as? WebView }
 
+    /** Has a web view the engine made unasked destroyed with the others when the test ends. */
+    protected fun track(id: Long) {
+        created.add(id)
+    }
+
+    /**
+     * Puts a web view in a window on the screen, as the tab in front is. A page that is not
+     * shown is sent no touches, and a page nobody touched is given no window.
+     */
+    protected fun show(id: Long) {
+        val scenario = stage ?: ActivityScenario.launch(ComponentActivity::class.java).also { stage = it }
+        scenario.onActivity { activity ->
+            val view = checkNotNull(engine.webView(id)) { "no web view $id" }
+            if (view.parent !== activity.findViewById<ViewGroup>(android.R.id.content)) {
+                (view.parent as? ViewGroup)?.removeView(view)
+                activity.setContentView(view, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            }
+        }
+        PageTouch.awaitShown(checkNotNull(webView(id)))
+    }
+
+    /** Taps an element of a web view's page with a finger, having put the web view on the screen. */
+    protected fun tap(id: Long, element: String) {
+        show(id)
+        PageTouch.tap(checkNotNull(webView(id)), element)
+    }
+
+    /** The windows a web view's page has asked for, in order. */
+    protected fun windowsAsked(by: Long): List<NewWindowRequested> = reports(by).mapNotNull { it.new_window_requested }
+
+    /**
+     * Waits for a web view's page to have asked for `count` windows, and has the last one
+     * destroyed when the test ends. The last one asked for.
+     */
+    protected fun awaitWindow(askedBy: Long, count: Int = 1): NewWindowRequested {
+        await(askedBy, "a window asked for") { windowsAsked(askedBy).size >= count }
+        return windowsAsked(askedBy).last().also { track(it.new_web_view_id) }
+    }
+
     /** What the adapter has reported about a web view, in order. */
     protected fun reports(id: Long): List<EngineEvent> = core.reports.filter { it.web_view_id == id }
 
@@ -125,6 +173,8 @@ internal abstract class AdapterTestCase {
                 report.title_changed != null -> "title"
                 report.history_changed != null -> "history"
                 report.renderer_gone != null -> "gone"
+                report.new_window_requested != null -> "window"
+                report.close_requested != null -> "close"
                 else -> null
             }
         }

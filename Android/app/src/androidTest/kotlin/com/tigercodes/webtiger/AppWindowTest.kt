@@ -15,6 +15,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.accessibility.disableAccessibilityChecks
 import androidx.compose.ui.test.junit4.accessibility.enableAccessibilityChecks
@@ -35,6 +36,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertSame
 import org.junit.Before
 import org.junit.Rule
@@ -258,6 +260,41 @@ internal class AppWindowTest {
         compose.onAllNodesWithTag("close-tab")[0].performClick()
         awaitPage("Landed")
         compose.onAllNodesWithTag("tab").assertCountEquals(1)
+    }
+
+    /**
+     * A page that asks for a new window (006): a link with a target opens in a tab of its own,
+     * in front, beside the tab it came from; closing it brings that tab forward again.
+     */
+    @Test
+    fun aLinkThatOpensAWindowOpensATab() {
+        awaitPage("Home")
+        type(site.url("/opener"))
+        awaitPage("Opener")
+        // A tab after the first, so that "beside" is not "at the end", and "the tab it came
+        // from" is not "the tab after it".
+        compose.onNodeWithTag("new-tab").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("empty-tab").fetchSemanticsNodes().isNotEmpty() }
+        compose.onAllNodesWithTag("tab")[0].performClick()
+        awaitPage("Opener")
+        val opener = checkNotNull(shownWebView())
+
+        // A finger on the page's link.
+        PageTouch.tap(opener, "blank")
+
+        awaitPage("Opened")
+        awaitAddress(shown("/opened"))
+        compose.onAllNodesWithTag("tab").assertCountEquals(3)
+        compose.onAllNodesWithTag("tab")[1].assertIsSelected()
+        assertNotSame("the link's page is in a web view of its own", opener, shownWebView())
+
+        // Closing it brings forward the tab it came from, not the tab after it.
+        compose.onAllNodesWithTag("close-tab")[1].performClick()
+        awaitPage("Opener")
+        awaitAddress(shown("/opener"))
+        compose.onAllNodesWithTag("tab").assertCountEquals(2)
+        compose.onAllNodesWithTag("tab")[0].assertIsSelected()
+        assertSame("the tab's own web view, as it was left", opener, shownWebView())
     }
 
     @Test

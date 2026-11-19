@@ -11,6 +11,7 @@ import android.graphics.Bitmap
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.http.SslError
+import android.os.Message
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.RenderProcessGoneDetail
@@ -26,6 +27,8 @@ import androidx.webkit.WebViewFeature
 import com.tigercodes.webtiger.core.NavigationVerdict
 import com.tigercodes.webtiger.core.RequestVerdict
 import com.tigercodes.webtiger.core.ResourceType
+import com.tigercodes.webtiger.core.v1.CloseRequested
+import com.tigercodes.webtiger.core.v1.EngineEvent
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 import java.io.ByteArrayInputStream
 
@@ -171,6 +174,11 @@ internal class WebViewPage(
             // Web content reads nothing of the device: no files, no content providers.
             allowFileAccess = false
             allowContentAccess = false
+            // A page that asks for a new window is heard (`onCreateWindow`); without this the
+            // WebView loads the address in the web view that asked. A page gets a window when
+            // somebody tapped for one, and not by asking as it loads: the WebView's own blocker.
+            setSupportMultipleWindows(true)
+            javaScriptCanOpenWindowsAutomatically = false
         }
         view.webViewClient = Client()
         view.webChromeClient = Chrome()
@@ -263,6 +271,28 @@ internal class WebViewPage(
 
         override fun onReceivedTitle(view: WebView, title: String?) {
             if (view === webView) tracker.title(title.orEmpty())
+        }
+
+        /**
+         * The page asked for a new window: a link with a target, or `window.open`. The engine
+         * makes the web view and reports it; the WebView is handed it here, and loads the
+         * address in it. False, and the page gets no window, when none could be made.
+         */
+        override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message): Boolean {
+            if (view !== webView) return false
+            val transport = resultMsg.obj as? WebView.WebViewTransport ?: return false
+            val window = host.newWindow(id, isUserGesture)?.view as? WebView ?: return false
+            transport.webView = window
+            resultMsg.sendToTarget()
+            return true
+        }
+
+        /**
+         * The page asked for its own window to be closed (`window.close()`). Whether it may is
+         * the core's answer: it closes a tab a page opened, and no other.
+         */
+        override fun onCloseWindow(window: WebView) {
+            if (window === webView) host.report(EngineEvent(web_view_id = id, close_requested = CloseRequested()))
         }
     }
 }
