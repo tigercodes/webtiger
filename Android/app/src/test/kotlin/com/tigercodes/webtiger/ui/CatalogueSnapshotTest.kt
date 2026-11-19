@@ -67,6 +67,15 @@ class CatalogueSnapshotTest {
         }
     }
 
+    private fun historyLists(theme: String) {
+        var state by mutableStateOf(CatalogueHistory.LIST)
+        show { key(state) { CatalogueHistoryList(state, Modifier.fillMaxSize()) } }
+        for (next in CatalogueHistory.entries) {
+            state = next
+            verify("history-${next.name.lowercase().replace('_', '-')}-$theme")
+        }
+    }
+
     private fun startFailed(theme: String) {
         show { StartFailed("store.open") }
         verify("start-failed-$theme")
@@ -83,6 +92,12 @@ class CatalogueSnapshotTest {
 
     @Test @Config(qualifiers = DARK)
     fun everyStateOfTheWindowInTheDarkTheme() = windows("dark")
+
+    @Test @Config(qualifiers = LIGHT)
+    fun everyStateOfTheHistoryListInTheLightTheme() = historyLists("light")
+
+    @Test @Config(qualifiers = DARK)
+    fun everyStateOfTheHistoryListInTheDarkTheme() = historyLists("dark")
 
     @Test @Config(qualifiers = LIGHT)
     fun startFailedInTheLightTheme() = startFailed("light")

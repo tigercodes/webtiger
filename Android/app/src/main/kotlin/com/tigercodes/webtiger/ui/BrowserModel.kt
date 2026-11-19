@@ -91,6 +91,19 @@ class BrowserModel(private val session: BrowserSession) {
         session.send(Request(tab_command = TabCommand(tab_id = front, command = command)))
     }
 
+    /** The window's id in the core, once it has opened: what its history is asked by (008). */
+    val windowId: Long? get() = window?.windowId
+
+    /**
+     * Sends the tab in front to an address the app has, as if it had been typed: a visit chosen
+     * from history.
+     */
+    fun load(address: String) {
+        val front = frontTabId ?: return
+        isEditingAddress = false
+        session.send(Request(submit_address = SubmitAddress(tab_id = front, text = address)))
+    }
+
     /** Opens an empty tab, in front, at the end of the window's tabs. */
     fun openTab() {
         val open = window ?: return

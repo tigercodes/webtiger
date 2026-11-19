@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress. The store, the contract (1.5), the core and the Apple shell's History list are built and tested. The Android shell has no History list yet (§9) |
+| **Status** | Built and tested in the store, the core, the Apple shell and the Android shell (on an emulator). Windows is not started. What it leaves out is in §2 |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "history". The store's first table that is written while browsing (000 §5.6: `visit`) |
 | **Contract** | 1.5: `QueryHistory`, `HistoryPage`, `HistoryEntry`, `ForgetHistory` |
 | **Last updated** | 2026-11-19 |
@@ -113,6 +113,10 @@ A button at the end of the row of tabs, beside them and not among them, opens th
 
 The shell keeps no history of its own: every list is the core's answer.
 
+**As built on Android** (`HistoryModel`, `HistoryList` in `ui`): the same list in Compose, over the window, which stays as it is underneath: the page's web view is not taken out of it. The system's Back closes the list before it does anything to the page. A visit's three facts have lines of their own there too, from the start: what Apple's audit said of the row is true of any screen.
+
+What the device found, with the real core: **the list was blank.** The Android client named the kinds of answer it knew, four of them, and took any other for no answer at all (`response.empty`): a page of history, and, since tabs, a new tab's answer, which nobody had waited for. It names them all now, and two tests through the real core hold it to that (001 F21).
+
 **As built on Apple** (`HistoryModel`, `HistoryView`): a sheet over the window. What Apple's audit said of it, and what was done:
 
 - "Clear…" was a menu at first. The audit faulted the menu's button on the Mac for having no action of its own; a button that asks is two deliberate steps in any case.
@@ -129,6 +133,9 @@ The shell keeps no history of its own: every list is the core's answer.
 | Apple: the list's model (`HistoryModelTests`, 5, over `ScriptedCore`) | What it asks for and shows; older visits after the last one shown; typing asks again and only the last answer is shown; forgetting one takes it off the list at once; forgetting many asks again for what is left, in that order |
 | Apple: pictures | The list with visits, with nothing visited, and with nothing found, light and dark, on the Mac and the iPhone; every window's picture again, for the button beside the tabs |
 | Apple: the app, with the real core | Two pages are visited; the list has them newest first and passes Apple's audit; a word finds one; choosing it loads it again; one visit is forgotten, then everything, and the list says there is nothing |
+| Android: the list's model (`HistoryModelTest`, 5) and the list drawn (`HistoryListTest`, 7, on the JVM) | As Apple's model's. Drawn: a visit by its title, its address and when; choosing a visit, and Done; words typed are asked for, and nothing found is said; a visit forgotten by its button; Clear asks which, Everything forgets them all, Cancel forgets nothing; the window's button opens the list, and a visit chosen loads in the tab in front |
+| Android: pictures | The list's three states, light and dark, drawn on the JVM; every window's picture again |
+| Android: the app, on the emulator, with the real core and the real WebView | The same as Apple's, and that the system's Back closes the list. It starts by forgetting everything: on Android the core lives as long as the app's process, and the tests before it browsed |
 | A measurement, not a gate | Below |
 
 **Measured** on this Mac (Apple M6), a release build, a store on disk with 100,000 visits of one login set, each query asked 200 times for its newest hundred matches:
@@ -147,7 +154,7 @@ Writing the 100,000 visits one at a time, each its own transaction, took 3.8 s: 
 
 - **A phone's disk.** The times of §7 are a Mac's.
 - **A store used for months.** Whether forgetting many visits over a long time leaves the files larger than they need be was not looked at; what is forgotten is overwritten either way.
-- **The Android History list**: not built.
+- **A physical Android device.** The list was used on an emulator.
 - **"The last hour" and "Today"** on Apple are sent as times and tested as what is sent; with the real core they were not tried, because fake mode's clock is not the wall's.
 - **A list of thousands**, scrolled by a person: the list asks for a hundred visits at a time.
 
@@ -158,5 +165,6 @@ Writing the 100,000 visits one at a time, each its own transaction, took 3.8 s: 
 - [x] The core: what a visit is; the requests.
 - [x] Core tests through `FakeShell`: 19.
 - [x] Apple: the History list: the model's tests (5), the pictures, a UI test with the real core on the Mac and the iPhone simulator.
-- [ ] Android: the History screen.
-- [ ] `Tools/test.sh all` green, and `android-device`.
+- [x] Android: the History list: 12 tests on the JVM, the pictures, a device test with the real core.
+- [x] `Tools/test.sh all` green, and `android-device` (66 on the emulator, twice).
+- [ ] Windows shell.

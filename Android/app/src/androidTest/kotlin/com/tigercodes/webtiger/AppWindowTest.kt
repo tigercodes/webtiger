@@ -18,6 +18,8 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.accessibility.disableAccessibilityChecks
 import androidx.compose.ui.test.junit4.accessibility.enableAccessibilityChecks
 import androidx.compose.ui.test.onRoot
@@ -121,6 +123,24 @@ internal class AppWindowTest {
         compose.onNodeWithTag("address-field").performClick()
         compose.onNodeWithTag("address-field").performTextReplacement(address)
         compose.onNodeWithTag("address-field").performImeAction()
+    }
+
+    /** The visits the History list shows, each as its words. */
+    private fun visits(): List<String> =
+        compose.onAllNodesWithTag("history-entry").fetchSemanticsNodes().map { node ->
+            node.config.getOrNull(SemanticsProperties.Text).orEmpty().joinToString(" | ") { it.text }
+        }
+
+    /** Waits until the History list shows `count` visits, for up to fifteen seconds. */
+    private fun awaitVisits(count: Int) {
+        try {
+            compose.waitUntil(15_000) { visits().size == count }
+        } catch (_: androidx.compose.ui.test.ComposeTimeoutException) {
+            // These are a test site's pages on the loopback address, not anyone's browsing.
+            val open = compose.onAllNodesWithTag("history-done").fetchSemanticsNodes().isNotEmpty()
+            val nothing = compose.onAllNodesWithTag("history-nothing").fetchSemanticsNodes().isNotEmpty()
+            throw AssertionError("the History list never showed $count visits; it shows ${visits()} (the list is open: $open; it says there is nothing: $nothing)")
+        }
     }
 
     /** What the address field shows for a page of the site: its scheme stays, as it is not https. */
@@ -357,6 +377,62 @@ internal class AppWindowTest {
         } finally {
             instrumentation.removeMonitor(letters)
         }
+    }
+
+    /**
+     * History (008), with the real core and the real WebView: what was visited is listed, newest
+     * first; it is found by a word; choosing a visit loads it again; a visit is forgotten, and
+     * then all of them.
+     */
+    @Test
+    fun historyListsWhatWasVisitedFindsItAndForgetsIt() {
+        awaitPage("Home")
+        // The app's core lives as long as its process, and the tests before this one browsed:
+        // history starts from nothing here, by the list's own way of forgetting everything.
+        compose.onNodeWithTag("history").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("history-clear").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("history-clear").performClick()
+        compose.onNodeWithTag("history-clear-everything").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("history-nothing").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("history-nothing").assertTextContains("Pages you visit will be listed here.")
+        compose.onNodeWithTag("history-done").performClick()
+
+        type(site.url("/landed"))
+        awaitPage("Landed")
+        type(site.url("/"))
+        awaitPage("Home")
+
+        compose.onNodeWithTag("history").performClick()
+        awaitVisits(2)
+        compose.onAllNodesWithTag("history-entry")[0].assertTextContains("Home")
+        compose.onAllNodesWithTag("history-entry")[1].assertTextContains("Landed")
+        compose.onRoot().tryPerformAccessibilityChecks()
+
+        // A word of a title finds its visit, and only it.
+        compose.onNodeWithTag("history-search").performTextInput("lan")
+        awaitVisits(1)
+        compose.onAllNodesWithTag("history-entry")[0].assertTextContains("Landed")
+
+        // Choosing it loads it again, in the tab in front, and the list is gone.
+        compose.onAllNodesWithTag("history-entry")[0].performClick()
+        awaitPage("Landed")
+        awaitAddress(shown("/landed"))
+        compose.onAllNodesWithTag("history-entry").assertCountEquals(0)
+
+        // That was a visit too. One is forgotten, and then all of them.
+        compose.onNodeWithTag("history").performClick()
+        awaitVisits(3)
+        compose.onAllNodesWithTag("history-forget")[0].performClick()
+        awaitVisits(2)
+        compose.onNodeWithTag("history-clear").performClick()
+        compose.onNodeWithTag("history-clear-everything").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("history-nothing").fetchSemanticsNodes().isNotEmpty() }
+        compose.onAllNodesWithTag("history-entry").assertCountEquals(0)
+
+        // The system's Back closes the list, and the page is as it was.
+        scenario.onActivity { activity -> activity.onBackPressedDispatcher.onBackPressed() }
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("history-nothing").fetchSemanticsNodes().isEmpty() }
+        awaitPage("Landed")
     }
 
     @Test

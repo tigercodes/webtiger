@@ -54,6 +54,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -107,11 +108,13 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
         }
         shownTab = model.tab.tab_id
     }
+    // The History list is open over the window (008).
+    var showingHistory by rememberSaveable { mutableStateOf(false) }
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         // The window draws edge to edge; its content keeps clear of the system's bars, the
         // cutout and the keyboard.
         Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-            TabStrip(model)
+            TabStrip(model, onHistory = { showingHistory = true })
             Toolbar(model, addressField, onSubmitted = { page.requestFocus() })
             ProgressLine(model)
             Box(modifier = Modifier.fillMaxWidth().weight(1f).focusRequester(page).focusable()) {
@@ -123,6 +126,23 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
                 }
             }
         }
+        // Over the window, which stays as it is underneath: the page's web view is not taken
+        // out of it. A visit chosen loads in the tab in front; the system's Back closes the
+        // list before it does anything to the page.
+        val windowId = model.windowId
+        if (showingHistory && windowId != null) {
+            val history = remember(windowId) { HistoryModel(session, windowId) }
+            BackHandler { showingHistory = false }
+            HistoryList(
+                model = history,
+                onOpen = { visit ->
+                    showingHistory = false
+                    model.load(visit.url)
+                },
+                onDone = { showingHistory = false },
+                modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing),
+            )
+        }
     }
 }
 
@@ -131,26 +151,33 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
  * and one to open another (005 §5).
  */
 @Composable
-private fun TabStrip(model: BrowserModel) {
+private fun TabStrip(model: BrowserModel, onHistory: () -> Unit) {
     val list = stringResource(R.string.tabs_list)
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = Tokens.Space.xs)
-                .semantics { contentDescription = list }
-                .testTag("tab-strip"),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Tokens.Space.xs),
-    ) {
-        for (tab in model.tabs) {
-            key(tab.tab_id) {
-                TabChip(tab, inFront = tab.tab_id == model.tab.tab_id, onActivate = { model.activate(tab.tab_id) }, onClose = { model.closeTab(tab.tab_id) })
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = Tokens.Space.xs)
+                    .semantics { contentDescription = list }
+                    .testTag("tab-strip"),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Tokens.Space.xs),
+        ) {
+            for (tab in model.tabs) {
+                key(tab.tab_id) {
+                    TabChip(tab, inFront = tab.tab_id == model.tab.tab_id, onActivate = { model.activate(tab.tab_id) }, onClose = { model.closeTab(tab.tab_id) })
+                }
+            }
+            IconButton(onClick = model::openTab, modifier = Modifier.testTag("new-tab")) {
+                Icon(painter = painterResource(R.drawable.ic_add), contentDescription = stringResource(R.string.tabs_new))
             }
         }
-        IconButton(onClick = model::openTab, modifier = Modifier.testTag("new-tab")) {
-            Icon(painter = painterResource(R.drawable.ic_add), contentDescription = stringResource(R.string.tabs_new))
+        // The History list's button: beside the tabs and not among them, where it stays when
+        // the tabs scroll (008).
+        IconButton(onClick = onHistory, modifier = Modifier.testTag("history")) {
+            Icon(painter = painterResource(R.drawable.ic_history), contentDescription = stringResource(R.string.history_open))
         }
     }
 }

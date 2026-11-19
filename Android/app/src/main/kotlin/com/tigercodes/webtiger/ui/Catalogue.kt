@@ -55,6 +55,8 @@ import com.tigercodes.webtiger.core.v1.Ack
 import com.tigercodes.webtiger.core.v1.AddressView
 import com.tigercodes.webtiger.core.v1.LoadState
 import com.tigercodes.webtiger.core.v1.Response
+import com.tigercodes.webtiger.core.v1.HistoryEntry
+import com.tigercodes.webtiger.core.v1.HistoryPage
 import com.tigercodes.webtiger.core.v1.Subscribed
 import com.tigercodes.webtiger.core.v1.TabSummary
 import com.tigercodes.webtiger.core.v1.TabView
@@ -62,6 +64,8 @@ import com.tigercodes.webtiger.core.v1.WindowOpened
 import com.tigercodes.webtiger.core.v1.WindowSnapshot
 import com.tigercodes.webtiger.design.Tokens
 import com.tigercodes.webtiger.webview.SystemWebViewEngine
+import java.time.ZoneOffset
+import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 
 /** One state of the browser window: the snapshot a core would publish for it. */
@@ -146,6 +150,47 @@ internal enum class CatalogueState(@StringRes val title: Int) {
     }
 }
 
+/** One state of the History list (008). */
+internal enum class CatalogueHistory(@StringRes val title: Int) {
+    LIST(R.string.catalogue_state_history_list),
+    EMPTY(R.string.catalogue_state_history_empty),
+    NONE_FOUND(R.string.catalogue_state_history_none_found),
+    ;
+
+    /**
+     * What a core would answer for the state. The addresses are the documentation's own, and
+     * the times are fixed: midday on the first of January 2026, and before.
+     */
+    private val page: HistoryPage
+        get() =
+            if (this == LIST) {
+                HistoryPage(
+                    entries =
+                        listOf(
+                            visit(4, "Example Domain", "https://example.com/", "example.com", minutesAgo = 0),
+                            visit(3, "A page whose title is longer than the list is wide, and then goes on", "https://example.org/a/long/path", "example.org/a/long/path", minutesAgo = 7),
+                            visit(2, "", "https://example.net/plain.txt", "example.net/plain.txt", minutesAgo = 95),
+                            visit(1, "Yesterday’s page", "http://example.com/yesterday", "http://example.com/yesterday", minutesAgo = 60 * 26),
+                        ),
+                    more = true,
+                )
+            } else {
+                HistoryPage()
+            }
+
+    private fun visit(id: Long, title: String, url: String, display: String, minutesAgo: Long): HistoryEntry =
+        HistoryEntry(visit_id = id, title = title, url = url, display = display, visited_at_ms = 1_767_268_800_000 - minutesAgo * 60_000)
+
+    /** A model over a core that answers with this state, and nothing else. */
+    fun model(context: Context, scope: CoroutineScope): HistoryModel {
+        val answer = page
+        val core = ScriptedCore { request -> if (request.query_history != null) Response(history_page = answer) else Response(ack = Ack()) }
+        val model = HistoryModel(BrowserSession(core, SystemWebViewEngine(context), scope), windowId = 1)
+        if (this == NONE_FOUND) model.search("zebra")
+        return model
+    }
+}
+
 /** The catalogue: the tokens, then the window in each state, then the start failure. */
 @Composable
 fun CatalogueScreen() {
@@ -174,6 +219,12 @@ fun CatalogueScreen() {
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.Space.s)) {
                     Text(text = stringResource(state.title), style = MaterialTheme.typography.titleMedium)
                     CatalogueWindow(state, Modifier.fillMaxWidth().height(CatalogueWindowHeight).framed())
+                }
+            }
+            for (state in CatalogueHistory.entries) {
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.Space.s)) {
+                    Text(text = stringResource(state.title), style = MaterialTheme.typography.titleMedium)
+                    CatalogueHistoryList(state, Modifier.fillMaxWidth().height(CatalogueWindowHeight).framed())
                 }
             }
             CatalogueHeading(R.string.catalogue_start_failed)
@@ -213,6 +264,19 @@ internal fun CatalogueWindow(state: CatalogueState, modifier: Modifier = Modifie
     Box(modifier = modifier) {
         CompositionLocalProvider(LocalOnBackPressedDispatcherOwner provides nobody) { BrowserWindow(session, model) }
     }
+}
+
+/**
+ * The History list in one state: [HistoryList] over a scripted core that answers with it. Its
+ * times are shown as one place and one language show them, so a picture of it is the same
+ * wherever it is drawn.
+ */
+@Composable
+internal fun CatalogueHistoryList(state: CatalogueHistory, modifier: Modifier = Modifier) {
+    val context = LocalContext.current.applicationContext
+    val scope = rememberCoroutineScope()
+    val model = remember(state) { state.model(context, scope) }
+    Box(modifier = modifier) { HistoryList(model, onOpen = {}, onDone = {}, zone = ZoneOffset.UTC, locale = Locale.UK) }
 }
 
 /** A Back dispatcher nothing ever calls. */
