@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress. The store, the contract (1.7) and the core are built, tested and measured; no shell lists what is offered yet (§9) |
+| **Status** | Built and tested in the store, the core, the Apple shell and the Android shell (on an emulator). The Mac app's own test of it has not run yet (§8). Windows is not started |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "the address field with fix-up and search". Local suggestions (000 §5.10: "local suggestions always") |
 | **Contract** | 1.7: `SuggestAddresses`, `AddressSuggestions`, `AddressSuggestion` |
 | **Builds on** | [008](008-history.md): history and its words |
@@ -69,14 +69,28 @@ While the address field has the keyboard and something has been typed in it, the
 
 On a Mac the arrow keys move through the list and Return goes to the one marked; with none marked, Return sends what was typed. Escape puts the list away.
 
+**As built on Apple** (`SuggestionList`; the model's part in `BrowserModel`):
+
+- Every change to what is typed asks the core, and only the answer to the last question is shown: an answer that arrives after the field has moved on, or after the list was put away, is dropped.
+- The arrow keys go round: down from nothing marked to the first place, and from the last to nothing marked again, where Return sends what was typed. Typing again unmarks.
+- **The padlock is the page's, and never what was typed's.** The first picture of the list had the page's padlock beside the letters "exa". The mark beside the field now says what the page is only while the field shows the page's address; once something else is typed there it is the plain magnifying glass, in both shells. It is the address field's rule (the field never lies) applied to its mark.
+- **What is typed before the window's first snapshot stays.** The model took the first snapshot for another tab coming in front, and put the page's address over what had been typed. The first snapshot names the first tab, and is no switch.
+- A place's address is cut to one line, in its middle; the audit is told so, as it is of a visit's address in the History list.
+
+**As built on Android** (`SuggestionList` in `BrowserWindow`; the model's part in `BrowserModel`): the same list and the same rules, without the arrow keys. The system's Back puts the list away before it does anything to the page, and leaves what was typed. A model made as a picture of the list keeps what it was made with: a field that was never given the keyboard cannot lose it.
+
+- **A long press on the field at rest was taken for typing**, and the list showed what the page's own address matched. The gesture that brings the keyboard also acts on the text the field showed until then: a tap places a caret there, a long press selects a word, a third tap all of it. The field knew to drop the caret (003) and took the rest for the person's own text: the short form of the address went into the model as typed, the field stopped following the page, and, once there was a list, the list appeared. Whatever the focusing gesture does to the at-rest text is now dropped, until the field is drawn again with the whole address. Found by the device test's own three taps in a row; a long press is how a person does it.
+
 ## 6. Tests
 
 | Where | What |
 |---|---|
 | Store (`wt-store`, 8) | What matches; a place once, with the title it last had; a site that begins with what is typed comes first, with or without "www.", a scheme or a slash; then the more often visited, then the more lately; words typed with a space are not a site's name; how many; another login set's places are not offered; text with no word. The three rules of the order checked by breaking them |
 | Core (`wt-app/tests/suggestions.rs`, 6 through `FakeShell`) | Places visited are offered by a word of their title and of their address, with the address as the field shows it; the order; six unless the shell says, never more than twenty; what was forgotten is not offered; an unknown window; nothing visited, nothing offered |
-| The shells' models | Typing asks; only the last answer is shown; choosing loads and ends the list; when the list goes |
-| Pictures, and the apps | The list under the field. With the real core: visit, type part of a title, choose the place offered |
+| The shells' models | Apple (`SuggestionModelTests`, 8): typing asks, each letter, and what the model itself puts in the field does not; the last answer is shown; the list goes when the field is emptied or loses the keyboard, and an answer that comes after is dropped; choosing goes there and puts the list away; the arrow keys mark, go round, and Return goes to the place marked or sends what was typed; typing again unmarks; another tab in front puts the list away; what was typed before the first snapshot stays; the padlock is the page's. Android (`SuggestionModelTest`, 8): the same but the keys, with an answer held back by the test and let go late, and a picture's model keeping what it was made with |
+| The list drawn | Android (`SuggestionListTest`, 3, on the JVM): nothing is listed, and nothing asked, until something is typed; what is typed is asked about and the places are listed by title and address, with no padlock beside what was typed; choosing one sends its address and the list is gone |
+| Pictures | The list under the field, with a title, a title too long for the list, and a place with none: light and dark, on the Mac, the iPhone and Android |
+| The apps, with the real core and engine | A page is visited, the start of a word of its title is typed, it alone is offered, and choosing it goes there. iPhone simulator: with Apple's audit over the list. Android emulator: with Android's accessibility checks, the keyboard alone offering nothing, and the system's Back putting the list away; and a long press on the field at rest, which is not typing (it fails with the field as it was). The Mac: written, with Escape and the arrow key and Return; **not yet run** (§8) |
 
 ## 7. Measured
 
@@ -95,7 +109,10 @@ Within the budget, on a Mac. Not measured: a phone. What bounds the cost is look
 
 ## 8. What is not verified
 
-- Written when built.
+- **The Mac app's own test.** It was written and started, and did not get as far as the app: three dialogs of the system's were on this Mac's screen (put there by another test, [007](007-outside-links.md) §8), and the Mac's UI suite cannot run until somebody answers them. The Mac's list is tested through its model and its pictures, and the same test passes on the iPhone simulator; Escape, the arrow key and Return in the Mac app itself are what was not seen.
+- **A phone.** The budget was measured on a Mac (§7); the Android list ran on an emulator.
+- **Much history.** The order was tested with a handful of visits and measured with 100,000 made up ones; nobody has looked at what it offers for a real year of browsing.
+- **Other scripts.** The words are history's (008): what is offered for text in a script without spaces between words was not tried.
 
 ## 9. Done checklist
 
@@ -103,6 +120,8 @@ Within the budget, on a Mac. Not measured: a phone. What bounds the cost is look
 - [x] Contract 1.7 and its version in every place it is written.
 - [x] The core: the request. 6 tests through `FakeShell`.
 - [x] The measurement (§7).
-- [ ] Apple: the list, the keys, the model's tests, pictures, a UI test.
-- [ ] Android: the list, the model's tests, pictures, a device test.
-- [ ] `Tools/test.sh all` green, and `android-device`.
+- [x] Apple: the list, the keys, the model's tests (8), pictures, a UI test on the iPhone simulator.
+- [ ] The Mac app's UI test, run (§8).
+- [x] Android: the list, the model's tests (8) and the list's (3), pictures, a device test.
+- [ ] `Tools/test.sh all` green: every stage but the Mac's UI suite (§8). `android-device` green.
+- [ ] Windows shell.

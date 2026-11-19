@@ -52,6 +52,7 @@ import androidx.lifecycle.Lifecycle
 import com.tigercodes.webtiger.R
 import com.tigercodes.webtiger.core.ScriptedCore
 import com.tigercodes.webtiger.core.v1.Ack
+import com.tigercodes.webtiger.core.v1.AddressSuggestion
 import com.tigercodes.webtiger.core.v1.AddressView
 import com.tigercodes.webtiger.core.v1.LoadState
 import com.tigercodes.webtiger.core.v1.Response
@@ -81,7 +82,31 @@ internal enum class CatalogueState(@StringRes val title: Int) {
     TABS(R.string.catalogue_state_tabs),
     FIND(R.string.catalogue_state_find),
     FIND_NONE(R.string.catalogue_state_find_none),
+    SUGGESTIONS(R.string.catalogue_state_suggestions),
     ;
+
+    /** What is typed in the address field in this state, when something is. */
+    val typing: String? get() = if (this == SUGGESTIONS) "exa" else null
+
+    /**
+     * The places offered for it: one with a title, one whose title is longer than the list is
+     * wide, one with none.
+     */
+    val offered: List<AddressSuggestion>
+        get() =
+            if (this == SUGGESTIONS) {
+                listOf(
+                    AddressSuggestion(url = "https://example.com/", title = "Example Domain", display = "example.com"),
+                    AddressSuggestion(
+                        url = "https://example.org/a/long/path",
+                        title = "A page whose title is longer than the list is wide, and then goes on",
+                        display = "example.org/a/long/path",
+                    ),
+                    AddressSuggestion(url = "https://example.net/plain.txt", display = "example.net/plain.txt"),
+                )
+            } else {
+                emptyList()
+            }
 
     /** What the window's find bar is open on in this state, when it is. */
     val finding: String?
@@ -112,6 +137,7 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                         page("https://example.com/", "example.com")
                             .copy(find = FindView(text = "needle", answered = true, found = true, counted = true, matches = 12, current = 3))
                     FIND_NONE -> page("https://example.com/", "example.com").copy(find = FindView(text = "zebra", answered = true))
+                    SUGGESTIONS -> page("https://example.org/", "example.org")
                 }
             // The strip names every tab: the one in front, and for "several tabs" its neighbours,
             // one with a title, one still loading and known only by its site, one with no page.
@@ -273,7 +299,7 @@ internal fun CatalogueWindow(state: CatalogueState, modifier: Modifier = Modifie
     val context = LocalContext.current.applicationContext
     val scope = rememberCoroutineScope()
     val session = remember(state) { state.session(context, scope) }
-    val model = remember(session) { BrowserModel(session, finding = state.finding) }
+    val model = remember(session) { BrowserModel(session, finding = state.finding, typing = state.typing, offered = state.offered) }
     // A window takes the system's Back for its page. These are pictures of windows: Back leaves
     // the catalogue, whatever state one of them shows.
     val lifecycle = LocalLifecycleOwner.current.lifecycle

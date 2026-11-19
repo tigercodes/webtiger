@@ -84,6 +84,9 @@ import com.tigercodes.webtiger.R
 import com.tigercodes.webtiger.core.v1.AddressView
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.design.Tokens
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.foundation.clickable
 
 /** One window over `model`. The system's Back goes back in the page while it can. */
 @Composable
@@ -126,6 +129,8 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
                     model.hasPage -> WebViewHost(session.engine, model.tab.web_view_id, Modifier.fillMaxSize().testTag("page"))
                     else -> EmptyTab()
                 }
+                // What is offered for what is typed (011): under the toolbar, over the page.
+                if (model.suggestions.isNotEmpty()) SuggestionList(model, onChosen = { page.requestFocus() })
             }
         }
         // Over the window, which stays as it is underneath: the page's web view is not taken
@@ -346,7 +351,9 @@ private fun AddressField(model: BrowserModel, focus: FocusRequester, onSubmitted
             else -> TextFieldValue(text, TextRange(text.length))
         }
     // The tap that gives the field the keyboard also places a caret where it fell, in the text
-    // the field showed until then. That caret is dropped: the whole address stays selected.
+    // the field showed until then; a second tap close behind it selects a word there, and a
+    // third all of it. None of that is typing, and all of it is dropped: the whole address
+    // stays selected, and nothing is offered for an address nobody typed (011).
     val tap = remember { FocusingTap() }
     SideEffect {
         if (field != shown) field = shown
@@ -364,7 +371,7 @@ private fun AddressField(model: BrowserModel, focus: FocusRequester, onSubmitted
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Tokens.Space.xs),
     ) {
-        SecurityMark(model.address.security)
+        SecurityMark(model.fieldSecurity)
         Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
             if (shown.text.isEmpty()) {
                 Text(
@@ -377,8 +384,9 @@ private fun AddressField(model: BrowserModel, focus: FocusRequester, onSubmitted
             BasicTextField(
                 value = shown,
                 onValueChange = { changed ->
-                    if (changed.text == tap.restText && changed.selection.collapsed) {
-                        tap.restText = null
+                    if (changed.text == tap.restText) {
+                        // Still the text the field showed at rest: the focusing gesture's own
+                        // caret or selection, until the field is drawn again.
                     } else {
                         // Typing is editing, wherever the focus was last said to be.
                         if (!model.isEditingAddress) model.isEditingAddress = true
@@ -421,6 +429,50 @@ private fun AddressField(model: BrowserModel, focus: FocusRequester, onSubmitted
                         .testTag("address-field")
                         .semantics { contentDescription = label },
             )
+        }
+    }
+}
+
+/**
+ * The places offered for what is typed in the address field (011 §5): each by its title and its
+ * address. Choosing one goes there, and the page takes the keyboard from the field.
+ */
+@Composable
+private fun SuggestionList(model: BrowserModel, onChosen: () -> Unit) {
+    val label = stringResource(R.string.suggestions_list)
+    // The system's Back puts the list away before it does anything to the page.
+    BackHandler { model.putSuggestionsAway() }
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background)
+                .semantics { paneTitle = label }
+                .testTag("suggestions"),
+    ) {
+        model.suggestions.forEach { place ->
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable(role = Role.Button) {
+                            model.choose(place)
+                            onChosen()
+                        }
+                        .heightIn(min = LocalMinimumInteractiveComponentSize.current)
+                        .padding(horizontal = Tokens.Space.m, vertical = Tokens.Space.xs)
+                        .testTag("suggestion"),
+                verticalArrangement = Arrangement.Center,
+            ) {
+                // A place with no title is named by its address. Each is one line: a long
+                // title is cut at its end, a long address in its middle, where its site and
+                // its end both stay.
+                Text(text = place.title.ifEmpty { place.display }, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (place.title.isNotEmpty()) {
+                    Text(text = place.display, maxLines = 1, overflow = TextOverflow.MiddleEllipsis, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            HorizontalDivider()
         }
     }
 }

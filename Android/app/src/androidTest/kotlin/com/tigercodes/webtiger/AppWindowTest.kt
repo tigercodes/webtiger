@@ -17,20 +17,22 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.test.assertTextEquals
-import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.accessibility.disableAccessibilityChecks
 import androidx.compose.ui.test.junit4.accessibility.enableAccessibilityChecks
-import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.tryPerformAccessibilityChecks
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.tryPerformAccessibilityChecks
 import androidx.compose.ui.text.TextRange
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -156,6 +158,37 @@ internal class AppWindowTest {
         }
     }
 
+    /**
+     * The app's core lives as long as its process, and the tests before this one browsed:
+     * history starts from nothing, by the History list's own way of forgetting everything.
+     */
+    private fun startWithNoHistory() {
+        compose.onNodeWithTag("history").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("history-clear").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("history-clear").performClick()
+        compose.onNodeWithTag("history-clear-everything").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("history-nothing").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("history-nothing").assertTextContains("Pages you visit will be listed here.")
+        compose.onNodeWithTag("history-done").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("history-nothing").fetchSemanticsNodes().isEmpty() }
+    }
+
+    /** The places offered under the address field, each as its words. */
+    private fun offered(): List<String> =
+        compose.onAllNodesWithTag("suggestion").fetchSemanticsNodes().map { node ->
+            node.config.getOrNull(SemanticsProperties.Text).orEmpty().joinToString(" | ") { it.text }
+        }
+
+    /** Waits until `count` places are offered, for up to fifteen seconds. */
+    private fun awaitOffered(count: Int) {
+        try {
+            compose.waitUntil(15_000) { offered().size == count }
+        } catch (_: androidx.compose.ui.test.ComposeTimeoutException) {
+            // These are a test site's pages on the loopback address, not anyone's browsing.
+            throw AssertionError("$count places were never offered; what is offered is ${offered()}, for a field holding ${field()}")
+        }
+    }
+
     /** What the address field shows for a page of the site: its scheme stays, as it is not https. */
     private fun shown(path: String): String = "http://127.0.0.1:${site.port}${if (path == "/") "" else path}"
 
@@ -225,6 +258,21 @@ internal class AppWindowTest {
         // As every browser does: the whole address, selected, so typing replaces it.
         awaitAddress(site.url("/"))
         assertEquals(TextRange(0, site.url("/").length), field().second)
+    }
+
+    /**
+     * A long press on the field at rest brings the keyboard and, in the same gesture, selects a
+     * word in the text the field showed until then. That is not typing: the field holds the
+     * whole address, and nothing is offered for it (011).
+     */
+    @Test
+    fun aLongPressOnTheFieldAtRestIsNotTyping() {
+        awaitPage("Home")
+        awaitAddress(shown("/"))
+        compose.onNodeWithTag("address-field").performTouchInput { longClick() }
+        awaitAddress(site.url("/"))
+        compose.waitForIdle()
+        assertEquals(emptyList<String>(), offered())
     }
 
     @Test
@@ -400,15 +448,7 @@ internal class AppWindowTest {
     @Test
     fun historyListsWhatWasVisitedFindsItAndForgetsIt() {
         awaitPage("Home")
-        // The app's core lives as long as its process, and the tests before this one browsed:
-        // history starts from nothing here, by the list's own way of forgetting everything.
-        compose.onNodeWithTag("history").performClick()
-        compose.waitUntil(15_000) { compose.onAllNodesWithTag("history-clear").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithTag("history-clear").performClick()
-        compose.onNodeWithTag("history-clear-everything").performClick()
-        compose.waitUntil(15_000) { compose.onAllNodesWithTag("history-nothing").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithTag("history-nothing").assertTextContains("Pages you visit will be listed here.")
-        compose.onNodeWithTag("history-done").performClick()
+        startWithNoHistory()
 
         type(site.url("/landed"))
         awaitPage("Landed")
@@ -446,6 +486,50 @@ internal class AppWindowTest {
         scenario.onActivity { activity -> activity.onBackPressedDispatcher.onBackPressed() }
         compose.waitUntil(15_000) { compose.onAllNodesWithTag("history-nothing").fetchSemanticsNodes().isEmpty() }
         awaitPage("Landed")
+    }
+
+    /**
+     * Places offered as the address field is typed in (011), with the real core: a page that
+     * was visited is offered by the start of a word of its title; the system's Back puts the
+     * list away and leaves what was typed; choosing the place goes there.
+     */
+    @Test
+    fun aPlaceVisitedIsOfferedWhenPartOfItsNameIsTyped() {
+        awaitPage("Home")
+        startWithNoHistory()
+        type(site.url("/landed"))
+        awaitPage("Landed")
+        type(site.url("/"))
+        awaitPage("Home")
+        awaitOffered(0)
+
+        // The keyboard alone offers nothing: the field holds the page's own address. (This is
+        // the third tap on the field in quick succession, which selects all of what it showed
+        // at rest: that was once taken for typing.)
+        compose.onNodeWithTag("address-field").performClick()
+        awaitAddress(site.url("/"))
+        awaitOffered(0)
+
+        // The start of a word of the other page's title: that page, and only it.
+        compose.onNodeWithTag("address-field").performTextReplacement("lan")
+        awaitOffered(1)
+        compose.onAllNodesWithTag("suggestion")[0].assertTextContains("Landed")
+        compose.onAllNodesWithTag("suggestion")[0].assertTextContains(shown("/landed"))
+        compose.onRoot().tryPerformAccessibilityChecks()
+
+        // The system's Back puts the list away, and leaves what was typed and the page.
+        scenario.onActivity { activity -> activity.onBackPressedDispatcher.onBackPressed() }
+        awaitOffered(0)
+        assertEquals("lan", field().first)
+        assertEquals("Home", pageTitle())
+
+        // Typing on asks again; choosing the place goes there, and the list is gone.
+        compose.onNodeWithTag("address-field").performTextReplacement("land")
+        awaitOffered(1)
+        compose.onAllNodesWithTag("suggestion")[0].performClick()
+        awaitPage("Landed")
+        awaitAddress(shown("/landed"))
+        awaitOffered(0)
     }
 
     /**
