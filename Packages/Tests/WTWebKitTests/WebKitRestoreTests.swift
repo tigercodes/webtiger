@@ -12,7 +12,8 @@ final class WebKitRestoreTests: XCTestCase {
 
     override func setUp() async throws {
         XCTAssertNotEqual(site.port, 0, "the loopback site is listening")
-        await WebKitWarmUp.run()
+        await WebKitWarmUp.run(loading: site.url("/"), titled: "Home")
+        XCTAssertTrue(WebKitWarmUp.started, "WebKit loaded nothing from the loopback site in eight minutes: no test here can pass")
     }
 
     override func tearDown() async throws {
