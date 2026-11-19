@@ -48,6 +48,7 @@ import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -114,8 +115,9 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
         // The window draws edge to edge; its content keeps clear of the system's bars, the
         // cutout and the keyboard.
         Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-            TabStrip(model, onHistory = { showingHistory = true })
+            TabStrip(model, onFind = model::openFind, onHistory = { showingHistory = true })
             Toolbar(model, addressField, onSubmitted = { page.requestFocus() })
+            if (model.isFinding) FindBar(model)
             ProgressLine(model)
             Box(modifier = Modifier.fillMaxWidth().weight(1f).focusRequester(page).focusable()) {
                 when {
@@ -151,7 +153,7 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
  * and one to open another (005 §5).
  */
 @Composable
-private fun TabStrip(model: BrowserModel, onHistory: () -> Unit) {
+private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onHistory: () -> Unit) {
     val list = stringResource(R.string.tabs_list)
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Row(
@@ -174,8 +176,12 @@ private fun TabStrip(model: BrowserModel, onHistory: () -> Unit) {
                 Icon(painter = painterResource(R.drawable.ic_add), contentDescription = stringResource(R.string.tabs_new))
             }
         }
-        // The History list's button: beside the tabs and not among them, where it stays when
-        // the tabs scroll (008).
+        // The find bar's button (010) and the History list's (008): beside the tabs and not
+        // among them, where they stay when the tabs scroll. There is nothing to find in a tab
+        // with no page.
+        IconButton(onClick = onFind, enabled = model.hasPage, modifier = Modifier.testTag("find")) {
+            Icon(painter = painterResource(R.drawable.ic_search), contentDescription = stringResource(R.string.find_open))
+        }
         IconButton(onClick = onHistory, modifier = Modifier.testTag("history")) {
             Icon(painter = painterResource(R.drawable.ic_history), contentDescription = stringResource(R.string.history_open))
         }
@@ -247,6 +253,67 @@ private fun Toolbar(model: BrowserModel, addressField: FocusRequester, onSubmitt
             }
         }
         AddressField(model, addressField, onSubmitted, Modifier.weight(1f).padding(start = Tokens.Space.xs))
+    }
+}
+
+/**
+ * The find bar (010): a field, what was found, the match before and the next, and Done. The
+ * system's Back closes it before it does anything to the page.
+ */
+@Composable
+private fun FindBar(model: BrowserModel) {
+    BackHandler(onBack = model::closeFind)
+    val label = stringResource(R.string.find_field)
+    val field = remember { FocusRequester() }
+    // The bar takes the keyboard when it opens, unless it is only a picture of one.
+    LaunchedEffect(Unit) { if (model.findBarTakesKeyboard) runCatching { field.requestFocus() } }
+    Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.Size.toolbarHeight).padding(horizontal = Tokens.Space.xs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // The field and what was found share one filled shape, and are two things to a screen
+        // reader: what was found is not part of what was typed.
+        Row(
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .padding(start = Tokens.Space.xs)
+                    .heightIn(min = Tokens.Size.fieldHeight)
+                    .clip(RoundedCornerShape(Tokens.Radius.field))
+                    .background(Tokens.Palette.fieldFill.current)
+                    .padding(horizontal = Tokens.Space.m),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Tokens.Space.s),
+        ) {
+            BasicTextField(
+                value = model.findText,
+                onValueChange = model::find,
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onBackground),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.onBackground),
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, imeAction = ImeAction.Search),
+                // Return goes to the next match, and the keyboard stays in the field.
+                keyboardActions = KeyboardActions(onSearch = { model.findNext() }),
+                modifier = Modifier.weight(1f).focusRequester(field).semantics { contentDescription = label }.testTag("find-field"),
+                decorationBox = { text ->
+                    Box(contentAlignment = Alignment.CenterStart) {
+                        if (model.findText.isEmpty()) Text(text = label, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
+                        text()
+                    }
+                },
+            )
+            // What was found, in words: how many where the engine counts, and that there is
+            // none.
+            when (val outcome = model.findOutcome) {
+                BrowserModel.FindOutcome.Nothing -> Unit
+                BrowserModel.FindOutcome.NotFound -> Text(text = stringResource(R.string.find_none), maxLines = 1, modifier = Modifier.testTag("find-outcome"))
+                is BrowserModel.FindOutcome.Match ->
+                    Text(text = stringResource(R.string.find_count, outcome.current, outcome.of), maxLines = 1, modifier = Modifier.testTag("find-outcome"))
+            }
+        }
+        ToolbarButton(R.string.find_previous, R.drawable.ic_up, "find-previous", enabled = model.findText.isNotEmpty(), onClick = model::findPrevious)
+        ToolbarButton(R.string.find_next, R.drawable.ic_down, "find-next", enabled = model.findText.isNotEmpty(), onClick = model::findNext)
+        TextButton(onClick = model::closeFind, modifier = Modifier.testTag("find-done")) { Text(stringResource(R.string.find_done)) }
     }
 }
 

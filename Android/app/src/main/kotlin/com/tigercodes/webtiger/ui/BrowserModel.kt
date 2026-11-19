@@ -8,6 +8,7 @@ import com.tigercodes.webtiger.core.CoreError
 import com.tigercodes.webtiger.core.v1.ActivateTab
 import com.tigercodes.webtiger.core.v1.AddressView
 import com.tigercodes.webtiger.core.v1.CloseTab
+import com.tigercodes.webtiger.core.v1.FindInPage
 import com.tigercodes.webtiger.core.v1.LoadState
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.core.v1.OpenTab
@@ -19,7 +20,7 @@ import com.tigercodes.webtiger.core.v1.TabView
 import com.tigercodes.webtiger.core.v1.WindowSnapshot
 
 /** One window's state, for Compose to draw. Used on the main thread. */
-class BrowserModel(private val session: BrowserSession) {
+class BrowserModel(private val session: BrowserSession, finding: String? = null) {
     /** The tab in front, as the core last published it. The window's controls act on it. */
     var tab by mutableStateOf(TabView())
         private set
@@ -127,10 +128,93 @@ class BrowserModel(private val session: BrowserSession) {
 
     val hasPage: Boolean get() = tab.web_view_id != 0L
 
+    // Find on the page (010)
+
+    /**
+     * The find bar is open. A model made with `finding` starts with its bar open on that text,
+     * before anything has been asked of the core: for a picture of the bar (004).
+     */
+    var isFinding by mutableStateOf(finding != null)
+        private set
+
+    /** What is typed in the find bar. */
+    var findText by mutableStateOf(finding.orEmpty())
+        private set
+
+    /**
+     * Whether the find bar takes the keyboard when it opens. Not when the model was made with
+     * its bar open: that is a picture of a bar, and a picture has no caret in it.
+     */
+    val findBarTakesKeyboard: Boolean = finding == null
+
+    /** The tab the find is in: where it must be stopped when the bar closes or another tab comes in front. */
+    private var findingTabId: Long? = null
+
+    /** What the find bar says of what was found. */
+    sealed interface FindOutcome {
+        /** Nothing to say: nothing looked for, nothing known yet, or found by an engine that does not count. */
+        data object Nothing : FindOutcome
+
+        data object NotFound : FindOutcome
+
+        /** Which match is shown, and how many there are. */
+        data class Match(val current: Int, val of: Int) : FindOutcome
+    }
+
+    /** What the core says was found of what is now in the bar. The model keeps no count of its own. */
+    val findOutcome: FindOutcome
+        get() {
+            val find = tab.find
+            if (!isFinding || find == null || !find.answered || find.text != findText) return FindOutcome.Nothing
+            if (!find.found) return FindOutcome.NotFound
+            return if (find.counted) FindOutcome.Match(find.current, find.matches) else FindOutcome.Nothing
+        }
+
+    /** Opens the find bar. There is nothing to find in a tab with no page. */
+    fun openFind() {
+        if (hasPage) isFinding = true
+    }
+
+    /** Closes the find bar: the find stops, and its marks go. */
+    fun closeFind() {
+        if (!isFinding) return
+        isFinding = false
+        findText = ""
+        stopFinding()
+    }
+
+    /** Looks for other text, at once. The same text again asks nothing: that is what next is for. */
+    fun find(text: String) {
+        if (text == findText) return
+        findText = text
+        if (isFinding) look(backwards = false)
+    }
+
+    fun findNext() = look(backwards = false)
+
+    fun findPrevious() = look(backwards = true)
+
+    private fun look(backwards: Boolean) {
+        val front = frontTabId ?: return
+        if (!isFinding || !hasPage) return
+        // Empty text is "stop": the tab then has no find to stop later.
+        findingTabId = if (findText.isEmpty()) null else front
+        session.send(Request(find_in_page = FindInPage(tab_id = front, text = findText, backwards = backwards)))
+    }
+
+    private fun stopFinding() {
+        val finding = findingTabId ?: return
+        findingTabId = null
+        session.send(Request(find_in_page = FindInPage(tab_id = finding)))
+    }
+
     private fun apply(snapshot: WindowSnapshot) {
         val front = snapshot.tab ?: TabView()
         // Another tab came in front: what was typed was typed for the tab that was there.
         val switched = front.tab_id != tab.tab_id
+        // The find was in the tab that was in front: it stops there, and the bar closes. (The
+        // window's first snapshot names its first tab, and is no switch.)
+        if (switched && tab.tab_id != 0L) closeFind()
         tab = front
         tabs = snapshot.tabs
         // A field with the keyboard still follows the page until something is typed in it: one

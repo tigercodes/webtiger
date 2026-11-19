@@ -3,6 +3,7 @@ package com.tigercodes.webtiger.webview
 
 import com.tigercodes.webtiger.core.v1.AddressChanged
 import com.tigercodes.webtiger.core.v1.EngineEvent
+import com.tigercodes.webtiger.core.v1.FindResult
 import com.tigercodes.webtiger.core.v1.HistoryChanged
 import com.tigercodes.webtiger.core.v1.NavigationCommitted
 import com.tigercodes.webtiger.core.v1.NavigationFailed
@@ -218,6 +219,16 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
         gone = true
         emit(EngineEvent(web_view_id = webViewId, renderer_gone = RendererGone()))
         emit(EngineEvent(web_view_id = webViewId, history_changed = HistoryChanged()))
+    }
+
+    /**
+     * `FindListener`, once the engine has finished counting: which match is shown, counted
+     * from 0, and how many there are (010). The WebView counts, so the report says so.
+     */
+    fun findResult(activeOrdinal: Int, matches: Int) {
+        val total = matches.coerceAtLeast(0)
+        val current = if (total > 0) (activeOrdinal + 1).coerceIn(1, total) else 0
+        emit(EngineEvent(web_view_id = webViewId, find_result = FindResult(found = total > 0, counted = true, matches = total, current = current)))
     }
 
     /** A new document is on its way. */

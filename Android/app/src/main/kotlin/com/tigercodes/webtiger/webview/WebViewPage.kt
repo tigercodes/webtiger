@@ -121,6 +121,26 @@ internal class WebViewPage(
         }
     }
 
+    /** The text the web view is now finding: the same text again goes to another match. */
+    private var finding = ""
+
+    override fun find(text: String, backwards: Boolean) {
+        val view = webView ?: return
+        when {
+            text.isEmpty() -> {
+                finding = ""
+                view.clearMatches()
+            }
+            // The same text again: the next match, or the one before. The WebView goes round
+            // from the last to the first by itself.
+            text == finding -> view.findNext(!backwards)
+            else -> {
+                finding = text
+                view.findAllAsync(text)
+            }
+        }
+    }
+
     override fun close() {
         webView?.let { view ->
             view.stopLoading()
@@ -182,6 +202,12 @@ internal class WebViewPage(
         }
         view.webViewClient = Client()
         view.webChromeClient = Chrome()
+        // What a find found, once the WebView has finished counting (010). A web view made
+        // anew has found nothing.
+        finding = ""
+        view.setFindListener { activeMatchOrdinal, numberOfMatches, isDoneCounting ->
+            if (view === webView && isDoneCounting) tracker.findResult(activeMatchOrdinal, numberOfMatches)
+        }
     }
 
     /** Navigation, as the engine reports it. Every callback but one is on the main thread. */
@@ -213,6 +239,8 @@ internal class WebViewPage(
 
         override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) {
             if (view !== webView) return
+            // A new page: the same text looked for in it is a new find, not the next match.
+            finding = ""
             topUrl = url
             tracker.committed(url, view.canGoBack(), view.canGoForward())
         }

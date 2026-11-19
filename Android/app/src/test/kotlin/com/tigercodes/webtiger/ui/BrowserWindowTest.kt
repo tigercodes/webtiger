@@ -7,6 +7,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -20,12 +21,14 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.text.TextRange
 import com.tigercodes.webtiger.core.ScriptedCore
 import com.tigercodes.webtiger.core.v1.AddressView
 import com.tigercodes.webtiger.core.v1.LoadState
+import com.tigercodes.webtiger.core.v1.FindView
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.core.v1.TabSummary
 import com.tigercodes.webtiger.design.WebTigerTheme
@@ -240,11 +243,79 @@ class BrowserWindowTest {
         compose.onAllNodesWithTag("close-tab")[2].performClick()
         compose.waitForIdle()
         assertEquals(6L, core.requests.last().close_tab?.tab_id)
-        compose.onNodeWithTag("new-tab").performClick()
+        // With three tabs on a screen this narrow, the button after them is past the strip's
+        // end: the strip is scrolled to it.
+        compose.onNodeWithTag("new-tab").performScrollTo().performClick()
         compose.waitForIdle()
         assertEquals(1L, core.requests.last().open_tab?.window_id)
         compose.onAllNodesWithContentDescription("Close Tab").assertCountEquals(3)
         compose.onNodeWithContentDescription("New Tab").assertExists()
+    }
+
+    // Find on the page (010)
+
+    private fun aPage(find: FindView? = null) {
+        compose.runOnIdle {
+            core.emit(snapshot(url = "https://example.com/", display = "example.com", webView = 4) { it.copy(find = find) }, subscription = 3)
+        }
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun theFindBarIsShutUntilAskedForAndThereIsNothingToFindWithNoPage() {
+        show()
+        compose.onNodeWithTag("find-field").assertDoesNotExist()
+        compose.onNodeWithTag("find").assertIsNotEnabled()
+
+        aPage()
+        compose.onNodeWithTag("find").assertIsEnabled().performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithTag("find-field").assertExists()
+        compose.onNodeWithContentDescription("Find on page").assertExists()
+        compose.onNodeWithTag("find-outcome").assertDoesNotExist()
+        compose.onNodeWithTag("find-next").assertIsNotEnabled()
+    }
+
+    @Test
+    fun theFindBarSendsWhatIsTypedAndWhatIsPressed() {
+        show()
+        aPage()
+        compose.onNodeWithTag("find").performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithTag("find-field").performTextInput("needle")
+        compose.waitForIdle()
+        compose.onNodeWithTag("find-next").assertIsEnabled().performClick()
+        compose.onNodeWithTag("find-previous").performClick()
+        compose.onNodeWithTag("find-field").performImeAction()
+        compose.waitForIdle()
+
+        val finds = core.requests.mapNotNull { it.find_in_page }
+        assertEquals(listOf("needle", "needle", "needle", "needle"), finds.map { it.text })
+        assertEquals("typed, next, previous, Return", listOf(false, false, true, false), finds.map { it.backwards })
+        assertEquals(setOf(2L), finds.map { it.tab_id }.toSet())
+
+        compose.onNodeWithTag("find-done").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("find-field").assertDoesNotExist()
+        assertEquals("closing stops the find", "", core.requests.last().find_in_page?.text)
+    }
+
+    @Test
+    fun theFindBarSaysWhatWasFound() {
+        show()
+        aPage()
+        compose.onNodeWithTag("find").performClick()
+        compose.onNodeWithTag("find-field").performTextInput("needle")
+        compose.waitForIdle()
+        compose.onNodeWithTag("find-outcome").assertDoesNotExist()
+
+        aPage(FindView(text = "needle", answered = true, found = true, counted = true, matches = 12, current = 3))
+        compose.onNodeWithTag("find-outcome").assertTextEquals("3 of 12")
+
+        aPage(FindView(text = "needle", answered = true))
+        compose.onNodeWithTag("find-outcome").assertTextEquals("Not found")
     }
 
     @Test

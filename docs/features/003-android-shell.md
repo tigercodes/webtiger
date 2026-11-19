@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built, and **run on an emulator** (Android 16, System WebView 133): the app starts, a page loads through the core, and 66 tests pass on the device, among them the adapter suite against the real WebView and isolation between login sets. 152 more pass on the JVM, 28 of them driving the real core through JNI. **Not yet run on a physical device, on any other WebView version, or folded** (§8) |
+| **Status** | Built, and **run on an emulator** (Android 16, System WebView 133): the app starts, a page loads through the core, and 75 tests pass on the device, among them the adapter suite against the real WebView and isolation between login sets. 163 more pass on the JVM, 28 of them driving the real core through JNI. **Not yet run on a physical device, on any other WebView version, or folded** (§8) |
 | **Phase** | W0 of [000](000-master-plan.md) §9; item 1 of [001](001-foundations.md) §12 |
 | **Stack** | 000 §5.1: Kotlin, Jetpack Compose, Material 3, `androidx.webkit`, Wire, JNI through `wt-ffi` |
 | **Last updated** | 2026-11-18 (run on an emulator; the device suite) |
@@ -235,7 +235,7 @@ The line above was run against the emulator, with a page served from the Mac (`1
 
 An emulator without a window, made by `Tools/android/emulator.sh` from the Google APIs image for Android 16 (API 36, `arm64-v8a`, revision 7) with the Pixel 8 profile, on a Mac with Apple silicon; its System WebView is **133.0.6943.137**. 2026-11-18.
 
-`Tools/test.sh android-device` runs the tests in `Android/app/src/androidTest` there: 66 pass. From a cold emulator the whole step took 40 s, the boot included.
+`Tools/test.sh android-device` runs the tests in `Android/app/src/androidTest` there: 75 pass. From a cold emulator the whole step took 40 s, the boot included.
 
 | Suite | Count | What it shows |
 |---|---|---|
@@ -243,9 +243,10 @@ An emulator without a window, made by `Tools/android/emulator.sh` from the Googl
 | `SystemWebViewIsolationTest` | 12 | Isolation as a security property (000 §8.4): two login sets share no cookie, no stored value, no IndexedDB database, no Cache API cache, no service worker and no copy in the HTTP cache, and two web views in one login set share them all; nothing a login set stores reaches the default profile; a sign-in for the session outlives the last web view of its login set; a private login set is refused; deleting and clearing, as §5.2; and a record of what the WebView offers a page (001 §11.4) |
 | `SystemWebViewNewWindowTest` | 10 | A page that asks for a new window ([006](006-new-windows.md)), with a finger on the page: the adapter makes the web view the WebView asks for, in the asking page's login set, names it with an id of the shell's own and reports it; `window.open` keeps the hold between the two pages; `window.close()` is reported; a page that asks as it loads, or clicks its own link, gets nothing; a refused web view is destroyed; the navigation policy is asked about where the new window goes, and a refusal is reported as one, which a stopped load is not |
 | `SystemWebViewOutsideLinkTest` | 5 | A link for the system ([007](007-outside-links.md)), with a finger on the page: reported with a gesture before its refusal; a button's script; a link in a frame; a page that goes there by itself; a link that opens a window |
+| `SystemWebViewFindTest` | 8 | Find on the page ([010](010-find-in-page.md)): the WebView's own find through the adapter, with its counts; next, back and round; not found; other text, stopping, and a new page each start again |
 | `SystemOpenerTest` | 2 | The system's own opener: the activity it starts for a letter and for a number, caught before it leaves the app; a scheme nothing opens is said to be so |
 | `SystemWebViewRestoreTest` | 3 | What a sleeping tab keeps (Q5; 001 §11.3): `saveState` is one small byte array, and a new web view in the same profile wakes from it with the page, its history, its login set, and, once the engine has had a second to record them, the scroll position and the text typed into a form |
-| `AppWindowTest` | 15 | The app, started in fake mode, with the real core and the real WebView in its window: a page loads through the core; a typed address loads, and the window's Back and the system's Back go back; a failure is shown in words, over the engine's own error page; the address field at rest, tapped, and when it took the focus by itself (§6); **turning the device reloads nothing**: the same activity, the same web view, no second request; tabs open, switch and close, each with a web view of its own ([005](005-tabs.md)); a link that opens a window, touched, opens a tab beside the one it was in, and closing it brings that one forward, and a window opened on a letter to write leaves no tab behind (006); a touch on a link to write a letter leaves the page as it was and starts no activity (007); history lists what was visited, finds it, opens it again and forgets it ([008](008-history.md)); the design catalogue opens in place of a browser (004); **Android's accessibility checks** (Google's Accessibility Test Framework, through Compose's test rule) pass over a page, a failed page and the catalogue, which has every state the window has |
+| `AppWindowTest` | 16 | The app, started in fake mode, with the real core and the real WebView in its window: a page loads through the core; a typed address loads, and the window's Back and the system's Back go back; a failure is shown in words, over the engine's own error page; the address field at rest, tapped, and when it took the focus by itself (§6); **turning the device reloads nothing**: the same activity, the same web view, no second request; tabs open, switch and close, each with a web view of its own ([005](005-tabs.md)); a link that opens a window, touched, opens a tab beside the one it was in, and closing it brings that one forward, and a window opened on a letter to write leaves no tab behind (006); a touch on a link to write a letter leaves the page as it was and starts no activity (007); history lists what was visited, finds it, opens it again and forgets it ([008](008-history.md)); find on the page counts, follows next and previous, and says when the text is not there (010); the design catalogue opens in place of a browser (004); **Android's accessibility checks** (Google's Accessibility Test Framework, through Compose's test rule) pass over a page, a failed page and the catalogue, which has every state the window has |
 
 Also done by hand there, and looked at in screenshots: the app started with the `am start` line of §7 and a page served from the Mac; a link, back and forward; the keyboard that comes up is the address one, with Go; a load that timed out (the emulator's network was not up yet, seconds after its boot) showed the failed page in words, and Try Again loaded the page; `example.com` typed into the field loaded over https with the padlock and the short form of the address; the dark theme, switched while the app ran, redrew the window without making the activity again.
 
@@ -279,7 +280,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | `cd Core && cargo test --workspace --locked` | 139 passed |
 | `Tools/test.sh android`, from nothing | OK, 48 s |
 | … `:core-engine:testDebugUnitTest` | 31 passed |
-| … `:app:testDebugUnitTest` | 121 passed |
+| … `:app:testDebugUnitTest` | 132 passed |
 | … `:app:assembleDebug` | `app-debug.apk`, with `libwebtiger_core.so` for `arm64-v8a` and `x86_64` |
 | `Tools/strings/strings.py --check`, `Tools/design/tokens.py --check` | up to date; the Apple outputs' checksums unchanged |
 | `./gradlew :app:lintDebug` | no errors. Apart from notices that newer versions exist, two warnings are left on purpose: no launcher icon (the brand is not settled, 001 F10), and `toolbar_open_location` unused (it is the Mac's ⌘L) |
@@ -289,12 +290,12 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | `CoreLibraryTest` | 8 | The glue: constants against the header; order and one thread; bad messages; a refused start; a listener that throws; stop from the wrong thread; the fast path failing safe; several cores from several threads |
 | `NativeCoreTest` | 18 | The contract through Kotlin: ping direct and through the host; a page loading (`WebViewCreate` then `WebViewLoad`, engine events, the snapshot); fake mode's start address; refusals and refused starts by code; the store in its folder; the navigation policy; stopping |
 | `ScriptedCoreTest` | 5 | The scripted core |
-| `PageTrackerTest` | 32 | §5.1, one situation each, two of them as observed on the emulator; a refusal is told apart from a load that was stopped (006); a link for the system is reported, and then refused (007) |
-| `SystemWebViewEngineTest` | 18 | The host service and its codes; no web view without profiles; the web view made for a page that asks for a window (006); the engine itself opens nothing outside (007) |
+| `PageTrackerTest` | 33 | §5.1, one situation each, two of them as observed on the emulator; a refusal is told apart from a load that was stopped (006); a link for the system is reported, and then refused (007) |
+| `SystemWebViewEngineTest` | 19 | The host service and its codes; no web view without profiles; the web view made for a page that asks for a window (006); the engine itself opens nothing outside (007) |
 | `ShellHostTest` | 7 | The shell's own host: the System service goes to the opener, the rest to the engine; the intent the system's opener starts (007) |
 | `NetErrorsTest` | 3 | §5.3 |
-| `BrowserModelTest` | 14 | The window's model against `ScriptedCore`, its tabs among it |
-| `BrowserWindowTest` | 10 | The window drawn (Robolectric): its states, its controls and its strip of tabs, what they send |
+| `BrowserModelTest` | 20 | The window's model against `ScriptedCore`: its tabs, and its find bar (010) |
+| `BrowserWindowTest` | 13 | The window drawn (Robolectric): its states, its controls, its strip of tabs and its find bar, what they send |
 | `HistoryModelTest`, `HistoryListTest` | 5, 7 | The History list's model, and the list drawn: what it shows and what a person's choices send (008) |
 | `WordsTest`, `LaunchOptionsTest` | 3, 5 | Codes into words; fake mode's and the catalogue's extras |
 | `CatalogueSnapshotTest` | 11 | The design catalogue as pictures, drawn on the JVM, and the failed page at twice the text size (004) |

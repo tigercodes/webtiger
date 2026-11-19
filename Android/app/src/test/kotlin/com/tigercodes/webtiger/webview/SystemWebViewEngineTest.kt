@@ -18,6 +18,7 @@ import com.tigercodes.webtiger.core.v1.OpenOutside
 import com.tigercodes.webtiger.core.v1.WebViewCommand
 import com.tigercodes.webtiger.core.v1.WebViewCreate
 import com.tigercodes.webtiger.core.v1.WebViewDestroy
+import com.tigercodes.webtiger.core.v1.WebViewFind
 import com.tigercodes.webtiger.core.v1.WebViewLoad
 import kotlinx.coroutines.test.runTest
 import okio.ByteString.Companion.encodeUtf8
@@ -267,6 +268,22 @@ class SystemWebViewEngineTest {
     fun aRequestThisShellDoesNotKnowIsRefusedWithACode() =
         runTest {
             assertRefused("host.unsupported", engine.answer(HostRequest()))
+        }
+
+    @Test
+    fun aFindReachesThePageOfTheWebViewTheCoreNamed() =
+        runTest {
+            engine.answer(create(4))
+            engine.answer(create(5))
+            fun find(id: Long, text: String, backwards: Boolean = false) = HostRequest(web_view_find = WebViewFind(web_view_id = id, text = text, backwards = backwards))
+
+            assertDone(engine.answer(find(5, "needle")))
+            assertDone(engine.answer(find(5, "needle", backwards = true)))
+            assertDone(engine.answer(find(5, "")))
+
+            assertEquals(listOf("needle" to false, "needle" to true, "" to false), pages.made[1].finds)
+            assertTrue("and no other page", pages.made[0].finds.isEmpty())
+            assertRefused("webview.unknown", engine.answer(find(9, "needle")))
         }
 
     @Test

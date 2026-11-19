@@ -20,6 +20,12 @@ internal interface Page {
     /** Back, forward, reload or stop. Nothing happens when the web view has nowhere to go. */
     fun command(command: NavigationCommand)
 
+    /**
+     * Finds text in the page and shows the match (010): the first, or with the same text again
+     * the next, or the one before with `backwards`. Empty text clears what was found.
+     */
+    fun find(text: String, backwards: Boolean)
+
     /** Destroys the web view and releases what it held. */
     fun close()
 }

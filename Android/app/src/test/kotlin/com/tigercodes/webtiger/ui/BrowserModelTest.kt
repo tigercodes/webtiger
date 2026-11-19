@@ -5,6 +5,7 @@ import com.tigercodes.webtiger.core.CoreError
 import com.tigercodes.webtiger.core.ScriptedCore
 import com.tigercodes.webtiger.core.v1.Ack
 import com.tigercodes.webtiger.core.v1.AddressView
+import com.tigercodes.webtiger.core.v1.FindView
 import com.tigercodes.webtiger.core.v1.LoadState
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.core.v1.Request
@@ -207,6 +208,126 @@ class BrowserModelTest {
             core.emit(tabs(front = 9, url = "https://example.org/", display = "example.org", others = listOf(2)), subscription = 3)
             assertEquals("the field shows the tab that is in front", "https://example.org/", model.addressText)
             assertFalse(model.hasTypedAddress)
+        }
+
+    // Find on the page (010)
+
+    /** A window whose tab in front has a page, in which things can be found. */
+    private suspend fun TestScope.finding(core: ScriptedCore): BrowserModel {
+        val model = BrowserModel(session(core))
+        model.open()
+        core.emit(snapshot(url = "https://example.com/", display = "example.com", webView = 4), subscription = 3)
+        return model
+    }
+
+    private fun finds(core: ScriptedCore): List<String> =
+        core.requests.mapNotNull { it.find_in_page }.map { find -> "${find.tab_id} ${find.text.ifEmpty { "(stop)" }}${if (find.backwards) " back" else ""}" }
+
+    @Test
+    fun whatIsTypedInTheFindBarIsLookedForAtOnce() =
+        runTest {
+            val core = ScriptedCore(::windowScript)
+            val model = finding(core)
+            assertFalse(model.isFinding)
+            // Nothing is looked for while the bar is shut.
+            model.find("stray")
+            model.find("")
+
+            model.openFind()
+            model.find("n")
+            model.find("ne")
+            model.findNext()
+            model.findPrevious()
+
+            assertTrue(model.isFinding)
+            assertEquals("each letter, then the next match, then the one before", listOf("2 n", "2 ne", "2 ne", "2 ne back"), finds(core))
+        }
+
+    @Test
+    fun closingTheFindBarStopsTheFind() =
+        runTest {
+            val core = ScriptedCore(::windowScript)
+            val model = finding(core)
+            model.openFind()
+            model.find("needle")
+
+            model.closeFind()
+
+            assertFalse(model.isFinding)
+            assertEquals("the bar opens empty the next time", "", model.findText)
+            assertEquals(listOf("2 needle", "2 (stop)"), finds(core))
+            // Closed already: nothing more is sent.
+            model.closeFind()
+            assertEquals(2, finds(core).size)
+        }
+
+    @Test
+    fun emptyingTheFieldStopsTheFindAndTheBarStaysOpen() =
+        runTest {
+            val core = ScriptedCore(::windowScript)
+            val model = finding(core)
+            model.openFind()
+            model.find("needle")
+
+            model.find("")
+
+            assertTrue(model.isFinding)
+            assertEquals(listOf("2 needle", "2 (stop)"), finds(core))
+            // There is no find left to stop when the bar is closed.
+            model.closeFind()
+            assertEquals(2, finds(core).size)
+        }
+
+    @Test
+    fun anotherTabInFrontStopsTheFindInTheTabThatHadIt() =
+        runTest {
+            val core = ScriptedCore(::windowScript)
+            val model = finding(core)
+            model.openFind()
+            model.find("needle")
+
+            core.emit(tabs(front = 9, url = "https://example.org/", display = "example.org", others = listOf(2)), subscription = 3)
+
+            assertFalse("the bar closes", model.isFinding)
+            assertEquals("and the find stops in the tab it was in, not the one in front", listOf("2 needle", "2 (stop)"), finds(core))
+        }
+
+    @Test
+    fun thereIsNothingToFindInATabWithNoPage() =
+        runTest {
+            val core = ScriptedCore(::windowScript)
+            val model = BrowserModel(session(core))
+            model.open()
+
+            model.openFind()
+            model.find("needle")
+
+            assertFalse(model.isFinding)
+            assertEquals(emptyList<String>(), finds(core))
+        }
+
+    @Test
+    fun theFindBarSaysWhatTheCoreSaysWasFound() =
+        runTest {
+            val core = ScriptedCore(::windowScript)
+            val model = finding(core)
+            model.openFind()
+            model.find("needle")
+            assertEquals("nothing is known yet: that is not \"not found\"", BrowserModel.FindOutcome.Nothing, model.findOutcome)
+
+            fun publish(find: FindView) =
+                core.emit(snapshot(url = "https://example.com/", display = "example.com", webView = 4) { it.copy(find = find) }, subscription = 3)
+
+            publish(FindView(text = "needle", answered = true, found = true, counted = true, matches = 12, current = 3))
+            assertEquals(BrowserModel.FindOutcome.Match(3, of = 12), model.findOutcome)
+            // An engine that does not count: found, and nothing more to say.
+            publish(FindView(text = "needle", answered = true, found = true))
+            assertEquals(BrowserModel.FindOutcome.Nothing, model.findOutcome)
+            publish(FindView(text = "needle", answered = true))
+            assertEquals(BrowserModel.FindOutcome.NotFound, model.findOutcome)
+            // Another letter typed: what the core said was of the text before.
+            model.find("needles")
+            assertEquals(BrowserModel.FindOutcome.Nothing, model.findOutcome)
         }
 
     @Test

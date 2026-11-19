@@ -63,7 +63,7 @@ class CatalogueSnapshotTest {
         show { key(state) { CatalogueWindow(state, Modifier.fillMaxSize()) } }
         for (next in CatalogueState.entries) {
             state = next
-            verify("window-${next.name.lowercase()}-$theme")
+            verify("window-${next.name.lowercase().replace('_', '-')}-$theme")
         }
     }
 

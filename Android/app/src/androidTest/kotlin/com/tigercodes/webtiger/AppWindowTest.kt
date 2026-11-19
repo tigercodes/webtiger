@@ -125,6 +125,19 @@ internal class AppWindowTest {
         compose.onNodeWithTag("address-field").performImeAction()
     }
 
+    /** Waits until the find bar says `words` of what was found, for up to fifteen seconds. */
+    private fun awaitFound(words: String) {
+        fun said(): List<String> =
+            compose.onAllNodesWithTag("find-outcome").fetchSemanticsNodes().map { node ->
+                node.config.getOrNull(SemanticsProperties.Text).orEmpty().joinToString(" ") { it.text }
+            }
+        try {
+            compose.waitUntil(15_000) { said() == listOf(words) }
+        } catch (_: androidx.compose.ui.test.ComposeTimeoutException) {
+            throw AssertionError("the find bar never said <$words>; it says ${said()}")
+        }
+    }
+
     /** The visits the History list shows, each as its words. */
     private fun visits(): List<String> =
         compose.onAllNodesWithTag("history-entry").fetchSemanticsNodes().map { node ->
@@ -433,6 +446,43 @@ internal class AppWindowTest {
         scenario.onActivity { activity -> activity.onBackPressedDispatcher.onBackPressed() }
         compose.waitUntil(15_000) { compose.onAllNodesWithTag("history-nothing").fetchSemanticsNodes().isEmpty() }
         awaitPage("Landed")
+    }
+
+    /**
+     * Find on the page (010), with the real core and the real WebView: the bar is shut until
+     * asked for; a word that is there is counted, and the count follows next and previous; a
+     * word that is not there is said not to be; the system's Back closes the bar.
+     */
+    @Test
+    fun findOnThePageCountsAndSaysWhenTheTextIsNotThere() {
+        awaitPage("Home")
+        type(site.url("/find"))
+        awaitPage("Find")
+        compose.onNodeWithTag("find-field").assertDoesNotExist()
+
+        compose.onNodeWithTag("find").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("find-field").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("find-field").performTextInput("needle")
+        awaitFound("1 of 3")
+        compose.onNodeWithTag("find-next").performClick()
+        awaitFound("2 of 3")
+        compose.onNodeWithTag("find-previous").performClick()
+        awaitFound("1 of 3")
+        compose.onRoot().tryPerformAccessibilityChecks()
+
+        // Closing the bar ends the find; opened again it is empty.
+        compose.onNodeWithTag("find-done").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("find-field").fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithTag("find").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("find-field").fetchSemanticsNodes().isNotEmpty() }
+        compose.onAllNodesWithTag("find-outcome").assertCountEquals(0)
+        compose.onNodeWithTag("find-field").performTextInput("zebra")
+        awaitFound("Not found")
+
+        // The system's Back closes the bar, and the page is as it was.
+        scenario.onActivity { activity -> activity.onBackPressedDispatcher.onBackPressed() }
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("find-field").fetchSemanticsNodes().isEmpty() }
+        awaitPage("Find")
     }
 
     @Test

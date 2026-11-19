@@ -33,6 +33,7 @@ class PageTrackerTest {
         event.progress_changed?.let { return "progress ${it.fraction}" }
         event.history_changed?.let { return "history ${it.can_go_back} ${it.can_go_forward}" }
         event.renderer_gone?.let { return "gone" }
+        event.find_result?.let { return if (it.found) "found ${it.current} of ${it.matches}" + (if (it.counted) "" else " (not counted)") else "not found" }
         event.outside_link_requested?.let { return "outside ${it.url}" + if (it.user_gesture) " (asked)" else "" }
         return "nothing"
     }
@@ -159,6 +160,20 @@ class PageTrackerTest {
         // In a frame: nothing of the page itself was going anywhere, and nothing more is said.
         tracker.outsideLink("tel:+15550100", userGesture = false)
         assertEquals(listOf("outside tel:+15550100"), told())
+    }
+
+    @Test
+    fun whatAFindFoundIsCountedFromOne() {
+        load(A)
+        // The WebView counts matches from 0; the contract, as a person does, from 1.
+        tracker.findResult(activeOrdinal = 0, matches = 3)
+        tracker.findResult(activeOrdinal = 2, matches = 3)
+        assertEquals(listOf("found 1 of 3", "found 3 of 3"), told())
+        // Nothing found; and a number the WebView could not mean is not passed on.
+        tracker.findResult(activeOrdinal = 0, matches = 0)
+        tracker.findResult(activeOrdinal = 7, matches = 3)
+        tracker.findResult(activeOrdinal = -1, matches = 2)
+        assertEquals(listOf("not found", "found 3 of 3", "found 1 of 2"), told())
     }
 
     @Test

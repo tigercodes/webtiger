@@ -80,8 +80,18 @@ class SystemWebViewEngine internal constructor(private val factory: PageFactory)
         val load = request.web_view_load
         val command = request.web_view_command
         val destroy = request.web_view_destroy
+        val find = request.web_view_find
         val response =
             when {
+                find != null -> {
+                    val page = pages[find.web_view_id]
+                    if (page == null) {
+                        failure("webview.unknown")
+                    } else {
+                        page.find(find.text, find.backwards)
+                        done
+                    }
+                }
                 ping != null -> HostResponse(pong = HostPong(payload = ping.payload))
                 create != null -> create(create)
                 load != null -> load(load)

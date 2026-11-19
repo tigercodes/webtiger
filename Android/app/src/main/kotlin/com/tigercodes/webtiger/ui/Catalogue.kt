@@ -55,6 +55,7 @@ import com.tigercodes.webtiger.core.v1.Ack
 import com.tigercodes.webtiger.core.v1.AddressView
 import com.tigercodes.webtiger.core.v1.LoadState
 import com.tigercodes.webtiger.core.v1.Response
+import com.tigercodes.webtiger.core.v1.FindView
 import com.tigercodes.webtiger.core.v1.HistoryEntry
 import com.tigercodes.webtiger.core.v1.HistoryPage
 import com.tigercodes.webtiger.core.v1.Subscribed
@@ -78,7 +79,18 @@ internal enum class CatalogueState(@StringRes val title: Int) {
     FAILED(R.string.catalogue_state_failed),
     HISTORY(R.string.catalogue_state_history),
     TABS(R.string.catalogue_state_tabs),
+    FIND(R.string.catalogue_state_find),
+    FIND_NONE(R.string.catalogue_state_find_none),
     ;
+
+    /** What the window's find bar is open on in this state, when it is. */
+    val finding: String?
+        get() =
+            when (this) {
+                FIND -> "needle"
+                FIND_NONE -> "zebra"
+                else -> null
+            }
 
     /** What a core would publish for the state. The addresses are the documentation's own. */
     val snapshot: WindowSnapshot
@@ -95,6 +107,11 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                     FAILED -> page("https://nowhere.example.com/", "nowhere.example.com").copy(load_state = LoadState.LOAD_STATE_FAILED, error_code = "net.dns")
                     HISTORY -> page("https://example.com/second", "example.com/second").copy(can_go_back = true, can_go_forward = true)
                     TABS -> page("https://example.com/", "example.com").copy(title = "Example Domain")
+                    // An engine that counts: the third of twelve.
+                    FIND ->
+                        page("https://example.com/", "example.com")
+                            .copy(find = FindView(text = "needle", answered = true, found = true, counted = true, matches = 12, current = 3))
+                    FIND_NONE -> page("https://example.com/", "example.com").copy(find = FindView(text = "zebra", answered = true))
                 }
             // The strip names every tab: the one in front, and for "several tabs" its neighbours,
             // one with a title, one still loading and known only by its site, one with no page.
@@ -256,7 +273,7 @@ internal fun CatalogueWindow(state: CatalogueState, modifier: Modifier = Modifie
     val context = LocalContext.current.applicationContext
     val scope = rememberCoroutineScope()
     val session = remember(state) { state.session(context, scope) }
-    val model = remember(session) { BrowserModel(session) }
+    val model = remember(session) { BrowserModel(session, finding = state.finding) }
     // A window takes the system's Back for its page. These are pictures of windows: Back leaves
     // the catalogue, whatever state one of them shows.
     val lifecycle = LocalLifecycleOwner.current.lifecycle

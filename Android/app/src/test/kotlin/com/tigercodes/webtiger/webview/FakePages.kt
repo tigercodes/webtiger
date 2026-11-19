@@ -27,6 +27,13 @@ internal class FakePage(val id: Long, val loginSet: String, val host: PageHost) 
         commands.add(command)
     }
 
+    /** What the page was asked to find, in order: the text (empty to stop), and whether backwards. */
+    val finds = ArrayList<Pair<String, Boolean>>()
+
+    override fun find(text: String, backwards: Boolean) {
+        finds.add(text to backwards)
+    }
+
     override fun close() {
         closed = true
     }
