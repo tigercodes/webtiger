@@ -10,7 +10,8 @@
 
 /// WebTiger Core ↔ shell contract (docs/features/000-master-plan.md §5.5,
 /// docs/features/001-foundations.md §4).
-/// Contract version: 1.0 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
+/// Contract version: 1.1 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
+///   1.1  Tabs: OpenTab, CloseTab, ActivateTab, TabOpened; WindowSnapshot.tabs.
 ///
 /// Every message crosses the C ABI as protobuf bytes:
 ///   wt_core_start(CoreConfig)   config.proto
@@ -197,6 +198,31 @@ public nonisolated struct WTRequest: Sendable {
     set {kind = .engineEvent(newValue)}
   }
 
+  /// browser.proto, since 1.1
+  public var openTab: WTOpenTab {
+    get {
+      if case .openTab(let v)? = kind {return v}
+      return WTOpenTab()
+    }
+    set {kind = .openTab(newValue)}
+  }
+
+  public var closeTab: WTCloseTab {
+    get {
+      if case .closeTab(let v)? = kind {return v}
+      return WTCloseTab()
+    }
+    set {kind = .closeTab(newValue)}
+  }
+
+  public var activateTab: WTActivateTab {
+    get {
+      if case .activateTab(let v)? = kind {return v}
+      return WTActivateTab()
+    }
+    set {kind = .activateTab(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -210,6 +236,10 @@ public nonisolated struct WTRequest: Sendable {
     case tabCommand(WTTabCommand)
     /// engine.proto. Sent as a notification (envelope id 0).
     case engineEvent(WTEngineEvent)
+    /// browser.proto, since 1.1
+    case openTab(WTOpenTab)
+    case closeTab(WTCloseTab)
+    case activateTab(WTActivateTab)
 
   }
 
@@ -265,6 +295,14 @@ public nonisolated struct WTResponse: Sendable {
     set {kind = .windowOpened(newValue)}
   }
 
+  public var tabOpened: WTTabOpened {
+    get {
+      if case .tabOpened(let v)? = kind {return v}
+      return WTTabOpened()
+    }
+    set {kind = .tabOpened(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -274,6 +312,7 @@ public nonisolated struct WTResponse: Sendable {
     case subscribed(WTSubscribed)
     /// browser.proto
     case windowOpened(WTWindowOpened)
+    case tabOpened(WTTabOpened)
 
   }
 
@@ -423,27 +462,21 @@ public nonisolated struct WTUnsubscribe: Sendable {
   public init() {}
 }
 
-public nonisolated struct WTSnapshot: @unchecked Sendable {
+public nonisolated struct WTSnapshot: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var subscriptionID: UInt64 {
-    get {_storage._subscriptionID}
-    set {_uniqueStorage()._subscriptionID = newValue}
-  }
+  public var subscriptionID: UInt64 = 0
 
-  public var model: OneOf_Model? {
-    get {return _storage._model}
-    set {_uniqueStorage()._model = newValue}
-  }
+  public var model: WTSnapshot.OneOf_Model? = nil
 
   public var window: WTWindowSnapshot {
     get {
-      if case .window(let v)? = _storage._model {return v}
+      if case .window(let v)? = model {return v}
       return WTWindowSnapshot()
     }
-    set {_uniqueStorage()._model = .window(newValue)}
+    set {model = .window(newValue)}
   }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -454,8 +487,6 @@ public nonisolated struct WTSnapshot: @unchecked Sendable {
   }
 
   public init() {}
-
-  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 /// The core's own state. STATE_READY follows a successful start;
@@ -642,7 +673,7 @@ nonisolated extension WTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Request"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0\u{3}open_tab\0\u{3}close_tab\0\u{3}activate_tab\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -754,6 +785,45 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
           self.kind = .engineEvent(v)
         }
       }()
+      case 9: try {
+        var v: WTOpenTab?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .openTab(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .openTab(v)
+        }
+      }()
+      case 10: try {
+        var v: WTCloseTab?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .closeTab(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .closeTab(v)
+        }
+      }()
+      case 11: try {
+        var v: WTActivateTab?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .activateTab(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .activateTab(v)
+        }
+      }()
       default: break
       }
     }
@@ -797,6 +867,18 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       guard case .engineEvent(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
     }()
+    case .openTab?: try {
+      guard case .openTab(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 9)
+    }()
+    case .closeTab?: try {
+      guard case .closeTab(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
+    }()
+    case .activateTab?: try {
+      guard case .activateTab(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
+    }()
     case nil: break
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -811,7 +893,7 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 nonisolated extension WTResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Response"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}error\0\u{1}ack\0\u{1}pong\0\u{1}subscribed\0\u{3}window_opened\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}error\0\u{1}ack\0\u{1}pong\0\u{1}subscribed\0\u{3}window_opened\0\u{3}tab_opened\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -884,6 +966,19 @@ nonisolated extension WTResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
           self.kind = .windowOpened(v)
         }
       }()
+      case 6: try {
+        var v: WTTabOpened?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .tabOpened(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .tabOpened(v)
+        }
+      }()
       default: break
       }
     }
@@ -914,6 +1009,10 @@ nonisolated extension WTResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     case .windowOpened?: try {
       guard case .windowOpened(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
+    }()
+    case .tabOpened?: try {
+      guard case .tabOpened(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
     }()
     case nil: break
     }
@@ -1224,86 +1323,48 @@ nonisolated extension WTSnapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageI
   public static let protoMessageName: String = _protobuf_package + ".Snapshot"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}subscription_id\0\u{1}window\0")
 
-  fileprivate class _StorageClass {
-    var _subscriptionID: UInt64 = 0
-    var _model: WTSnapshot.OneOf_Model?
-
-      // This property is used as the initial default value for new instances of the type.
-      // The type itself is protecting the reference to its storage via CoW semantics.
-      // This will force a copy to be made of this reference when the first mutation occurs;
-      // hence, it is safe to mark this as `nonisolated(unsafe)`.
-      static nonisolated(unsafe) let defaultInstance = _StorageClass()
-
-    private init() {}
-
-    init(copying source: _StorageClass) {
-      _subscriptionID = source._subscriptionID
-      _model = source._model
-    }
-  }
-
-  fileprivate mutating func _uniqueStorage() -> _StorageClass {
-    if !isKnownUniquelyReferenced(&_storage) {
-      _storage = _StorageClass(copying: _storage)
-    }
-    return _storage
-  }
-
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    _ = _uniqueStorage()
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      while let fieldNumber = try decoder.nextFieldNumber() {
-        // The use of inline closures is to circumvent an issue where the compiler
-        // allocates stack space for every case branch when no optimizations are
-        // enabled. https://github.com/apple/swift-protobuf/issues/1034
-        switch fieldNumber {
-        case 1: try { try decoder.decodeSingularUInt64Field(value: &_storage._subscriptionID) }()
-        case 2: try {
-          var v: WTWindowSnapshot?
-          var hadOneofValue = false
-          if let current = _storage._model {
-            hadOneofValue = true
-            if case .window(let m) = current {v = m}
-          }
-          try decoder.decodeSingularMessageField(value: &v)
-          if let v = v {
-            if hadOneofValue {try decoder.handleConflictingOneOf()}
-            _storage._model = .window(v)
-          }
-        }()
-        default: break
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.subscriptionID) }()
+      case 2: try {
+        var v: WTWindowSnapshot?
+        var hadOneofValue = false
+        if let current = self.model {
+          hadOneofValue = true
+          if case .window(let m) = current {v = m}
         }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.model = .window(v)
+        }
+      }()
+      default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every if/case branch local when no optimizations
-      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-      // https://github.com/apple/swift-protobuf/issues/1182
-      if _storage._subscriptionID != 0 {
-        try visitor.visitSingularUInt64Field(value: _storage._subscriptionID, fieldNumber: 1)
-      }
-      try { if case .window(let v)? = _storage._model {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-      } }()
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if self.subscriptionID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.subscriptionID, fieldNumber: 1)
     }
+    try { if case .window(let v)? = self.model {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: WTSnapshot, rhs: WTSnapshot) -> Bool {
-    if lhs._storage !== rhs._storage {
-      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-        let _storage = _args.0
-        let rhs_storage = _args.1
-        if _storage._subscriptionID != rhs_storage._subscriptionID {return false}
-        if _storage._model != rhs_storage._model {return false}
-        return true
-      }
-      if !storagesAreEqual {return false}
-    }
+    if lhs.subscriptionID != rhs.subscriptionID {return false}
+    if lhs.model != rhs.model {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

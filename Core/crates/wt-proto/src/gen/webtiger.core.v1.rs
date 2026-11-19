@@ -120,13 +120,74 @@ pub struct TabCommand {
     #[prost(enumeration = "NavigationCommand", tag = "2")]
     pub command: i32,
 }
+/// Opens a tab in a window. Answered with TabOpened once its page, if it was
+/// given one, was asked of the shell, or with "window.unknown". A tab given no
+/// text is empty and has no web view.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct OpenTab {
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
+    /// What the tab opens, as it would be typed in an address field: the core
+    /// decides whether it is an address or a search. Empty: an empty tab.
+    #[prost(string, tag = "2")]
+    pub text: ::prost::alloc::string::String,
+    /// Leave the tab in front where it is; the new one opens behind it.
+    #[prost(bool, tag = "3")]
+    pub background: bool,
+    /// The tab the new one is put after, when it is a tab of this window.
+    /// Otherwise, and for 0, the new tab goes at the end.
+    #[prost(uint64, tag = "4")]
+    pub after_tab_id: u64,
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct TabOpened {
+    #[prost(uint64, tag = "1")]
+    pub tab_id: u64,
+}
+/// Closes a tab: its web view is destroyed. If it was in front, the tab after
+/// it comes forward, or the one before it when it was the last. A window
+/// always has a tab: an empty one takes the place of its only tab. Answered
+/// with Ack, or "tab.unknown".
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CloseTab {
+    #[prost(uint64, tag = "1")]
+    pub tab_id: u64,
+}
+/// Brings a tab in front in its window. Answered with Ack, or "tab.unknown".
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ActivateTab {
+    #[prost(uint64, tag = "1")]
+    pub tab_id: u64,
+}
 /// A window, as its subscription publishes it.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WindowSnapshot {
     #[prost(uint64, tag = "1")]
     pub window_id: u64,
+    /// The tab in front, whole: the page a shell shows, and what its controls
+    /// act on.
     #[prost(message, optional, tag = "2")]
     pub tab: ::core::option::Option<TabView>,
+    /// Every tab of the window, the one in front among them, in the order they
+    /// are shown.
+    #[prost(message, repeated, tag = "3")]
+    pub tabs: ::prost::alloc::vec::Vec<TabSummary>,
+}
+/// A tab as a strip of tabs shows it: enough to name it, and no more.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct TabSummary {
+    #[prost(uint64, tag = "1")]
+    pub tab_id: u64,
+    /// The page's title. Empty: the shell shows `host`, or its words for a new
+    /// tab when that is empty too.
+    #[prost(string, tag = "2")]
+    pub title: ::prost::alloc::string::String,
+    /// The host of the address the tab shows, in its ASCII form. As in the
+    /// address field, it is the page's only once the page has committed.
+    #[prost(string, tag = "3")]
+    pub host: ::prost::alloc::string::String,
+    #[prost(bool, tag = "4")]
+    pub loading: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TabView {
@@ -601,7 +662,7 @@ pub mod envelope {
 /// request that waits (on the shell) never holds up others.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Request {
-    #[prost(oneof = "request::Kind", tags = "1, 2, 3, 4, 5, 6, 7, 8")]
+    #[prost(oneof = "request::Kind", tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11")]
     pub kind: ::core::option::Option<request::Kind>,
 }
 /// Nested message and enum types in `Request`.
@@ -626,12 +687,19 @@ pub mod request {
         /// engine.proto. Sent as a notification (envelope id 0).
         #[prost(message, tag = "8")]
         EngineEvent(super::EngineEvent),
+        /// browser.proto, since 1.1
+        #[prost(message, tag = "9")]
+        OpenTab(super::OpenTab),
+        #[prost(message, tag = "10")]
+        CloseTab(super::CloseTab),
+        #[prost(message, tag = "11")]
+        ActivateTab(super::ActivateTab),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Response {
-    #[prost(oneof = "response::Kind", tags = "1, 2, 3, 4, 5")]
+    #[prost(oneof = "response::Kind", tags = "1, 2, 3, 4, 5, 6")]
     pub kind: ::core::option::Option<response::Kind>,
 }
 /// Nested message and enum types in `Response`.
@@ -649,6 +717,8 @@ pub mod response {
         /// browser.proto
         #[prost(message, tag = "5")]
         WindowOpened(super::WindowOpened),
+        #[prost(message, tag = "6")]
+        TabOpened(super::TabOpened),
     }
 }
 /// Core → shell, unasked.

@@ -7,12 +7,13 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use wt_app::{Dispatcher, HOST_TIMEOUT, Outbox, StartError};
-use wt_proto::CONTRACT_MAJOR;
 use wt_proto::v1::{
-    CoreConfig, EngineEvent, EngineInfo, EngineKind, Envelope, FakeOptions, HostResponse,
-    OpenWindow, Platform, Request, SubmitAddress, Subscribe, TestMode, WindowSnapshot, WindowTopic,
-    envelope, event, host_request, host_response, request, response, snapshot, subscribe,
+    ActivateTab, CloseTab, CoreConfig, EngineEvent, EngineInfo, EngineKind, Envelope, FakeOptions,
+    HostResponse, OpenTab, OpenWindow, Platform, Request, SubmitAddress, Subscribe, TestMode,
+    WindowSnapshot, WindowTopic, envelope, event, host_request, host_response, request, response,
+    snapshot, subscribe,
 };
+use wt_proto::{CONTRACT_MAJOR, CONTRACT_MINOR};
 
 use crate::engine::FakeEngine;
 
@@ -46,7 +47,7 @@ impl FakeShell {
     pub fn config(engine: EngineKind) -> CoreConfig {
         CoreConfig {
             contract_major: CONTRACT_MAJOR,
-            contract_minor: 0,
+            contract_minor: CONTRACT_MINOR,
             platform: Platform::Cli as i32,
             locale: "en-GB".to_owned(),
             data_dir: String::new(),
@@ -249,6 +250,35 @@ impl FakeShell {
             text: text.to_owned(),
         }))
         .await
+    }
+
+    /// Opens a tab in a window, in front and at the end, and waits: empty
+    /// for no text, or on what the text is. Its id.
+    pub async fn open_tab(&mut self, window: u64, text: &str) -> u64 {
+        let answer = self
+            .request(request::Kind::OpenTab(OpenTab {
+                window_id: window,
+                text: text.to_owned(),
+                background: false,
+                after_tab_id: 0,
+            }))
+            .await;
+        let response::Kind::TabOpened(opened) = answer else {
+            panic!("OpenTab answers TabOpened, not {answer:?}");
+        };
+        opened.tab_id
+    }
+
+    /// Closes a tab and waits.
+    pub async fn close_tab(&mut self, tab: u64) -> response::Kind {
+        self.request(request::Kind::CloseTab(CloseTab { tab_id: tab }))
+            .await
+    }
+
+    /// Brings a tab in front and waits.
+    pub async fn activate_tab(&mut self, tab: u64) -> response::Kind {
+        self.request(request::Kind::ActivateTab(ActivateTab { tab_id: tab }))
+            .await
     }
 
     /// Every snapshot a subscription was sent, in order.

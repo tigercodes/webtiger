@@ -1,6 +1,6 @@
 # WebTiger
 
-An open-source browser: one Rust core, native shells (Swift on Apple, C++/WinRT on Windows, Kotlin on Android), each system's own web engine. The plan is `docs/features/000-master-plan.md`; what is built so far is `docs/features/001-foundations.md` (and 002 the Arc importer, 003 the Android shell, 004 the design catalogue). **This repository is public: its documents and comments must stand alone and never point into a private repository.**
+An open-source browser: one Rust core, native shells (Swift on Apple, C++/WinRT on Windows, Kotlin on Android), each system's own web engine. The plan is `docs/features/000-master-plan.md`; what is built so far is `docs/features/001-foundations.md` (and 002 the Arc importer, 003 the Android shell, 004 the design catalogue). W1's features start at 005 (tabs). **This repository is public: its documents and comments must stand alone and never point into a private repository.**
 
 Two words, kept apart everywhere: the **core** is the Rust side; an **engine** is a web engine (WebKit, Chromium).
 

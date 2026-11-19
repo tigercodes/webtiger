@@ -5,7 +5,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use wt_core::{Address, IdMint, LoginSetId, Security, TabId, WebViewId, WindowId};
 use wt_proto::v1::{
-    AddressView, EngineKind, LoadState, TabView, WindowSnapshot, address_view, engine_event,
+    AddressView, EngineKind, LoadState, TabSummary, TabView, WindowSnapshot, address_view,
+    engine_event,
 };
 use wt_store::Space;
 
@@ -133,8 +134,28 @@ impl Tab {
         }
     }
 
+    /// The address the tab shows: where the user sent it, until a page
+    /// commits; otherwise the page that owns the web view.
+    fn shown(&self) -> Option<&Address> {
+        self.pending.as_ref().or(self.committed.as_ref())
+    }
+
+    /// The tab as a strip of tabs shows it.
+    fn summary(&self, id: TabId) -> TabSummary {
+        TabSummary {
+            tab_id: id.get(),
+            title: self.title.clone(),
+            host: self
+                .shown()
+                .and_then(Address::host)
+                .unwrap_or_default()
+                .to_owned(),
+            loading: self.load == Load::Loading,
+        }
+    }
+
     fn view(&self, id: TabId) -> TabView {
-        let shown = self.pending.as_ref().or(self.committed.as_ref());
+        let shown = self.shown();
         TabView {
             tab_id: id.get(),
             web_view_id: self.web_view.map_or(0, WebViewId::get),
@@ -179,6 +200,14 @@ pub(crate) struct LoadTarget {
     pub(crate) login_set: LoginSetId,
 }
 
+/// A window: its tabs in the order they are shown, and the one in front. It
+/// always has a tab (005, T1).
+#[derive(Debug)]
+struct Window {
+    tabs: Vec<TabId>,
+    front: TabId,
+}
+
 /// Everything the app knows.
 #[derive(Debug)]
 pub(crate) struct State {
@@ -187,8 +216,7 @@ pub(crate) struct State {
     /// One mint for windows, tabs and web views, so an id of one kind never
     /// equals an id of another.
     ids: IdMint,
-    /// W0: a window has one tab.
-    windows: BTreeMap<WindowId, TabId>,
+    windows: BTreeMap<WindowId, Window>,
     tabs: BTreeMap<TabId, Tab>,
     web_views: BTreeMap<WebViewId, TabId>,
     /// Windows whose snapshot may have changed since the last publish.
@@ -214,7 +242,13 @@ impl State {
     pub(crate) fn open_window(&mut self) -> (WindowId, TabId) {
         let window = WindowId(self.ids.mint());
         let tab = TabId(self.ids.mint());
-        self.windows.insert(window, tab);
+        self.windows.insert(
+            window,
+            Window {
+                tabs: vec![tab],
+                front: tab,
+            },
+        );
         self.tabs
             .insert(tab, Tab::new(window, self.engine, self.space.login_set));
         self.dirty.insert(window);
@@ -224,14 +258,89 @@ impl State {
     /// Closes a window. The web views to destroy, or `None` when there is no
     /// such window.
     pub(crate) fn close_window(&mut self, window: WindowId) -> Option<Vec<WebViewId>> {
-        let tab = self.windows.remove(&window)?;
-        let web_view = self.tabs.remove(&tab).and_then(|tab| tab.web_view);
-        if let Some(web_view) = web_view {
-            self.web_views.remove(&web_view);
+        let closing = self.windows.remove(&window)?;
+        let mut web_views = Vec::new();
+        for tab in closing.tabs {
+            if let Some(web_view) = self.tabs.remove(&tab).and_then(|tab| tab.web_view) {
+                self.web_views.remove(&web_view);
+                web_views.push(web_view);
+            }
         }
         self.dirty.remove(&window);
         self.closed.push(window);
-        Some(web_view.into_iter().collect())
+        Some(web_views)
+    }
+
+    /// Opens an empty tab in a window: after `after` when that is one of the
+    /// window's tabs, at the end otherwise; in front unless `background`.
+    /// `None` when there is no such window.
+    pub(crate) fn open_tab(
+        &mut self,
+        window_id: WindowId,
+        after: Option<TabId>,
+        background: bool,
+    ) -> Option<TabId> {
+        let window = self.windows.get_mut(&window_id)?;
+        let tab = TabId(self.ids.mint());
+        let place = after
+            .and_then(|after| window.tabs.iter().position(|id| *id == after))
+            .map_or(window.tabs.len(), |index| index + 1);
+        window.tabs.insert(place, tab);
+        if !background {
+            window.front = tab;
+        }
+        self.tabs
+            .insert(tab, Tab::new(window_id, self.engine, self.space.login_set));
+        self.dirty.insert(window_id);
+        Some(tab)
+    }
+
+    /// Closes a tab. Its web view to destroy, if it had one; or `None` when
+    /// there is no such tab.
+    ///
+    /// When the tab was in front, the one after it comes forward, or the one
+    /// before it when it was the last. A window always has a tab: an empty
+    /// one takes the place of its only tab.
+    pub(crate) fn close_tab(&mut self, tab_id: TabId) -> Option<Option<WebViewId>> {
+        let tab = self.tabs.remove(&tab_id)?;
+        if let Some(web_view) = tab.web_view {
+            self.web_views.remove(&web_view);
+        }
+        if let Some(window) = self.windows.get_mut(&tab.window) {
+            let index = window.tabs.iter().position(|id| *id == tab_id);
+            window.tabs.retain(|id| *id != tab_id);
+            if window.tabs.is_empty() {
+                let fresh = TabId(self.ids.mint());
+                self.tabs.insert(
+                    fresh,
+                    Tab::new(tab.window, self.engine, self.space.login_set),
+                );
+                window.tabs.push(fresh);
+                window.front = fresh;
+            } else if window.front == tab_id {
+                // What was after it is now where it was; past the end, the last.
+                let next = index.unwrap_or(0).min(window.tabs.len() - 1);
+                if let Some(next) = window.tabs.get(next) {
+                    window.front = *next;
+                }
+            }
+            self.dirty.insert(tab.window);
+        }
+        Some(tab.web_view)
+    }
+
+    /// Brings a tab in front in its window. Whether there is such a tab.
+    pub(crate) fn activate_tab(&mut self, tab_id: TabId) -> bool {
+        let Some(tab) = self.tabs.get(&tab_id) else {
+            return false;
+        };
+        if let Some(window) = self.windows.get_mut(&tab.window)
+            && window.front != tab_id
+        {
+            window.front = tab_id;
+            self.dirty.insert(tab.window);
+        }
+        true
     }
 
     /// The user sent a tab to an address. Says which web view loads it and
@@ -308,12 +417,17 @@ impl State {
         }
     }
 
-    pub(crate) fn window_snapshot(&self, window: WindowId) -> Option<WindowSnapshot> {
-        let tab_id = *self.windows.get(&window)?;
-        let tab = self.tabs.get(&tab_id)?;
+    pub(crate) fn window_snapshot(&self, window_id: WindowId) -> Option<WindowSnapshot> {
+        let window = self.windows.get(&window_id)?;
+        let front = self.tabs.get(&window.front)?;
         Some(WindowSnapshot {
-            window_id: window.get(),
-            tab: Some(tab.view(tab_id)),
+            window_id: window_id.get(),
+            tab: Some(front.view(window.front)),
+            tabs: window
+                .tabs
+                .iter()
+                .filter_map(|id| self.tabs.get(id).map(|tab| tab.summary(*id)))
+                .collect(),
         })
     }
 

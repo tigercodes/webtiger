@@ -1,6 +1,7 @@
 // WebTiger Core ↔ shell contract (docs/features/000-master-plan.md §5.5,
 // docs/features/001-foundations.md §4).
-// Contract version: 1.0 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
+// Contract version: 1.1 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
+//   1.1  Tabs: OpenTab, CloseTab, ActivateTab, TabOpened; WindowSnapshot.tabs.
 //
 // Every message crosses the C ABI as protobuf bytes:
 //   wt_core_start(CoreConfig)   config.proto
@@ -69,6 +70,10 @@ message Request {
     TabCommand tab_command = 7;
     // engine.proto. Sent as a notification (envelope id 0).
     EngineEvent engine_event = 8;
+    // browser.proto, since 1.1
+    OpenTab open_tab = 9;
+    CloseTab close_tab = 10;
+    ActivateTab activate_tab = 11;
   }
 }
 
@@ -81,6 +86,7 @@ message Response {
     Subscribed subscribed = 4;
     // browser.proto
     WindowOpened window_opened = 5;
+    TabOpened tab_opened = 6;
   }
 }
 

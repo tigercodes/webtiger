@@ -1,7 +1,8 @@
 // Windows and tabs: what a shell asks for and what it draws.
 //
-// W0 has one window model with one tab. W2 replaces WindowSnapshot.tab with
-// the sidebar tree and the tab strip; the requests here stay.
+// A window has tabs in an order, and one of them in front (1.1; 005). W2
+// builds the sidebar tree and the tab strip over them; the requests here
+// stay.
 syntax = "proto3";
 
 package webtiger.core.v1;
@@ -44,10 +45,59 @@ message TabCommand {
   NavigationCommand command = 2;
 }
 
+// Opens a tab in a window. Answered with TabOpened once its page, if it was
+// given one, was asked of the shell, or with "window.unknown". A tab given no
+// text is empty and has no web view.
+message OpenTab {
+  uint64 window_id = 1;
+  // What the tab opens, as it would be typed in an address field: the core
+  // decides whether it is an address or a search. Empty: an empty tab.
+  string text = 2 [(wt.redact) = true];
+  // Leave the tab in front where it is; the new one opens behind it.
+  bool background = 3;
+  // The tab the new one is put after, when it is a tab of this window.
+  // Otherwise, and for 0, the new tab goes at the end.
+  uint64 after_tab_id = 4;
+}
+
+message TabOpened {
+  uint64 tab_id = 1;
+}
+
+// Closes a tab: its web view is destroyed. If it was in front, the tab after
+// it comes forward, or the one before it when it was the last. A window
+// always has a tab: an empty one takes the place of its only tab. Answered
+// with Ack, or "tab.unknown".
+message CloseTab {
+  uint64 tab_id = 1;
+}
+
+// Brings a tab in front in its window. Answered with Ack, or "tab.unknown".
+message ActivateTab {
+  uint64 tab_id = 1;
+}
+
 // A window, as its subscription publishes it.
 message WindowSnapshot {
   uint64 window_id = 1;
+  // The tab in front, whole: the page a shell shows, and what its controls
+  // act on.
   TabView tab = 2;
+  // Every tab of the window, the one in front among them, in the order they
+  // are shown.
+  repeated TabSummary tabs = 3;
+}
+
+// A tab as a strip of tabs shows it: enough to name it, and no more.
+message TabSummary {
+  uint64 tab_id = 1;
+  // The page's title. Empty: the shell shows `host`, or its words for a new
+  // tab when that is empty too.
+  string title = 2 [(wt.redact) = true];
+  // The host of the address the tab shows, in its ASCII form. As in the
+  // address field, it is the page's only once the page has committed.
+  string host = 3 [(wt.redact) = true];
+  bool loading = 4;
 }
 
 message TabView {

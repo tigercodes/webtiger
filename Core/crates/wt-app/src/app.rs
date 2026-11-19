@@ -8,9 +8,9 @@ use std::rc::Rc;
 
 use wt_core::{Address, Input, TabId, WebViewId, WindowId, classify, search_address};
 use wt_proto::v1::{
-    Ack, CloseWindow, EngineEvent, EngineKind, LoginSet, NavigationCommand, SubmitAddress,
-    TabCommand, WebViewCommand, WebViewCreate, WebViewDestroy, WebViewLoad, WindowOpened,
-    WindowSnapshot, host_request, request, response,
+    Ack, ActivateTab, CloseTab, CloseWindow, EngineEvent, EngineKind, LoginSet, NavigationCommand,
+    OpenTab, SubmitAddress, TabCommand, TabOpened, WebViewCommand, WebViewCreate, WebViewDestroy,
+    WebViewLoad, WindowOpened, WindowSnapshot, host_request, request, response,
 };
 use wt_store::Space;
 
@@ -60,12 +60,16 @@ impl App {
         }
     }
 
-    /// Handles one of the app's requests: `OpenWindow`, `CloseWindow`,
-    /// `SubmitAddress` or `TabCommand`. The dispatcher answers the rest.
+    /// Handles one of the app's requests: a window's (`OpenWindow`,
+    /// `CloseWindow`) or a tab's (`OpenTab`, `CloseTab`, `ActivateTab`,
+    /// `SubmitAddress`, `TabCommand`). The dispatcher answers the rest.
     pub fn request(&self, kind: request::Kind) -> AppFuture {
         match kind {
             request::Kind::OpenWindow(_) => self.open_window(),
             request::Kind::CloseWindow(close) => self.close_window(&close),
+            request::Kind::OpenTab(open) => self.open_tab(&open),
+            request::Kind::CloseTab(close) => self.close_tab(&close),
+            request::Kind::ActivateTab(activate) => self.activate_tab(&activate),
             request::Kind::SubmitAddress(submit) => self.submit_address(&submit),
             request::Kind::TabCommand(command) => self.tab_command(&command),
             request::Kind::Ping(_)
@@ -148,6 +152,59 @@ impl App {
             }
             Ok(response::Kind::Ack(Ack {}))
         })
+    }
+
+    fn open_tab(&self, open: &OpenTab) -> AppFuture {
+        let after = (open.after_tab_id != 0).then_some(TabId(open.after_tab_id));
+        let opened =
+            self.state
+                .borrow_mut()
+                .open_tab(WindowId(open.window_id), after, open.background);
+        let Some(tab) = opened else {
+            return refuse(AppError::new("window.unknown").field("window_id"));
+        };
+        let opened = response::Kind::TabOpened(TabOpened { tab_id: tab.get() });
+        let page = self
+            .address_for(&open.text)
+            .and_then(|address| self.begin_load(tab, address));
+        let Some(loading) = page else {
+            return Box::pin(std::future::ready(Ok(opened)));
+        };
+        Box::pin(async move {
+            // The tab opened whatever became of its page: a failed load
+            // shows in the tab.
+            let _ = loading.await;
+            Ok(opened)
+        })
+    }
+
+    fn close_tab(&self, close: &CloseTab) -> AppFuture {
+        let closed = self.state.borrow_mut().close_tab(TabId(close.tab_id));
+        let Some(web_view) = closed else {
+            return refuse(AppError::new("tab.unknown").field("tab_id"));
+        };
+        let destroying = web_view.map(|web_view| {
+            self.host
+                .request(host_request::Kind::WebViewDestroy(WebViewDestroy {
+                    web_view_id: web_view.get(),
+                }))
+        });
+        Box::pin(async move {
+            // The tab is closed in the models already. A shell that fails to
+            // destroy its web view keeps a leak, not a tab.
+            if let Some(destroyed) = destroying {
+                let _ = destroyed.await;
+            }
+            Ok(response::Kind::Ack(Ack {}))
+        })
+    }
+
+    fn activate_tab(&self, activate: &ActivateTab) -> AppFuture {
+        if self.state.borrow_mut().activate_tab(TabId(activate.tab_id)) {
+            Box::pin(std::future::ready(Ok(response::Kind::Ack(Ack {}))))
+        } else {
+            refuse(AppError::new("tab.unknown").field("tab_id"))
+        }
     }
 
     fn submit_address(&self, submit: &SubmitAddress) -> AppFuture {

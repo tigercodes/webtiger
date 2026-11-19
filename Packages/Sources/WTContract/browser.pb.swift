@@ -10,8 +10,9 @@
 
 /// Windows and tabs: what a shell asks for and what it draws.
 ///
-/// W0 has one window model with one tab. W2 replaces WindowSnapshot.tab with
-/// the sidebar tree and the tab strip; the requests here stay.
+/// A window has tabs in an order, and one of them in front (1.1; 005). W2
+/// builds the sidebar tree and the tab strip over them; the requests here
+/// stay.
 
 public import SwiftProtobuf
 
@@ -143,28 +144,130 @@ public nonisolated struct WTTabCommand: Sendable {
   public init() {}
 }
 
-/// A window, as its subscription publishes it.
-public nonisolated struct WTWindowSnapshot: Sendable {
+/// Opens a tab in a window. Answered with TabOpened once its page, if it was
+/// given one, was asked of the shell, or with "window.unknown". A tab given no
+/// text is empty and has no web view.
+public nonisolated struct WTOpenTab: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   public var windowID: UInt64 = 0
 
+  /// What the tab opens, as it would be typed in an address field: the core
+  /// decides whether it is an address or a search. Empty: an empty tab.
+  public var text: String = String()
+
+  /// Leave the tab in front where it is; the new one opens behind it.
+  public var background: Bool = false
+
+  /// The tab the new one is put after, when it is a tab of this window.
+  /// Otherwise, and for 0, the new tab goes at the end.
+  public var afterTabID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct WTTabOpened: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var tabID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Closes a tab: its web view is destroyed. If it was in front, the tab after
+/// it comes forward, or the one before it when it was the last. A window
+/// always has a tab: an empty one takes the place of its only tab. Answered
+/// with Ack, or "tab.unknown".
+public nonisolated struct WTCloseTab: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var tabID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Brings a tab in front in its window. Answered with Ack, or "tab.unknown".
+public nonisolated struct WTActivateTab: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var tabID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// A window, as its subscription publishes it.
+public nonisolated struct WTWindowSnapshot: @unchecked Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var windowID: UInt64 {
+    get {_storage._windowID}
+    set {_uniqueStorage()._windowID = newValue}
+  }
+
+  /// The tab in front, whole: the page a shell shows, and what its controls
+  /// act on.
   public var tab: WTTabView {
-    get {_tab ?? WTTabView()}
-    set {_tab = newValue}
+    get {_storage._tab ?? WTTabView()}
+    set {_uniqueStorage()._tab = newValue}
   }
   /// Returns true if `tab` has been explicitly set.
-  public var hasTab: Bool {self._tab != nil}
+  public var hasTab: Bool {_storage._tab != nil}
   /// Clears the value of `tab`. Subsequent reads from it will return its default value.
-  public mutating func clearTab() {self._tab = nil}
+  public mutating func clearTab() {_uniqueStorage()._tab = nil}
+
+  /// Every tab of the window, the one in front among them, in the order they
+  /// are shown.
+  public var tabs: [WTTabSummary] {
+    get {_storage._tabs}
+    set {_uniqueStorage()._tabs = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _tab: WTTabView? = nil
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+/// A tab as a strip of tabs shows it: enough to name it, and no more.
+public nonisolated struct WTTabSummary: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var tabID: UInt64 = 0
+
+  /// The page's title. Empty: the shell shows `host`, or its words for a new
+  /// tab when that is empty too.
+  public var title: String = String()
+
+  /// The host of the address the tab shows, in its ASCII form. As in the
+  /// address field, it is the page's only once the page has committed.
+  public var host: String = String()
+
+  public var loading: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
 }
 
 public nonisolated struct WTTabView: Sendable {
@@ -455,9 +558,9 @@ nonisolated extension WTTabCommand: SwiftProtobuf.Message, SwiftProtobuf._Messag
   }
 }
 
-nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".WindowSnapshot"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0")
+nonisolated extension WTOpenTab: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".OpenTab"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}text\0\u{1}background\0\u{3}after_tab_id\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -466,29 +569,254 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularUInt64Field(value: &self.windowID) }()
-      case 2: try { try decoder.decodeSingularMessageField(value: &self._tab) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.text) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.background) }()
+      case 4: try { try decoder.decodeSingularUInt64Field(value: &self.afterTabID) }()
       default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
     if self.windowID != 0 {
       try visitor.visitSingularUInt64Field(value: self.windowID, fieldNumber: 1)
     }
-    try { if let v = self._tab {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-    } }()
+    if !self.text.isEmpty {
+      try visitor.visitSingularStringField(value: self.text, fieldNumber: 2)
+    }
+    if self.background != false {
+      try visitor.visitSingularBoolField(value: self.background, fieldNumber: 3)
+    }
+    if self.afterTabID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.afterTabID, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTOpenTab, rhs: WTOpenTab) -> Bool {
+    if lhs.windowID != rhs.windowID {return false}
+    if lhs.text != rhs.text {return false}
+    if lhs.background != rhs.background {return false}
+    if lhs.afterTabID != rhs.afterTabID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTTabOpened: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TabOpened"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.tabID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.tabID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.tabID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTTabOpened, rhs: WTTabOpened) -> Bool {
+    if lhs.tabID != rhs.tabID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTCloseTab: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CloseTab"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.tabID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.tabID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.tabID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTCloseTab, rhs: WTCloseTab) -> Bool {
+    if lhs.tabID != rhs.tabID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTActivateTab: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ActivateTab"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.tabID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.tabID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.tabID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTActivateTab, rhs: WTActivateTab) -> Bool {
+    if lhs.tabID != rhs.tabID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WindowSnapshot"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0")
+
+  fileprivate class _StorageClass {
+    var _windowID: UInt64 = 0
+    var _tab: WTTabView? = nil
+    var _tabs: [WTTabSummary] = []
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _windowID = source._windowID
+      _tab = source._tab
+      _tabs = source._tabs
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularUInt64Field(value: &_storage._windowID) }()
+        case 2: try { try decoder.decodeSingularMessageField(value: &_storage._tab) }()
+        case 3: try { try decoder.decodeRepeatedMessageField(value: &_storage._tabs) }()
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._windowID != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._windowID, fieldNumber: 1)
+      }
+      try { if let v = _storage._tab {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      } }()
+      if !_storage._tabs.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._tabs, fieldNumber: 3)
+      }
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: WTWindowSnapshot, rhs: WTWindowSnapshot) -> Bool {
-    if lhs.windowID != rhs.windowID {return false}
-    if lhs._tab != rhs._tab {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._windowID != rhs_storage._windowID {return false}
+        if _storage._tab != rhs_storage._tab {return false}
+        if _storage._tabs != rhs_storage._tabs {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TabSummary"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{1}title\0\u{1}host\0\u{1}loading\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.tabID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.title) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.host) }()
+      case 4: try { try decoder.decodeSingularBoolField(value: &self.loading) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.tabID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.tabID, fieldNumber: 1)
+    }
+    if !self.title.isEmpty {
+      try visitor.visitSingularStringField(value: self.title, fieldNumber: 2)
+    }
+    if !self.host.isEmpty {
+      try visitor.visitSingularStringField(value: self.host, fieldNumber: 3)
+    }
+    if self.loading != false {
+      try visitor.visitSingularBoolField(value: self.loading, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTTabSummary, rhs: WTTabSummary) -> Bool {
+    if lhs.tabID != rhs.tabID {return false}
+    if lhs.title != rhs.title {return false}
+    if lhs.host != rhs.host {return false}
+    if lhs.loading != rhs.loading {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

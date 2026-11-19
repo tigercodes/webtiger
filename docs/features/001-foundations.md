@@ -84,6 +84,8 @@ This is built in from the first commit, because it is the one thing that cannot 
 
 ## 5. The contract, version 1.0
 
+(W0's contract. W1 has added to it since: 1.1 is tabs, in [005](005-tabs.md) §4.)
+
 `Core/proto/webtiger/core/v1`. The C ABI is `Core/crates/wt-ffi/include/webtiger_core.h`.
 
 ```c
