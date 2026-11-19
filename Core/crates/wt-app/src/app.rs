@@ -19,7 +19,7 @@ use wt_proto::v1::{
     WebViewDestroy, WebViewLoad, WindowOpened, WindowSnapshot, engine_event, forget_history,
     host_request, request, response,
 };
-use wt_store::{Space, Store};
+use wt_store::{SavedTab, Space, Store};
 
 use crate::error::AppError;
 use crate::host::{Host, HostFuture};
@@ -56,6 +56,9 @@ pub struct AppOptions {
     pub fake_start: Option<String>,
     /// Where the app reads the time: a visit's (008).
     pub clock: Rc<dyn Clock>,
+    /// Whether a window's tabs are kept between runs (009). Not in fake
+    /// mode, where every window opens the same way.
+    pub session: bool,
 }
 
 /// The models and what changes them.
@@ -68,9 +71,13 @@ pub struct App {
     /// When each web view last had an address handed to the system, for
     /// those that had one within [`OUTSIDE_LINK_INTERVAL`].
     outside: Rc<RefCell<BTreeMap<WebViewId, Instant>>>,
-    /// The store, for what browsing writes: history (008).
+    /// The store, for what browsing writes: history (008) and the session
+    /// (009).
     store: Rc<RefCell<Store>>,
     clock: Rc<dyn Clock>,
+    space: wt_core::SpaceId,
+    /// The session as the store has it: written again only when it differs.
+    written: Rc<RefCell<Vec<SavedTab>>>,
 }
 
 impl App {
@@ -83,8 +90,15 @@ impl App {
         store: Rc<RefCell<Store>>,
         host: Rc<dyn Host>,
     ) -> App {
+        // A session that cannot be read is no session: the window opens
+        // empty, and what it then holds is what is kept.
+        let kept = options
+            .session
+            .then(|| store.borrow().saved_tabs(space.id).unwrap_or_default());
         App {
-            state: Rc::new(RefCell::new(State::new(space, options.engine))),
+            space: space.id,
+            written: Rc::new(RefCell::new(kept.clone().unwrap_or_default())),
+            state: Rc::new(RefCell::new(State::new(space, options.engine, kept))),
             host,
             search_template: options.search_template.into(),
             fake_start: options.fake_start.map(Into::into),
@@ -144,6 +158,9 @@ impl App {
         } else if titled {
             self.write_title(web_view, false);
         }
+        // A page that closed its own tab may have left one that is asleep
+        // in front.
+        self.wake_in_the_background();
         if let Some(web_view) = unwanted {
             let destroying =
                 self.host
@@ -295,6 +312,48 @@ impl App {
         });
     }
 
+    /// Loads every tab that is in front and asleep (009): a tab that came
+    /// back from the session is loaded when it comes in front. The loads are
+    /// asked for before this returns; what it returns is the wait for each.
+    fn wake(&self) -> Vec<impl Future<Output = Result<(), AppError>> + use<>> {
+        let waking = self.state.borrow_mut().tabs_to_wake();
+        waking
+            .into_iter()
+            .filter_map(|(tab, address)| self.begin_load(tab, address))
+            .collect()
+    }
+
+    /// [`App::wake`], for where nobody waits for the loads: a failure shows
+    /// in the tab.
+    fn wake_in_the_background(&self) {
+        for loading in self.wake() {
+            tokio::task::spawn_local(async move {
+                let _ = loading.await;
+            });
+        }
+    }
+
+    /// Writes the session to the store when it is not what the store has
+    /// (009). Called when the windows' snapshots are published, so that
+    /// what is kept is what was last seen. A store that refuses keeps what
+    /// it had: the next change tries again.
+    pub fn persist(&self) {
+        let Some(session) = self.state.borrow_mut().session() else {
+            return;
+        };
+        if *self.written.borrow() == session {
+            return;
+        }
+        if self
+            .store
+            .borrow_mut()
+            .save_tabs(self.space, &session)
+            .is_ok()
+        {
+            *self.written.borrow_mut() = session;
+        }
+    }
+
     /// A window as its subscribers see it, or `None` when there is none.
     #[must_use]
     pub fn window_snapshot(&self, window: WindowId) -> Option<WindowSnapshot> {
@@ -314,11 +373,22 @@ impl App {
     }
 
     fn open_window(&self) -> AppFuture {
-        let (window, tab) = self.state.borrow_mut().open_window();
+        let (window, tab, restored) = self.state.borrow_mut().open_window();
         let opened = response::Kind::WindowOpened(WindowOpened {
             window_id: window.get(),
             tab_id: tab.get(),
         });
+        if restored {
+            // The window has the session's tabs (009): the one in front is
+            // loaded now, and the window is open whatever becomes of it.
+            let waking = self.wake();
+            return Box::pin(async move {
+                for loading in waking {
+                    let _ = loading.await;
+                }
+                Ok(opened)
+            });
+        }
         let start = self
             .fake_start
             .as_deref()
@@ -396,22 +466,34 @@ impl App {
                     web_view_id: web_view.get(),
                 }))
         });
+        // The tab that came forward may be one that is asleep (009).
+        let waking = self.wake();
         Box::pin(async move {
             // The tab is closed in the models already. A shell that fails to
             // destroy its web view keeps a leak, not a tab.
             if let Some(destroyed) = destroying {
                 let _ = destroyed.await;
             }
+            for loading in waking {
+                let _ = loading.await;
+            }
             Ok(response::Kind::Ack(Ack {}))
         })
     }
 
     fn activate_tab(&self, activate: &ActivateTab) -> AppFuture {
-        if self.state.borrow_mut().activate_tab(TabId(activate.tab_id)) {
-            Box::pin(std::future::ready(Ok(response::Kind::Ack(Ack {}))))
-        } else {
-            refuse(AppError::new("tab.unknown").field("tab_id"))
+        if !self.state.borrow_mut().activate_tab(TabId(activate.tab_id)) {
+            return refuse(AppError::new("tab.unknown").field("tab_id"));
         }
+        // A tab that came back from the session is loaded now that it is in
+        // front (009). The tab is in front whatever becomes of its page.
+        let waking = self.wake();
+        Box::pin(async move {
+            for loading in waking {
+                let _ = loading.await;
+            }
+            Ok(response::Kind::Ack(Ack {}))
+        })
     }
 
     fn submit_address(&self, submit: &SubmitAddress) -> AppFuture {

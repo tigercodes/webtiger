@@ -8,7 +8,7 @@ use wt_proto::v1::{
     AddressView, EngineKind, LoadState, TabSummary, TabView, WindowSnapshot, address_view,
     engine_event,
 };
-use wt_store::Space;
+use wt_store::{SavedTab, Space};
 
 use crate::error::is_code;
 
@@ -52,6 +52,14 @@ pub(crate) struct Tab {
     click_spent: bool,
     /// The page the tab shows, as history has it (008).
     visit: Option<TabVisit>,
+    /// The tab came back from the session and has not been loaded since
+    /// (009): it has where it was (`pending`) and what it was called, and no
+    /// web view. It is loaded when it comes in front.
+    asleep: bool,
+    /// The title the session keeps for the tab, and the address it is the
+    /// title of: the first a page says, so that a page that changes its
+    /// title all the time is written once.
+    session_title: Option<(String, String)>,
 }
 
 /// The visit a tab's page is in the store, and what has been written of it.
@@ -92,11 +100,72 @@ impl Tab {
             had_page: false,
             click_spent: false,
             visit: None,
+            asleep: false,
+            session_title: None,
         }
+    }
+
+    /// A tab as the session kept it (009): where it was and what it was
+    /// called, asleep. `None` when what was kept is no address of the
+    /// web's: that is an empty tab.
+    fn restored(
+        window: WindowId,
+        engine: EngineKind,
+        login_set: LoginSetId,
+        saved: &SavedTab,
+    ) -> Tab {
+        let mut tab = Tab::new(window, engine, login_set);
+        let Some(address) = Address::parse(&saved.url)
+            .ok()
+            .filter(|address| matches!(address.scheme(), "http" | "https"))
+        else {
+            return tab;
+        };
+        tab.session_title =
+            (!saved.title.is_empty()).then(|| (address.as_str().to_owned(), saved.title.clone()));
+        tab.title.clone_from(&saved.title);
+        tab.pending = Some(address);
+        tab.asleep = true;
+        tab
+    }
+
+    /// The tab as the session keeps it (009): its address when that is the
+    /// web's, and the first title its page said.
+    fn saved(&mut self, front: bool) -> SavedTab {
+        let url = self
+            .shown()
+            .filter(|address| matches!(address.scheme(), "http" | "https"))
+            .map(|address| address.as_str().to_owned())
+            .unwrap_or_default();
+        if url.is_empty() {
+            self.session_title = None;
+            return SavedTab {
+                url,
+                title: String::new(),
+                front,
+            };
+        }
+        let kept = self
+            .session_title
+            .as_ref()
+            .is_some_and(|(of, _)| *of == url);
+        // While the tab is on its way somewhere, the title is still the
+        // page's it is leaving.
+        if !kept && self.pending.is_none() && !self.title.is_empty() {
+            self.session_title = Some((url.clone(), self.title.clone()));
+        }
+        let title = self
+            .session_title
+            .as_ref()
+            .filter(|(of, _)| *of == url)
+            .map(|(_, title)| title.clone())
+            .unwrap_or_default();
+        SavedTab { url, title, front }
     }
 
     /// The user sent the tab to `address`.
     fn begin_user_load(&mut self, address: Address) {
+        self.asleep = false;
         self.pending = Some(address);
         self.load = Load::Loading;
         self.progress = 0.0;
@@ -265,11 +334,22 @@ pub(crate) struct State {
     dirty: BTreeSet<WindowId>,
     /// Windows closed since the last publish.
     closed: Vec<WindowId>,
+    /// The session (009): the tabs of its window as last worked out, which
+    /// is what a window opened when there is none is given. `None` when
+    /// nothing is kept between runs: fake mode.
+    saved: Option<Vec<SavedTab>>,
+    /// The window whose tabs are the session: the first opened, and the
+    /// next one opened once that is closed.
+    session_window: Option<WindowId>,
 }
 
 impl State {
-    pub(crate) fn new(space: Space, engine: EngineKind) -> State {
+    /// A state with no windows. `saved` is the session the store kept, to
+    /// be given back to the first window; `None` keeps no session at all.
+    pub(crate) fn new(space: Space, engine: EngineKind, saved: Option<Vec<SavedTab>>) -> State {
         State {
+            saved,
+            session_window: None,
             space,
             engine,
             ids: IdMint::new(),
@@ -281,20 +361,82 @@ impl State {
         }
     }
 
-    pub(crate) fn open_window(&mut self) -> (WindowId, TabId) {
+    /// Opens a window. Its id, the tab in front, and whether its tabs came
+    /// back from the session (009): they do when no window has the session,
+    /// which is so for the first window of a run, and again once the window
+    /// that had it is closed.
+    pub(crate) fn open_window(&mut self) -> (WindowId, TabId, bool) {
         let window = WindowId(self.ids.mint());
-        let tab = TabId(self.ids.mint());
-        self.windows.insert(
-            window,
-            Window {
-                tabs: vec![tab],
-                front: tab,
-            },
-        );
-        self.tabs
-            .insert(tab, Tab::new(window, self.engine, self.space.login_set));
+        let has_session = self
+            .session_window
+            .is_some_and(|session| self.windows.contains_key(&session));
+        let kept = match &self.saved {
+            Some(saved) if !has_session => {
+                self.session_window = Some(window);
+                saved.clone()
+            }
+            _ => Vec::new(),
+        };
+        let mut tabs = Vec::new();
+        let mut front = None;
+        for saved in &kept {
+            let id = TabId(self.ids.mint());
+            self.tabs.insert(
+                id,
+                Tab::restored(window, self.engine, self.space.login_set, saved),
+            );
+            if saved.front {
+                front = Some(id);
+            }
+            tabs.push(id);
+        }
+        let restored = !tabs.is_empty();
+        if tabs.is_empty() {
+            let id = TabId(self.ids.mint());
+            self.tabs
+                .insert(id, Tab::new(window, self.engine, self.space.login_set));
+            tabs.push(id);
+        }
+        // A session with nobody in front (a store that was meddled with)
+        // puts its first tab there: a window always has one.
+        let front = front.unwrap_or(tabs[0]);
+        self.windows.insert(window, Window { tabs, front });
         self.dirty.insert(window);
-        (window, tab)
+        (window, front, restored)
+    }
+
+    /// The tabs in front that are asleep, and where each was (009): each is
+    /// to be loaded now, and is asleep no longer. The tab in front is never
+    /// left asleep.
+    pub(crate) fn tabs_to_wake(&mut self) -> Vec<(TabId, Address)> {
+        let fronts: Vec<TabId> = self.windows.values().map(|window| window.front).collect();
+        fronts
+            .into_iter()
+            .filter_map(|id| {
+                let tab = self.tabs.get_mut(&id)?;
+                if !tab.asleep {
+                    return None;
+                }
+                tab.asleep = false;
+                Some((id, tab.pending.clone()?))
+            })
+            .collect()
+    }
+
+    /// The session as it now is (009): the tabs of its window, in order.
+    /// `None` when there is nothing to write: no session is kept, or its
+    /// window is closed, which closes none of its tabs.
+    pub(crate) fn session(&mut self) -> Option<Vec<SavedTab>> {
+        self.saved.as_ref()?;
+        let window = self.windows.get(&self.session_window?)?;
+        let front = window.front;
+        let ids = window.tabs.clone();
+        let session: Vec<SavedTab> = ids
+            .into_iter()
+            .filter_map(|id| Some(self.tabs.get_mut(&id)?.saved(id == front)))
+            .collect();
+        self.saved = Some(session.clone());
+        Some(session)
     }
 
     /// Closes a window. The web views to destroy, or `None` when there is no

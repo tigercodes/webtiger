@@ -22,7 +22,7 @@ W0's window had exactly one tab ([001](001-foundations.md) §5). Everything else
 - **A page asking for a new window** (a link with a target, `window.open`). Today its address still loads in the tab that asked (001 F5). It needs a web view the engine itself made, for the page that asked to keep its hold on the one it opened, and so a way for the core to adopt a web view it did not ask for: its own feature, next.
 - **Moving a tab** within a window or to another window: with the tree and drag and drop (W2).
 - **Sleeping tabs and the live-tab limit** (W3). Every tab that has had a page keeps its web view until it is closed.
-- **Restoring tabs** after a quit or a crash: the store and the journal come first (W1, later).
+- **Restoring tabs** after a quit or a crash: [009](009-session-restore.md).
 - **The real layouts.** The sidebar, the tab strip proper, the phone's switcher and the keyboard maps are W2 (000 §6.1). What is built here is one plain strip, the same on every size of window.
 
 ## 3. The model

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built, and **run on an emulator** (Android 16, System WebView 133): the app starts, a page loads through the core, and 66 tests pass on the device, among them the adapter suite against the real WebView and isolation between login sets. 151 more pass on the JVM, 28 of them driving the real core through JNI. **Not yet run on a physical device, on any other WebView version, or folded** (§8) |
+| **Status** | Built, and **run on an emulator** (Android 16, System WebView 133): the app starts, a page loads through the core, and 66 tests pass on the device, among them the adapter suite against the real WebView and isolation between login sets. 152 more pass on the JVM, 28 of them driving the real core through JNI. **Not yet run on a physical device, on any other WebView version, or folded** (§8) |
 | **Phase** | W0 of [000](000-master-plan.md) §9; item 1 of [001](001-foundations.md) §12 |
 | **Stack** | 000 §5.1: Kotlin, Jetpack Compose, Material 3, `androidx.webkit`, Wire, JNI through `wt-ffi` |
 | **Last updated** | 2026-11-18 (run on an emulator; the device suite) |
@@ -278,7 +278,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | `cd Core && cargo clippy -p wt-ffi --features jni --all-targets --locked -- -D warnings` | clean |
 | `cd Core && cargo test --workspace --locked` | 139 passed |
 | `Tools/test.sh android`, from nothing | OK, 48 s |
-| … `:core-engine:testDebugUnitTest` | 30 passed |
+| … `:core-engine:testDebugUnitTest` | 31 passed |
 | … `:app:testDebugUnitTest` | 121 passed |
 | … `:app:assembleDebug` | `app-debug.apk`, with `libwebtiger_core.so` for `arm64-v8a` and `x86_64` |
 | `Tools/strings/strings.py --check`, `Tools/design/tokens.py --check` | up to date; the Apple outputs' checksums unchanged |
@@ -287,7 +287,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | Suite | Count | What it shows |
 |---|---|---|
 | `CoreLibraryTest` | 8 | The glue: constants against the header; order and one thread; bad messages; a refused start; a listener that throws; stop from the wrong thread; the fast path failing safe; several cores from several threads |
-| `NativeCoreTest` | 17 | The contract through Kotlin: ping direct and through the host; a page loading (`WebViewCreate` then `WebViewLoad`, engine events, the snapshot); fake mode's start address; refusals and refused starts by code; the store in its folder; the navigation policy; stopping |
+| `NativeCoreTest` | 18 | The contract through Kotlin: ping direct and through the host; a page loading (`WebViewCreate` then `WebViewLoad`, engine events, the snapshot); fake mode's start address; refusals and refused starts by code; the store in its folder; the navigation policy; stopping |
 | `ScriptedCoreTest` | 5 | The scripted core |
 | `PageTrackerTest` | 32 | §5.1, one situation each, two of them as observed on the emulator; a refusal is told apart from a load that was stopped (006); a link for the system is reported, and then refused (007) |
 | `SystemWebViewEngineTest` | 18 | The host service and its codes; no web view without profiles; the web view made for a page that asks for a window (006); the engine itself opens nothing outside (007) |

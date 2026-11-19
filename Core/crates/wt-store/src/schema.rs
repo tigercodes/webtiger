@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use crate::StoreError;
 
 /// The version this build's store is at.
-pub const SCHEMA_VERSION: u32 = 2;
+pub const SCHEMA_VERSION: u32 = 3;
 
 /// The migrations, in order: `MIGRATIONS[n]` takes version `n` to `n + 1`.
 const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
@@ -58,6 +58,16 @@ const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
          VALUES ('delete', old.id, old.url, old.title);
          INSERT INTO visit_text (rowid, url, title) VALUES (new.id, new.url, new.title);
      END;",
+    // 3 (W1, 009): the tabs a Space's window had, so that they come back.
+    // The table 000 §5.6 names, with the columns that need it so far.
+    "CREATE TABLE tab (
+         space_id INTEGER NOT NULL REFERENCES space (id),
+         position INTEGER NOT NULL,
+         url TEXT NOT NULL,
+         title TEXT NOT NULL,
+         front INTEGER NOT NULL CHECK (front IN (0, 1)),
+         PRIMARY KEY (space_id, position)
+     ) STRICT, WITHOUT ROWID;",
 ];
 
 pub(crate) fn version(connection: &Connection) -> Result<u32, StoreError> {

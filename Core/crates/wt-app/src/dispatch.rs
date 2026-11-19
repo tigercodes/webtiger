@@ -158,6 +158,7 @@ impl Dispatcher {
                 .map(|options| options.start_address.clone())
                 .filter(|start| fake && !start.is_empty()),
             clock,
+            session: !fake,
         };
         // The app holds the store: the database stays open, and locked, for
         // as long as the core runs.
@@ -202,6 +203,9 @@ impl Dispatcher {
     /// Publishes a snapshot of every subscribed model that changed since the
     /// last call. Changes that arrived together leave as one snapshot.
     pub fn flush(&self) {
+        // What is published is what is kept: the session is written here,
+        // when it has changed (009).
+        self.app.persist();
         let closed = self.app.take_closed();
         let dirty = self.app.take_dirty();
         let mut publishing = Vec::new();

@@ -37,6 +37,20 @@
         }
     }
 
+    /// The last snapshot of a window a core has published.
+    @MainActor
+    private final class WindowLog {
+        var window: WTWindowSnapshot?
+
+        /// The window once it has been published, waiting up to ten seconds for it.
+        func first() async -> WTWindowSnapshot? {
+            for _ in 0 ..< 2000 where window == nil {
+                try? await Task.sleep(for: .milliseconds(5))
+            }
+            return window
+        }
+    }
+
     @MainActor
     final class NativeCoreTests: XCTestCase {
         private func fakeConfig() -> WTCoreConfig {
@@ -218,6 +232,71 @@
             let core = try NativeCore.start(config: config, host: RecordingHost())
             core.stop()
             XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appending(path: "webtiger.sqlite").path(percentEncoded: false)))
+        }
+
+        /// The tabs come back (009), through Swift and the real core: a core is stopped, and
+        /// another started on the same folder is given the first one's tabs, in order, with
+        /// the one that was in front loaded and the other asleep.
+        func testTheTabsComeBackWhenTheCoreStartsAgain() async throws {
+            let folder = FileManager.default.temporaryDirectory.appending(path: "webtiger-test-\(UUID().uuidString)")
+            defer { try? FileManager.default.removeItem(at: folder) }
+            var config = fakeConfig()
+            config.testMode = .live
+            config.dataDir = folder.path(percentEncoded: false)
+
+            // The first run: a page in the first tab, and a second tab in front of it.
+            let first = try NativeCore.start(config: config, host: RecordingHost())
+            guard case let .windowOpened(opened) = try await first.request(.openWindow(WTOpenWindow())) else {
+                return XCTFail("expected WindowOpened")
+            }
+            var submit = WTSubmitAddress()
+            submit.tabID = opened.tabID
+            submit.text = "example.com"
+            try await first.perform(.submitAddress(submit))
+            var open = WTOpenTab()
+            open.windowID = opened.windowID
+            open.text = "example.org"
+            _ = try await first.request(.openTab(open))
+            // The snapshots are published, and with them the session is written, before the
+            // next request is answered.
+            try await first.perform(.ping(WTPing()))
+            first.stop()
+
+            // The second run, on the same folder.
+            let host = RecordingHost()
+            let second = try NativeCore.start(config: config, host: host)
+            defer { second.stop() }
+            let log = WindowLog()
+            let events = second.events
+            Task { @MainActor in
+                for await event in events {
+                    if case let .snapshot(snapshot) = event, case let .window(shown) = snapshot.model {
+                        log.window = shown
+                    }
+                }
+            }
+            guard case let .windowOpened(again) = try await second.request(.openWindow(WTOpenWindow())) else {
+                return XCTFail("expected WindowOpened")
+            }
+            var subscribe = WTSubscribe()
+            subscribe.window.windowID = again.windowID
+            guard case .subscribed = try await second.request(.subscribe(subscribe)) else { return XCTFail("expected Subscribed") }
+            let window = await log.first()
+
+            let tabs = try XCTUnwrap(window).tabs
+            XCTAssertEqual(tabs.map(\.host), ["example.com", "example.org"], "the tabs, in their order")
+            XCTAssertEqual(window?.tab.tabID, tabs.last?.tabID, "the one that was in front is in front")
+            XCTAssertEqual(window?.tab.address.url, "https://example.org/")
+            // Only the tab in front was loaded: one web view, one load.
+            let loads = host.requests.compactMap { request -> String? in
+                if case let .webViewLoad(load) = request {
+                    load.url
+                } else {
+                    nil
+                }
+            }
+            XCTAssertEqual(loads, ["https://example.org/"])
+            XCTAssertEqual(host.requests.count, 2, "a web view and its load, and nothing for the tab behind")
         }
 
         func testTheNavigationPolicyAnswersSynchronously() throws {

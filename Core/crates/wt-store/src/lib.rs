@@ -2,14 +2,15 @@
 //!
 //! W0 has the first two tables, `login_set` and `space`, because a web view
 //! cannot be created without knowing whose logins it runs in, and that
-//! answer has to be the same tomorrow. W1 adds history (`visit`, 008). The
-//! tabs, the journal and the one-writer-many-readers arrangement are still
-//! to come.
+//! answer has to be the same tomorrow. W1 adds history (`visit`, 008) and
+//! the tabs a window had (`tab`, 009). The journal and the
+//! one-writer-many-readers arrangement are still to come.
 //!
 //! Private login sets are never written here: they live and die in memory.
 
 mod history;
 mod schema;
+mod session;
 
 use std::path::Path;
 
@@ -18,6 +19,7 @@ use wt_core::{LoginSetId, SpaceId, Timestamp, Uuid};
 
 pub use history::{MAX_VISITS_PER_PAGE, Visit, VisitPage};
 pub use schema::SCHEMA_VERSION;
+pub use session::SavedTab;
 
 /// Why the store could not do what was asked, as the code a shell is told
 /// ("store.open"). Never carries the user's data.

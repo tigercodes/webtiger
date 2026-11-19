@@ -61,6 +61,27 @@ impl FakeShell {
         }
     }
 
+    /// A configuration for live mode with a WebKit engine: a store on disk
+    /// in `data_dir`, which a shell started there again finds as it was
+    /// left.
+    #[must_use]
+    pub fn live_config(data_dir: &std::path::Path) -> CoreConfig {
+        CoreConfig {
+            test_mode: TestMode::Live as i32,
+            fake: None,
+            data_dir: data_dir.to_string_lossy().into_owned(),
+            ..FakeShell::config(EngineKind::Webkit)
+        }
+    }
+
+    /// A shell over a store on disk in `data_dir`. Dropping it and starting
+    /// another there is quitting the app, or its crash, and starting it
+    /// again.
+    #[must_use]
+    pub fn live(data_dir: &std::path::Path) -> FakeShell {
+        FakeShell::start(&FakeShell::live_config(data_dir)).expect("live mode starts")
+    }
+
     /// A shell in fake mode with a WebKit engine.
     #[must_use]
     pub fn fake() -> FakeShell {

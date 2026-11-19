@@ -258,6 +258,48 @@ class NativeCoreTest {
             assertEquals("example.com", found?.entries?.first()?.display)
         }
 
+    /**
+     * The tabs come back (009), through Kotlin and the real core: a core is stopped, and another
+     * started on the same folder is given the first one's tabs, in order, with the one that was
+     * in front loaded and the other asleep.
+     */
+    @Test
+    fun theTabsComeBackWhenTheCoreStartsAgain() =
+        runBlocking {
+            val folder = java.nio.file.Files.createTempDirectory("webtiger-test").toFile()
+            try {
+                val config = fakeConfig().copy(test_mode = TestMode.TEST_MODE_LIVE, data_dir = folder.path, fake = null)
+
+                // The first run: a page in the first tab, and a second tab in front of it.
+                val first = start(config)
+                val opened = openWindow(first)
+                first.perform(Request(submit_address = SubmitAddress(tab_id = opened.tab_id, text = "example.com")))
+                first.request(Request(open_tab = OpenTab(window_id = opened.window_id, text = "example.org")))
+                // The snapshots are published, and with them the session is written, before the
+                // next request is answered.
+                first.request(Request(ping = Ping()))
+                first.stop()
+
+                // The second run, on the same folder.
+                val host = RecordingHost()
+                val second = start(config, host)
+                val events = eventsOf(second)
+                val again = openWindow(second)
+                waitUntil { events.any { it.snapshot?.window != null } }
+                val window = events.firstNotNullOf { it.snapshot?.window }
+
+                assertEquals("the tabs, in their order", listOf("example.com", "example.org"), window.tabs.map { it.host })
+                assertEquals("the one that was in front is in front", window.tabs.last().tab_id, window.tab?.tab_id)
+                assertEquals(again.tab_id, window.tab?.tab_id)
+                assertEquals("https://example.org/", window.tab?.address?.url)
+                // Only the tab in front was loaded: one web view, one load.
+                assertEquals(listOf("https://example.org/"), host.requests.mapNotNull { it.web_view_load?.url })
+                assertEquals("a web view and its load, and nothing for the tab behind", 2, host.requests.size)
+            } finally {
+                folder.deleteRecursively()
+            }
+        }
+
     @Test
     fun fakeModeOpensItsStartAddressInEveryNewWindow() =
         runBlocking {
