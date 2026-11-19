@@ -268,6 +268,47 @@ final class LaunchTests: XCTestCase {
         XCTAssertTrue(pageShows("Home", in: app), "and the page is as it was")
     }
 
+    /// Places offered as the address field is typed in (011), with the real core: a page that
+    /// was visited is offered by the start of a word of its title, and choosing it goes there.
+    func testAPlaceVisitedIsOfferedWhenPartOfItsNameIsTyped() {
+        let app = launch(start: site.url("/"))
+        XCTAssertTrue(pageShows("Home", in: app), "the first page loaded")
+        let field = app.textFields["address-field"]
+        let offered = app.buttons.matching(identifier: "suggestion")
+        openLocation(field, in: app)
+        XCTAssertEqual(offered.count, 0, "nothing is offered for what nobody typed")
+        field.typeText("127.0.0.1:\(site.port)/landed\n")
+        XCTAssertTrue(pageShows("Landed", in: app), "the second page loaded")
+
+        // The start of a word of the first page's title: that page, and only it.
+        openLocation(field, in: app)
+        field.typeText("hom")
+        XCTAssertTrue(offered.firstMatch.waitForExistence(timeout: 30), "a place is offered")
+        XCTAssertEqual(offered.count, 1)
+        XCTAssertTrue(offered.firstMatch.label.contains("Home"), "by its title: \(offered.firstMatch.label)")
+        XCTAssertFalse(app.images["security-secure"].exists || app.images["security-insecure"].exists, "no mark vouches for what was typed")
+        audit(app, "the places offered")
+
+        #if os(macOS)
+            // Escape puts the list away and leaves what was typed; typing on brings it back.
+            app.typeKey(.escape, modifierFlags: [])
+            let none = NSPredicate(format: "count == 0")
+            XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: none, object: offered)], timeout: 30), .completed)
+            XCTAssertEqual(value(of: field), "hom")
+            field.typeText("e")
+            XCTAssertTrue(offered.firstMatch.waitForExistence(timeout: 30), "it is offered again for what is typed now")
+            // The arrow key marks it, and Return goes there.
+            app.typeKey(.downArrow, modifierFlags: [])
+            app.typeKey(.return, modifierFlags: [])
+        #else
+            press(offered.firstMatch)
+        #endif
+
+        XCTAssertTrue(pageShows("Home", in: app), "the place chosen is the page on screen")
+        expect(field, toShow: "http://127.0.0.1:\(site.port)")
+        XCTAssertEqual(offered.count, 0, "and the list is gone")
+    }
+
     /// The tabs come back (009), with the app itself: it is ended without a word, as a crash
     /// or the system ends it, and started again; its tabs are there, the one that was in front
     /// is in front and loaded, and the other loads when it is chosen.
@@ -445,6 +486,11 @@ final class LaunchTests: XCTestCase {
                     // A visit's address in the History list may be any length: it is cut to
                     // two lines, in the middle, and is read out whole.
                     if issue.auditType == .textClipped, element?.identifier == "history-address" {
+                        return true
+                    }
+                    // The same of a place offered under the address field (011): its address
+                    // is cut to one line, in the middle.
+                    if issue.auditType == .textClipped, element?.identifier == "suggestion-address" {
                         return true
                     }
                 #endif

@@ -10,11 +10,24 @@ public final class BrowserModel {
     public private(set) var tab = WTTabView()
     /// Every tab of the window, in the order they are shown.
     public private(set) var tabs: [WTTabSummary] = []
-    /// What is in the address field. It follows the core until the user types in it.
-    public var addressText = ""
+    /// What is in the address field. It follows the core until the user types in it. Each
+    /// change while it is typed in asks what to offer for it (011).
+    public var addressText = "" {
+        didSet {
+            if addressText != oldValue {
+                suggest()
+            }
+        }
+    }
+
     /// The address field has the keyboard: what the user types is not overwritten.
     public var isEditingAddress = false {
-        didSet { show() }
+        didSet {
+            show()
+            if !isEditingAddress {
+                putSuggestionsAway()
+            }
+        }
     }
 
     /// What the model last put in the field. While the field still holds it, nothing was typed.
@@ -23,6 +36,13 @@ public final class BrowserModel {
     /// The user has changed what the field was given.
     public var hasTypedAddress: Bool {
         addressText != shownText
+    }
+
+    /// What the mark beside the address field says. It is the page's while the field shows the
+    /// page's address; once something else has been typed there, the mark says nothing: a
+    /// padlock must not vouch for what a person typed.
+    public var fieldSecurity: WTAddressView.Security {
+        hasTypedAddress ? .unspecified : tab.address.security
     }
 
     private let session: BrowserSession
@@ -35,11 +55,18 @@ public final class BrowserModel {
     /// A model whose find bar is open on `finding` from the start, before anything has been
     /// asked of the core: for a picture of the bar (004), which must not depend on when the
     /// window got round to opening it.
-    init(session: BrowserSession, finding: String?) {
+    init(session: BrowserSession, finding: String?, typing: String? = nil, offered: [WTAddressSuggestion] = []) {
         self.session = session
         if let finding {
             isFinding = true
             findText = finding
+        }
+        // The same for the address field with something typed in it and places offered for
+        // it (011): a picture of the list.
+        if let typing {
+            isEditingAddress = true
+            addressText = typing
+            suggestions = offered
         }
     }
 
@@ -65,6 +92,11 @@ public final class BrowserModel {
 
     /// Sends the address field's text to the core, which decides what it is.
     public func submit() {
+        // With a place marked by the arrow keys, Return goes there.
+        if let marked = markedSuggestion, suggestions.indices.contains(marked) {
+            choose(suggestions[marked])
+            return
+        }
         guard let frontTabID else { return }
         var submit = WTSubmitAddress()
         submit.tabID = frontTabID
@@ -102,6 +134,70 @@ public final class BrowserModel {
         var activate = WTActivateTab()
         activate.tabID = id
         send(.activateTab(activate))
+    }
+
+    // MARK: Places offered as the address field is typed in (011)
+
+    /// The places the core offers for what is typed, best first. The model keeps none of its
+    /// own: each is the core's answer to what is now in the field.
+    public private(set) var suggestions: [WTAddressSuggestion] = []
+    /// Which of them the arrow keys have marked, if any: Return then goes there.
+    public private(set) var markedSuggestion: Int?
+    /// Counts what was asked: an answer to anything but the last question is out of date.
+    @ObservationIgnored private var suggestionsAsked = 0
+
+    /// Asks what to offer for what is in the field: only while it is being typed in.
+    private func suggest() {
+        guard isEditingAddress, hasTypedAddress, !addressText.isEmpty, let window else {
+            putSuggestionsAway()
+            return
+        }
+        suggestionsAsked += 1
+        let question = suggestionsAsked
+        var ask = WTSuggestAddresses()
+        ask.windowID = window.windowID
+        ask.text = addressText
+        let answer = session.core.send(.suggestAddresses(ask))
+        Task { [weak self] in
+            guard case let .addressSuggestions(offered) = try? await answer.value, let self, question == suggestionsAsked else { return }
+            suggestions = offered.suggestions
+            markedSuggestion = nil
+        }
+    }
+
+    /// Puts the list away: nothing is offered, and an answer still on its way is for nothing.
+    public func putSuggestionsAway() {
+        suggestionsAsked += 1
+        if !suggestions.isEmpty {
+            suggestions = []
+        }
+        markedSuggestion = nil
+    }
+
+    /// Goes to a place that was offered, in the tab in front.
+    public func choose(_ suggestion: WTAddressSuggestion) {
+        load(suggestion.url)
+    }
+
+    /// Marks the next place offered: from none to the first, and from the last to none, where
+    /// Return sends what was typed again.
+    public func markNextSuggestion() {
+        guard !suggestions.isEmpty else { return }
+        switch markedSuggestion {
+        case nil: markedSuggestion = 0
+        case let marked? where marked + 1 < suggestions.count: markedSuggestion = marked + 1
+        default: markedSuggestion = nil
+        }
+    }
+
+    /// Marks the place before: from none to the last, and from the first to none.
+    public func markPreviousSuggestion() {
+        guard !suggestions.isEmpty else { return }
+        switch markedSuggestion {
+        case nil: markedSuggestion = suggestions.count - 1
+        case let marked? where marked > 0: markedSuggestion = marked - 1
+        default: markedSuggestion = nil
+        }
     }
 
     // MARK: Find on the page (010)
@@ -193,12 +289,15 @@ public final class BrowserModel {
     }
 
     private func apply(_ snapshot: WTWindowSnapshot) {
-        // Another tab came in front: what was typed was typed for the tab that was there.
-        let switched = snapshot.tab.tabID != tab.tabID
-        if switched, tab.tabID != 0 {
+        // Another tab came in front: what was typed was typed for the tab that was there. (The
+        // window's first snapshot names its first tab, and is no switch: what was typed before
+        // it arrived stays.)
+        let switched = tab.tabID != 0 && snapshot.tab.tabID != tab.tabID
+        if switched {
             // The find was in the tab that was in front: it stops there, and the bar closes.
-            // (The window's first snapshot names its first tab, and is no switch.)
             closeFind()
+            // What was offered was offered for what was typed for that tab.
+            putSuggestionsAway()
         }
         tab = snapshot.tab
         tabs = snapshot.tabs

@@ -265,6 +265,18 @@
         }
       }
     },
+    "catalogue.state.suggestions": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Places offered as an address is typed"
+          }
+        }
+      }
+    },
     "catalogue.state.tabs": {
       "comment": "Design catalogue: a state of the window.",
       "extractionState": "manual",
@@ -729,6 +741,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "History"
+          }
+        }
+      }
+    },
+    "suggestions.list": {
+      "comment": "Accessibility label of the list of places offered under the address field as it is typed in.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suggestions"
           }
         }
       }

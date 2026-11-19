@@ -46,6 +46,8 @@
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_secure">A secure page</string>
     <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_suggestions">Places offered as an address is typed</string>
+    <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_tabs">Several tabs</string>
     <!-- Design catalogue: heading of the browser window's states. -->
     <string name="catalogue_states">The Window</string>
@@ -123,6 +125,8 @@
     <string name="history_search">Search history</string>
     <!-- Title of the list of pages visited. -->
     <string name="history_title">History</string>
+    <!-- Accessibility label of the list of places offered under the address field as it is typed in. -->
+    <string name="suggestions_list">Suggestions</string>
     <!-- Hint under the heading of an empty tab. -->
     <string name="tab_empty_hint">Type an address or a search above.</string>
     <!-- Heading of a tab that has no page yet. -->

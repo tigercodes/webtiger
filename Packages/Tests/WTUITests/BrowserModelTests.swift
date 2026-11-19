@@ -188,8 +188,9 @@ final class BrowserModelTests: XCTestCase {
         model.isEditingAddress = true
         model.addressText = "example.com"
         model.submit()
-        await settle { core.requests.count == 5 }
-        guard case let .tabCommand(command) = core.requests[3], case let .submitAddress(submit) = core.requests[4] else {
+        // What was typed is also asked about on the way (011): the question of what to offer
+        // stands between the two.
+        guard case let .tabCommand(command) = core.requests[3], case let .submitAddress(submit) = core.requests.last else {
             return XCTFail("expected a TabCommand and a SubmitAddress")
         }
         XCTAssertEqual(command.tabID, 9)

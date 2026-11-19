@@ -18,6 +18,7 @@ enum CatalogueState: String, CaseIterable, Identifiable {
     case tabs
     case find
     case findNone = "find-none"
+    case suggestions
 
     var id: String {
         rawValue
@@ -36,6 +37,30 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         case .tabs: "catalogue.state.tabs"
         case .find: "catalogue.state.find"
         case .findNone: "catalogue.state.find_none"
+        case .suggestions: "catalogue.state.suggestions"
+        }
+    }
+
+    /// What is typed in the address field in this state, when something is.
+    var typing: String? {
+        self == .suggestions ? "exa" : nil
+    }
+
+    /// The places offered for it: one with a title, one whose title is longer than the list
+    /// is wide, one with none.
+    var offered: [WTAddressSuggestion] {
+        guard self == .suggestions else { return [] }
+        let places: [(String, String)] = [
+            ("Example Domain", "example.com"),
+            ("A page whose title is longer than the list is wide, and then goes on", "example.org/a/long/path"),
+            ("", "example.net/plain.txt"),
+        ]
+        return places.map { title, display in
+            var place = WTAddressSuggestion()
+            place.title = title
+            place.display = display
+            place.url = "https://\(display)"
+            return place
         }
     }
 
@@ -92,6 +117,8 @@ enum CatalogueState: String, CaseIterable, Identifiable {
             page(&window, url: "https://example.com/", display: "example.com", security: .secure)
             window.tab.find.text = "zebra"
             window.tab.find.answered = true
+        case .suggestions:
+            page(&window, url: "https://example.org/", display: "example.org", security: .secure)
         }
         // The strip names every tab: the one in front, and for "several tabs" its neighbours,
         // one with a title, one still loading and known only by its site, one with no page.
