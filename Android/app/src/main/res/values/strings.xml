@@ -27,6 +27,12 @@
     <string name="catalogue_state_failed">A page that failed</string>
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_history">Back and forward offered</string>
+    <!-- Design catalogue: the History list before anything has been visited. -->
+    <string name="catalogue_state_history_empty">The History list, nothing visited</string>
+    <!-- Design catalogue: the History list with visits in it. -->
+    <string name="catalogue_state_history_list">The History list</string>
+    <!-- Design catalogue: the History list when the words typed find nothing. -->
+    <string name="catalogue_state_history_none_found">The History list, nothing found</string>
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_insecure">A page that is not secure</string>
     <!-- Design catalogue: a state of the window. -->
@@ -69,6 +75,36 @@
     <string name="error_start_title">WebTiger couldn’t start</string>
     <!-- Heading shown over a page that failed to load. -->
     <string name="error_title">This page didn’t load</string>
+    <!-- Button in the History list that asks which visits to forget. -->
+    <string name="history_clear">Clear…</string>
+    <!-- Choice: leave history as it is. -->
+    <string name="history_clear_cancel">Cancel</string>
+    <!-- Under the question of which visits to forget. -->
+    <string name="history_clear_detail">Visits that are forgotten can’t be brought back.</string>
+    <!-- Choice: forget every visit. -->
+    <string name="history_clear_everything">Everything</string>
+    <!-- Choice: forget the visits of the last hour. -->
+    <string name="history_clear_hour">The Last Hour</string>
+    <!-- Question asked by the Clear button of the History list, above the choices. -->
+    <string name="history_clear_title">Forget which visits?</string>
+    <!-- Choice: forget the visits since midnight. -->
+    <string name="history_clear_today">Today</string>
+    <!-- Button that closes the History list. -->
+    <string name="history_done">Done</string>
+    <!-- Shown in the History list when nothing has been visited yet. -->
+    <string name="history_empty">Pages you visit will be listed here.</string>
+    <!-- Accessibility label of the button beside a visit that removes it from history. -->
+    <string name="history_forget">Forget This Visit</string>
+    <!-- Shown in the History list when the words typed find no visit. -->
+    <string name="history_none_found">No visits match.</string>
+    <!-- Button at the end of the History list that shows the next, older page of visits. -->
+    <string name="history_older">Show Older Visits</string>
+    <!-- Label of the button, beside the tabs, that opens the list of pages visited. -->
+    <string name="history_open">History</string>
+    <!-- Placeholder and accessibility label of the field for finding a visit by words of its title or address. -->
+    <string name="history_search">Search history</string>
+    <!-- Title of the list of pages visited. -->
+    <string name="history_title">History</string>
     <!-- Hint under the heading of an empty tab. -->
     <string name="tab_empty_hint">Type an address or a search above.</string>
     <!-- Heading of a tab that has no page yet. -->

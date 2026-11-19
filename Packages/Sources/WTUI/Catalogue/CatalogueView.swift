@@ -24,6 +24,16 @@ public struct CatalogueView: View {
                             .overlay(RoundedRectangle(cornerRadius: Tokens.Radius.tile).strokeBorder(Tokens.Palette.hairline))
                     }
                 }
+                ForEach(CatalogueHistory.allCases) { state in
+                    VStack(alignment: .leading, spacing: Tokens.Space.s) {
+                        Text(state.title, bundle: .module)
+                            .font(.headline)
+                        CatalogueHistoryList(state: state)
+                            .frame(height: CatalogueWindow.height)
+                            .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.tile))
+                            .overlay(RoundedRectangle(cornerRadius: Tokens.Radius.tile).strokeBorder(Tokens.Palette.hairline))
+                    }
+                }
                 heading("catalogue.start_failed")
                 StartFailedView(code: "store.open")
                     .frame(height: CatalogueWindow.height)
@@ -57,6 +67,31 @@ struct CatalogueWindow: View {
     var body: some View {
         BrowserWindowView(session: session)
     }
+}
+
+/// The History list in one state: `HistoryView` over a scripted core that answers with it. Its
+/// times are shown as one place and one language would show them, so a picture of it is the
+/// same wherever it is drawn.
+struct CatalogueHistoryList: View {
+    @State private var model: HistoryModel
+
+    init(state: CatalogueHistory) {
+        _model = State(initialValue: state.model())
+    }
+
+    var body: some View {
+        HistoryView(model: model, open: { _ in }, done: {})
+            .environment(\.timeZone, Self.calendar.timeZone)
+            .environment(\.calendar, Self.calendar)
+            .environment(\.locale, Locale(identifier: "en_GB"))
+    }
+
+    private static let calendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+        calendar.locale = Locale(identifier: "en_GB")
+        return calendar
+    }()
 }
 
 /// Every design token, by name: the colours as swatches, the measures drawn to scale.

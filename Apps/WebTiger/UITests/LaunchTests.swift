@@ -208,6 +208,54 @@ final class LaunchTests: XCTestCase {
         #endif
     }
 
+    /// History (008), with the real core: what was visited is listed, newest first; it is found
+    /// by a word; choosing a visit loads it again; a visit is forgotten, and then all of them.
+    func testHistoryListsWhatWasVisitedFindsItAndForgetsIt() {
+        let app = launch(start: site.url("/"))
+        XCTAssertTrue(pageShows("Home", in: app), "the first page loaded")
+        let field = app.textFields["address-field"]
+        openLocation(field, in: app)
+        field.typeText("127.0.0.1:\(site.port)/landed\n")
+        XCTAssertTrue(pageShows("Landed", in: app), "the second page loaded")
+
+        press(app.buttons["history"])
+        let visits = app.buttons.matching(identifier: "history-entry")
+        XCTAssertTrue(visits.firstMatch.waitForExistence(timeout: 30), "the list opened, with visits in it")
+        XCTAssertEqual(visits.count, 2)
+        XCTAssertTrue(visits.element(boundBy: 0).label.contains("Landed"), "newest first: \(visits.element(boundBy: 0).label)")
+        XCTAssertTrue(visits.element(boundBy: 1).label.contains("Home"))
+        audit(app, "the History list")
+
+        // A word of a title finds its visit, and only it.
+        let search = app.textFields["history-search"]
+        press(search)
+        search.typeText("hom")
+        let one = NSPredicate(format: "count == 1")
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: one, object: visits)], timeout: 30), .completed)
+        XCTAssertTrue(visits.firstMatch.label.contains("Home"))
+
+        // Choosing it loads it again, in the tab in front, and the list is gone.
+        press(visits.firstMatch)
+        XCTAssertTrue(pageShows("Home", in: app), "the visit chosen is the page on screen")
+        expect(field, toShow: "http://127.0.0.1:\(site.port)")
+
+        // That was a visit too. One is forgotten, and then all of them.
+        press(app.buttons["history"])
+        XCTAssertTrue(visits.firstMatch.waitForExistence(timeout: 30))
+        XCTAssertEqual(visits.count, 3)
+        press(app.buttons.matching(identifier: "history-forget").firstMatch)
+        let two = NSPredicate(format: "count == 2")
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: two, object: visits)], timeout: 30), .completed)
+        press(app.buttons["history-clear"])
+        let everything = app.buttons["history-clear-everything"].firstMatch
+        XCTAssertTrue(everything.waitForExistence(timeout: 30), "it asks which visits to forget")
+        press(everything)
+        XCTAssertTrue(app.staticTexts["history-nothing"].waitForExistence(timeout: 30), "nothing is left to list")
+        XCTAssertEqual(visits.count, 0)
+        press(app.buttons["history-done"])
+        XCTAssertTrue(pageShows("Home", in: app), "and the page is as it was")
+    }
+
     #if os(macOS)
         /// ⌘T opens a tab; ⌘W closes the one in front, and on the last tab the window.
         func testTheMacsTabShortcuts() {
@@ -292,6 +340,11 @@ final class LaunchTests: XCTestCase {
                     }
                     // A tab in the strip shows one line of its title, and is read out whole.
                     if issue.auditType == .textClipped, element?.identifier == "tab" {
+                        return true
+                    }
+                    // A visit's address in the History list may be any length: it is cut to
+                    // two lines, in the middle, and is read out whole.
+                    if issue.auditType == .textClipped, element?.identifier == "history-address" {
                         return true
                     }
                 #endif

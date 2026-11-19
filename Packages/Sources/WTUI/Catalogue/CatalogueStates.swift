@@ -136,3 +136,72 @@ enum CatalogueState: String, CaseIterable, Identifiable {
 private final class Emitter: @unchecked Sendable {
     var core: ScriptedCore?
 }
+
+/// One state of the History list (008).
+enum CatalogueHistory: String, CaseIterable, Identifiable {
+    case list
+    case empty
+    case noneFound = "none-found"
+
+    var id: String {
+        rawValue
+    }
+
+    /// The state's name in the catalogue.
+    var title: LocalizedStringKey {
+        switch self {
+        case .list: "catalogue.state.history_list"
+        case .empty: "catalogue.state.history_empty"
+        case .noneFound: "catalogue.state.history_none_found"
+        }
+    }
+
+    /// What a core would answer for the state. The addresses are the documentation's own, and
+    /// the times are fixed: midday on the first of January 2026, and before.
+    private var page: WTHistoryPage {
+        var page = WTHistoryPage()
+        guard self == .list else { return page }
+        page.entries = [
+            Self.visit(4, "Example Domain", "https://example.com/", minutesAgo: 0),
+            Self.visit(
+                3,
+                "A page whose title is longer than the list is wide, and then goes on",
+                "https://example.org/a/long/path",
+                minutesAgo: 7
+            ),
+            Self.visit(2, "", "https://example.net/plain.txt", minutesAgo: 95),
+            Self.visit(1, "Yesterday’s page", "http://example.com/yesterday", minutesAgo: 60 * 26),
+        ]
+        page.more = true
+        return page
+    }
+
+    /// A visit so many minutes before midday on the first of January 2026, shown as the
+    /// address field shows an address: without its scheme when that is https.
+    private static func visit(_ id: UInt64, _ title: String, _ url: String, minutesAgo: Int64) -> WTHistoryEntry {
+        var entry = WTHistoryEntry()
+        entry.visitID = id
+        entry.title = title
+        entry.url = url
+        entry.display = url.hasPrefix("https://") ? String(url.dropFirst(8)).trimmingCharacters(in: ["/"]) : url
+        entry.visitedAtMs = 1_767_268_800_000 - minutesAgo * 60000
+        return entry
+    }
+
+    /// A model over a core that answers with this state, and nothing else.
+    @MainActor
+    func model() -> HistoryModel {
+        let answer = page
+        let core = ScriptedCore { request in
+            if case .queryHistory = request {
+                return .historyPage(answer)
+            }
+            return .ack(WTAck())
+        }
+        let model = HistoryModel(core: core, windowID: 1)
+        if self == .noneFound {
+            model.text = "zebra"
+        }
+        return model
+    }
+}

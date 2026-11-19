@@ -157,6 +157,42 @@
         }
       }
     },
+    "catalogue.state.history_empty": {
+      "comment": "Design catalogue: the History list before anything has been visited.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The History list, nothing visited"
+          }
+        }
+      }
+    },
+    "catalogue.state.history_list": {
+      "comment": "Design catalogue: the History list with visits in it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The History list"
+          }
+        }
+      }
+    },
+    "catalogue.state.history_none_found": {
+      "comment": "Design catalogue: the History list when the words typed find nothing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The History list, nothing found"
+          }
+        }
+      }
+    },
     "catalogue.state.insecure": {
       "comment": "Design catalogue: a state of the window.",
       "extractionState": "manual",
@@ -405,6 +441,186 @@
           "stringUnit": {
             "state": "translated",
             "value": "This page didn’t load"
+          }
+        }
+      }
+    },
+    "history.clear": {
+      "comment": "Button in the History list that asks which visits to forget.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear…"
+          }
+        }
+      }
+    },
+    "history.clear.cancel": {
+      "comment": "Choice: leave history as it is.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        }
+      }
+    },
+    "history.clear.detail": {
+      "comment": "Under the question of which visits to forget.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visits that are forgotten can’t be brought back."
+          }
+        }
+      }
+    },
+    "history.clear.everything": {
+      "comment": "Choice: forget every visit.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Everything"
+          }
+        }
+      }
+    },
+    "history.clear.hour": {
+      "comment": "Choice: forget the visits of the last hour.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Last Hour"
+          }
+        }
+      }
+    },
+    "history.clear.title": {
+      "comment": "Question asked by the Clear button of the History list, above the choices.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forget which visits?"
+          }
+        }
+      }
+    },
+    "history.clear.today": {
+      "comment": "Choice: forget the visits since midnight.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today"
+          }
+        }
+      }
+    },
+    "history.done": {
+      "comment": "Button that closes the History list.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        }
+      }
+    },
+    "history.empty": {
+      "comment": "Shown in the History list when nothing has been visited yet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pages you visit will be listed here."
+          }
+        }
+      }
+    },
+    "history.forget": {
+      "comment": "Accessibility label of the button beside a visit that removes it from history.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forget This Visit"
+          }
+        }
+      }
+    },
+    "history.none_found": {
+      "comment": "Shown in the History list when the words typed find no visit.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No visits match."
+          }
+        }
+      }
+    },
+    "history.older": {
+      "comment": "Button at the end of the History list that shows the next, older page of visits.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Older Visits"
+          }
+        }
+      }
+    },
+    "history.open": {
+      "comment": "Label of the button, beside the tabs, that opens the list of pages visited.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "History"
+          }
+        }
+      }
+    },
+    "history.search": {
+      "comment": "Placeholder and accessibility label of the field for finding a visit by words of its title or address.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search history"
+          }
+        }
+      }
+    },
+    "history.title": {
+      "comment": "Title of the list of pages visited.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "History"
           }
         }
       }

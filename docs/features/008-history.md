@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress. The store, the contract (1.5) and the core are built and tested: visits are written, asked for and forgotten. No shell has a History screen yet (§9) |
+| **Status** | In progress. The store, the contract (1.5), the core and the Apple shell's History list are built and tested. The Android shell has no History list yet (§9) |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "history". The store's first table that is written while browsing (000 §5.6: `visit`) |
 | **Contract** | 1.5: `QueryHistory`, `HistoryPage`, `HistoryEntry`, `ForgetHistory` |
 | **Last updated** | 2026-11-19 |
@@ -37,7 +37,7 @@ A visit is written when a page **commits** in a tab: its address is then the pag
 | An address that is not `http` or `https` (`about:blank`) | None |
 | A private login set | None, ever: a visit names its login set, and the store has no row for a private one to name |
 
-- **The title is the page's, when it has one.** A visit is written with no title, at the commit. The first title the page then says is written, and once more the title it has when the tab goes on to another page, if that is a different one. A page that changes its title ten times a second costs the disk two writes, not ten a second. A tab that is closed leaves its last visit with the title already written.
+- **The title is the page's, when it has one.** A visit is written with no title, at the commit. The first title the page then says is written, and once more the last title it said by the time the tab goes on to another page, if that is a different one. No title is never written over a title: an engine blanks the title as the next page arrives, and WebKit does it before it says that page has committed, which at first left every page that was left with no title at all (found by the app's own test, with the real engine). A page that changes its title ten times a second costs the disk two writes, not ten a second. A tab that is closed leaves its last visit with the title already written.
 - **Forgetting is for good.** A page still on screen when its visit is forgotten does not write to it again; seen again afterwards (a reload), it is a visit again.
 - **A store that refuses a visit loses that visit and nothing else.** There is nobody to tell while a page loads, and no log an address may go in.
 - **History is per login set** (000 §5.6): two Spaces with their own logins have their own histories. A window is asked about its Space's.
@@ -102,7 +102,23 @@ History is asked for, not subscribed to: a list that is being read does not move
 
 ## 6. The shells
 
-Written when their part is built.
+A button at the end of the row of tabs, beside them and not among them, opens the History list over the window (⌘Y on a Mac). The list:
+
+- The visits, newest first: the title, the address as the address field would show it, and when, in the person's own language and time zone. A page with no title is named by its address.
+- A field for words. Each letter typed asks the core again; only the answer to what is now in the field is shown.
+- Choosing a visit loads it in the tab in front, as if it had been typed, and closes the list.
+- A button beside each visit forgets it. "Clear…" asks which visits to forget: the last hour, today, or everything; the question is the second step that forgetting needs.
+- "Show Older Visits" at the end, while there are more.
+- Before the core has answered, the list says nothing at all, rather than that nothing was visited.
+
+The shell keeps no history of its own: every list is the core's answer.
+
+**As built on Apple** (`HistoryModel`, `HistoryView`): a sheet over the window. What Apple's audit said of it, and what was done:
+
+- "Clear…" was a menu at first. The audit faulted the menu's button on the Mac for having no action of its own; a button that asks is two deliberate steps in any case.
+- A visit's address and its time shared a line. The audit said they would be clipped at larger text sizes: the name, the address and the time now have lines of their own, the name up to two.
+- "Clear…" and "Done" in the system's blue failed contrast on the iPhone. They are neutral, as every button with words is (001 F14); the older-visits button is plain for the same reason.
+- An address may be any length. It is cut to two lines, in the middle, so that its site and its end are both there, and is read out whole; the audit's "may be clipped" for it is passed over, with that reason beside it in the helper, as for a tab's title.
 
 ## 7. Tests
 
@@ -110,6 +126,9 @@ Written when their part is built.
 |---|---|
 | Store (`wt-store`, 14) | The migration from version 1, with a Space already there. Visits come back newest first, a page at a time, and say when there are more. Words: all must be found, in titles and addresses, as a word's start, whatever their case; what looks like a query's own syntax is only words. Another login set's visits are not seen. A title that arrives later is found by its words, and the title before it no longer is. A login set the store does not have can have no visit. An id is never used twice. Forgetting one, since a time, and everything; and the files no longer hold what was forgotten: seen to fail with the log not emptied, with rows only unlinked, and with the index left to its own ways, each alone |
 | Core (`wt-app/tests/history.rs`, 19 through `FakeShell`) | Each row of §3's table. A visit takes its page's first title and the one it is left with, and none between. The contract's requests: a page, the next page, a hundred when the shell does not say; words; forgetting one, since a time, everything, and that it must say what; a visit forgotten stays forgotten, and a page seen again is a visit again; an unknown window. Six of the rules checked by breaking them |
+| Apple: the list's model (`HistoryModelTests`, 5, over `ScriptedCore`) | What it asks for and shows; older visits after the last one shown; typing asks again and only the last answer is shown; forgetting one takes it off the list at once; forgetting many asks again for what is left, in that order |
+| Apple: pictures | The list with visits, with nothing visited, and with nothing found, light and dark, on the Mac and the iPhone; every window's picture again, for the button beside the tabs |
+| Apple: the app, with the real core | Two pages are visited; the list has them newest first and passes Apple's audit; a word finds one; choosing it loads it again; one visit is forgotten, then everything, and the list says there is nothing |
 | A measurement, not a gate | Below |
 
 **Measured** on this Mac (Apple M6), a release build, a store on disk with 100,000 visits of one login set, each query asked 200 times for its newest hundred matches:
@@ -128,7 +147,9 @@ Writing the 100,000 visits one at a time, each its own transaction, took 3.8 s: 
 
 - **A phone's disk.** The times of §7 are a Mac's.
 - **A store used for months.** Whether forgetting many visits over a long time leaves the files larger than they need be was not looked at; what is forgotten is overwritten either way.
-- **The History screens**: not built.
+- **The Android History list**: not built.
+- **"The last hour" and "Today"** on Apple are sent as times and tested as what is sent; with the real core they were not tried, because fake mode's clock is not the wall's.
+- **A list of thousands**, scrolled by a person: the list asks for a hundred visits at a time.
 
 ## 9. Done checklist
 
@@ -136,6 +157,6 @@ Writing the 100,000 visits one at a time, each its own transaction, took 3.8 s: 
 - [x] Contract 1.5 and its version in every place it is written.
 - [x] The core: what a visit is; the requests.
 - [x] Core tests through `FakeShell`: 19.
-- [ ] Apple: the History screen.
+- [x] Apple: the History list: the model's tests (5), the pictures, a UI test with the real core on the Mac and the iPhone simulator.
 - [ ] Android: the History screen.
 - [ ] `Tools/test.sh all` green, and `android-device`.

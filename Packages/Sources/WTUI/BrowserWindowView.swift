@@ -10,6 +10,8 @@ public struct BrowserWindowView: View {
     private let session: BrowserSession
     @FocusState private var addressFocused: Bool
     @State private var addressSelection: TextSelection?
+    /// The History list is open over the window (008).
+    @State private var showingHistory = false
     @Environment(\.dismiss) private var dismiss
 
     public init(session: BrowserSession) {
@@ -19,7 +21,7 @@ public struct BrowserWindowView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            TabStrip(model: model)
+            TabStrip(model: model) { showingHistory = true }
             toolbar
             progress
             content
@@ -27,6 +29,7 @@ public struct BrowserWindowView: View {
         .background { tabShortcuts }
         .task { await model.open() }
         .onDisappear { model.close() }
+        .sheet(isPresented: $showingHistory) { history }
         // Another tab came in front. An empty one is given the keyboard in its address field:
         // there is nothing else to do in an empty tab. One with a page keeps the keyboard out
         // of the field. (The window's first snapshot names its first tab, and is no switch.)
@@ -45,6 +48,21 @@ public struct BrowserWindowView: View {
         }
         #if os(macOS)
         .navigationTitle(windowTitle)
+        #endif
+    }
+
+    /// The History list, over the window. A visit chosen from it loads in the tab in front.
+    private var history: some View {
+        HistoryView(
+            model: HistoryModel(core: session.core, windowID: model.windowID ?? 0),
+            open: { entry in
+                showingHistory = false
+                model.load(entry.url)
+            },
+            done: { showingHistory = false }
+        )
+        #if os(macOS)
+        .frame(minWidth: 440, idealWidth: 520, minHeight: 420, idealHeight: 560)
         #endif
     }
 
@@ -108,6 +126,12 @@ public struct BrowserWindowView: View {
                 Text("tabs.new", bundle: .module)
             }
             .keyboardShortcut("t", modifiers: .command)
+            Button {
+                showingHistory = true
+            } label: {
+                Text("history.open", bundle: .module)
+            }
+            .keyboardShortcut("y", modifiers: .command)
             Button {
                 // On a window's last tab ⌘W closes the window, as it does everywhere on a Mac.
                 // The core's own rule is only that a window is never left empty (005, T1).
@@ -234,11 +258,29 @@ public struct BrowserWindowView: View {
 /// and one to open another (005 §5).
 struct TabStrip: View {
     let model: BrowserModel
+    /// Opens the History list: its button stands at the end of the row, beside the tabs and
+    /// not among them, where it stays when the tabs scroll.
+    var onHistory: () -> Void = {}
     /// How wide a tab's name may be. It grows with the text's size, so that at the largest
     /// sizes a short name is still whole; a long title is cut to one line at any size.
     @ScaledMetric private var widestName: CGFloat = 180
 
     var body: some View {
+        HStack(spacing: 0) {
+            tabs
+            Button(action: onHistory) {
+                Label { Text("history.open", bundle: .module) } icon: { Image(systemName: "clock.arrow.circlepath") }
+                    .labelStyle(.iconOnly)
+                    .frame(minWidth: BrowserWindowView.hitSize, minHeight: BrowserWindowView.hitSize)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .accessibilityIdentifier("history")
+            .padding(.trailing, Tokens.Space.m)
+        }
+    }
+
+    private var tabs: some View {
         ScrollViewReader { row in
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Tokens.Space.xs) {

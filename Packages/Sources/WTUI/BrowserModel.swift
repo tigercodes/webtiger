@@ -123,6 +123,22 @@ public final class BrowserModel {
         addressText = shownText
     }
 
+    /// The window's id in the core, once it has opened: what its history is asked by (008).
+    public var windowID: UInt64? {
+        window?.windowID
+    }
+
+    /// Sends the tab in front to an address the app has, as if it had been typed: a visit
+    /// chosen from history.
+    public func load(_ address: String) {
+        guard let frontTabID else { return }
+        isEditingAddress = false
+        var submit = WTSubmitAddress()
+        submit.tabID = frontTabID
+        submit.text = address
+        send(.submitAddress(submit))
+    }
+
     private func send(_ request: WTRequest.OneOf_Kind) {
         // Sent here and now, so what was done first reaches the core first. The answer is not
         // waited for: a refusal shows in the next snapshot (a failed load) or changes nothing

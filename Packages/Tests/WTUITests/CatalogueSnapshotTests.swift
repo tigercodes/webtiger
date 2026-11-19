@@ -37,6 +37,13 @@ final class CatalogueSnapshotTests: XCTestCase {
         }
     }
 
+    func testEveryStateOfTheHistoryList() async throws {
+        try skipWithoutPictures()
+        for state in CatalogueHistory.allCases {
+            await verify(CatalogueHistoryList(state: state), size: Self.windowSize, named: "history-\(state.rawValue)")
+        }
+    }
+
     func testStartFailed() async throws {
         try skipWithoutPictures()
         await verify(StartFailedView(code: "store.open"), size: Self.windowSize, named: "start-failed")
