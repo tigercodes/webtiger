@@ -240,11 +240,12 @@ class BrowserWindowTest {
         compose.onAllNodesWithTag("tab")[1].performClick()
         compose.waitForIdle()
         assertEquals(5L, core.requests.last().activate_tab?.tab_id)
-        compose.onAllNodesWithTag("close-tab")[2].performClick()
+        // With three tabs on a screen this narrow, and three buttons beside them since zoom's
+        // (012), the third tab's own button is past the strip's end, and so is the button
+        // after the tabs: the strip is scrolled to each.
+        compose.onAllNodesWithTag("close-tab")[2].performScrollTo().performClick()
         compose.waitForIdle()
         assertEquals(6L, core.requests.last().close_tab?.tab_id)
-        // With three tabs on a screen this narrow, the button after them is past the strip's
-        // end: the strip is scrolled to it.
         compose.onNodeWithTag("new-tab").performScrollTo().performClick()
         compose.waitForIdle()
         assertEquals(1L, core.requests.last().open_tab?.window_id)

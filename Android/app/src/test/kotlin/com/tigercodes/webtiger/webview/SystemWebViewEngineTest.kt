@@ -19,6 +19,7 @@ import com.tigercodes.webtiger.core.v1.WebViewCommand
 import com.tigercodes.webtiger.core.v1.WebViewCreate
 import com.tigercodes.webtiger.core.v1.WebViewDestroy
 import com.tigercodes.webtiger.core.v1.WebViewFind
+import com.tigercodes.webtiger.core.v1.WebViewSetZoom
 import com.tigercodes.webtiger.core.v1.WebViewLoad
 import kotlinx.coroutines.test.runTest
 import okio.ByteString.Companion.encodeUtf8
@@ -284,6 +285,21 @@ class SystemWebViewEngineTest {
             assertEquals(listOf("needle" to false, "needle" to true, "" to false), pages.made[1].finds)
             assertTrue("and no other page", pages.made[0].finds.isEmpty())
             assertRefused("webview.unknown", engine.answer(find(9, "needle")))
+        }
+
+    @Test
+    fun aZoomReachesThePageOfTheWebViewTheCoreNamed() =
+        runTest {
+            engine.answer(create(4))
+            engine.answer(create(5))
+            fun zoom(id: Long, percent: Int) = HostRequest(web_view_set_zoom = WebViewSetZoom(web_view_id = id, percent = percent))
+
+            assertDone(engine.answer(zoom(5, 125)))
+            assertDone(engine.answer(zoom(5, 100)))
+
+            assertEquals(listOf(125, 100), pages.made[1].zooms)
+            assertTrue("and no other page", pages.made[0].zooms.isEmpty())
+            assertRefused("webview.unknown", engine.answer(zoom(9, 125)))
         }
 
     @Test

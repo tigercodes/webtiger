@@ -87,6 +87,10 @@ import com.tigercodes.webtiger.design.Tokens
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.stateDescription
+import com.tigercodes.webtiger.core.v1.ZoomChange
+import com.tigercodes.webtiger.core.v1.ZoomView
+import androidx.compose.foundation.layout.Spacer
 
 /** One window over `model`. The system's Back goes back in the page while it can. */
 @Composable
@@ -118,9 +122,10 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
         // The window draws edge to edge; its content keeps clear of the system's bars, the
         // cutout and the keyboard.
         Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-            TabStrip(model, onFind = model::openFind, onHistory = { showingHistory = true })
+            TabStrip(model, onFind = model::openFind, onZoom = model::openZoom, onHistory = { showingHistory = true })
             Toolbar(model, addressField, onSubmitted = { page.requestFocus() })
             if (model.isFinding) FindBar(model)
+            if (model.isZooming) ZoomBar(model)
             ProgressLine(model)
             Box(modifier = Modifier.fillMaxWidth().weight(1f).focusRequester(page).focusable()) {
                 when {
@@ -158,7 +163,7 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
  * and one to open another (005 §5).
  */
 @Composable
-private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onHistory: () -> Unit) {
+private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit, onHistory: () -> Unit) {
     val list = stringResource(R.string.tabs_list)
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Row(
@@ -181,11 +186,14 @@ private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onHistory: () -> U
                 Icon(painter = painterResource(R.drawable.ic_add), contentDescription = stringResource(R.string.tabs_new))
             }
         }
-        // The find bar's button (010) and the History list's (008): beside the tabs and not
-        // among them, where they stay when the tabs scroll. There is nothing to find in a tab
-        // with no page.
+        // The find bar's button (010), the zoom bar's (012) and the History list's (008):
+        // beside the tabs and not among them, where they stay when the tabs scroll. There is
+        // nothing to find in a tab with no page, and nothing to zoom without one that can be.
         IconButton(onClick = onFind, enabled = model.hasPage, modifier = Modifier.testTag("find")) {
             Icon(painter = painterResource(R.drawable.ic_search), contentDescription = stringResource(R.string.find_open))
+        }
+        IconButton(onClick = onZoom, enabled = model.zoom != null, modifier = Modifier.testTag("zoom")) {
+            Icon(painter = painterResource(R.drawable.ic_zoom), contentDescription = stringResource(R.string.zoom_open))
         }
         IconButton(onClick = onHistory, modifier = Modifier.testTag("history")) {
             Icon(painter = painterResource(R.drawable.ic_history), contentDescription = stringResource(R.string.history_open))
@@ -321,6 +329,46 @@ private fun FindBar(model: BrowserModel) {
         TextButton(onClick = model::closeFind, modifier = Modifier.testTag("find-done")) { Text(stringResource(R.string.find_done)) }
     }
 }
+
+/**
+ * The zoom bar (012 §6): smaller, the level, bigger, and Done. What it says and which of its
+ * buttons can be pressed is the core's: the level of the page in front, and whether there is
+ * one above and one below. Pressing the level puts the page back to actual size.
+ */
+@Composable
+private fun ZoomBar(model: BrowserModel) {
+    // The system's Back closes the bar before it does anything to the page.
+    BackHandler(onBack = model::closeZoom)
+    val zoom = model.zoom ?: ZoomView()
+    val level = stringResource(R.string.zoom_level, zoom.percent)
+    val reset = stringResource(R.string.zoom_reset)
+    Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.Size.toolbarHeight).padding(horizontal = Tokens.Space.xs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ToolbarButton(R.string.zoom_out, R.drawable.ic_remove, "zoom-out", enabled = zoom.can_zoom_out, onClick = { model.zoom(ZoomChange.ZOOM_CHANGE_OUT) })
+        // What a screen reader is told: what pressing it does, and the level as its state.
+        TextButton(
+            onClick = { model.zoom(ZoomChange.ZOOM_CHANGE_RESET) },
+            enabled = zoom.percent != ACTUAL_SIZE,
+            modifier =
+                Modifier
+                    .semantics {
+                        contentDescription = reset
+                        stateDescription = level
+                    }
+                    .testTag("zoom-level"),
+        ) {
+            Text(text = level, maxLines = 1, modifier = Modifier.clearAndSetSemantics { })
+        }
+        ToolbarButton(R.string.zoom_in, R.drawable.ic_add, "zoom-in", enabled = zoom.can_zoom_in, onClick = { model.zoom(ZoomChange.ZOOM_CHANGE_IN) })
+        Spacer(modifier = Modifier.weight(1f))
+        TextButton(onClick = model::closeZoom, modifier = Modifier.testTag("zoom-done")) { Text(stringResource(R.string.zoom_done)) }
+    }
+}
+
+/** Actual size, in per cent: the level at which there is nothing to put back. */
+private const val ACTUAL_SIZE = 100
 
 @Composable
 private fun ToolbarButton(@StringRes title: Int, @DrawableRes icon: Int, tag: String, enabled: Boolean, onClick: () -> Unit) {

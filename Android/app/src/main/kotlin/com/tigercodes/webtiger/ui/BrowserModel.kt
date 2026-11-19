@@ -20,20 +20,24 @@ import com.tigercodes.webtiger.core.v1.TabCommand
 import com.tigercodes.webtiger.core.v1.TabSummary
 import com.tigercodes.webtiger.core.v1.TabView
 import com.tigercodes.webtiger.core.v1.WindowSnapshot
+import com.tigercodes.webtiger.core.v1.ZoomChange
+import com.tigercodes.webtiger.core.v1.ZoomPage
+import com.tigercodes.webtiger.core.v1.ZoomView
 import kotlinx.coroutines.launch
 
 /**
  * One window's state, for Compose to draw. Used on the main thread.
  *
- * A model made with `finding`, or with `typing` and what is `offered` for it, is a picture of a
- * window (004): its find bar is open on that text, or its address field holds it with those
- * places listed, before anything has been asked of the core.
+ * A model made with `finding`, with `typing` and what is `offered` for it, or `zooming`, is a
+ * picture of a window (004): its find bar is open on that text, its address field holds it with
+ * those places listed, or its zoom bar is open, before anything has been asked of the core.
  */
 class BrowserModel(
     private val session: BrowserSession,
     finding: String? = null,
     typing: String? = null,
     offered: List<AddressSuggestion> = emptyList(),
+    zooming: Boolean = false,
 ) {
     /** The tab in front, as the core last published it. The window's controls act on it. */
     var tab by mutableStateOf(TabView())
@@ -208,6 +212,42 @@ class BrowserModel(
     /** Goes to a place that was offered, in the tab in front. */
     fun choose(suggestion: AddressSuggestion) = load(suggestion.url)
 
+    // Zoom (012)
+
+    /** The zoom bar is open. */
+    var isZooming by mutableStateOf(zooming)
+        private set
+
+    /**
+     * What the page of the tab in front is zoomed to: the core's word for it, with whether there
+     * is a level above and one below. Null while there is no page that can be zoomed.
+     */
+    val zoom: ZoomView? get() = tab.zoom
+
+    /**
+     * Opens the zoom bar, in place of the find bar: one bar at a time. There is nothing to zoom
+     * without a page.
+     */
+    fun openZoom() {
+        if (zoom == null) return
+        closeFind()
+        isZooming = true
+    }
+
+    fun closeZoom() {
+        isZooming = false
+    }
+
+    /**
+     * Asks the core to make the page of the tab in front bigger or smaller, or to put it back.
+     * Which level that is, and which other tabs have it, is the core's.
+     */
+    fun zoom(change: ZoomChange) {
+        val front = frontTabId ?: return
+        if (zoom == null) return
+        session.send(Request(zoom_page = ZoomPage(tab_id = front, change = change)))
+    }
+
     // Find on the page (010)
 
     /**
@@ -250,9 +290,14 @@ class BrowserModel(
             return if (find.counted) FindOutcome.Match(find.current, find.matches) else FindOutcome.Nothing
         }
 
-    /** Opens the find bar. There is nothing to find in a tab with no page. */
+    /**
+     * Opens the find bar, in place of the zoom bar: one bar at a time. There is nothing to find
+     * in a tab with no page.
+     */
     fun openFind() {
-        if (hasPage) isFinding = true
+        if (!hasPage) return
+        isZooming = false
+        isFinding = true
     }
 
     /** Closes the find bar: the find stops, and its marks go. */
@@ -302,6 +347,9 @@ class BrowserModel(
         }
         tab = front
         tabs = snapshot.tabs
+        // The zoom bar is the window's, and says the level of the page in front: with no page
+        // there that can be zoomed, it has nothing to say.
+        if (isZooming && front.zoom == null) isZooming = false
         // A field with the keyboard still follows the page until something is typed in it: one
         // that took the focus by itself, at launch, must not go on showing what was there then.
         if (switched || !editing || !hasTypedAddress) show()

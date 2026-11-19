@@ -81,8 +81,18 @@ class SystemWebViewEngine internal constructor(private val factory: PageFactory)
         val command = request.web_view_command
         val destroy = request.web_view_destroy
         val find = request.web_view_find
+        val zoom = request.web_view_set_zoom
         val response =
             when {
+                zoom != null -> {
+                    val page = pages[zoom.web_view_id]
+                    if (page == null) {
+                        failure("webview.unknown")
+                    } else {
+                        page.zoom(zoom.percent)
+                        done
+                    }
+                }
                 find != null -> {
                     val page = pages[find.web_view_id]
                     if (page == null) {

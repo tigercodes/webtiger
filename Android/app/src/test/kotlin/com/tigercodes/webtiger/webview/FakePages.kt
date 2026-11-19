@@ -34,6 +34,13 @@ internal class FakePage(val id: Long, val loginSet: String, val host: PageHost) 
         finds.add(text to backwards)
     }
 
+    /** Every zoom the page was given, in order. */
+    val zooms = ArrayList<Int>()
+
+    override fun zoom(percent: Int) {
+        zooms.add(percent)
+    }
+
     override fun close() {
         closed = true
     }

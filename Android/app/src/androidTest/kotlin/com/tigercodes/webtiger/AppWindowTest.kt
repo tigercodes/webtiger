@@ -189,6 +189,26 @@ internal class AppWindowTest {
         }
     }
 
+    /** What the zoom bar says the level is, as a screen reader is told it. Null when the bar is shut. */
+    private fun level(): String? =
+        compose.onAllNodesWithTag("zoom-level").fetchSemanticsNodes().firstOrNull()?.config?.getOrNull(SemanticsProperties.StateDescription)
+
+    /** Waits until the zoom bar says `words`, for up to fifteen seconds. */
+    private fun awaitLevel(words: String?) {
+        try {
+            compose.waitUntil(15_000) { level() == words }
+        } catch (_: androidx.compose.ui.test.ComposeTimeoutException) {
+            throw AssertionError("the zoom bar never said <$words>; it says <${level()}>")
+        }
+    }
+
+    /** The size the WebView on screen draws text at, in per cent. */
+    private fun textZoom(): Int? {
+        var zoom: Int? = null
+        scenario.onActivity { activity -> zoom = webViewIn(activity.window.decorView)?.settings?.textZoom }
+        return zoom
+    }
+
     /** What the address field shows for a page of the site: its scheme stays, as it is not https. */
     private fun shown(path: String): String = "http://127.0.0.1:${site.port}${if (path == "/") "" else path}"
 
@@ -530,6 +550,56 @@ internal class AppWindowTest {
         awaitPage("Landed")
         awaitAddress(shown("/landed"))
         awaitOffered(0)
+    }
+
+    /**
+     * Zoom (012), with the real core and the real WebView: the bar is shut until asked for;
+     * bigger and smaller go through the core, the bar says the level and the WebView draws its
+     * text at it; the level is the site's, and is there on another page of it; the system's
+     * Back closes the bar.
+     */
+    @Test
+    fun zoomGoesThroughTheCoreAndTheBarSaysTheLevel() {
+        awaitPage("Home")
+        assertEquals(null, level())
+        compose.onNodeWithTag("zoom").performClick()
+        // The app's core lives as long as its process: the site is at actual size here
+        // whatever a test before this one left it at.
+        compose.waitUntil(15_000) { level() != null }
+        if (level() != "100%") compose.onNodeWithTag("zoom-level").performClick()
+        awaitLevel("100%")
+        assertEquals(100, textZoom())
+
+        compose.onNodeWithTag("zoom-in").performClick()
+        awaitLevel("110%")
+        compose.onNodeWithTag("zoom-in").performClick()
+        awaitLevel("125%")
+        compose.onNodeWithTag("zoom-out").performClick()
+        awaitLevel("110%")
+        compose.waitUntil(15_000) { textZoom() == 110 }
+        compose.onRoot().tryPerformAccessibilityChecks()
+
+        // Pressing the level puts the page back.
+        compose.onNodeWithTag("zoom-level").performClick()
+        awaitLevel("100%")
+        compose.waitUntil(15_000) { textZoom() == 100 }
+
+        // Left at 110%, the level is there on another page of the site; and the system's Back
+        // closes the bar before it does anything to the page.
+        compose.onNodeWithTag("zoom-in").performClick()
+        awaitLevel("110%")
+        scenario.onActivity { activity -> activity.onBackPressedDispatcher.onBackPressed() }
+        awaitLevel(null)
+        assertEquals("Home", pageTitle())
+        type(site.url("/landed"))
+        awaitPage("Landed")
+        compose.onNodeWithTag("zoom").performClick()
+        awaitLevel("110%")
+        assertEquals(110, textZoom())
+
+        // And the site is left as it was found, for the tests after this one.
+        compose.onNodeWithTag("zoom-level").performClick()
+        awaitLevel("100%")
     }
 
     /**

@@ -184,7 +184,7 @@ enum TestSitePages {
             status: "200 OK",
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
-            body: [.text("<!doctype html><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Sized</title><h1>Sized</h1>\n<p id=\"line\" style=\"font-size: 16px; line-height: 20px; margin: 0\">A line of words to measure.</p>")],
+            body: [.text("<!doctype html><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Sized</title><h1>Sized</h1>\n<p id=\"line\" style=\"font-size: 16px; line-height: 20px; margin: 0\"><span id=\"words\">A line of words.</span></p>")],
             delayMilliseconds: 0
         ),
     ]

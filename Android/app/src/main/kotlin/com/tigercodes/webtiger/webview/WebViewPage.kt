@@ -72,6 +72,13 @@ internal class WebViewPage(
     private val context = MutableContextWrapper(appContext)
     private val tracker = PageTracker(id, host::report)
 
+    /**
+     * The zoom the page was last given, in per cent: a web view made anew is given it again.
+     * Before the web view, which is given it as it is made: a field below that one is still
+     * nothing then, and a text zoom of nothing is a page with no text in it.
+     */
+    private var zoomPercent = ACTUAL_SIZE
+
     /** Null once the renderer has died, until the page is loaded again. */
     private var webView: WebView? = create()
 
@@ -123,6 +130,16 @@ internal class WebViewPage(
 
     /** The text the web view is now finding: the same text again goes to another match. */
     private var finding = ""
+
+    /**
+     * The System WebView has no public way to zoom a whole page; what it has is the size of
+     * the text, which is what a person who zooms a page is most often after (012 §6). A level
+     * the core does not have is held to between half and five times.
+     */
+    override fun zoom(percent: Int) {
+        zoomPercent = percent.coerceIn(SMALLEST_ZOOM, LARGEST_ZOOM)
+        webView?.settings?.textZoom = zoomPercent
+    }
 
     override fun find(text: String, backwards: Boolean) {
         val view = webView ?: return
@@ -200,6 +217,7 @@ internal class WebViewPage(
             setSupportMultipleWindows(true)
             javaScriptCanOpenWindowsAutomatically = false
         }
+        view.settings.textZoom = zoomPercent
         view.webViewClient = Client()
         view.webChromeClient = Chrome()
         // What a find found, once the WebView has finished counting (010). A web view made
@@ -330,5 +348,11 @@ internal class WebViewPage(
         override fun onCloseWindow(window: WebView) {
             if (window === webView) host.report(EngineEvent(web_view_id = id, close_requested = CloseRequested()))
         }
+    }
+
+    private companion object {
+        const val ACTUAL_SIZE = 100
+        const val SMALLEST_ZOOM = 50
+        const val LARGEST_ZOOM = 500
     }
 }

@@ -64,6 +64,7 @@ import com.tigercodes.webtiger.core.v1.TabSummary
 import com.tigercodes.webtiger.core.v1.TabView
 import com.tigercodes.webtiger.core.v1.WindowOpened
 import com.tigercodes.webtiger.core.v1.WindowSnapshot
+import com.tigercodes.webtiger.core.v1.ZoomView
 import com.tigercodes.webtiger.design.Tokens
 import com.tigercodes.webtiger.webview.SystemWebViewEngine
 import java.time.ZoneOffset
@@ -83,7 +84,11 @@ internal enum class CatalogueState(@StringRes val title: Int) {
     FIND(R.string.catalogue_state_find),
     FIND_NONE(R.string.catalogue_state_find_none),
     SUGGESTIONS(R.string.catalogue_state_suggestions),
+    ZOOM(R.string.catalogue_state_zoom),
     ;
+
+    /** The window's zoom bar is open in this state. */
+    val zooming: Boolean get() = this == ZOOM
 
     /** What is typed in the address field in this state, when something is. */
     val typing: String? get() = if (this == SUGGESTIONS) "exa" else null
@@ -129,7 +134,10 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                     LONG ->
                         "example.com/a/path/that/is/longer/than/the/field/is/wide/and/then/goes/on/for/a/while?with=a&query=too"
                             .let { path -> page("https://$path", path) }
-                    FAILED -> page("https://nowhere.example.com/", "nowhere.example.com").copy(load_state = LoadState.LOAD_STATE_FAILED, error_code = "net.dns")
+                    // No page arrived, and there is nothing to zoom.
+                    FAILED ->
+                        page("https://nowhere.example.com/", "nowhere.example.com")
+                            .copy(load_state = LoadState.LOAD_STATE_FAILED, error_code = "net.dns", zoom = null)
                     HISTORY -> page("https://example.com/second", "example.com/second").copy(can_go_back = true, can_go_forward = true)
                     TABS -> page("https://example.com/", "example.com").copy(title = "Example Domain")
                     // An engine that counts: the third of twelve.
@@ -138,6 +146,7 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                             .copy(find = FindView(text = "needle", answered = true, found = true, counted = true, matches = 12, current = 3))
                     FIND_NONE -> page("https://example.com/", "example.com").copy(find = FindView(text = "zebra", answered = true))
                     SUGGESTIONS -> page("https://example.org/", "example.org")
+                    ZOOM -> page("https://example.com/", "example.com").copy(zoom = ZoomView(percent = 125, can_zoom_in = true, can_zoom_out = true))
                 }
             // The strip names every tab: the one in front, and for "several tabs" its neighbours,
             // one with a title, one still loading and known only by its site, one with no page.
@@ -168,6 +177,8 @@ internal enum class CatalogueState(@StringRes val title: Int) {
             web_view_id = 4,
             load_state = LoadState.LOAD_STATE_IDLE,
             address = AddressView(url = url, display = display, host = java.net.URI(url.substringBefore('?')).host.orEmpty(), registrable_domain = "example.com", security = security),
+            // What a core says of any page with a site (012): at actual size until it is zoomed.
+            zoom = ZoomView(percent = 100, can_zoom_in = true, can_zoom_out = true),
         )
 
     /**
@@ -299,7 +310,7 @@ internal fun CatalogueWindow(state: CatalogueState, modifier: Modifier = Modifie
     val context = LocalContext.current.applicationContext
     val scope = rememberCoroutineScope()
     val session = remember(state) { state.session(context, scope) }
-    val model = remember(session) { BrowserModel(session, finding = state.finding, typing = state.typing, offered = state.offered) }
+    val model = remember(session) { BrowserModel(session, finding = state.finding, typing = state.typing, offered = state.offered, zooming = state.zooming) }
     // A window takes the system's Back for its page. These are pictures of windows: Back leaves
     // the catalogue, whatever state one of them shows.
     val lifecycle = LocalLifecycleOwner.current.lifecycle

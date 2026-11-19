@@ -26,6 +26,12 @@ internal interface Page {
      */
     fun find(text: String, backwards: Boolean)
 
+    /**
+     * Sets the page's zoom, in per cent (012): it stays, whatever page the web view goes on to,
+     * until it is set again.
+     */
+    fun zoom(percent: Int)
+
     /** Destroys the web view and releases what it held. */
     fun close()
 }

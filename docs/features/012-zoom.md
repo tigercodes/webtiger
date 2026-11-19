@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress. Built and tested in the store, the core and the Apple shell. The Android shell does not zoom yet, and answers the core's request as a shell built before 1.8 does (§9) |
+| **Status** | Built and tested in the store, the core, the Apple shell and the Android shell (on an emulator). Windows is not started. What it leaves out is in §2; Android scales a page's text, not the page (§6) |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "zoom". The `WebViews` host service's zoom (000 §5.5), and the store's `site_setting` table (000 §5.6) in its first form |
 | **Contract** | 1.8: `ZoomPage`; the host request `WebViewSetZoom`; `TabView.zoom` |
 | **Last updated** | 2026-11-19 |
@@ -89,6 +89,14 @@ Bigger, smaller, and the level between them, which put back to 100% when pressed
 |---|---|---|
 | Zooms | `WKWebView.pageZoom`: the page is laid out again at the level | `WebSettings.textZoom`: the text is scaled. The WebView has no public way to zoom the whole page |
 
+**As built on Android** (`WebViewPage.zoom`; `ZoomBar` in `BrowserWindow`; the model's part in `BrowserModel`), and what the device suite found:
+
+- **The WebView scales the text, and the page is laid out in the room it had.** At 200% a line's words are twice as wide and the page is as wide as it was; pictures, and whatever a page sizes in its own units, stay as they were. That is all the System WebView offers an app: it has no public way to zoom a page as a whole, as WebKit has. The level is the same number in both shells, and means less here.
+- The WebView keeps its text size for the page it goes on to, and a web view made anew (after its renderer died) is given the level again. One web view's is not another's. A level the core does not have is held to between half and five times.
+- **A field read before it had its value.** The first form of this kept the level in a field declared below the one that makes the WebView, which is made as the page object is, and is given the level as it is made: the level was still nothing then, and every new web view drew its text at no size at all. The adapter suite's first test, which measures a page's words before any zoom is asked for, said so before anything was committed. The field is now above the one that reads it.
+- The same bar as on Apple, without the keys: smaller, the level, bigger, Done, under the toolbar and in place of the find bar. A screen reader is told what pressing the level does ("Actual Size") and the level as its state. The system's Back closes the bar before it does anything to the page.
+- With a third button beside the tabs, on a narrow phone with three tabs the third tab's own close button is past the strip's end, as the button for a new tab already was. The strip is W2's to lay out again.
+
 **As built on Apple** (`WebKitEngine`'s answer to `WebViewSetZoom`; `ZoomBar`; the model's part in `BrowserModel`):
 
 - WebKit's own page zoom, as the adapter suite found it: the page is laid out again in the web view's width divided by the level, with its text the size it was in the page's own units; the web view keeps the level for the page it goes on to, so the core asks only for a change; one web view's level is not another's. A level the core does not have is held to between half and five times.
@@ -106,6 +114,9 @@ Bigger, smaller, and the level between them, which put back to 100% when pressed
 | Core (`wt-app/tests/zoom.rs`, 10 through `FakeShell`) | Bigger, smaller and actual size each ask the tab's web view, one level at a time, and the snapshot says the level. The ends: nothing asked, and the snapshot says there is nothing above, or below. Actual size at actual size asks nothing. No such tab; a tab with no page; a page with no site; a change that is none of the three. Every tab of the site is told, in the order they were opened, and a tab of another site is not; a tab behind has its own page's level. A page that arrives is given its site's level, in the same tab and in a new one, and one whose site is at the level the web view has is told nothing. The site: another host of it by another scheme and port; an IP address is its own. A page changing its own address asks nothing. Started again, the tab that came back is given the level its site was left at; a site put back to 100% is told nothing. Six of the rules checked by breaking them |
 | WebKit adapter suite (`WebKitZoomTests`, 5, on the Mac and the iPhone simulator) | A zoomed page is laid out in half the room at 200% and twice at 50%, with its text as tall as it was in the page's units, and in all of it again at 100%; the zoom stays for the page the web view goes on to; one web view's zoom is not another's; a level no page can be read at is held to half, and to five times; a web view that is not there is refused with a code |
 | The Apple model and bar | `ZoomModelTests` (5): nothing to zoom, and nothing asked, without a page; bigger, smaller and actual size ask the core for the tab in front, with the bar shut too; the bar says what the core says, and nothing of its own until then; one bar at a time; the bar follows the page in front and closes when that cannot be zoomed. Pictures of the bar at 125%, light and dark, on the Mac and the iPhone |
+| System WebView adapter | On the JVM: a zoom reaches the page of the web view the core named, and a web view that is not there is refused (1). On the device (`SystemWebViewZoomTest`, 5): a page's words have a width before any zoom; at 200% they are twice as wide and the page is as wide as it was, at 50% half, at 100% as they were; the zoom stays for the page the web view goes on to; another web view is at actual size; a level no page can be read at is held to half; a web view that is not there |
+| The Android model and bar | `ZoomModelTest` (5): the same five as Apple's. `ZoomBarTest` (3, drawn on the JVM): shut until asked for, and off without a page; what it sends for smaller, bigger and the level, saying only what the core says; the ends of the levels cannot be pressed. Pictures of the bar at 125%, light and dark; every window picture recorded again for the strip's new button |
+| The Android app, on the emulator, with the real core and WebView | The bar is shut until asked for; bigger twice and smaller once, the bar saying the level and the WebView drawing its text at it; Android's accessibility checks over the bar; pressing the level puts the page back; left at 110%, another page of the site has the level; the system's Back closes the bar |
 | The Apple apps, with the real core and engine | On the Mac and the iPhone simulator: the bar is shut until asked for; bigger twice, smaller once, with the level the core says after each; Apple's audit over the bar; pressing the level puts the page back, and at 100% it cannot be pressed; left at 110%, another page of the site has the level. On the Mac also the four keys |
 
 ## 8. What is not verified
@@ -115,7 +126,8 @@ Bigger, smaller, and the level between them, which put back to 100% when pressed
 - **What a zoomed page looks like.** The adapter suite measures how wide a page is laid out; nothing looked at a page to see it bigger. The app's test reads the bar, which says what the core asked for.
 - **A page that does not say how wide it is, on an iPhone** (above): zoomed through the same call, with measures the suite does not assert.
 - **Text sizes.** The bar was audited at the size the simulator starts with; the level's button at the largest text sizes was not looked at.
-- The Android shell: written when built.
+- **A physical Android device.** Zoom was used on an emulator.
+- **That text is what a person wants bigger on Android.** A page of pictures, or one that sizes its text in a way the WebView does not scale, is not helped by this; none was tried.
 
 ## 9. Done checklist
 
@@ -123,6 +135,6 @@ Bigger, smaller, and the level between them, which put back to 100% when pressed
 - [x] Contract 1.8 and its version in every place it is written.
 - [x] The core: the request, the levels, the site, the rules of §3. 10 tests through `FakeShell`, 5 of the levels and the site.
 - [x] Apple: the adapter and its suite (5); the bar and the model's tests (5); pictures; a UI test on the Mac and the iPhone simulator.
-- [ ] Android: the adapter, on the JVM and the device; the control; pictures; a device test.
-- [ ] `Tools/test.sh all` green, and `android-device`.
+- [x] Android: the adapter, on the JVM (1) and the device (5); the bar and the model's tests (8); pictures; a device test of the app.
+- [x] `Tools/test.sh all` green, and `android-device` (84 on the emulator).
 - [ ] Windows shell.
