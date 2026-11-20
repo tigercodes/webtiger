@@ -89,7 +89,7 @@ public final class BrowserModel {
 
     /// The tab the window's controls act on: the one in front. Until the first snapshot says
     /// which that is, it is the tab the window opened with.
-    private var frontTabID: UInt64? {
+    var frontTabID: UInt64? {
         tab.tabID != 0 ? tab.tabID : window?.tabID
     }
 
@@ -375,7 +375,7 @@ public final class BrowserModel {
         send(.submitAddress(submit))
     }
 
-    private func send(_ request: WTRequest.OneOf_Kind) {
+    func send(_ request: WTRequest.OneOf_Kind) {
         // Sent here and now, so what was done first reaches the core first. The answer is not
         // waited for: a refusal shows in the next snapshot (a failed load) or changes nothing
         // (a command for a tab with no page), and there is nothing more to tell the user here.

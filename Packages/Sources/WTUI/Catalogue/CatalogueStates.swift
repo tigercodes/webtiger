@@ -20,6 +20,7 @@ enum CatalogueState: String, CaseIterable, Identifiable {
     case findNone = "find-none"
     case suggestions
     case zoom
+    case prompt
 
     var id: String {
         rawValue
@@ -40,6 +41,7 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         case .findNone: "catalogue.state.find_none"
         case .suggestions: "catalogue.state.suggestions"
         case .zoom: "catalogue.state.zoom"
+        case .prompt: "catalogue.state.prompt"
         }
     }
 
@@ -133,6 +135,11 @@ enum CatalogueState: String, CaseIterable, Identifiable {
             window.tab.zoom.percent = 125
             window.tab.zoom.canZoomIn = true
             window.tab.zoom.canZoomOut = true
+        case .prompt:
+            page(&window, url: "https://meet.example.com/", display: "meet.example.com", security: .secure)
+            window.tab.prompt.promptID = 9
+            window.tab.prompt.permission.site = "meet.example.com"
+            window.tab.prompt.permission.kinds = [.camera, .microphone]
         }
         // The strip names every tab: the one in front, and for "several tabs" its neighbours,
         // one with a title, one still loading and known only by its site, one with no page.

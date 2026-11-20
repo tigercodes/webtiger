@@ -22,7 +22,7 @@ It is also where a shell proves it draws the *shared* design. The tokens are one
 | The window's states | The real window, over a scripted core (no Rust core, no page): an empty tab; a page loading; a secure page; a page that is not secure; an address too long for its field; a page that failed; back and forward offered; several tabs ([005](005-tabs.md)); the find bar with a count and with "Not found" ([010](010-find-in-page.md)); the places offered for what is typed in the address field ([011](011-suggestions.md)); the zoom bar ([012](012-zoom.md)) |
 | The History list's states | `HistoryView` over a scripted core: with visits (a long title, a page with none, a day ago), with nothing visited, and with nothing found ([008](008-history.md)). Its times are shown as one place and one language show them, so a picture is the same wherever it is drawn |
 | The Downloads list's states | `DownloadsView` over a scripted core: with downloads (one coming with its size known, one that failed, one that finished, one coming with no size said, one with a name longer than the list is wide), and with none ([013](013-downloads.md)). On Android the list is pictured under the switch it has in the window, tall enough for all five |
-| The prompt's bar, and the Permissions list's states | On Android so far ([014](014-permissions.md)): the window with a page that asks for the camera and the microphone; the list of sites that were allowed, with a name longer than the list is wide, a site that is not over `https`, and one with two things; and the empty list |
+| The prompt's bar, and the Permissions list's states | The window with a page that asks for the camera and the microphone ([014](014-permissions.md)), on every platform; and on Android so far: the list of sites that were allowed, with a name longer than the list is wide, a site that is not over `https`, and one with two things; and the empty list |
 | Start failed | What is shown instead of a window when the core will not start |
 
 The states are not drawings of the window. They are `BrowserWindowView` itself, given a `ScriptedCore` that publishes the snapshot for the state (001 §6: a screen is tested without the core). So the catalogue cannot drift from the app: a state that the window draws differently is drawn differently here. Where the page would be there is nothing: the catalogue has no web engine in it.
@@ -117,7 +117,7 @@ The empty tab, the failed page and the start failure now keep their words in the
 - [x] Tokens by name from `Tools/design/tokens.py`; `--check` covers them.
 - [x] `CatalogueView` with the token sections and the window's states.
 - [x] `WEBTIGER_CATALOGUE=1` opens it; the UI tests audit it.
-- [x] Snapshot helper and tests; pictures recorded for macOS 27 and iOS 27 (78 pictures since the Downloads list, 013), each looked at.
+- [x] Snapshot helper and tests; pictures recorded for macOS 27 and iOS 27 (82 pictures since the prompt's bar, 014), each looked at.
 - [x] `Tools/test.sh all` green.
 - [x] Android catalogue: the screen, `--ez webtiger.catalogue true`, 45 pictures drawn on the JVM (since the prompt's bar and the Permissions list, 014), each looked at; a device test opens it.
 - [ ] Windows catalogue.

@@ -33,6 +33,11 @@ public struct BrowserWindowView: View {
         VStack(spacing: 0) {
             TabStrip(model: model, onFind: { model.openFind() }, onZoom: { model.openZoom() }, onHistory: { showingHistory = true })
             toolbar
+            // What the tab asks the person (014): in the tab, under the toolbar, and not
+            // over the window. It takes the keyboard from nothing by appearing.
+            if let asked = model.prompt {
+                PromptBar(prompt: asked) { model.answerPrompt(allow: $0) }
+            }
             if model.isFinding {
                 findBar
             }
