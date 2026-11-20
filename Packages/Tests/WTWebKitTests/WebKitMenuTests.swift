@@ -113,6 +113,23 @@ final class WebKitMenuTests: AdapterTestCase {
         XCTAssertEqual(theirs, "who=none")
     }
 
+    func testAFileChosenThatIsSomewhereElseIsNotFetchedThereAsThisSite() async throws {
+        // Signed in at this site, in this web view's login set.
+        await create(1)
+        await load(1, site.url("/set?v=ada"))
+        await wait(1, "the cookie to be set") { self.finished($0) && self.hasTitle("Set")($0) }
+
+        // A file that says who asked for it, at an address of this site that sends whoever
+        // fetches it on to another site (the server by its other name): what this site knows
+        // the person by is not sent there.
+        try engine.saveFile(webViewID: 1, url: XCTUnwrap(URL(string: site.url("/to-whose-file?port=\(site.port)"))))
+        let download = await nextAsked(after: 0)
+        XCTAssertEqual(download.url, "http://localhost:\(site.port)/whose-file", "reported as where the file is")
+        XCTAssertTrue(download.userAsked)
+        let elsewhere = await save(download, as: "elsewhere.txt")
+        XCTAssertEqual(elsewhere, "who=none")
+    }
+
     func testOnlyAnAddressOfTheWebIsFetchedAndOnlyForAWebViewThereIs() async throws {
         await page()
 
