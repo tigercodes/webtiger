@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress. The contract and the core's rule are built and tested (§3, §4). No adapter holds a certificate yet, so nothing can be gone on past in an app: the engines and the shells are next |
+| **Status** | Built and tested in the core, both adapters (the System WebView on an emulator; WebKit on the Mac and the iPhone simulator) and both shells, and in the apps on the iPhone simulator and the Android emulator, each against a site whose certificate signs itself. **The Mac's UI suite has not run** (§9). Windows is not started |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "error and certificate pages". [021](021-certificate-errors.md) says which kind of trouble a certificate has; this is the way past it that 021 left for the owner to decide |
 | **Contract** | 1.20: `NavigationFailed.certificate_held`; `TabView.certificate_passable`, `certificate_host`; `ProceedPastCertificate`; the host service `WebViewTrustCertificate` |
 | **Builds on** | [021](021-certificate-errors.md): `net.tls.untrusted`, `net.tls.date`, `net.tls.name`. [001](001-foundations.md): the failed page, and the mark beside the address |
@@ -47,6 +47,8 @@ I do not get there by accident: it takes two deliberate presses, and the second 
 - *until the app quits*: it is kept in memory, by the core and by the adapter, and in no store.
 
 **A page under an exception is never shown as secure.** For as long as the core has an exception for a host and port in a login set, every page of that host and port in that login set is marked not secure beside the address: in every tab, however it was reached, and whether or not the certificate has since been put right. The padlock is for a connection the system trusts, and this is not one.
+
+**A load that failed is not shown as secure either.** The mark beside the address speaks of a page, and a failed load left none: from 1.20 the core says nothing of security (`SECURITY_UNSPECIFIED`) for a tab whose load failed, whatever its address. Before this, an address over `https` whose certificate had just been refused had the padlock beside it, from its scheme alone: 021 shipped that way, and an app's test here caught it. (Where a person went on past a certificate, a later failure there is still marked not secure: that much is known of it.) The mark while a load is still on its way is as [001](001-foundations.md) has it, and is not changed here.
 
 **Nothing else changes.** History, downloads and what a site was allowed are as for any page. A page under an exception that asks for the camera is asked about as any page is: its origin is one a person chose to visit.
 
@@ -120,6 +122,13 @@ The same in the Apple shell and the Android shell: the failed page, with two thi
 - **The warning is the failed load's**: another load, another tab or another failure starts again from "Advanced…".
 - **After going on** the page is like any other, and the mark beside its address is the "not secure" one, as the core's snapshot says: nothing in the shell decides that.
 
+**As built.** The shell decides nothing about the certificate: it shows what the core says may be gone on with, warns, and asks the core. In each model: whether the warning is open (for the failure in front, and no other), a call that opens it only where the core says the load may be gone on with, and a call that asks the core only with the warning open. So nothing goes on by one press, whoever calls what.
+
+- *Apple* (`FailedPage.swift`, `GoingOnModel.swift`): "Try Again" and "Advanced…" are both the neutral bordered button, with words in the primary colour; the warning is a tile under them, and its button is that same neutral one: going on is allowed, and is not what the page suggests.
+- *Android* (`FailedPage.kt`; `BrowserModel`): "Try Again" is the page's filled button, "Advanced…" a text button under it; the warning is a tile, said aloud when it appears, and its button is outlined, not filled.
+
+The failed page has no mark beside its address on either (the core's rule, §3): the field shows where the person asked to go, and vouches for nothing.
+
 ## 7. Tests
 
 | Where | What |
@@ -128,7 +137,11 @@ The same in the Apple shell and the Android shell: the failed page, with two thi
 | The System WebView adapter's rule (`CertificatesTest`, 5; `PageTrackerTest`, 1 more; `SystemWebViewEngineTest`, 1 more) | Nothing is let through until a web view is told to: refusing and holding lets nothing through, and a web view that refused nothing holds nothing. What a web view last refused is let through in its login set and no other; not another certificate at the same host, nor the same certificate at another host or port. A web view holds the last it refused, and nothing once it is gone, while what was let through stays. Whose certificate an address presents: its host and port over `https`, however the address is written; nothing over `http`, `wss`, or no address. A certificate is told from another by a hash of itself. A held certificate is said to be with the failure, and only for the page's own load. The engine answers `webview.unknown` for no web view, `certificate.unknown` for one that holds nothing, and lets through in the web view's own login set |
 | The System WebView adapter suite, on the emulator (`SystemWebViewCertificateTest`, 2 more, and 1 changed) | With a certificate that signs itself, made on the device: the failure says it is held; a web view that refused nothing answers `certificate.unknown`; told, the certificate is let through, the page loads with the site's title, and the site was asked for its page once; another web view of the same login set loads it; one of another login set is refused, held, and the site not asked. The same host and port with a key and certificate made anew: refused again and held, its page never asked for; gone on with, it is that one that loads. Three of the rules broken on purpose and run on the emulator: each caught |
 | WebKit's adapter suite (`WebKitCertificateTests`, 6, on the Mac and the iPhone simulator, against real WebKit and a site over `https` in the test's process) | A certificate that signs itself is not trusted: `net.tls.untrusted`, at the address asked for, nothing committed, the site never asked for its page, and the certificate held. A web view that refused nothing answers `certificate.unknown`, and no web view `webview.unknown`; told, the certificate is let through, the page loads with the site's title, and the site was asked once; another web view of the same login set loads it; one of another login set is refused, held, and the site not asked. The same host and port with another certificate is refused again and held, its page never asked for; gone on with, it loads. The adapter's own rule with no engine: what is presented and refused is held and nothing let through; let through in one login set and no other, nor in a private window, nor another certificate at the host, nor that certificate at another host; a load that begins and a web view that is gone hold nothing. What a page that is shown asks of a site that is not trusted is refused, the site not asked, and nothing of it is remembered or held. Whose certificate an address presents; which failures are a certificate's own trouble. Seven parts of the adapter's rule checked by breaking them |
-| The shells | Written with each |
+| The mark of a failed load (`wt-app/tests/certificates.rs`, 1 more: 9) | A load that failed for a certificate shows the address that failed and no mark; so does a site that is not there, over `https` and over `http`; a page that loads is marked as it always was; and where a person went on past a certificate, a later failure there is still marked not secure. Two more of the rules broken: both caught (fifteen in all) |
+| The Android shell (`CertificateWarningTest`, 5, drawn on the JVM against `ScriptedCore`) | A failure the core says may be gone on with has "Advanced…" under "Try Again", and no way on; pressed, the warning names the host, the core has been asked nothing, and the button under it says "Go On to ‹host› (Not Safe)"; pressed, the core is asked for the tab in front, once, and the warning is gone. A failure the core does not say may be gone on with (a certificate the adapter does not hold; another kind of failure) offers nothing, and the model asks the core nothing whoever calls it. Without the warning on the screen the core is not asked. The warning is one failure's: the same failure said again keeps it; another load, a failure that may not be gone on with (whatever host a core names), another site and another tab each start again from "Advanced…". Trying again is still there. Pictures of the failed page with "Advanced…" and with the warning, light and dark, as tall as a page so that the warning's button is in them; and the failed page's again, which no longer has a mark: each looked at. Eleven changes made to break the rules: ten caught, and the eleventh is the same rule written twice (going on is refused both where the warning is not open and where the core did not say, and the warning is never open where the core did not say) |
+| The Apple shell (`CertificateWarningTests`, 5, the model against `ScriptedCore`) | The same rules of the model: what the failed page is given to offer, nothing asked of the core by the warning, one request for the tab in front on going on, nothing offered or asked where the core did not say, and the warning one failure's. The words name the site, and the button says it is not safe. Pictures of both states, light and dark, on the Mac and the iPhone, and the failed page's again: each looked at. Eight of the rules checked by breaking them: all caught |
+| The Apple apps (`CertificateTests`, 1) | With the real core and real WebKit, in fake mode, and a site over `https` in the test's process whose certificate signs itself: typed in the address field, it is refused, and the page says which trouble it is, with "Try Again" and "Advanced…", no way on, and **no padlock**; the site was not asked for its page; Apple's audit passes. "Advanced…" shows the warning and the button "Go On to 127.0.0.1 (Not Safe)"; the site is still not asked; the audit passes again. Pressed, the site's page loads, asked for once, and is marked not secure. **Run on the iPhone simulator only: the Mac's UI suite has not run** (§9). The first run of this test failed on the padlock: the app had the core as it was before §3's rule about a failed load |
+| The Android app, on the emulator (`AppCertificateTest`, 1) | The same, with the real core and the real WebView, and a certificate made on the device: refused, with the words, "Advanced…", no way on and no padlock, the site not asked; the warning names 127.0.0.1, and nothing is asked of the site; pressed, the page loads, asked for once, marked not secure. Android's accessibility checks pass over the failed page and over the warning. Three rules broken on purpose and run on the emulator, each caught: a failed load that keeps its mark (the padlock is there), "Advanced…" that goes on at once, and a page past a certificate marked as its address says |
 
 ## 8. Decisions
 
@@ -143,14 +156,22 @@ The same in the Apple shell and the Android shell: the failed page, with two thi
 
 ## 9. What is not verified
 
-Written when built.
+- **The Mac app.** The Mac's UI suite has not run over this feature: a dialog of the system's is on this Mac's screen, and the suite is not started while one is (CLAUDE.md). The adapter and the model are tested on the Mac; the app's own test (`CertificateTests`) ran on the iPhone simulator only. Whether the Mac's sandboxed test runner can make the site's identity in memory is not known: the test skips itself if it cannot.
+- **A site that forbids going on** (HSTS). Browsers offer no way past a certificate for a host that has asked for strict transport security. An adapter cannot ask, with the systems' public APIs, whether a host has; so WebTiger offers the warning there too. Not tried: it needs a host that the engine knows to be strict and whose certificate is not trusted.
+- **The other two kinds of trouble, against an engine.** Every test with a real engine serves a certificate that signs itself (`net.tls.untrusted`). A certificate whose dates do not hold, and one that is another site's, are the core's tests and the adapters' own rules.
+- **A load that is redirected to a site whose certificate is not trusted.** The rule holds the certificate of the address that failed; no test with a real engine redirects to one.
+- **A real router, printer or other device**, which is what this is for; and **a phone**: Android ran on an emulator, Apple on the Mac and a simulator.
+- **A private window** (Apple): that its exceptions are its own is the adapter's rule, tested with no engine.
+- **The warning at the largest text sizes.** There is no picture of it; the failed page's own (021) is unchanged.
+- **The mark while a load is on its way.** An address over `https` that a person typed has the padlock beside it before any connection is made (001). For a certificate that is then refused that is a fraction of a second; it is not changed here, and is the owner's to decide.
 
 ## 10. Done checklist
 
 - [x] Contract 1.20 and its version in every place it is written.
-- [x] The core: the rule of §3 (8 tests).
+- [x] The core: the rule of §3 (9 tests).
 - [x] Android: the adapter, against the real WebView with a certificate that signs itself (on the emulator).
 - [x] Apple: the adapter, against real WebKit with a certificate that signs itself (on the Mac and the iPhone simulator).
-- [ ] The shells: the warning, and going on.
-- [ ] `Tools/test.sh all` green, and `android-device`.
+- [x] The shells: the warning, and going on. Model tests and pictures on three systems; in the apps on the iPhone simulator and the Android emulator.
+- [ ] The Mac's UI suite.
+- [ ] `Tools/test.sh all` green, and `android-device`. Run on 2026-11-20, stage by stage, with everything but the Mac's UI suite: `lint`, `core` (484), `unit` (253 on the Mac), `ios` (235 on the iPhone simulator, one skipped as before), `build`, the iPhone's UI suite (25), `android` (311 and 32 on the JVM) and `android-device` (142 on the emulator) all passed.
 - [ ] Windows shell.

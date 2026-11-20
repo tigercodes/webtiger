@@ -55,6 +55,23 @@ private val TALL_STATES =
         CatalogueState.PICTURE_LINK_MENU,
     )
 
+/**
+ * The states of the window that are a page of words: a failed page with the way to go on past a
+ * certificate under it, and with the warning (026). Drawn as tall as a page, so that the button
+ * under the warning is in the picture.
+ */
+private val PAGE_STATES = setOf(CatalogueState.FAILED_CERTIFICATE, CatalogueState.FAILED_CERTIFICATE_WARNING)
+
+/** How tall a state's picture is. */
+private enum class Height { USUAL, TALL, PAGE }
+
+private fun heightOf(state: CatalogueState): Height =
+    when (state) {
+        in PAGE_STATES -> Height.PAGE
+        in TALL_STATES -> Height.TALL
+        else -> Height.USUAL
+    }
+
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class CatalogueSnapshotTest {
@@ -75,10 +92,10 @@ class CatalogueSnapshotTest {
         verify("tokens-$theme")
     }
 
-    private fun windows(theme: String, tall: Boolean = false) {
+    private fun windows(theme: String, height: Height = Height.USUAL) {
         var state by mutableStateOf(CatalogueState.EMPTY)
         show { key(state) { CatalogueWindow(state, Modifier.fillMaxSize()) } }
-        for (next in CatalogueState.entries.filter { (it in TALL_STATES) == tall }) {
+        for (next in CatalogueState.entries.filter { heightOf(it) == height }) {
             state = next
             verify("window-${next.name.lowercase().replace('_', '-')}-$theme")
         }
@@ -138,10 +155,16 @@ class CatalogueSnapshotTest {
     fun everyStateOfTheWindowInTheDarkTheme() = windows("dark")
 
     @Test @Config(qualifiers = LIST_LIGHT)
-    fun theWindowsTallStatesInTheLightTheme() = windows("light", tall = true)
+    fun theWindowsTallStatesInTheLightTheme() = windows("light", Height.TALL)
 
     @Test @Config(qualifiers = LIST_DARK)
-    fun theWindowsTallStatesInTheDarkTheme() = windows("dark", tall = true)
+    fun theWindowsTallStatesInTheDarkTheme() = windows("dark", Height.TALL)
+
+    @Test @Config(qualifiers = "w411dp-h820dp-notnight-xhdpi")
+    fun theWindowsPagesOfWordsInTheLightTheme() = windows("light", Height.PAGE)
+
+    @Test @Config(qualifiers = "w411dp-h820dp-night-xhdpi")
+    fun theWindowsPagesOfWordsInTheDarkTheme() = windows("dark", Height.PAGE)
 
     @Test @Config(qualifiers = LIGHT)
     fun everyStateOfTheHistoryListInTheLightTheme() = historyLists("light")

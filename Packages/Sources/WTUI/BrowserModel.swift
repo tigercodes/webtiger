@@ -25,6 +25,9 @@ public final class BrowserModel {
     public internal(set) var spaces: [WTSpaceSummary]?
     /// Why the core would not make a Space, by its code: said on the page that asked.
     public internal(set) var spaceRefusal: String?
+    /// The warning before going on past a certificate is open (026): for this failure of the
+    /// tab in front, and no other.
+    public internal(set) var isWarnedOfCertificate = false
     /// What is in the address field. It follows the core until the user types in it. Each
     /// change while it is typed in asks what to offer for it (011).
     public var addressText = "" {
@@ -379,6 +382,7 @@ public final class BrowserModel {
             // What was offered was offered for what was typed for that tab.
             putSuggestionsAway()
         }
+        keepWarning(for: snapshot.tab, switched: switched)
         tab = snapshot.tab
         tabs = snapshot.tabs
         downloadsActive = snapshot.downloadsActive

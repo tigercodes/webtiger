@@ -18,6 +18,7 @@ import com.tigercodes.webtiger.core.v1.FindInPage
 import com.tigercodes.webtiger.core.v1.LoadState
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.core.v1.OpenTab
+import com.tigercodes.webtiger.core.v1.ProceedPastCertificate
 import com.tigercodes.webtiger.core.v1.PromptView
 import com.tigercodes.webtiger.core.v1.QuerySearch
 import com.tigercodes.webtiger.core.v1.QuerySpaces
@@ -43,7 +44,8 @@ import kotlinx.coroutines.launch
  *
  * A model made with `finding`, with `typing` and what is `offered` for it, or `zooming`, is a
  * picture of a window (004): its find bar is open on that text, its address field holds it with
- * those places listed, or its zoom bar is open, before anything has been asked of the core.
+ * those places listed, or its zoom bar is open, before anything has been asked of the core. One
+ * made `warned` is the picture of the warning before going on past a certificate (026).
  */
 class BrowserModel(
     private val session: BrowserSession,
@@ -54,6 +56,7 @@ class BrowserModel(
     pressing: Pressed? = null,
     searching: SearchSettings? = null,
     changingSearch: Boolean = false,
+    warned: Boolean = false,
 ) {
     /** The tab in front, as the core last published it. The window's controls act on it. */
     var tab by mutableStateOf(TabView())
@@ -366,6 +369,31 @@ class BrowserModel(
         isChangingSearch = false
     }
 
+    // Going on past a certificate (026 §6)
+
+    /** The load in front failed for its site's certificate, and the core says it may be gone on with. */
+    val canGoOnPastCertificate: Boolean get() = hasFailed && tab.certificate_passable
+
+    /** The warning is open: "Advanced…" was pressed, for this failure of the tab in front. */
+    var isWarnedOfCertificate by mutableStateOf(warned)
+        private set
+
+    /** Shows the warning. Nothing goes on by this. */
+    fun warnOfCertificate() {
+        if (canGoOnPastCertificate) isWarnedOfCertificate = true
+    }
+
+    /**
+     * The person goes on, having been warned: the core is asked, and what comes of it is the
+     * core's to say. Without the warning on the screen, nothing is asked.
+     */
+    fun goOnPastCertificate() {
+        val front = frontTabId ?: return
+        if (!canGoOnPastCertificate || !isWarnedOfCertificate) return
+        isWarnedOfCertificate = false
+        session.send(Request(proceed_past_certificate = ProceedPastCertificate(tab_id = front)))
+    }
+
     // Several Spaces (024 §6)
 
     /** The Space the window shows, by the core's name for it. 0 until the core has said. */
@@ -641,6 +669,13 @@ class BrowserModel(
         // A link's menu is of the page it was pressed in: with another web view in front, or
         // none, it is put away. (A picture's menu stays in its picture.)
         if (pressedLink?.let { it.webViewId != PICTURED && it.webViewId != front.web_view_id } == true) pressedLink = null
+        // The warning before going on past a certificate (026) is one failure's: another tab,
+        // another load or another site starts again from "Advanced…".
+        // (The window's first snapshot is no other failure than the one a picture was made of.)
+        val first = tab.tab_id == 0L
+        val goesOn = front.load_state == LoadState.LOAD_STATE_FAILED && front.certificate_passable
+        val sameFailure = goesOn && (first || (!switched && front.certificate_host == tab.certificate_host))
+        if (!sameFailure) isWarnedOfCertificate = false
         tab = front
         tabs = snapshot.tabs
         downloadsActive = snapshot.downloads_active

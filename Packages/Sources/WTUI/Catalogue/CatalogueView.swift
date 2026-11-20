@@ -111,7 +111,7 @@ struct CatalogueWindow: View {
         // says so.
         BrowserWindowView(
             session: session, finding: state.finding, typing: state.typing, offered: state.offered, zooming: state.zooming,
-            searching: CatalogueSearch.inUse
+            searching: CatalogueSearch.inUse, warned: state.warned
         )
     }
 }

@@ -14,6 +14,8 @@ enum CatalogueState: String, CaseIterable, Identifiable {
     case insecure
     case long
     case failed
+    case failedCertificate = "failed-certificate"
+    case failedCertificateWarning = "failed-certificate-warning"
     case history
     case tabs
     case find
@@ -41,6 +43,8 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         case .insecure: "catalogue.state.insecure"
         case .long: "catalogue.state.long"
         case .failed: "catalogue.state.failed"
+        case .failedCertificate: "catalogue.state.failed_certificate"
+        case .failedCertificateWarning: "catalogue.state.failed_certificate_warning"
         case .history: "catalogue.state.history"
         case .tabs: "catalogue.state.tabs"
         case .find: "catalogue.state.find"
@@ -60,6 +64,11 @@ enum CatalogueState: String, CaseIterable, Identifiable {
     /// The window's zoom bar is open in this state.
     var zooming: Bool {
         self == .zoom
+    }
+
+    /// The warning before going on past a certificate is open in this state (026).
+    var warned: Bool {
+        self == .failedCertificateWarning
     }
 
     /// What is typed in the address field in this state, when something is.
@@ -115,10 +124,20 @@ enum CatalogueState: String, CaseIterable, Identifiable {
             let path = "example.com/a/path/that/is/longer/than/the/field/is/wide/and/then/goes/on/for/a/while?with=a&query=too"
             page(&window, url: "https://\(path)", display: path, security: .secure)
         case .failed:
-            page(&window, url: "https://nowhere.example.com/", display: "nowhere.example.com", security: .secure)
+            // No page arrived: there is nothing for the mark beside the address to speak of,
+            // and nothing to zoom.
+            page(&window, url: "https://nowhere.example.com/", display: "nowhere.example.com", security: .unspecified)
             window.tab.loadState = .failed
             window.tab.errorCode = "net.dns"
-            // No page arrived, and there is nothing to zoom.
+            window.tab.clearZoom()
+        case .failedCertificate, .failedCertificateWarning:
+            // The site's certificate is not one the device trusts, and the core says the load
+            // may be gone on with (026): a device of the person's own.
+            page(&window, url: "https://router.example.com/", display: "router.example.com", security: .unspecified)
+            window.tab.loadState = .failed
+            window.tab.errorCode = "net.tls.untrusted"
+            window.tab.certificatePassable = true
+            window.tab.certificateHost = "router.example.com"
             window.tab.clearZoom()
         case .history:
             page(&window, url: "https://example.com/second", display: "example.com/second", security: .secure)

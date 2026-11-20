@@ -30,6 +30,10 @@
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_failed">A page that failed</string>
     <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_failed_certificate">A certificate that isn’t trusted</string>
+    <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_failed_certificate_warning">The warning before going on past a certificate</string>
+    <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_find">Find on the page, with a count</string>
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_find_none">Find on the page, not found</string>
@@ -97,6 +101,16 @@
     <string name="catalogue_states">The Window</string>
     <!-- Title of the design catalogue: a screen for designers that shows every design token and every state of the window. -->
     <string name="catalogue_title">Design Catalogue</string>
+    <!-- Button on the page shown when a site's certificate isn't trusted, under 'Try Again': shows the warning, and under it the way to go on to the site all the same. -->
+    <string name="certificate_advanced">Advanced…</string>
+    <!-- Button under the warning: loads the site although its certificate isn't trusted. %@ is the site's host name. The words in brackets say what the button does and must stay. -->
+    <string name="certificate_proceed">Go On to %s (Not Safe)</string>
+    <!-- The warning shown before a person can go on to a site whose certificate isn't trusted. %@ is the site's host name, such as router.example.com. -->
+    <string name="certificate_warning">WebTiger can’t confirm that this is really %s. Someone could be pretending to be it, and could read or change what you send and receive: passwords, messages, card numbers.</string>
+    <!-- Second sentence of the warning before going on to a site whose certificate isn't trusted. -->
+    <string name="certificate_warning_only_if">Go on only if you know why this site’s certificate isn’t trusted, such as a router or a device of your own.</string>
+    <!-- Heading of the warning shown before a person can go on to a site whose certificate isn't trusted. -->
+    <string name="certificate_warning_title">Going on isn’t safe</string>
     <!-- Accessibility value of the History and Downloads button while a download is coming. -->
     <string name="downloads_active">Downloading</string>
     <!-- Button in the Downloads list that takes every download off the list. The files stay where they are. -->

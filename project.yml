@@ -119,6 +119,9 @@ targets:
       # The loopback site the package's adapter suite uses, and its pages.
       - path: Packages/Tests/WTWebKitTests/TestSite.swift
       - path: Packages/Tests/WTWebKitTests/TestSitePages.generated.swift
+      # A site over https whose certificate signs itself (026), from an identity made in memory.
+      - path: Packages/Tests/WTWebKitTests/SecureSite.swift
+      - path: Packages/Tests/WTWebKitTests/TestIdentities.swift
     dependencies:
       - target: WebTiger-macOS
     # The Mac's UI test runner is sandboxed. Its loopback site has to listen, and the
@@ -140,6 +143,8 @@ targets:
       - path: Apps/WebTiger/UITests
       - path: Packages/Tests/WTWebKitTests/TestSite.swift
       - path: Packages/Tests/WTWebKitTests/TestSitePages.generated.swift
+      - path: Packages/Tests/WTWebKitTests/SecureSite.swift
+      - path: Packages/Tests/WTWebKitTests/TestIdentities.swift
     dependencies:
       - target: WebTiger-iOS
     settings:

@@ -95,6 +95,8 @@ internal enum class CatalogueState(@StringRes val title: Int) {
     INSECURE(R.string.catalogue_state_insecure),
     LONG(R.string.catalogue_state_long),
     FAILED(R.string.catalogue_state_failed),
+    FAILED_CERTIFICATE(R.string.catalogue_state_failed_certificate),
+    FAILED_CERTIFICATE_WARNING(R.string.catalogue_state_failed_certificate_warning),
     HISTORY(R.string.catalogue_state_history),
     TABS(R.string.catalogue_state_tabs),
     FIND(R.string.catalogue_state_find),
@@ -117,6 +119,9 @@ internal enum class CatalogueState(@StringRes val title: Int) {
 
     /** The window's zoom bar is open in this state. */
     val zooming: Boolean get() = this == ZOOM
+
+    /** The warning before going on past a certificate is open in this state (026). */
+    val warned: Boolean get() = this == FAILED_CERTIFICATE_WARNING
 
     /**
      * What a core says of where searches go, in this state. Every window is told that an engine
@@ -207,10 +212,21 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                     LONG ->
                         "example.com/a/path/that/is/longer/than/the/field/is/wide/and/then/goes/on/for/a/while?with=a&query=too"
                             .let { path -> page("https://$path", path) }
-                    // No page arrived, and there is nothing to zoom.
+                    // No page arrived: there is nothing to zoom, and nothing for the mark beside
+                    // the address to speak of.
                     FAILED ->
-                        page("https://nowhere.example.com/", "nowhere.example.com")
+                        page("https://nowhere.example.com/", "nowhere.example.com", AddressView.Security.SECURITY_UNSPECIFIED)
                             .copy(load_state = LoadState.LOAD_STATE_FAILED, error_code = "net.dns", zoom = null)
+                    // The site's certificate is not one the device trusts, and the core says the
+                    // load may be gone on with (026): a device of the person's own.
+                    FAILED_CERTIFICATE, FAILED_CERTIFICATE_WARNING ->
+                        page("https://router.example.com/", "router.example.com", AddressView.Security.SECURITY_UNSPECIFIED).copy(
+                            load_state = LoadState.LOAD_STATE_FAILED,
+                            error_code = "net.tls.untrusted",
+                            zoom = null,
+                            certificate_passable = true,
+                            certificate_host = "router.example.com",
+                        )
                     HISTORY -> page("https://example.com/second", "example.com/second").copy(can_go_back = true, can_go_forward = true)
                     TABS -> page("https://example.com/", "example.com").copy(title = "Example Domain")
                     // An engine that counts: the third of twelve.
@@ -530,7 +546,7 @@ internal fun CatalogueWindow(state: CatalogueState, modifier: Modifier = Modifie
     val context = LocalContext.current.applicationContext
     val scope = rememberCoroutineScope()
     val session = remember(state) { state.session(context, scope) }
-    val model = remember(session) { BrowserModel(session, finding = state.finding, typing = state.typing, offered = state.offered, zooming = state.zooming, pressing = state.pressing, searching = state.searching, changingSearch = state.changingSearch) }
+    val model = remember(session) { BrowserModel(session, finding = state.finding, typing = state.typing, offered = state.offered, zooming = state.zooming, pressing = state.pressing, searching = state.searching, changingSearch = state.changingSearch, warned = state.warned) }
     // A window takes the system's Back for its page. These are pictures of windows: Back leaves
     // the catalogue, whatever state one of them shows.
     val lifecycle = LocalLifecycleOwner.current.lifecycle

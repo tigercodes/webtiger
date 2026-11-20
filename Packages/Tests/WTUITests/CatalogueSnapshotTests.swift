@@ -14,6 +14,9 @@ final class CatalogueSnapshotTests: XCTestCase {
     /// that all of it is seen.
     private static let tallWindowSize = CGSize(width: 480, height: CatalogueWindow.height + 160)
     private static let tallStates: Set<CatalogueState> = [.promptSignInAgain]
+    /// A failed page with the way to go on past a certificate under it, and with the warning
+    /// (026): as tall as a page.
+    private static let pageStates: Set<CatalogueState> = [.failedCertificate, .failedCertificateWarning]
     /// For a page over the window that is longer than any window's picture.
     private static let pageSize = CGSize(width: 480, height: 700)
 
@@ -40,7 +43,8 @@ final class CatalogueSnapshotTests: XCTestCase {
     func testEveryStateOfTheWindow() async throws {
         try skipWithoutPictures()
         for state in CatalogueState.allCases {
-            let size = Self.tallStates.contains(state) ? Self.tallWindowSize : Self.windowSize
+            let tall = Self.tallStates.contains(state) ? Self.tallWindowSize : Self.windowSize
+            let size = Self.pageStates.contains(state) ? Self.pageSize : tall
             await verify(CatalogueWindow(state: state), size: size, named: "window-\(state.rawValue)")
         }
     }

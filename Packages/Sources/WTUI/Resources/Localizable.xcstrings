@@ -169,6 +169,30 @@
         }
       }
     },
+    "catalogue.state.failed_certificate": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A certificate that isn’t trusted"
+          }
+        }
+      }
+    },
+    "catalogue.state.failed_certificate_warning": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The warning before going on past a certificate"
+          }
+        }
+      }
+    },
     "catalogue.state.find": {
       "comment": "Design catalogue: a state of the window.",
       "extractionState": "manual",
@@ -573,6 +597,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "Design Catalogue"
+          }
+        }
+      }
+    },
+    "certificate.advanced": {
+      "comment": "Button on the page shown when a site's certificate isn't trusted, under 'Try Again': shows the warning, and under it the way to go on to the site all the same.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Advanced…"
+          }
+        }
+      }
+    },
+    "certificate.proceed": {
+      "comment": "Button under the warning: loads the site although its certificate isn't trusted. %@ is the site's host name. The words in brackets say what the button does and must stay.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Go On to %@ (Not Safe)"
+          }
+        }
+      }
+    },
+    "certificate.warning": {
+      "comment": "The warning shown before a person can go on to a site whose certificate isn't trusted. %@ is the site's host name, such as router.example.com.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebTiger can’t confirm that this is really %@. Someone could be pretending to be it, and could read or change what you send and receive: passwords, messages, card numbers."
+          }
+        }
+      }
+    },
+    "certificate.warning.only_if": {
+      "comment": "Second sentence of the warning before going on to a site whose certificate isn't trusted.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Go on only if you know why this site’s certificate isn’t trusted, such as a router or a device of your own."
+          }
+        }
+      }
+    },
+    "certificate.warning.title": {
+      "comment": "Heading of the warning shown before a person can go on to a site whose certificate isn't trusted.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Going on isn’t safe"
           }
         }
       }

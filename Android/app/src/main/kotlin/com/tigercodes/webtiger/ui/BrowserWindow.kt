@@ -139,7 +139,21 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
             Box(modifier = Modifier.fillMaxWidth().weight(1f).focusRequester(page).focusable()) {
                 when {
                     model.hasFailed ->
-                        FailedPage(code = model.tab.error_code, onRetry = { model.perform(NavigationCommand.NAVIGATION_COMMAND_RELOAD) })
+                        FailedPage(
+                            code = model.tab.error_code,
+                            onRetry = { model.perform(NavigationCommand.NAVIGATION_COMMAND_RELOAD) },
+                            goingOn =
+                                if (model.canGoOnPastCertificate) {
+                                    GoingOn(
+                                        host = model.tab.certificate_host,
+                                        warned = model.isWarnedOfCertificate,
+                                        onAdvanced = model::warnOfCertificate,
+                                        onGoOn = model::goOnPastCertificate,
+                                    )
+                                } else {
+                                    null
+                                },
+                        )
                     model.hasPage -> WebViewHost(session.engine, model.tab.web_view_id, Modifier.fillMaxSize().testTag("page"))
                     else -> EmptyTab(searchesGoTo = model.searchEngineName, onChangeSearch = model::changeSearch)
                 }
@@ -727,40 +741,6 @@ internal fun EmptyTab(searchesGoTo: String? = null, onChangeSearch: () -> Unit =
                 modifier = Modifier.padding(top = Tokens.Space.m).testTag("search-goes-to"),
             )
             TextButton(onClick = onChangeSearch, modifier = Modifier.testTag("search-change")) { Text(stringResource(R.string.search_change)) }
-        }
-    }
-}
-
-/** A page that failed to load. The core gave a code; the words are the shell's. */
-@Composable
-internal fun FailedPage(code: String, onRetry: () -> Unit) {
-    val resources = LocalResources.current
-    val packageName = LocalContext.current.packageName
-    Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Tokens.Space.xl).testTag("failed-page"),
-        verticalArrangement = Arrangement.spacedBy(Tokens.Space.m, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_warning),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(44.dp),
-        )
-        Text(
-            text = stringResource(R.string.error_title),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            text = errorWords(resources, packageName, code),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.testTag("failed-words"),
-        )
-        Button(onClick = onRetry, modifier = Modifier.testTag("retry")) {
-            Text(text = stringResource(R.string.error_retry))
         }
     }
 }

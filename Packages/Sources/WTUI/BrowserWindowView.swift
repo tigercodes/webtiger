@@ -25,20 +25,24 @@ public struct BrowserWindowView: View {
 
     /// A window as a picture of one (004): its find bar open on `finding`, its address field
     /// holding `typing` with places `offered` for it, or its zoom bar open; and told where
-    /// searches go from the start, as `searching` says.
+    /// searches go from the start, as `searching` says. `warned`: with the warning before
+    /// going on past a certificate open (026).
     init(
         session: BrowserSession,
         finding: String?,
         typing: String? = nil,
         offered: [WTAddressSuggestion] = [],
         zooming: Bool = false,
-        searching: WTSearchSettings? = nil
+        searching: WTSearchSettings? = nil,
+        warned: Bool = false
     ) {
         self.session = session
         self.finding = finding
-        _model = State(initialValue: BrowserModel(
+        let model = BrowserModel(
             session: session, finding: finding, typing: typing, offered: offered, zooming: zooming, searching: searching
-        ))
+        )
+        model.isWarnedOfCertificate = warned
+        _model = State(initialValue: model)
     }
 
     public var body: some View {
@@ -433,7 +437,7 @@ public struct BrowserWindowView: View {
 
     @ViewBuilder private var content: some View {
         if model.hasFailed {
-            FailedPageView(code: model.tab.errorCode) { model.perform(.reload) }
+            FailedPageView(code: model.tab.errorCode, goingOn: model.goingOn) { model.perform(.reload) }
         } else if model.hasPage {
             WebViewHost(engine: session.engine, webViewID: model.tab.webViewID, pageWaits: model.pageWaits)
         } else {
@@ -499,55 +503,6 @@ struct EmptyTabView: View {
     /// The sentence that says where searches go.
     static func goesTo(_ engine: String, locale: Locale = .current) -> String {
         String(format: String(localized: "search.goes_to", bundle: .module, locale: locale), engine)
-    }
-}
-
-/// A page that failed to load. The core gave a code; the words are the shell's.
-struct FailedPageView: View {
-    let code: String
-    let retry: () -> Void
-
-    var body: some View {
-        CenteredWords {
-            VStack(spacing: Tokens.Space.m) {
-                Image(systemName: "exclamationmark.icloud")
-                    .font(.system(size: 44))
-                    .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
-                Text("error.title", bundle: .module)
-                    .font(.title2.weight(.semibold))
-                Text(Self.words(for: code))
-                // A neutral button with its words in the primary colour: readable in both
-                // appearances, where a tinted label is not.
-                Button(action: retry) { Text("error.retry", bundle: .module) }
-                    .buttonStyle(.bordered)
-                    .tint(.primary)
-                    .accessibilityIdentifier("retry")
-            }
-            .multilineTextAlignment(.center)
-            .padding(Tokens.Space.xl)
-            // A container that is an element of its own: without this the identifier is handed
-            // down to the children and replaces theirs.
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("failed-page")
-        }
-    }
-
-    /// The words for a core error code: the string keyed `error.<code>`. A code with none of
-    /// its own has those of the code above it (`net.tls` for `net.tls.date`, 021 §3), so that
-    /// a newer core's finer code is never worse than the one it refines; and only then the
-    /// general ones.
-    static func words(for code: String) -> String {
-        var parts = code.split(separator: ".").map(String.init)
-        while parts.count >= 2 {
-            let key = "error." + parts.joined(separator: ".")
-            let words = Bundle.module.localizedString(forKey: key, value: nil, table: nil)
-            if words != key {
-                return words
-            }
-            parts.removeLast()
-        }
-        return Bundle.module.localizedString(forKey: "error.net.failed", value: nil, table: nil)
     }
 }
 

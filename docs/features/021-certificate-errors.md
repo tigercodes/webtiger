@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built and tested in the Android shell (against the real System WebView, on an emulator, with a certificate that signs itself) and the Apple shell (WebKit's kinds as the adapter's rule; no certificate is presented to WebKit, §7). There is still no way past a certificate that is not trusted (§2). Windows is not started |
+| **Status** | Built and tested in the Android shell (against the real System WebView, on an emulator, with a certificate that signs itself) and the Apple shell (WebKit's kinds as the adapter's rule; a certificate that signs itself is presented to real WebKit since [026](026-past-a-certificate.md), §7). The way past a certificate that is not trusted, with a warning before, is [026](026-past-a-certificate.md): the owner's decision, 2026-11-20. Windows is not started |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "error and certificate pages". Error pages are there (001); this is what they say of a certificate |
 | **Contract** | No new message. Three more codes of `NavigationFailed`, under the one there is: `net.tls.untrusted`, `net.tls.date`, `net.tls.name` |
 | **Builds on** | [001](001-foundations.md): a load that fails is reported with a code, and the shell has the words |
@@ -18,7 +18,7 @@ I go to a site and WebTiger will not show it, because the site's certificate can
 
 **Not in:**
 
-- **Going on all the same.** There is no way past a certificate that is not trusted: the page is not shown. Whether a person may ever be let past one, for a router or a device of their own, is a decision about what the browser promises, and is the owner's to make; it is not made here. Nothing in this feature is in its way.
+- **Going on all the same.** Not in this feature: the page is not shown. Whether a person may ever be let past a certificate, for a router or a device of their own, was the owner's to decide, and has been (2026-11-20): they may, with a warning before. That is [026](026-past-a-certificate.md).
 - **Looking at the certificate**: who it names, who signed it, its dates. Later.
 - **A page of the engine's own.** Neither engine's own error page is shown: the tab shows WebTiger's failed page, as for every failure (001).
 
@@ -67,9 +67,11 @@ Nothing is accepted on a person's behalf, by any adapter, for any of these: the 
 
 | # | Decision | Why |
 |---|---|---|
-| D1 | No way past, for now | It is a promise about safety, and the owner's to make. The failed page as it is makes none |
+| D1 | No way past, in this feature | It is a promise about safety, and the owner's to make. The owner has since made it: [026](026-past-a-certificate.md) |
 | D2 | Three kinds, and the rest | What a person can act on differently: the address, the clock, or neither. More kinds would be words nobody can use |
 | D3 | The words say what is wrong, not what to fear | A person who knows it is the clock fixes the clock |
+
+> **Put right with 026.** As this feature shipped, the address of a load that failed for its certificate still had the padlock beside it: the mark came from the address's scheme alone. From contract 1.20 the core says nothing of security for a load that failed ([026](026-past-a-certificate.md) §3).
 
 ## 7. What is not verified
 
