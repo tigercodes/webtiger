@@ -24,6 +24,7 @@ mod model;
 mod permissions;
 mod search;
 mod signin;
+mod spaces;
 
 pub use app::{App, AppFuture, AppOptions, HISTORY_PAGE, OUTSIDE_LINK_INTERVAL, SUGGESTIONS};
 pub use dialogs::DIALOG_WORDS;

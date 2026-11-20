@@ -89,6 +89,11 @@ message WindowSnapshot {
   // Since 1.9. How many downloads of the window's login set are coming
   // (013): enough to show that something is, without asking.
   uint32 downloads_active = 4;
+  // Since 1.18. The Space the window shows (024): `tabs` are its tabs.
+  uint64 space_id = 5;
+  // Since 1.18. That Space's name. Empty for the Space the app made itself,
+  // until the person names it: the shell shows its own word.
+  string space_name = 6 [(wt.redact) = true];
 }
 
 // A tab as a strip of tabs shows it: enough to name it, and no more.
@@ -546,4 +551,54 @@ message SearchEngine {
 // not have, which changes nothing.
 message ChooseSearchEngine {
   string id = 1;
+}
+
+// Since 1.18. Asks for the Spaces (024), in their order. Answered with
+// SpacesPage.
+message QuerySpaces {}
+
+message SpacesPage {
+  repeated SpaceSummary spaces = 1;
+}
+
+message SpaceSummary {
+  uint64 space_id = 1;
+  // Empty for the Space the app made itself, until the person names it.
+  string name = 2 [(wt.redact) = true];
+  // Spaces with the same number here share their logins. It is a number of
+  // the core's own for this answer, and says nothing else of the logins.
+  uint32 logins = 3;
+}
+
+// Since 1.18. Makes a Space (024), after the others. Its name is what was
+// typed without the white space at its ends, cut at 60 characters. Answered
+// with SpaceCreated; or "space.name_empty", "space.too_many" (there may be
+// 32), or "space.unknown" for logins of a Space that is not there. Refused,
+// nothing is made.
+message CreateSpace {
+  string name = 1 [(wt.redact) = true];
+  // The Space whose logins it shares; 0 for logins of its own. It is chosen
+  // here, and not changed after.
+  uint64 share_logins_with = 2;
+}
+
+message SpaceCreated {
+  uint64 space_id = 1;
+}
+
+// Since 1.18. Names a Space (024), by the rule for a new one's name.
+// Answered with Ack, "space.unknown" or "space.name_empty".
+message RenameSpace {
+  uint64 space_id = 1;
+  string name = 2 [(wt.redact) = true];
+}
+
+// Since 1.18. A window shows another Space (024): that Space's tabs, with
+// the one in front that was in front when it was last shown. The tabs of
+// the Space it showed stay as they are, and nothing is asked of their web
+// views. Answered with Ack (also for the Space the window shows already),
+// "window.unknown" or "space.unknown".
+message SwitchSpace {
+  uint64 window_id = 1;
+  uint64 space_id = 2;
 }

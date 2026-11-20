@@ -165,6 +165,18 @@ impl Dispatcher {
                 .filter(|start| fake && !start.is_empty()),
             clock,
             session: !fake,
+            new_login_set: if fake {
+                // The same ones in the same order every run: each a step
+                // on from the app's own.
+                let made = std::cell::Cell::new(0u8);
+                Rc::new(move || {
+                    let next = made.get().checked_add(1)?;
+                    made.set(next);
+                    Some(Uuid::from_random_bytes([0x57u8.wrapping_add(next); 16]))
+                })
+            } else {
+                Rc::new(|| Uuid::random().ok())
+            },
         };
         // The app holds the store: the database stays open, and locked, for
         // as long as the core runs.

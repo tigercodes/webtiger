@@ -10,7 +10,7 @@
 
 /// WebTiger Core ↔ shell contract (docs/features/000-master-plan.md §5.5,
 /// docs/features/001-foundations.md §4).
-/// Contract version: 1.17 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
+/// Contract version: 1.18 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
 ///   1.1  Tabs: OpenTab, CloseTab, ActivateTab, TabOpened; WindowSnapshot.tabs.
 ///   1.2  A page that asks for a new window: NewWindowRequested, CloseRequested;
 ///        web view ids with their top bit set are the shell's.
@@ -351,6 +351,39 @@ public nonisolated struct WTRequest: Sendable {
     set {kind = .chooseSearchEngine(newValue)}
   }
 
+  /// Since 1.18
+  public var querySpaces: WTQuerySpaces {
+    get {
+      if case .querySpaces(let v)? = kind {return v}
+      return WTQuerySpaces()
+    }
+    set {kind = .querySpaces(newValue)}
+  }
+
+  public var createSpace: WTCreateSpace {
+    get {
+      if case .createSpace(let v)? = kind {return v}
+      return WTCreateSpace()
+    }
+    set {kind = .createSpace(newValue)}
+  }
+
+  public var renameSpace: WTRenameSpace {
+    get {
+      if case .renameSpace(let v)? = kind {return v}
+      return WTRenameSpace()
+    }
+    set {kind = .renameSpace(newValue)}
+  }
+
+  public var switchSpace: WTSwitchSpace {
+    get {
+      if case .switchSpace(let v)? = kind {return v}
+      return WTSwitchSpace()
+    }
+    set {kind = .switchSpace(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -388,6 +421,11 @@ public nonisolated struct WTRequest: Sendable {
     /// Since 1.15
     case querySearch(WTQuerySearch)
     case chooseSearchEngine(WTChooseSearchEngine)
+    /// Since 1.18
+    case querySpaces(WTQuerySpaces)
+    case createSpace(WTCreateSpace)
+    case renameSpace(WTRenameSpace)
+    case switchSpace(WTSwitchSpace)
 
   }
 
@@ -496,6 +534,23 @@ public nonisolated struct WTResponse: Sendable {
     set {kind = .searchSettings(newValue)}
   }
 
+  /// Since 1.18
+  public var spacesPage: WTSpacesPage {
+    get {
+      if case .spacesPage(let v)? = kind {return v}
+      return WTSpacesPage()
+    }
+    set {kind = .spacesPage(newValue)}
+  }
+
+  public var spaceCreated: WTSpaceCreated {
+    get {
+      if case .spaceCreated(let v)? = kind {return v}
+      return WTSpaceCreated()
+    }
+    set {kind = .spaceCreated(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -516,6 +571,9 @@ public nonisolated struct WTResponse: Sendable {
     case permissionsPage(WTPermissionsPage)
     /// Since 1.15
     case searchSettings(WTSearchSettings)
+    /// Since 1.18
+    case spacesPage(WTSpacesPage)
+    case spaceCreated(WTSpaceCreated)
 
   }
 
@@ -876,7 +934,7 @@ nonisolated extension WTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Request"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0\u{3}open_tab\0\u{3}close_tab\0\u{3}activate_tab\0\u{3}query_history\0\u{3}forget_history\0\u{3}find_in_page\0\u{3}suggest_addresses\0\u{3}zoom_page\0\u{3}query_downloads\0\u{3}cancel_download\0\u{3}forget_downloads\0\u{3}answer_prompt\0\u{3}query_permissions\0\u{3}forget_permissions\0\u{3}query_search\0\u{3}choose_search_engine\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0\u{3}open_tab\0\u{3}close_tab\0\u{3}activate_tab\0\u{3}query_history\0\u{3}forget_history\0\u{3}find_in_page\0\u{3}suggest_addresses\0\u{3}zoom_page\0\u{3}query_downloads\0\u{3}cancel_download\0\u{3}forget_downloads\0\u{3}answer_prompt\0\u{3}query_permissions\0\u{3}forget_permissions\0\u{3}query_search\0\u{3}choose_search_engine\0\u{3}query_spaces\0\u{3}create_space\0\u{3}rename_space\0\u{3}switch_space\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1196,6 +1254,58 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
           self.kind = .chooseSearchEngine(v)
         }
       }()
+      case 25: try {
+        var v: WTQuerySpaces?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .querySpaces(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .querySpaces(v)
+        }
+      }()
+      case 26: try {
+        var v: WTCreateSpace?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .createSpace(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .createSpace(v)
+        }
+      }()
+      case 27: try {
+        var v: WTRenameSpace?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .renameSpace(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .renameSpace(v)
+        }
+      }()
+      case 28: try {
+        var v: WTSwitchSpace?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .switchSpace(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .switchSpace(v)
+        }
+      }()
       default: break
       }
     }
@@ -1303,6 +1413,22 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       guard case .chooseSearchEngine(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 24)
     }()
+    case .querySpaces?: try {
+      guard case .querySpaces(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 25)
+    }()
+    case .createSpace?: try {
+      guard case .createSpace(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 26)
+    }()
+    case .renameSpace?: try {
+      guard case .renameSpace(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 27)
+    }()
+    case .switchSpace?: try {
+      guard case .switchSpace(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 28)
+    }()
     case nil: break
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -1317,7 +1443,7 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 nonisolated extension WTResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Response"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}error\0\u{1}ack\0\u{1}pong\0\u{1}subscribed\0\u{3}window_opened\0\u{3}tab_opened\0\u{3}history_page\0\u{3}address_suggestions\0\u{3}downloads_page\0\u{3}permissions_page\0\u{3}search_settings\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}error\0\u{1}ack\0\u{1}pong\0\u{1}subscribed\0\u{3}window_opened\0\u{3}tab_opened\0\u{3}history_page\0\u{3}address_suggestions\0\u{3}downloads_page\0\u{3}permissions_page\0\u{3}search_settings\0\u{3}spaces_page\0\u{3}space_created\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1468,6 +1594,32 @@ nonisolated extension WTResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
           self.kind = .searchSettings(v)
         }
       }()
+      case 12: try {
+        var v: WTSpacesPage?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .spacesPage(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .spacesPage(v)
+        }
+      }()
+      case 13: try {
+        var v: WTSpaceCreated?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .spaceCreated(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .spaceCreated(v)
+        }
+      }()
       default: break
       }
     }
@@ -1522,6 +1674,14 @@ nonisolated extension WTResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     case .searchSettings?: try {
       guard case .searchSettings(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
+    }()
+    case .spacesPage?: try {
+      guard case .spacesPage(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
+    }()
+    case .spaceCreated?: try {
+      guard case .spaceCreated(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
     }()
     case nil: break
     }

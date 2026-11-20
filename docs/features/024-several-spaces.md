@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | In progress. The store lists, makes and renames Spaces (§5), tested. Nothing uses it yet: the core still has one Space, which the app makes itself, and no shell shows another |
+| **Status** | In progress. The store and the core are built and tested: Spaces are made, named and listed, a window is switched between them, a tab is in the Space it was opened in, and each Space's tabs come back (§3 to §5). No shell shows another Space yet: every shell's window stays on the one the app made |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "Spaces with their login sets … shared logins". The first of W2: the model has several Spaces, and a window shows one of them. Colours and icons, the tree of Groups and Sites, Favourites, both layouts, several windows and private windows are W2's later features |
-| **Contract** | 1.18: `QuerySpaces`, `SpacesPage`, `SpaceSummary`, `CreateSpace`, `SpaceCreated`, `RenameSpace`, `SwitchSpace`; `WindowSnapshot.space_id` |
+| **Contract** | 1.18: `QuerySpaces`, `SpacesPage`, `SpaceSummary`, `CreateSpace`, `SpaceCreated`, `RenameSpace`, `SwitchSpace`; `WindowSnapshot.space_id` and `space_name` |
 | **Builds on** | [001](001-foundations.md): the store's `space` and `login_set`, many Spaces to one login set from the first schema (000 WT-D9). [005](005-tabs.md): a window's tabs. [009](009-session-restore.md): the tabs come back |
 | **Last updated** | 2026-11-20 |
 
@@ -31,13 +31,13 @@ My window shows one Space at a time: its tabs. I switch the window to the other 
 
 **A Space** has a name, a place in the order, and a login set. The Space the app made itself has no name of its own: a shell shows its own word for it ("Home"), until the person names it.
 
-**Making one** (`CreateSpace`): with a name, and either logins of its own (a new login set, which is the default) or the logins of a Space there is. It is put after the others. A name is what is left of what was typed when the white space at its ends is gone; it may not be empty, and is cut at 60 characters. Two Spaces may have the same name. There may be 32 Spaces: one more is refused (`space.too_many`). A Space to share logins with that is not there is refused (`space.unknown`), and nothing is made.
+**Making one** (`CreateSpace`): with a name, and either logins of its own (a new login set, which is the default) or the logins of a Space there is. It is put after the others. A name is what is left of what was typed when the white space at its ends is gone and every run of it inside is one space (a name is one line, with nothing in it that is not shown); it may not be empty, and is cut at 60 characters. Two Spaces may have the same name. There may be 32 Spaces: one more is refused (`space.too_many`). A Space to share logins with that is not there is refused (`space.unknown`), and nothing is made.
 
 **Sharing is chosen when a Space is made**, and not changed after: changing a Space's logins is moving everything in it to other logins, which is not this feature.
 
 **Renaming** (`RenameSpace`) gives a Space a name, by the same rule for names. The app's own Space can be named like any other.
 
-**A window shows one Space.** It starts with the Space it showed when the app last ran, or the first. Its snapshot says which (`space_id`), and its tabs are that Space's tabs.
+**A window shows one Space.** It starts with the Space it showed when the app last ran, or the first. Its snapshot says which (`space_id`) and what it is called (`space_name`), and its tabs are that Space's tabs.
 
 **Switching** (`SwitchSpace`) changes the Space a window shows:
 
@@ -49,7 +49,9 @@ My window shows one Space at a time: its tabs. I switch the window to the other 
 
 **What is kept per login set stays so**: history, downloads, what sites were allowed. The Library shows those of the login set of the Space the window shows; two Spaces that share logins share them.
 
-**The tabs come back per Space** (009): each Space's tabs are saved as a window's are now, and given back when the Space is first shown again. Only the Space a window shows has its tabs made when the app starts: the others' are made when they are switched to.
+**The tabs come back per Space** (009): each Space's tabs are saved as a window's are now, and given back when the Space is first shown again. Only the Space a window shows has its tabs made when the app starts: the others' are made when they are switched to, and a Space that is not shown in a run keeps what was kept of it. A tab that came back is loaded when it comes in front of what a window shows: one that comes in front of a Space nobody is looking at sleeps on until that Space is shown.
+
+**More than one window.** The core has had several windows since W0, and one of them has the session (009). Until several windows are a feature of their own: a window that is opened shows the Space the window with the session shows, or showed; each window has its own tabs of a Space, as each has its own tabs now; and the session is that one window's, every Space of it.
 
 **What waits for a tab's answer waits with it.** A prompt of a tab in a Space that is not shown is still that tab's, and is shown when the tab is (014).
 
@@ -94,17 +96,22 @@ message SwitchSpace {                       // answered with Ack, "window.unknow
 
 message WindowSnapshot {
   ...
-  uint64 space_id = N;                      // the Space the window shows
+  uint64 space_id = 5;                      // the Space the window shows
+  string space_name = 6;                    // redacted. Its name; empty as above
 }
 ```
 
-Errors: `space.unknown`, `space.too_many`, `space.name_empty`.
+Errors: `space.unknown`, `space.too_many`, `space.name_empty`; and `space.random`, when the system has no random bytes for a new login set, which nobody has seen happen.
 
-A window's snapshot is published again when its Space changes; a shell that shows the list of Spaces asks for it when it needs it, and again after it has made or renamed one.
+`SpaceSummary.logins` is the place in the list of the first Space with those logins: a number of that answer's.
+
+A window's snapshot is published again when its Space changes, and when the Space it shows is named: a shell draws the name from the snapshot. A shell that shows the list of Spaces asks for it when it needs it, and again after it has made or renamed one.
+
+**Fake mode** has the Spaces a run makes and no others, as it has no session. A Space made in it with logins of its own gets the same login set in every run.
 
 ## 5. The store
 
-The first schema has what this needs: `space (id, name, position, login_set_id)` and `login_set`. New here: listing the Spaces in order; making one, with a new login set or another's; renaming one; and, with the session (009), which Space the window showed.
+The first schema has what this needs: `space (id, name, position, login_set_id)` and `login_set`. New here: listing the Spaces in order; making one, with a new login set or another's; renaming one; and, with the session (009), which Space the window showed. That last is one of the app's settings (020's table), and is read only while it names a Space there is. No migration.
 
 ## 6. The shells
 
@@ -112,14 +119,20 @@ The first schema has what this needs: `space (id, name, position, login_set_id)`
 - **The list**: the Spaces in their order, the one shown marked; a press switches. At its end, "New Space…".
 - **Making one**: its name, and a choice between logins of its own and those of a Space there is, which says what that means in a sentence.
 
-Their designs are written with each shell's part.
+### 6.1 The Apple shell (the Mac and the iPhone)
+
+- **The chip** stands before the tabs and does not scroll with them. It says the Space's name, or "Home" for the Space the app made while nobody has named it, cut to one line; to a screen reader it is "Space: ‹name›", a button.
+- **The list** is a sheet, as History and the list of search engines are: a heading, the Spaces in their order as rows to press, the one the window shows marked with words ("Shown"), not by colour alone; under a row whose logins are another Space's too, "Shares logins with ‹the first Space that has them›". Pressing a row switches and closes the sheet. Then "New Space…" and "Done".
+- **Making one** is the same sheet's second page: a field for the name, in front; "Logins" with two choices, each a sentence. "Its own: signed out everywhere to begin with. What you sign in to in this Space stays in it." "The same as ‹a Space›: signed in wherever ‹that Space› is. The two share history and downloads." With the second, a choice of which Space, among those with logins of their own. "Make Space" is not to be pressed while the name is empty; "Back" goes to the list. A Space that is made is the one the window then shows. What the core refuses is said in words above the buttons, and the page stays.
+- The shell decides nothing: the list is the core's answer to `QuerySpaces`, asked for each time the sheet opens, and a name is tidied by the core.
 
 ## 7. Tests
 
 | Where | What |
 |---|---|
-| Store (`wt-store/src/space.rs`, 5) | Spaces are listed in the order they were made; one is made after the others, with logins of its own and nobody else's, or with those of a Space there is, of the app's own Space, or of one that shares already; the logins of a Space that is not there make nothing; a Space is renamed, the app's own among them, and keeps its logins and its place, and one that is not there is not; all of it is still there when the store is opened again, and the first Space is still the app's own. Four of the rules checked by breaking them |
-| Core (through `FakeShell`) | A Space is made, and listed, with the name as tidied; one too many, an empty name and logins of a Space that is not there are refused, and nothing is made. A window is switched: the other Space's tabs are shown, and back again the tabs that were left are as they were, with the same one in front; nothing was asked of their web views meanwhile. A tab opened in a Space is in it and in no other, and its web view is made in that Space's login set: of its own, or the one it shares. A link's tab, a page's window and a search open in the asking tab's Space. The Library is the shown Space's login set's. The tabs of each Space come back, and the window shows the Space it showed |
+| Store (`wt-store/src/space.rs`, 6) | Spaces are listed in the order they were made; one is made after the others, with logins of its own and nobody else's, or with those of a Space there is, of the app's own Space, or of one that shares already; the logins of a Space that is not there make nothing; a Space is renamed, the app's own among them, and keeps its logins and its place, and one that is not there is not; all of it is still there when the store is opened again, and the first Space is still the app's own. The Space the window shows is kept, the last one written, over a restart; and one that is no Space, or no number, is none. Five of the rules checked by breaking them |
+| The rule for a name (`wt-core/src/space.rs`, 2) | What was typed, tidied: no white space at its ends, one space for each run inside, nothing that is not shown; nothing left is no name; cut at 60 characters, by characters, with no space left at the cut |
+| Core (`wt-app/tests/spaces.rs`, 20, through `FakeShell`) | A Space is made after the others and listed with its name as tidied, and the list says which share logins: with a Space, with the app's own, with one that shares already. A name is cut at 60. An empty name and the logins of a Space that is not there are refused, and so is one Space more than 32, with logins of its own or another's; nothing is made. A Space is named, the app's own among them, and the window that shows it says so; a window that shows another is told nothing; no name and no such Space are refused. A window is switched: a Space with no tabs has one empty tab; back again the snapshot is what it was, tab for tab, with the same one in front; and nothing at all was asked of the shell meanwhile. The Space that is shown changes nothing; a Space or a window that is not there is refused. A tab is in the Space it was opened in and in no other, and its web view is made in that Space's login set: of its own, or the one it shares; fake mode's are the same every run. A link's tab, a page's window and a search, asked for by a page whose Space is not shown, open in that page's Space and its logins, and nothing of them is in the Space that is shown. A page that closes its own tab there closes only that. What a tab asks waits with it, and is there when its Space is shown. The history a window lists is that of the logins of the Space it shows; two Spaces that share logins share it. A download that is coming shows in the windows that show its logins. Closing a window closes the tabs of every Space it showed. Another window opens on the first Space with tabs of its own. Over a store on disk: each Space's tabs come back, in order, with the one in front that was, and the window shows the Space it showed; only the tab in front of that Space is loaded, and the other Space's tabs are made and its front tab loaded when it is shown, in its own logins. A Space that is not shown in a run keeps the tabs it had. What changed in a Space while it was not shown is kept too. A window opened once the first is closed shows the Space that one showed, with the session. A tab that comes in front of a Space nobody looks at sleeps on, and is loaded when the Space is shown. The Spaces, their names and their logins are there when the app starts again. Nineteen of the rules checked by breaking them: seventeen were caught, three of them only by tests written after they were not; two changed nothing that can be seen (the dispatcher sends no snapshot that is the same as the last; the store refuses logins of a Space that is not there by itself) |
 | The shells | Written with each |
 
 ## 8. Decisions
@@ -131,17 +144,21 @@ Their designs are written with each shell's part.
 | D3 | The tabs of a Space that is not shown stay awake, for now | Sleeping is W3, with its budgets. Until then nothing a person left is lost or reloaded |
 | D4 | Only the shown Space's tabs are made at start | A start that makes every Space's web views is slower for each Space a person has |
 | D5 | 32 Spaces, and 60 characters to a name | Limits a person does not meet, that a list and a chip can still show |
+| D6 | The window's snapshot carries the name of the Space it shows | The chip that names it is drawn from the snapshot, as everything in a window is: a shell does not keep a list of its own to look the name up in |
+| D7 | Which Space the window showed is one of the app's settings, not a column | There is one window with a session. When several windows are kept, each will need its own row, and that is the migration to make then |
 
 ## 9. What is not verified
 
-Written when built.
+- **Any shell.** No shell asks for another Space yet: against real engines, a second login set in one window has not been run. (Each adapter's own tests keep two login sets apart, since 001.)
+- **Many Spaces, many tabs.** The session is worked out for every Space a window has shown each time the snapshots are published. With a few Spaces that is what it was; nothing has measured it with thirty-two full ones.
+- **A store that fails while a Space is made or named** is answered with the store's code; no test makes the store fail there.
 
 ## 10. Done checklist
 
 - [x] The store: listing, making, renaming (5 tests).
-- [ ] The store: the window's Space with the session.
-- [ ] Contract 1.18 and its version in every place it is written.
-- [ ] The core: the rule of §3.
+- [x] The store: the window's Space with the session (1 test).
+- [x] Contract 1.18 and its version in every place it is written.
+- [x] The core: the rule of §3 (20 tests, and 2 for a name).
 - [ ] The Mac.
 - [ ] Android.
 - [ ] iPhone.

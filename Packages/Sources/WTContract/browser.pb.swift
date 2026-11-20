@@ -328,6 +328,13 @@ public nonisolated struct WTWindowSnapshot: Sendable {
   /// (013): enough to show that something is, without asking.
   public var downloadsActive: UInt32 = 0
 
+  /// Since 1.18. The Space the window shows (024): `tabs` are its tabs.
+  public var spaceID: UInt64 = 0
+
+  /// Since 1.18. That Space's name. Empty for the Space the app made itself,
+  /// until the person names it: the shell shows its own word.
+  public var spaceName: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1303,6 +1310,117 @@ public nonisolated struct WTChooseSearchEngine: Sendable {
   public init() {}
 }
 
+/// Since 1.18. Asks for the Spaces (024), in their order. Answered with
+/// SpacesPage.
+public nonisolated struct WTQuerySpaces: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct WTSpacesPage: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var spaces: [WTSpaceSummary] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct WTSpaceSummary: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var spaceID: UInt64 = 0
+
+  /// Empty for the Space the app made itself, until the person names it.
+  public var name: String = String()
+
+  /// Spaces with the same number here share their logins. It is a number of
+  /// the core's own for this answer, and says nothing else of the logins.
+  public var logins: UInt32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Since 1.18. Makes a Space (024), after the others. Its name is what was
+/// typed without the white space at its ends, cut at 60 characters. Answered
+/// with SpaceCreated; or "space.name_empty", "space.too_many" (there may be
+/// 32), or "space.unknown" for logins of a Space that is not there. Refused,
+/// nothing is made.
+public nonisolated struct WTCreateSpace: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var name: String = String()
+
+  /// The Space whose logins it shares; 0 for logins of its own. It is chosen
+  /// here, and not changed after.
+  public var shareLoginsWith: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct WTSpaceCreated: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var spaceID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Since 1.18. Names a Space (024), by the rule for a new one's name.
+/// Answered with Ack, "space.unknown" or "space.name_empty".
+public nonisolated struct WTRenameSpace: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var spaceID: UInt64 = 0
+
+  public var name: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Since 1.18. A window shows another Space (024): that Space's tabs, with
+/// the one in front that was in front when it was last shown. The tabs of
+/// the Space it showed stay as they are, and nothing is asked of their web
+/// views. Answered with Ack (also for the Space the window shows already),
+/// "window.unknown" or "space.unknown".
+public nonisolated struct WTSwitchSpace: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var windowID: UInt64 = 0
+
+  public var spaceID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
@@ -1610,7 +1728,7 @@ nonisolated extension WTActivateTab: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".WindowSnapshot"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0\u{3}downloads_active\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0\u{3}downloads_active\0\u{3}space_id\0\u{3}space_name\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1622,6 +1740,8 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 2: try { try decoder.decodeSingularMessageField(value: &self._tab) }()
       case 3: try { try decoder.decodeRepeatedMessageField(value: &self.tabs) }()
       case 4: try { try decoder.decodeSingularUInt32Field(value: &self.downloadsActive) }()
+      case 5: try { try decoder.decodeSingularUInt64Field(value: &self.spaceID) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.spaceName) }()
       default: break
       }
     }
@@ -1644,6 +1764,12 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
     if self.downloadsActive != 0 {
       try visitor.visitSingularUInt32Field(value: self.downloadsActive, fieldNumber: 4)
     }
+    if self.spaceID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.spaceID, fieldNumber: 5)
+    }
+    if !self.spaceName.isEmpty {
+      try visitor.visitSingularStringField(value: self.spaceName, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1652,6 +1778,8 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs._tab != rhs._tab {return false}
     if lhs.tabs != rhs.tabs {return false}
     if lhs.downloadsActive != rhs.downloadsActive {return false}
+    if lhs.spaceID != rhs.spaceID {return false}
+    if lhs.spaceName != rhs.spaceName {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3250,6 +3378,230 @@ nonisolated extension WTChooseSearchEngine: SwiftProtobuf.Message, SwiftProtobuf
 
   public static func ==(lhs: WTChooseSearchEngine, rhs: WTChooseSearchEngine) -> Bool {
     if lhs.id != rhs.id {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTQuerySpaces: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".QuerySpaces"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTQuerySpaces, rhs: WTQuerySpaces) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTSpacesPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SpacesPage"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}spaces\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.spaces) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.spaces.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.spaces, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTSpacesPage, rhs: WTSpacesPage) -> Bool {
+    if lhs.spaces != rhs.spaces {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTSpaceSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SpaceSummary"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}space_id\0\u{1}name\0\u{1}logins\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.spaceID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 3: try { try decoder.decodeSingularUInt32Field(value: &self.logins) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.spaceID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.spaceID, fieldNumber: 1)
+    }
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 2)
+    }
+    if self.logins != 0 {
+      try visitor.visitSingularUInt32Field(value: self.logins, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTSpaceSummary, rhs: WTSpaceSummary) -> Bool {
+    if lhs.spaceID != rhs.spaceID {return false}
+    if lhs.name != rhs.name {return false}
+    if lhs.logins != rhs.logins {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTCreateSpace: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CreateSpace"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{3}share_logins_with\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 2: try { try decoder.decodeSingularUInt64Field(value: &self.shareLoginsWith) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 1)
+    }
+    if self.shareLoginsWith != 0 {
+      try visitor.visitSingularUInt64Field(value: self.shareLoginsWith, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTCreateSpace, rhs: WTCreateSpace) -> Bool {
+    if lhs.name != rhs.name {return false}
+    if lhs.shareLoginsWith != rhs.shareLoginsWith {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTSpaceCreated: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SpaceCreated"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}space_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.spaceID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.spaceID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.spaceID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTSpaceCreated, rhs: WTSpaceCreated) -> Bool {
+    if lhs.spaceID != rhs.spaceID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTRenameSpace: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RenameSpace"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}space_id\0\u{1}name\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.spaceID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.spaceID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.spaceID, fieldNumber: 1)
+    }
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTRenameSpace, rhs: WTRenameSpace) -> Bool {
+    if lhs.spaceID != rhs.spaceID {return false}
+    if lhs.name != rhs.name {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTSwitchSpace: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SwitchSpace"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{3}space_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.windowID) }()
+      case 2: try { try decoder.decodeSingularUInt64Field(value: &self.spaceID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.windowID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.windowID, fieldNumber: 1)
+    }
+    if self.spaceID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.spaceID, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTSwitchSpace, rhs: WTSwitchSpace) -> Bool {
+    if lhs.windowID != rhs.windowID {return false}
+    if lhs.spaceID != rhs.spaceID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

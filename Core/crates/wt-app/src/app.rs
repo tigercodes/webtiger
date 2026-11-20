@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use tokio::time::Instant;
 use wt_core::{
-    ACTUAL_SIZE, Address, Clock, Input, SearchEngine, TabId, Timestamp, WebViewId, WindowId,
+    ACTUAL_SIZE, Address, Clock, Input, SearchEngine, TabId, Timestamp, Uuid, WebViewId, WindowId,
     classify, opens_outside, searched_words, zoom_in, zoom_out,
 };
 use wt_proto::v1::{
@@ -20,12 +20,13 @@ use wt_proto::v1::{
     WebViewDestroy, WebViewFind, WebViewLoad, WebViewSetZoom, WindowOpened, WindowSnapshot,
     ZoomChange, ZoomPage, engine_event, forget_history, host_request, request, response,
 };
-use wt_store::{SavedTab, Space, Store};
+use wt_store::{Space, Store};
 
 use crate::downloads::{Downloading, Wanted};
 use crate::error::AppError;
 use crate::host::{Host, HostFuture};
 use crate::model::{LoadTarget, State};
+use crate::spaces::Written;
 
 /// How many visits a page of history holds when the shell does not say
 /// (008).
@@ -62,6 +63,10 @@ pub struct AppOptions {
     /// Whether a window's tabs are kept between runs (009). Not in fake
     /// mode, where every window opens the same way.
     pub session: bool,
+    /// Gives a login set nobody has had, for a Space that is made with
+    /// logins of its own (024); `None` when there is none to give. Fake
+    /// mode gives the same ones in the same order every run.
+    pub new_login_set: Rc<dyn Fn() -> Option<Uuid>>,
 }
 
 /// The models and what changes them.
@@ -79,9 +84,10 @@ pub struct App {
     /// (009).
     pub(crate) store: Rc<RefCell<Store>>,
     pub(crate) clock: Rc<dyn Clock>,
-    space: wt_core::SpaceId,
-    /// The session as the store has it: written again only when it differs.
-    written: Rc<RefCell<Vec<SavedTab>>>,
+    pub(crate) new_login_set: Rc<dyn Fn() -> Option<Uuid>>,
+    /// The session as the store has it: written again only where it
+    /// differs.
+    pub(crate) written: Rc<RefCell<Written>>,
     /// The downloads that are coming (013), by the shell's name for each.
     pub(crate) downloads: Rc<RefCell<BTreeMap<u64, Downloading>>>,
     /// When each web view last had a download started, for those that had
@@ -96,8 +102,9 @@ pub struct App {
 }
 
 impl App {
-    /// An app with no windows, whose tabs open in `space`, a Space of
-    /// `store`'s.
+    /// An app with no windows. `space` is the app's own Space, of
+    /// `store`'s: all there is when the store cannot say what Spaces there
+    /// are (024).
     #[must_use]
     pub fn new(
         options: AppOptions,
@@ -105,11 +112,7 @@ impl App {
         store: Rc<RefCell<Store>>,
         host: Rc<dyn Host>,
     ) -> App {
-        // A session that cannot be read is no session: the window opens
-        // empty, and what it then holds is what is kept.
-        let kept = options
-            .session
-            .then(|| store.borrow().saved_tabs(space.id).unwrap_or_default());
+        let kept = crate::spaces::kept(&store.borrow(), space, options.session);
         // Whatever was fetching the downloads the store still calls coming
         // is gone (013 §5). A store that refuses leaves them as they are.
         // The clock is read only when there is one to end: nothing else in
@@ -120,9 +123,14 @@ impl App {
         // Where searches go (020): what the store has of a choice, if any.
         let search = crate::search::kept(&store.borrow(), options.search_settled);
         App {
-            space: space.id,
-            written: Rc::new(RefCell::new(kept.clone().unwrap_or_default())),
-            state: Rc::new(RefCell::new(State::new(space, options.engine, kept))),
+            written: Rc::new(RefCell::new(kept.written)),
+            state: Rc::new(RefCell::new(State::new(
+                kept.spaces,
+                &kept.start,
+                options.engine,
+                kept.saved,
+            ))),
+            new_login_set: options.new_login_set,
             host,
             search: Rc::new(Cell::new(search)),
             fake_start: options.fake_start.map(Into::into),
@@ -173,6 +181,10 @@ impl App {
             request::Kind::ForgetHistory(forget) => answer(self.forget_history(&forget)),
             request::Kind::QuerySearch(_) => answer(Ok(self.search_settings())),
             request::Kind::ChooseSearchEngine(choice) => answer(self.choose_search_engine(&choice)),
+            request::Kind::QuerySpaces(_) => answer(Ok(self.query_spaces())),
+            request::Kind::CreateSpace(create) => answer(self.create_space(&create)),
+            request::Kind::RenameSpace(rename) => answer(self.rename_space(&rename)),
+            request::Kind::SwitchSpace(switch) => self.switch_space(&switch),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
             | request::Kind::Unsubscribe(_)
@@ -507,7 +519,7 @@ impl App {
     /// Loads every tab that is in front and asleep (009): a tab that came
     /// back from the session is loaded when it comes in front. The loads are
     /// asked for before this returns; what it returns is the wait for each.
-    fn wake(&self) -> Vec<impl Future<Output = Result<(), AppError>> + use<>> {
+    pub(crate) fn wake(&self) -> Vec<impl Future<Output = Result<(), AppError>> + use<>> {
         let waking = self.state.borrow_mut().tabs_to_wake();
         waking
             .into_iter()
@@ -522,27 +534,6 @@ impl App {
             tokio::task::spawn_local(async move {
                 let _ = loading.await;
             });
-        }
-    }
-
-    /// Writes the session to the store when it is not what the store has
-    /// (009). Called when the windows' snapshots are published, so that
-    /// what is kept is what was last seen. A store that refuses keeps what
-    /// it had: the next change tries again.
-    pub fn persist(&self) {
-        let Some(session) = self.state.borrow_mut().session() else {
-            return;
-        };
-        if *self.written.borrow() == session {
-            return;
-        }
-        if self
-            .store
-            .borrow_mut()
-            .save_tabs(self.space, &session)
-            .is_ok()
-        {
-            *self.written.borrow_mut() = session;
         }
     }
 
@@ -912,7 +903,7 @@ impl App {
     }
 }
 
-fn refuse(error: AppError) -> AppFuture {
+pub(crate) fn refuse(error: AppError) -> AppFuture {
     Box::pin(std::future::ready(Err(error)))
 }
 

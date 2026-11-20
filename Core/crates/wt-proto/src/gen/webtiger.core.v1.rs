@@ -253,6 +253,13 @@ pub struct WindowSnapshot {
     /// (013): enough to show that something is, without asking.
     #[prost(uint32, tag = "4")]
     pub downloads_active: u32,
+    /// Since 1.18. The Space the window shows (024): `tabs` are its tabs.
+    #[prost(uint64, tag = "5")]
+    pub space_id: u64,
+    /// Since 1.18. That Space's name. Empty for the Space the app made itself,
+    /// until the person names it: the shell shows its own word.
+    #[prost(string, tag = "6")]
+    pub space_name: ::prost::alloc::string::String,
 }
 /// A tab as a strip of tabs shows it: enough to name it, and no more.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -853,6 +860,67 @@ pub struct SearchEngine {
 pub struct ChooseSearchEngine {
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
+}
+/// Since 1.18. Asks for the Spaces (024), in their order. Answered with
+/// SpacesPage.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct QuerySpaces {}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SpacesPage {
+    #[prost(message, repeated, tag = "1")]
+    pub spaces: ::prost::alloc::vec::Vec<SpaceSummary>,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SpaceSummary {
+    #[prost(uint64, tag = "1")]
+    pub space_id: u64,
+    /// Empty for the Space the app made itself, until the person names it.
+    #[prost(string, tag = "2")]
+    pub name: ::prost::alloc::string::String,
+    /// Spaces with the same number here share their logins. It is a number of
+    /// the core's own for this answer, and says nothing else of the logins.
+    #[prost(uint32, tag = "3")]
+    pub logins: u32,
+}
+/// Since 1.18. Makes a Space (024), after the others. Its name is what was
+/// typed without the white space at its ends, cut at 60 characters. Answered
+/// with SpaceCreated; or "space.name_empty", "space.too_many" (there may be
+/// 32), or "space.unknown" for logins of a Space that is not there. Refused,
+/// nothing is made.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CreateSpace {
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// The Space whose logins it shares; 0 for logins of its own. It is chosen
+    /// here, and not changed after.
+    #[prost(uint64, tag = "2")]
+    pub share_logins_with: u64,
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SpaceCreated {
+    #[prost(uint64, tag = "1")]
+    pub space_id: u64,
+}
+/// Since 1.18. Names a Space (024), by the rule for a new one's name.
+/// Answered with Ack, "space.unknown" or "space.name_empty".
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct RenameSpace {
+    #[prost(uint64, tag = "1")]
+    pub space_id: u64,
+    #[prost(string, tag = "2")]
+    pub name: ::prost::alloc::string::String,
+}
+/// Since 1.18. A window shows another Space (024): that Space's tabs, with
+/// the one in front that was in front when it was last shown. The tabs of
+/// the Space it showed stay as they are, and nothing is asked of their web
+/// views. Answered with Ack (also for the Space the window shows already),
+/// "window.unknown" or "space.unknown".
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SwitchSpace {
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
+    #[prost(uint64, tag = "2")]
+    pub space_id: u64,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -1716,7 +1784,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -1782,12 +1850,24 @@ pub mod request {
         QuerySearch(super::QuerySearch),
         #[prost(message, tag = "24")]
         ChooseSearchEngine(super::ChooseSearchEngine),
+        /// Since 1.18
+        #[prost(message, tag = "25")]
+        QuerySpaces(super::QuerySpaces),
+        #[prost(message, tag = "26")]
+        CreateSpace(super::CreateSpace),
+        #[prost(message, tag = "27")]
+        RenameSpace(super::RenameSpace),
+        #[prost(message, tag = "28")]
+        SwitchSpace(super::SwitchSpace),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Response {
-    #[prost(oneof = "response::Kind", tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11")]
+    #[prost(
+        oneof = "response::Kind",
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13"
+    )]
     pub kind: ::core::option::Option<response::Kind>,
 }
 /// Nested message and enum types in `Response`.
@@ -1822,6 +1902,11 @@ pub mod response {
         /// Since 1.15
         #[prost(message, tag = "11")]
         SearchSettings(super::SearchSettings),
+        /// Since 1.18
+        #[prost(message, tag = "12")]
+        SpacesPage(super::SpacesPage),
+        #[prost(message, tag = "13")]
+        SpaceCreated(super::SpaceCreated),
     }
 }
 /// Core → shell, unasked.

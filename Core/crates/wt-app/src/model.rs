@@ -4,8 +4,8 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use wt_core::{
-    ACTUAL_SIZE, Address, IdMint, LoginSetId, Security, TabId, WebViewId, WindowId, zoom_in,
-    zoom_out,
+    ACTUAL_SIZE, Address, IdMint, LoginSetId, Security, SpaceId, TabId, WebViewId, WindowId,
+    zoom_in, zoom_out,
 };
 use wt_proto::v1::{
     AddressView, DialogKind, DialogPrompt, DownloadPrompt, EngineKind, FindView, LoadState,
@@ -207,6 +207,9 @@ pub(crate) struct Asker {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Tab {
     pub(crate) window: WindowId,
+    /// The Space it was opened in (024): it is in that Space's row of its
+    /// window, and in no other.
+    space: SpaceId,
     pub(crate) web_view: Option<WebViewId>,
     /// The page that owns the web view.
     committed: Option<Address>,
@@ -285,9 +288,10 @@ struct TabVisit {
 }
 
 impl Tab {
-    fn new(window: WindowId, engine: EngineKind, login_set: LoginSetId) -> Tab {
+    fn new(window: WindowId, space: SpaceId, engine: EngineKind, login_set: LoginSetId) -> Tab {
         Tab {
             window,
+            space,
             web_view: None,
             committed: None,
             pending: None,
@@ -321,11 +325,12 @@ impl Tab {
     /// web's: that is an empty tab.
     fn restored(
         window: WindowId,
+        space: SpaceId,
         engine: EngineKind,
         login_set: LoginSetId,
         saved: &SavedTab,
     ) -> Tab {
-        let mut tab = Tab::new(window, engine, login_set);
+        let mut tab = Tab::new(window, space, engine, login_set);
         let Some(address) = Address::parse(&saved.url)
             .ok()
             .filter(|address| matches!(address.scheme(), "http" | "https"))
@@ -592,18 +597,47 @@ pub(crate) struct LoadTarget {
     pub(crate) login_set: LoginSetId,
 }
 
-/// A window: its tabs in the order they are shown, and the one in front. It
-/// always has a tab (005, T1).
+/// A row of tabs: a Space's, in one window. In the order they are shown,
+/// and the one in front. It always has a tab (005, T1).
 #[derive(Debug)]
-struct Window {
+struct Row {
     tabs: Vec<TabId>,
     front: TabId,
+}
+
+/// A window: the Space it shows, and the row of tabs of each Space it has
+/// shown (024). The Space it shows has a row.
+#[derive(Debug)]
+struct Window {
+    space: SpaceId,
+    rows: BTreeMap<SpaceId, Row>,
+}
+
+impl Window {
+    /// The row the window shows.
+    fn shown(&self) -> Option<&Row> {
+        self.rows.get(&self.space)
+    }
+}
+
+/// The session as it now is (009, 024).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct Session {
+    /// The Space its window shows.
+    pub(crate) shown: SpaceId,
+    /// The tabs of each Space the window has shown in this run, in order.
+    /// A Space it has not shown has what was kept of it.
+    pub(crate) rows: BTreeMap<SpaceId, Vec<SavedTab>>,
 }
 
 /// Everything the app knows.
 #[derive(Debug)]
 pub(crate) struct State {
-    space: Space,
+    /// The Spaces, in their order (024).
+    spaces: Vec<Space>,
+    /// The Space a window opens with, and its login set: the one the window
+    /// with the session shows, or showed.
+    start: (SpaceId, LoginSetId),
     engine: EngineKind,
     /// One mint for windows, tabs and web views, so an id of one kind never
     /// equals an id of another.
@@ -615,10 +649,10 @@ pub(crate) struct State {
     dirty: BTreeSet<WindowId>,
     /// Windows closed since the last publish.
     closed: Vec<WindowId>,
-    /// The session (009): the tabs of its window as last worked out, which
-    /// is what a window opened when there is none is given. `None` when
-    /// nothing is kept between runs: fake mode.
-    saved: Option<Vec<SavedTab>>,
+    /// The session (009): the tabs of each Space in its window as last
+    /// worked out, which is what a window opened when there is none is
+    /// given. `None` when nothing is kept between runs: fake mode.
+    saved: Option<BTreeMap<SpaceId, Vec<SavedTab>>>,
     /// The window whose tabs are the session: the first opened, and the
     /// next one opened once that is closed.
     session_window: Option<WindowId>,
@@ -628,14 +662,22 @@ pub(crate) struct State {
 }
 
 impl State {
-    /// A state with no windows. `saved` is the session the store kept, to
-    /// be given back to the first window; `None` keeps no session at all.
-    pub(crate) fn new(space: Space, engine: EngineKind, saved: Option<Vec<SavedTab>>) -> State {
+    /// A state with no windows. `spaces` are the Spaces in their order, and
+    /// `start` the one of them a window opens with. `saved` is the session
+    /// the store kept, each Space's tabs, to be given back to the first
+    /// window; `None` keeps no session at all.
+    pub(crate) fn new(
+        spaces: Vec<Space>,
+        start: &Space,
+        engine: EngineKind,
+        saved: Option<BTreeMap<SpaceId, Vec<SavedTab>>>,
+    ) -> State {
         State {
             saved,
             session_window: None,
             downloads_active: BTreeMap::new(),
-            space,
+            spaces,
+            start: (start.id, start.login_set),
             engine,
             ids: IdMint::new(),
             windows: BTreeMap::new(),
@@ -650,15 +692,34 @@ impl State {
     /// back from the session (009): they do when no window has the session,
     /// which is so for the first window of a run, and again once the window
     /// that had it is closed.
+    ///
+    /// It shows the Space the window with the session shows, or showed
+    /// (024).
     pub(crate) fn open_window(&mut self) -> (WindowId, TabId, bool) {
         let window = WindowId(self.ids.mint());
         let has_session = self
             .session_window
             .is_some_and(|session| self.windows.contains_key(&session));
+        if self.saved.is_some() && !has_session {
+            self.session_window = Some(window);
+        }
+        let (space, login_set) = self.start;
+        let (row, restored) = self.make_row(window, space, login_set);
+        let front = row.front;
+        let rows = BTreeMap::from([(space, row)]);
+        self.windows.insert(window, Window { space, rows });
+        self.dirty.insert(window);
+        (window, front, restored)
+    }
+
+    /// The row of a Space in a window that has not shown it: the tabs the
+    /// session kept of it, asleep, when the window is the one with the
+    /// session (009); otherwise, and with none kept, one empty tab. The
+    /// row, and whether its tabs came back.
+    fn make_row(&mut self, window: WindowId, space: SpaceId, login_set: LoginSetId) -> (Row, bool) {
         let kept = match &self.saved {
-            Some(saved) if !has_session => {
-                self.session_window = Some(window);
-                saved.clone()
+            Some(saved) if self.session_window == Some(window) => {
+                saved.get(&space).cloned().unwrap_or_default()
             }
             _ => Vec::new(),
         };
@@ -668,7 +729,7 @@ impl State {
             let id = TabId(self.ids.mint());
             self.tabs.insert(
                 id,
-                Tab::restored(window, self.engine, self.space.login_set, saved),
+                Tab::restored(window, space, self.engine, login_set, saved),
             );
             if saved.front {
                 front = Some(id);
@@ -676,25 +737,96 @@ impl State {
             tabs.push(id);
         }
         let restored = !tabs.is_empty();
-        if tabs.is_empty() {
-            let id = TabId(self.ids.mint());
-            self.tabs
-                .insert(id, Tab::new(window, self.engine, self.space.login_set));
-            tabs.push(id);
-        }
+        let first = match tabs.first() {
+            Some(first) => *first,
+            None => {
+                let id = TabId(self.ids.mint());
+                self.tabs
+                    .insert(id, Tab::new(window, space, self.engine, login_set));
+                tabs.push(id);
+                id
+            }
+        };
         // A session with nobody in front (a store that was meddled with)
-        // puts its first tab there: a window always has one.
-        let front = front.unwrap_or(tabs[0]);
-        self.windows.insert(window, Window { tabs, front });
-        self.dirty.insert(window);
-        (window, front, restored)
+        // puts its first tab there: a row always has one.
+        let front = front.unwrap_or(first);
+        (Row { tabs, front }, restored)
+    }
+
+    fn space(&self, id: SpaceId) -> Option<&Space> {
+        self.spaces.iter().find(|space| space.id == id)
+    }
+
+    /// The Spaces, in their order (024).
+    pub(crate) fn spaces(&self) -> &[Space] {
+        &self.spaces
+    }
+
+    /// A Space was made: it is after the others.
+    pub(crate) fn space_made(&mut self, space: Space) {
+        self.spaces.push(space);
+    }
+
+    /// A Space has a name now: the windows that show it say so. Whether
+    /// there is such a Space.
+    pub(crate) fn space_named(&mut self, id: SpaceId, name: &str) -> bool {
+        let Some(space) = self.spaces.iter_mut().find(|space| space.id == id) else {
+            return false;
+        };
+        if space.name != name {
+            name.clone_into(&mut space.name);
+            let showing = self
+                .windows
+                .iter()
+                .filter(|(_, window)| window.space == id)
+                .map(|(window, _)| *window);
+            self.dirty.extend(showing);
+        }
+        true
+    }
+
+    /// A window shows another Space (024 §3): that Space's row, as it was
+    /// left, or as the session kept it, or one empty tab. The row of the
+    /// Space it showed stays as it is. The Space the window shows already
+    /// changes nothing. Refused with the code for a window, or a Space,
+    /// that is not there.
+    pub(crate) fn switch_space(
+        &mut self,
+        window_id: WindowId,
+        space: SpaceId,
+    ) -> Result<(), &'static str> {
+        let window = self.windows.get(&window_id).ok_or("window.unknown")?;
+        let login_set = self.space(space).ok_or("space.unknown")?.login_set;
+        if window.space == space {
+            return Ok(());
+        }
+        let made = if window.rows.contains_key(&space) {
+            None
+        } else {
+            Some(self.make_row(window_id, space, login_set).0)
+        };
+        let window = self.windows.get_mut(&window_id).ok_or("window.unknown")?;
+        if let Some(row) = made {
+            window.rows.insert(space, row);
+        }
+        window.space = space;
+        if self.session_window == Some(window_id) {
+            self.start = (space, login_set);
+        }
+        self.dirty.insert(window_id);
+        Ok(())
     }
 
     /// The tabs in front that are asleep, and where each was (009): each is
-    /// to be loaded now, and is asleep no longer. The tab in front is never
-    /// left asleep.
+    /// to be loaded now, and is asleep no longer. The tab in front of what
+    /// a window shows is never left asleep; one in front of a Space that is
+    /// not shown sleeps on until it is.
     pub(crate) fn tabs_to_wake(&mut self) -> Vec<(TabId, Address)> {
-        let fronts: Vec<TabId> = self.windows.values().map(|window| window.front).collect();
+        let fronts: Vec<TabId> = self
+            .windows
+            .values()
+            .filter_map(|window| window.shown().map(|row| row.front))
+            .collect();
         fronts
             .into_iter()
             .filter_map(|id| {
@@ -708,20 +840,31 @@ impl State {
             .collect()
     }
 
-    /// The session as it now is (009): the tabs of its window, in order.
-    /// `None` when there is nothing to write: no session is kept, or its
-    /// window is closed, which closes none of its tabs.
-    pub(crate) fn session(&mut self) -> Option<Vec<SavedTab>> {
+    /// The session as it now is (009, 024): the Space its window shows,
+    /// and the tabs, in order, of each Space the window has shown. `None`
+    /// when there is nothing to write: no session is kept, or its window is
+    /// closed, which closes none of its tabs.
+    pub(crate) fn session(&mut self) -> Option<Session> {
         self.saved.as_ref()?;
         let window = self.windows.get(&self.session_window?)?;
-        let front = window.front;
-        let ids = window.tabs.clone();
-        let session: Vec<SavedTab> = ids
-            .into_iter()
-            .filter_map(|id| Some(self.tabs.get_mut(&id)?.saved(id == front)))
+        let shown = window.space;
+        let listed: Vec<(SpaceId, TabId, Vec<TabId>)> = window
+            .rows
+            .iter()
+            .map(|(space, row)| (*space, row.front, row.tabs.clone()))
             .collect();
-        self.saved = Some(session.clone());
-        Some(session)
+        let mut rows = BTreeMap::new();
+        for (space, front, ids) in listed {
+            let tabs: Vec<SavedTab> = ids
+                .into_iter()
+                .filter_map(|id| Some(self.tabs.get_mut(&id)?.saved(id == front)))
+                .collect();
+            rows.insert(space, tabs);
+        }
+        if let Some(saved) = &mut self.saved {
+            saved.extend(rows.clone());
+        }
+        Some(Session { shown, rows })
     }
 
     /// Closes a window. The web views to destroy, or `None` when there is no
@@ -729,7 +872,8 @@ impl State {
     pub(crate) fn close_window(&mut self, window: WindowId) -> Option<Vec<WebViewId>> {
         let closing = self.windows.remove(&window)?;
         let mut web_views = Vec::new();
-        for tab in closing.tabs {
+        // The tabs of every Space it has shown, not only the one it shows.
+        for tab in closing.rows.into_values().flat_map(|row| row.tabs) {
             if let Some(web_view) = self.tabs.remove(&tab).and_then(|tab| tab.web_view) {
                 self.web_views.remove(&web_view);
                 web_views.push(web_view);
@@ -740,9 +884,9 @@ impl State {
         Some(web_views)
     }
 
-    /// Opens an empty tab in a window: after `after` when that is one of the
-    /// window's tabs, at the end otherwise; in front unless `background`.
-    /// `None` when there is no such window.
+    /// Opens an empty tab in a window, in the Space it shows: after `after`
+    /// when that is one of the tabs shown, at the end otherwise; in front
+    /// unless `background`. `None` when there is no such window.
     pub(crate) fn open_tab(
         &mut self,
         window_id: WindowId,
@@ -750,16 +894,19 @@ impl State {
         background: bool,
     ) -> Option<TabId> {
         let window = self.windows.get_mut(&window_id)?;
+        let space = window.space;
+        let login_set = self.spaces.iter().find(|s| s.id == space)?.login_set;
+        let row = window.rows.get_mut(&space)?;
         let tab = TabId(self.ids.mint());
         let place = after
-            .and_then(|after| window.tabs.iter().position(|id| *id == after))
-            .map_or(window.tabs.len(), |index| index + 1);
-        window.tabs.insert(place, tab);
+            .and_then(|after| row.tabs.iter().position(|id| *id == after))
+            .map_or(row.tabs.len(), |index| index + 1);
+        row.tabs.insert(place, tab);
         if !background {
-            window.front = tab;
+            row.front = tab;
         }
         self.tabs
-            .insert(tab, Tab::new(window_id, self.engine, self.space.login_set));
+            .insert(tab, Tab::new(window_id, space, self.engine, login_set));
         self.dirty.insert(window_id);
         Some(tab)
     }
@@ -768,32 +915,36 @@ impl State {
     /// there is no such tab.
     ///
     /// When the tab was in front, the one after it comes forward, or the one
-    /// before it when it was the last. A window always has a tab: an empty
-    /// one takes the place of its only tab.
+    /// before it when it was the last. A row always has a tab: an empty one
+    /// takes the place of its only tab, in the Space that one was in.
     pub(crate) fn close_tab(&mut self, tab_id: TabId) -> Option<Option<WebViewId>> {
         let tab = self.tabs.remove(&tab_id)?;
         if let Some(web_view) = tab.web_view {
             self.web_views.remove(&web_view);
         }
-        if let Some(window) = self.windows.get_mut(&tab.window) {
-            let index = window.tabs.iter().position(|id| *id == tab_id);
-            window.tabs.retain(|id| *id != tab_id);
-            if window.tabs.is_empty() {
+        let row = self
+            .windows
+            .get_mut(&tab.window)
+            .and_then(|window| window.rows.get_mut(&tab.space));
+        if let Some(row) = row {
+            let index = row.tabs.iter().position(|id| *id == tab_id);
+            row.tabs.retain(|id| *id != tab_id);
+            if row.tabs.is_empty() {
                 let fresh = TabId(self.ids.mint());
                 self.tabs.insert(
                     fresh,
-                    Tab::new(tab.window, self.engine, self.space.login_set),
+                    Tab::new(tab.window, tab.space, self.engine, tab.login_set),
                 );
-                window.tabs.push(fresh);
-                window.front = fresh;
-            } else if window.front == tab_id {
+                row.tabs.push(fresh);
+                row.front = fresh;
+            } else if row.front == tab_id {
                 // Back to the tab whose page opened it, when that is still
                 // here. Otherwise what was after it, which is now where it
                 // was; past the end, the last.
-                let opener = tab.opener.filter(|opener| window.tabs.contains(opener));
-                let next = index.unwrap_or(0).min(window.tabs.len() - 1);
-                if let Some(next) = opener.or_else(|| window.tabs.get(next).copied()) {
-                    window.front = next;
+                let opener = tab.opener.filter(|opener| row.tabs.contains(opener));
+                let next = index.unwrap_or(0).min(row.tabs.len() - 1);
+                if let Some(next) = opener.or_else(|| row.tabs.get(next).copied()) {
+                    row.front = next;
                 }
             }
             self.dirty.insert(tab.window);
@@ -801,15 +952,20 @@ impl State {
         Some(tab.web_view)
     }
 
-    /// Brings a tab in front in its window. Whether there is such a tab.
+    /// Brings a tab in front in its row: among its Space's tabs in its
+    /// window. Whether there is such a tab.
     pub(crate) fn activate_tab(&mut self, tab_id: TabId) -> bool {
         let Some(tab) = self.tabs.get(&tab_id) else {
             return false;
         };
-        if let Some(window) = self.windows.get_mut(&tab.window)
-            && window.front != tab_id
+        let row = self
+            .windows
+            .get_mut(&tab.window)
+            .and_then(|window| window.rows.get_mut(&tab.space));
+        if let Some(row) = row
+            && row.front != tab_id
         {
-            window.front = tab_id;
+            row.front = tab_id;
             self.dirty.insert(tab.window);
         }
         true
@@ -1246,13 +1402,24 @@ impl State {
         ended
     }
 
-    /// So many downloads of a login set are coming now: its windows'
-    /// snapshots say so.
+    /// So many downloads of a login set are coming now: the snapshots of
+    /// the windows that show a Space of it say so.
     pub(crate) fn set_downloads_active(&mut self, login_set: LoginSetId, coming: u32) {
         let before = self.downloads_active.insert(login_set, coming).unwrap_or(0);
-        if before != coming && login_set == self.space.login_set {
-            self.dirty.extend(self.windows.keys().copied());
+        if before != coming {
+            let showing: Vec<WindowId> = self
+                .windows
+                .iter()
+                .filter(|(_, window)| self.login_set_shown(window) == Some(login_set))
+                .map(|(window, _)| *window)
+                .collect();
+            self.dirty.extend(showing);
         }
+    }
+
+    /// The login set of the Space a window shows.
+    fn login_set_shown(&self, window: &Window) -> Option<LoginSetId> {
+        self.space(window.space).map(|space| space.login_set)
     }
 
     /// The site of a tab's page, in its login set, and the zoom its web
@@ -1315,7 +1482,7 @@ impl State {
 
     /// The person asked for a link of a web view's page in a new tab (018).
     /// One is opened in the window of the tab that has the link, in its
-    /// login set, remembering where it was opened from: after that tab and
+    /// Space and login set, remembering where it was opened from: after that tab and
     /// whatever it opened before that still follows it, so that links
     /// opened one after another stand in that order; behind, or in front.
     /// The new tab, or `None` when the web view is no tab's.
@@ -1323,9 +1490,10 @@ impl State {
         let opener_id = *self.web_views.get(&asking)?;
         let opener = self.tabs.get(&opener_id)?;
         let window_id = opener.window;
-        let mut tab = Tab::new(window_id, opener.engine, opener.login_set);
+        let space = opener.space;
+        let mut tab = Tab::new(window_id, space, opener.engine, opener.login_set);
         tab.opener = Some(opener_id);
-        let after = self.windows.get(&window_id)?.tabs.clone();
+        let after = self.windows.get(&window_id)?.rows.get(&space)?.tabs.clone();
         let mut place = after
             .iter()
             .position(|id| *id == opener_id)
@@ -1337,11 +1505,11 @@ impl State {
         {
             place += 1;
         }
+        let row = self.windows.get_mut(&window_id)?.rows.get_mut(&space)?;
         let tab_id = TabId(self.ids.mint());
-        let window = self.windows.get_mut(&window_id)?;
-        window.tabs.insert(place, tab_id);
+        row.tabs.insert(place, tab_id);
         if !background {
-            window.front = tab_id;
+            row.front = tab_id;
         }
         self.tabs.insert(tab_id, tab);
         self.dirty.insert(window_id);
@@ -1373,21 +1541,26 @@ impl State {
             return refused;
         };
         let window_id = opener.window;
-        let mut tab = Tab::new(window_id, opener.engine, opener.login_set);
+        let space = opener.space;
+        let mut tab = Tab::new(window_id, space, opener.engine, opener.login_set);
         tab.web_view = Some(new);
         tab.opener = Some(opener_id);
         tab.opened_by_page = true;
-        let Some(window) = self.windows.get_mut(&window_id) else {
+        let row = self
+            .windows
+            .get_mut(&window_id)
+            .and_then(|window| window.rows.get_mut(&space));
+        let Some(row) = row else {
             return refused;
         };
         let tab_id = TabId(self.ids.mint());
-        let place = window
+        let place = row
             .tabs
             .iter()
             .position(|id| *id == opener_id)
-            .map_or(window.tabs.len(), |index| index + 1);
-        window.tabs.insert(place, tab_id);
-        window.front = tab_id;
+            .map_or(row.tabs.len(), |index| index + 1);
+        row.tabs.insert(place, tab_id);
+        row.front = tab_id;
         self.tabs.insert(tab_id, tab);
         self.web_views.insert(new, tab_id);
         self.dirty.insert(window_id);
@@ -1427,11 +1600,9 @@ impl State {
             .and_then(|tab_id| self.tabs.get_mut(tab_id))
     }
 
-    /// The login set a window's history is: its Space's.
+    /// The login set a window's history is: that of the Space it shows.
     pub(crate) fn history_of(&self, window: WindowId) -> Option<LoginSetId> {
-        self.windows
-            .contains_key(&window)
-            .then_some(self.space.login_set)
+        self.login_set_shown(self.windows.get(&window)?)
     }
 
     /// The visit to write for the page a web view now shows (008): its login
@@ -1566,20 +1737,24 @@ impl State {
 
     pub(crate) fn window_snapshot(&self, window_id: WindowId) -> Option<WindowSnapshot> {
         let window = self.windows.get(&window_id)?;
-        let front = self.tabs.get(&window.front)?;
+        let space = self.space(window.space)?;
+        let row = window.shown()?;
+        let front = self.tabs.get(&row.front)?;
         Some(WindowSnapshot {
             window_id: window_id.get(),
-            tab: Some(front.view(window.front)),
-            tabs: window
+            tab: Some(front.view(row.front)),
+            tabs: row
                 .tabs
                 .iter()
                 .filter_map(|id| self.tabs.get(id).map(|tab| tab.summary(*id)))
                 .collect(),
             downloads_active: self
                 .downloads_active
-                .get(&self.space.login_set)
+                .get(&space.login_set)
                 .copied()
                 .unwrap_or(0),
+            space_id: space.id.get(),
+            space_name: space.name.clone(),
         })
     }
 

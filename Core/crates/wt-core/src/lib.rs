@@ -7,6 +7,7 @@ pub mod download;
 pub mod id;
 pub mod policy;
 mod search;
+mod space;
 pub mod uuid;
 pub mod zoom;
 
@@ -19,5 +20,6 @@ pub use search::{
     SEARCH_ENGINES, SEARCHED_LENGTH, STAND_IN_SEARCH_ENGINE, SearchEngine, search_engine,
     searched_words,
 };
+pub use space::{MOST_SPACES, SPACE_NAME_LENGTH, space_name};
 pub use uuid::Uuid;
 pub use zoom::{ACTUAL_SIZE, ZOOM_LEVELS, zoom_in, zoom_out};
