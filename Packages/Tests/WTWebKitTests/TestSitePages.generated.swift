@@ -373,6 +373,24 @@ enum TestSitePages {
             authorization: ""
         ),
         TestSitePage(
+            path: "/clip.mp4",
+            status: "200 OK",
+            type: "video/mp4",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("not a film")],
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
+        TestSitePage(
+            path: "/media",
+            status: "200 OK",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("<!doctype html><title>Media</title><h1>Media</h1><p><video id=\"clip\" controls width=\"240\" height=\"135\" src=\"/clip.mp4\"></video></p>\n<p><video id=\"made\" controls width=\"240\" height=\"135\"></video></p>\n<script>\ndocument.getElementById('made').src = URL.createObjectURL(new Blob(['made by the page'], { type: 'video/mp4' }));\nif ('"), .query("menu", or: "engine"), .text("' === 'own') {\n  window.addEventListener('contextmenu', function (event) {\n    event.preventDefault();\n    event.stopImmediatePropagation();\n    document.title = 'own menu';\n  }, true);\n}\n</script>")],
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
+        TestSitePage(
             path: "/words",
             status: "200 OK",
             type: "text/html",

@@ -375,6 +375,36 @@ final class WebKitMenuTests: AdapterTestCase {
             XCTAssertEqual(saved, try [picture])
         }
 
+        func testAFilmsItemThatSavesIsGivenTheFilmsAddressOrTakenOut() async throws {
+            await create(1)
+            await load(1, site.url("/media?menu=own"))
+            await wait(1, "the page to load") { self.finished($0) && self.hasTitle("Media")($0) }
+            let window = try window(for: 1)
+            let film = try XCTUnwrap(URL(string: site.url("/clip.mp4")))
+            let webKits = [("Download Video", MenuWebView.downloadsMedia), nil, ("Copy Video Address", "WKMenuItemIdentifierCopyMediaLink")]
+
+            // A right-click on a player whose film has an address on the site: the address.
+            try await rightClick("clip", in: 1, of: window)
+            let onFilm = try await pressed()
+            XCTAssertEqual(onFilm, Pressed(picture: nil, link: nil, media: film))
+            // WebKit's item that saves it is given that address.
+            var saved: [URL] = []
+            let offered = menu(webKits)
+            MenuWebView.arrange(offered, pressed: onFilm, words: words) { saved.append($0) }
+            XCTAssertEqual(offered.items.map(\.title), ["Download Video", "", "Copy Video Address"])
+            offered.performActionForItem(at: 0)
+            XCTAssertEqual(saved, [film])
+
+            // A film the page made itself has no address of the web: nothing offers to save it.
+            try await rightClick("made", in: 1, of: window)
+            let onMade = try await pressed()
+            XCTAssertEqual(onMade, Pressed(picture: nil, link: nil, media: nil))
+            let unoffered = menu(webKits)
+            MenuWebView.arrange(unoffered, pressed: onMade, words: words) { _ in XCTFail("nothing to save") }
+            XCTAssertEqual(unoffered.items.map(\.title), ["Copy Video Address"])
+            window.close()
+        }
+
         func testAnItemThatSavesWithNothingToSaveIsTakenOutAndLeavesNoLineBehind() {
             // Nothing was said of the click: neither item is shown, and no line stands at an
             // end of the menu or beside another.

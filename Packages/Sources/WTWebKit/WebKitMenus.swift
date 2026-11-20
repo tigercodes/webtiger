@@ -35,11 +35,14 @@ public extension WebKitEngine {
 #if os(macOS)
     import AppKit
 
-    /// What a right-click was on, as the adapter's script said: the address of the picture
-    /// and of the link, where there was one of the web's, and the words that were selected.
+    /// What a right-click was on, as the adapter's script said: the address of the picture,
+    /// of the link, and of the film or sound, where there was one of the web's; and the words
+    /// that were selected.
     struct Pressed: Equatable {
         var picture: URL?
         var link: URL?
+        /// What a player of the page is playing: a film or a sound.
+        var media: URL?
         /// The words selected in the page as the click happened (023). Never what is typed
         /// in a password's field.
         var words = ""
@@ -63,7 +66,7 @@ public extension WebKitEngine {
             var tell = window.webkit.messageHandlers.\(name);
             window.addEventListener('contextmenu', function (event) {
                 if (!event.isTrusted) { return; }
-                var picture = '', link = '';
+                var picture = '', link = '', media = '';
                 var path = event.composedPath();
                 for (var i = 0; i < path.length; i += 1) {
                     var node = path[i];
@@ -74,6 +77,10 @@ public extension WebKitEngine {
                     }
                     if (!link && (node.localName === 'a' || node.localName === 'area') && typeof node.href === 'string') {
                         link = node.href;
+                    }
+                    if (!media && (node.localName === 'video' || node.localName === 'audio')) {
+                        var playing = node.currentSrc || node.src;
+                        if (typeof playing === 'string') { media = playing; }
                     }
                 }
                 // The words that are selected, for a search for them. What is typed in a
@@ -90,7 +97,7 @@ public extension WebKitEngine {
                     if (field && field.nodeType === 1 && field.localName === 'input' && field.type === 'password') { secret = true; }
                 }
                 var words = secret ? '' : String(window.getSelection()).slice(0, 2000);
-                tell.postMessage({ picture: picture, link: link, words: words });
+                tell.postMessage({ picture: picture, link: link, media: media, words: words });
             }, true);
         }());
         """
@@ -119,7 +126,8 @@ public extension WebKitEngine {
         func userContentController(_: WKUserContentController, didReceive message: WKScriptMessage) {
             guard let webView = message.webView, let body = message.body as? [String: Any] else { return }
             let pressed = Pressed(
-                picture: Self.address(body["picture"]), link: Self.address(body["link"]), words: body["words"] as? String ?? ""
+                picture: Self.address(body["picture"]), link: Self.address(body["link"]), media: Self.address(body["media"]),
+                words: body["words"] as? String ?? ""
             )
             said.setObject(Told(pressed), forKey: webView)
         }
@@ -157,9 +165,10 @@ public extension WebKitEngine {
     /// The web view the adapter makes on a Mac. WebKit builds its menu itself. Two of its
     /// items open something in a new window, which the core opens as a tab (006): they are
     /// given the shell's words for what they do here. Two save a file, and do not: they are
-    /// given the address the adapter's script named, or taken out when it named none. One
-    /// searches for the words that are selected, with the system's search engine and in the
-    /// system's browser: in its place stands the shell's, which tells the core (023).
+    /// given the address the adapter's script named, or taken out when it named none; so is
+    /// the one that saves a film or a sound. One searches for the words that are selected,
+    /// with the system's search engine and in the system's browser: in its place stands the
+    /// shell's, which tells the core (023).
     final class MenuWebView: WKWebView {
         /// WebKit's own names for its items. They are not declared constants: should WebKit
         /// rename one, that item is left as WebKit made it, and the app's test of the menu
@@ -168,6 +177,7 @@ public extension WebKitEngine {
         static let opensImageInNewWindow = "WKMenuItemIdentifierOpenImageInNewWindow"
         static let downloadsImage = "WKMenuItemIdentifierDownloadImage"
         static let downloadsLinkedFile = "WKMenuItemIdentifierDownloadLinkedFile"
+        static let downloadsMedia = "WKMenuItemIdentifierDownloadMedia"
         static let searchesWeb = "WKMenuItemIdentifierSearchWeb"
 
         override func willOpenMenu(_ menu: NSMenu, with event: NSEvent) {
@@ -203,6 +213,8 @@ public extension WebKitEngine {
                     put(pressed?.picture.map { address in MenuChoice { save(address) } }, titled: item.title, for: item, of: menu)
                 case downloadsLinkedFile:
                     put(pressed?.link.map { address in MenuChoice { save(address) } }, titled: item.title, for: item, of: menu)
+                case downloadsMedia:
+                    put(pressed?.media.map { address in MenuChoice { save(address) } }, titled: item.title, for: item, of: menu)
                 case searchesWeb:
                     // Only for words there are, and under words of the shell's that name
                     // where the search goes: WebKit's name the system's engine.

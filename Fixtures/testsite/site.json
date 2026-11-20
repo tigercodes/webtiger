@@ -373,6 +373,31 @@
       "note": "Sends whoever fetches it on to /whose-file at the server's other name (localhost), on the port ?port= says: another site. For what is sent along when a file a person chose to save turns out to be somewhere else."
     },
     {
+      "path": "/clip.mp4",
+      "type": "video/mp4",
+      "content": "not a film",
+      "note": "What a page names as its film. It is no film: an engine that tries to play it fails, and the page's player still has its address."
+    },
+    {
+      "path": "/media",
+      "title": "Media",
+      "body": [
+        "<p><video id=\"clip\" controls width=\"240\" height=\"135\" src=\"/clip.mp4\"></video></p>",
+        "<p><video id=\"made\" controls width=\"240\" height=\"135\"></video></p>",
+        "<script>",
+        "document.getElementById('made').src = URL.createObjectURL(new Blob(['made by the page'], { type: 'video/mp4' }));",
+        "if ('{query:menu|engine}' === 'own') {",
+        "  window.addEventListener('contextmenu', function (event) {",
+        "    event.preventDefault();",
+        "    event.stopImmediatePropagation();",
+        "    document.title = 'own menu';",
+        "  }, true);",
+        "}",
+        "</script>"
+      ],
+      "note": "A player whose film has an address on the site, and one whose film the page made itself (a blob). With ?menu=own the page takes the menu's event for itself, which keeps the engine's menu from opening. For the menu of a film."
+    },
+    {
       "path": "/words",
       "title": "Words",
       "body": [
