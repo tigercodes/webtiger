@@ -384,6 +384,15 @@ impl Tab {
         self.error.clear();
     }
 
+    /// The tab is sent where a page's link leads (018). Nobody typed that
+    /// address: it is not shown as the tab's until its page commits, and
+    /// what comes of it is not the person's own load.
+    fn begin_link_load(&mut self) {
+        self.load = Load::Loading;
+        self.progress = 0.0;
+        self.error.clear();
+    }
+
     /// The tab's load failed with a code.
     fn fail(&mut self, code: &str) {
         self.load = Load::Failed;
@@ -475,7 +484,8 @@ impl Tab {
             | Kind::PermissionRequested(_)
             | Kind::PermissionWithdrawn(_)
             | Kind::DialogRequested(_)
-            | Kind::SignInRequested(_) => {}
+            | Kind::SignInRequested(_)
+            | Kind::LinkOpenRequested(_) => {}
             // What the engine found is for the text now looked for (010).
             // With no find, it is a late word about one that has stopped.
             Kind::FindResult(result) => {
@@ -804,15 +814,20 @@ impl State {
         true
     }
 
-    /// The user sent a tab to an address. Says which web view loads it and
-    /// whether that web view is new, or `None` when there is no such tab.
-    pub(crate) fn begin_user_load(
+    /// A tab is sent to an address: by the user, or (with no address of
+    /// the user's) where a page's link leads. Says which web view loads it
+    /// and whether that web view is new, or `None` when there is no such
+    /// tab.
+    pub(crate) fn begin_load(
         &mut self,
         tab_id: TabId,
-        address: Address,
+        users: Option<Address>,
     ) -> Option<LoadTarget> {
         let tab = self.tabs.get_mut(&tab_id)?;
-        tab.begin_user_load(address);
+        match users {
+            Some(address) => tab.begin_user_load(address),
+            None => tab.begin_link_load(),
+        }
         let (web_view, create) = match tab.web_view {
             Some(web_view) => (web_view, false),
             None => {
@@ -1295,6 +1310,41 @@ impl State {
     /// a tab that has no web view yet.
     pub(crate) fn web_view_of(&self, tab: TabId) -> Result<WebViewId, bool> {
         self.tabs.get(&tab).ok_or(false)?.web_view.ok_or(true)
+    }
+
+    /// The person asked for a link of a web view's page in a new tab (018).
+    /// One is opened in the window of the tab that has the link, in its
+    /// login set, remembering where it was opened from: after that tab and
+    /// whatever it opened before that still follows it, so that links
+    /// opened one after another stand in that order; behind, or in front.
+    /// The new tab, or `None` when the web view is no tab's.
+    pub(crate) fn open_link_tab(&mut self, asking: WebViewId, background: bool) -> Option<TabId> {
+        let opener_id = *self.web_views.get(&asking)?;
+        let opener = self.tabs.get(&opener_id)?;
+        let window_id = opener.window;
+        let mut tab = Tab::new(window_id, opener.engine, opener.login_set);
+        tab.opener = Some(opener_id);
+        let after = self.windows.get(&window_id)?.tabs.clone();
+        let mut place = after
+            .iter()
+            .position(|id| *id == opener_id)
+            .map_or(after.len(), |index| index + 1);
+        while after
+            .get(place)
+            .and_then(|id| self.tabs.get(id))
+            .is_some_and(|next| next.opener == Some(opener_id))
+        {
+            place += 1;
+        }
+        let tab_id = TabId(self.ids.mint());
+        let window = self.windows.get_mut(&window_id)?;
+        window.tabs.insert(place, tab_id);
+        if !background {
+            window.front = tab_id;
+        }
+        self.tabs.insert(tab_id, tab);
+        self.dirty.insert(window_id);
+        Some(tab_id)
     }
 
     /// A page asked for a new window, and the shell made `new` for it (006).

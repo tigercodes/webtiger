@@ -55,6 +55,8 @@ message EngineEvent {
     DialogRequested dialog_requested = 21;
     // Since 1.13
     SignInRequested sign_in_requested = 22;
+    // Since 1.14
+    LinkOpenRequested link_open_requested = 23;
   }
 }
 
@@ -271,4 +273,19 @@ message SignInRequested {
   string heading = 5 [(wt.redact) = true];
   // The server refused an answer to this already.
   bool again = 6;
+}
+
+// The person asked that a link of the page open in a new tab (018): by the
+// link's menu, or by how they pressed it (a key held). The web view whose
+// page has the link is `EngineEvent.web_view_id`; the shell has left that
+// page where it is. The core opens the tab, or does not: nothing else comes
+// of this.
+message LinkOpenRequested {
+  // The link's address.
+  string url = 1 [(wt.redact) = true];
+  // The tab in front stays in front; the new one opens behind it.
+  bool background = 2;
+  // The person did it: a choice from a menu, a press. A page that only made
+  // it look so is not obeyed.
+  bool user_gesture = 3;
 }

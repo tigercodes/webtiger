@@ -7,10 +7,11 @@ use std::collections::BTreeMap;
 use wt_proto::v1::{
     Ack, AddressChanged, CloseRequested, DialogKind, DialogRequested, DownloadFailed,
     DownloadFinished, DownloadProgress, DownloadRequested, EngineEvent, EngineKind, Error,
-    FindResult, HistoryChanged, HostPong, NavigationCommand, NavigationCommitted, NavigationFailed,
-    NavigationFinished, NavigationStarted, NewWindowRequested, OutsideLinkRequested,
-    PermissionKind, PermissionRequested, PermissionWithdrawn, ProgressChanged, RendererGone,
-    SignInRequested, TitleChanged, engine_event, host_request, host_response,
+    FindResult, HistoryChanged, HostPong, LinkOpenRequested, NavigationCommand,
+    NavigationCommitted, NavigationFailed, NavigationFinished, NavigationStarted,
+    NewWindowRequested, OutsideLinkRequested, PermissionKind, PermissionRequested,
+    PermissionWithdrawn, ProgressChanged, RendererGone, SignInRequested, TitleChanged,
+    engine_event, host_request, host_response,
 };
 
 /// A page of the scripted web.
@@ -466,6 +467,25 @@ impl FakeEngine {
                 kind: kind as i32,
                 message: message.to_owned(),
                 default_text: default_text.to_owned(),
+            }),
+        )
+    }
+
+    /// The person asked for a link of a web view's page in a new tab (018),
+    /// as the shell says it.
+    #[must_use]
+    pub fn link_open_requested(
+        id: u64,
+        url: &str,
+        background: bool,
+        user_gesture: bool,
+    ) -> EngineEvent {
+        event(
+            id,
+            engine_event::Kind::LinkOpenRequested(LinkOpenRequested {
+                url: url.to_owned(),
+                background,
+                user_gesture,
             }),
         )
     }

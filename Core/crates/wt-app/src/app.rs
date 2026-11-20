@@ -14,11 +14,11 @@ use wt_core::{
 };
 use wt_proto::v1::{
     Ack, ActivateTab, AddressSuggestion, AddressSuggestions, CloseTab, CloseWindow, EngineEvent,
-    EngineKind, FindInPage, ForgetHistory, HistoryEntry, HistoryPage, LoginSet, NavigationCommand,
-    OpenOutside, OpenTab, OutsideLinkRequested, QueryHistory, SubmitAddress, SuggestAddresses,
-    TabCommand, TabOpened, WebViewCommand, WebViewCreate, WebViewDestroy, WebViewFind, WebViewLoad,
-    WebViewSetZoom, WindowOpened, WindowSnapshot, ZoomChange, ZoomPage, engine_event,
-    forget_history, host_request, request, response,
+    EngineKind, FindInPage, ForgetHistory, HistoryEntry, HistoryPage, LinkOpenRequested, LoginSet,
+    NavigationCommand, OpenOutside, OpenTab, OutsideLinkRequested, QueryHistory, SubmitAddress,
+    SuggestAddresses, TabCommand, TabOpened, WebViewCommand, WebViewCreate, WebViewDestroy,
+    WebViewFind, WebViewLoad, WebViewSetZoom, WindowOpened, WindowSnapshot, ZoomChange, ZoomPage,
+    engine_event, forget_history, host_request, request, response,
 };
 use wt_store::{SavedTab, Space, Store};
 
@@ -187,6 +187,10 @@ impl App {
         let web_view = WebViewId(event.web_view_id);
         if let engine_event::Kind::OutsideLinkRequested(asked) = kind {
             self.outside_link(web_view, &asked);
+            return;
+        }
+        if let engine_event::Kind::LinkOpenRequested(asked) = kind {
+            self.link_open(web_view, &asked);
             return;
         }
         // A download's reports are about the download (013), whatever has
@@ -396,6 +400,40 @@ impl App {
     /// when it is one that may be (a letter, a number, a message), a person
     /// asked, and the web view has not just had one. The page that asked is
     /// left as it is.
+    /// The person asked for a link of a page in a new tab (018): by its
+    /// menu, or by how they pressed it. A tab is opened for it, or nothing
+    /// happens.
+    fn link_open(&self, web_view: WebViewId, asked: &LinkOpenRequested) {
+        // A page that only makes it look as if its link was pressed so is
+        // not obeyed, as one that asks for a window by itself is not (006).
+        if !asked.user_gesture {
+            return;
+        }
+        // Only the web's own addresses are a tab's to start from: not a
+        // script, not a page of no address, not a file, and not what is
+        // for the system, which pressing the link itself opens (007).
+        let Ok(address) = Address::parse(&asked.url) else {
+            return;
+        };
+        if !matches!(address.scheme(), "http" | "https") {
+            return;
+        }
+        let opened = self
+            .state
+            .borrow_mut()
+            .open_link_tab(web_view, asked.background);
+        let Some(tab) = opened else {
+            return;
+        };
+        // The tab is there whatever becomes of its page: a load that fails
+        // shows in the tab.
+        if let Some(loading) = self.begin_load_as(tab, address, false) {
+            tokio::task::spawn_local(async move {
+                let _ = loading.await;
+            });
+        }
+    }
+
     fn outside_link(&self, web_view: WebViewId, asked: &OutsideLinkRequested) {
         // Checked against the core's own policy: what the shell calls an
         // outside link is not taken on its word.
@@ -779,8 +817,22 @@ impl App {
         tab: TabId,
         address: Address,
     ) -> Option<impl Future<Output = Result<(), AppError>> + use<>> {
+        self.begin_load_as(tab, address, true)
+    }
+
+    /// The same, for an address that is the user's own (typed, chosen from
+    /// history) or, when it is not, where a page's link leads (018).
+    fn begin_load_as(
+        &self,
+        tab: TabId,
+        address: Address,
+        users: bool,
+    ) -> Option<impl Future<Output = Result<(), AppError>> + use<>> {
         let url = address.as_str().to_owned();
-        let target = self.state.borrow_mut().begin_user_load(tab, address)?;
+        let target = self
+            .state
+            .borrow_mut()
+            .begin_load(tab, users.then_some(address))?;
         let LoadTarget {
             web_view,
             create,

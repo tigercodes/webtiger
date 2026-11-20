@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Designed. Nothing is built yet: a link can be followed in its own tab, and a page can ask for a window (006), but a person cannot ask for a link in a new tab on Android or an iPhone at all; on a Mac WebKit's own menu offers "Open Link in New Window", which opens a tab |
+| **Status** | In progress: the contract (1.14) and the core's rule (§3) are built and tested. No shell reports the wish yet (§8): a person still cannot ask for a link in a new tab on Android or an iPhone; on a Mac WebKit's own menu offers "Open Link in New Window", which opens a tab |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "context menus". The first of them, and the one a day's browsing cannot do without: the menu of a link |
 | **Contract** | 1.14: `LinkOpenRequested` |
 | **Builds on** | [005](005-tabs.md): tabs, and a tab opened behind another. [006](006-new-windows.md): a tab that remembers the tab it was opened from |
@@ -31,9 +31,9 @@ The shell notices that the person asks for a link in a new tab, and says so; it 
 
 - the web view is no tab's;
 - the person did not do it: a page that only makes it look as if its link was pressed with a key held is not obeyed, as a page that asks for a window by itself is not (006 §3);
-- the address is not one a tab may be sent to. The navigation policy is asked as for any page's navigation at the top level: `http` and `https` open. `javascript:`, `data:` and `file:` do not; nor does an address for the system (`mailto:`), which is opened by pressing the link itself (007).
+- the address is not one a tab starts from. Only the web's own addresses are, `http` and `https`. A script (`javascript:`), a page of no address (`data:`, `about:`, `blob:`) and a file are not; nor is an address for the system (`mailto:`), which is opened by pressing the link itself (007).
 
-Otherwise it opens **a new tab, after the tab that has the link**: behind it, or in front when the shell says so; in the same login set. The new tab remembers the tab it was opened from, and closing it brings that tab forward (006).
+Otherwise it opens **a new tab, after the tab that has the link**: behind it, or in front when the shell says so; in the same login set. Links opened one after another from one tab stand in that order after it. The new tab remembers the tab it was opened from, and closing it brings that tab forward (006).
 
 **The new tab is a link's, not the person's own address.** So:
 
@@ -71,7 +71,7 @@ What each does in fact, as observed, is written here when built.
 
 | Where | What |
 |---|---|
-| Core (through `FakeShell`) | The rule of §3, each part of it, and each checked by breaking it |
+| Core (`wt-app/tests/link_in_new_tab.rs`, 10 through `FakeShell`) | A link opens in a tab after the one that has it, behind it, in a web view of the core's own naming that is sent to the link; the page that has the link is as it was; brought forward, the new tab is the link's page, in the same login set. In front when the shell says so. Links opened one after another stand in that order after their tab, before what stood there already; a link of one of them opens after that one. A page that only makes it look so opens nothing. Only an address a tab starts from opens one: not a script, a page of no address, a file, nor what is for the system, which is not handed to the system either; a page not over `https` does. A web view that is no tab's opens nothing. The new tab's field is empty until its page commits. A first download there asks, in the name of where the file comes from. A page cannot close it, and the person's closing it brings back the tab it came from, not the one after. A load that fails shows in the new tab. Eleven parts of the rule checked by breaking them |
 | Adapter suites | A ⌘-click on a link of the test site is reported and the page stays; what a plain click does is unchanged; what each engine says of a press a page made by itself |
 | The shells | Android: the menu drawn against a scripted core, and what each choice does; pictures. In the apps, with the real core and engines: the link's menu is opened as a person opens it, "Open in New Tab" is chosen, and a second tab is there behind the first, with the link's page in it |
 
@@ -87,12 +87,13 @@ What each does in fact, as observed, is written here when built.
 
 ## 8. What is not verified
 
-Written when built.
+- **The login set of the new tab.** It is the asking tab's. With one Space every tab has the same one, and a core that used the window's instead passes every test: it is a test for W2.
+- The shells: written when built.
 
 ## 9. Done checklist
 
-- [ ] Contract 1.14 and its version in every place it is written.
-- [ ] The core: the rule of §3, through `FakeShell`.
+- [x] Contract 1.14 and its version in every place it is written.
+- [x] The core: the rule of §3. 10 tests through `FakeShell`.
 - [ ] Android: the adapter's report of a long press on a link; the menu; pictures; a device test.
 - [ ] Apple: ⌘-click in the adapter and its suite; the iPhone's menu; the Mac's renamed item; UI tests.
 - [ ] `Tools/test.sh all` green, and `android-device`.

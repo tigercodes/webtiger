@@ -1041,7 +1041,7 @@ pub struct EngineEvent {
     pub web_view_id: u64,
     #[prost(
         oneof = "engine_event::Kind",
-        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22"
+        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23"
     )]
     pub kind: ::core::option::Option<engine_event::Kind>,
 }
@@ -1098,6 +1098,9 @@ pub mod engine_event {
         /// Since 1.13
         #[prost(message, tag = "22")]
         SignInRequested(super::SignInRequested),
+        /// Since 1.14
+        #[prost(message, tag = "23")]
+        LinkOpenRequested(super::LinkOpenRequested),
     }
 }
 /// A load began. The page it asks for does not own the web view yet.
@@ -1358,6 +1361,24 @@ pub struct SignInRequested {
     /// The server refused an answer to this already.
     #[prost(bool, tag = "6")]
     pub again: bool,
+}
+/// The person asked that a link of the page open in a new tab (018): by the
+/// link's menu, or by how they pressed it (a key held). The web view whose
+/// page has the link is `EngineEvent.web_view_id`; the shell has left that
+/// page where it is. The core opens the tab, or does not: nothing else comes
+/// of this.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct LinkOpenRequested {
+    /// The link's address.
+    #[prost(string, tag = "1")]
+    pub url: ::prost::alloc::string::String,
+    /// The tab in front stays in front; the new one opens behind it.
+    #[prost(bool, tag = "2")]
+    pub background: bool,
+    /// The person did it: a choice from a menu, a press. A page that only made
+    /// it look so is not obeyed.
+    #[prost(bool, tag = "3")]
+    pub user_gesture: bool,
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct HostRequest {
