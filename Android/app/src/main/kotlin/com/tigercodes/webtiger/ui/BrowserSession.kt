@@ -18,8 +18,10 @@ import com.tigercodes.webtiger.core.v1.Subscribe
 import com.tigercodes.webtiger.core.v1.TestMode
 import com.tigercodes.webtiger.core.v1.WindowSnapshot
 import com.tigercodes.webtiger.core.v1.WindowTopic
+import com.tigercodes.webtiger.webview.AppFiles
 import com.tigercodes.webtiger.webview.AppPermissions
 import com.tigercodes.webtiger.webview.DownloadPlace
+import com.tigercodes.webtiger.webview.NoFiles
 import com.tigercodes.webtiger.webview.SystemWebViewEngine
 import java.io.File
 import java.util.Locale
@@ -53,6 +55,11 @@ class BrowserSession(
      * system's: fake mode, and every session a test makes, leave the person's clipboard alone.
      */
     val clipboard: LinkClipboard = MemoryClipboard(),
+    /**
+     * The app's file chooser (019), for a window to give the way to the system's picker by.
+     * Null where nothing may start it: fake mode, and every session a test makes.
+     */
+    val files: AppFiles? = null,
 ) {
     private val windows = HashMap<Long, (WindowSnapshot) -> Unit>()
 
@@ -126,7 +133,10 @@ class BrowserSession(
         fun live(context: Context, launch: LaunchOptions): BrowserSession {
             val application = context.applicationContext
             val permissions = AppPermissions(application)
-            val engine = SystemWebViewEngine(application, downloadPlace(launch), permissions)
+            // A page's file input opens the system's picker (019). Not in fake mode: its engine
+            // picks nothing, and starts nothing of the system's.
+            val files = AppFiles().takeIf { !launch.fake }
+            val engine = SystemWebViewEngine(application, downloadPlace(launch), permissions, files ?: NoFiles)
             val config =
                 coreConfig(
                     launch = launch,
@@ -141,7 +151,7 @@ class BrowserSession(
             // Host requests are answered on the main thread, where a WebView must be used.
             val core = NativeCore.start(config, ShellHost(engine, opener), Dispatchers.Main)
             val clipboard = if (launch.fake) MemoryClipboard() else SystemClipboard(application)
-            return BrowserSession(core, engine, MainScope(), permissions.takeIf { mayAskTheSystem(launch) }, clipboard)
+            return BrowserSession(core, engine, MainScope(), permissions.takeIf { mayAskTheSystem(launch) }, clipboard, files)
         }
 
         /**

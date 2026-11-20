@@ -19,6 +19,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotFocused
@@ -820,6 +821,25 @@ internal class AppWindowTest {
         compose.waitUntil(15_000) { menus() == 0 }
         assertEquals("Links", pageTitle())
         compose.onAllNodesWithTag("tab").assertCountEquals(2)
+    }
+
+    /**
+     * A page's file input (019), in fake mode: the engine has no chooser of the system's, so
+     * nothing of the system's is started, and the page is told that nothing was chosen. (The
+     * system's picker is started by the app started for real, and by no test.)
+     */
+    @Test
+    fun aFileInputStartsNothingOfTheSystemsInFakeMode() {
+        awaitPage("Home")
+        type(site.url("/upload"))
+        awaitPage("Upload")
+
+        PageTouch.tap(checkNotNull(shownWebView()), "one")
+
+        awaitPage("cancelled one")
+        // The window is still the one on the screen: no picker took its place.
+        compose.onNodeWithTag("page").assertIsDisplayed()
+        compose.onAllNodesWithTag("tab").assertCountEquals(1)
     }
 
     /**

@@ -4,6 +4,7 @@ package com.tigercodes.webtiger
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.os.Bundle
+import android.webkit.MimeTypeMap
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,6 +19,7 @@ import com.tigercodes.webtiger.ui.CatalogueScreen
 import com.tigercodes.webtiger.ui.LaunchOptions
 import com.tigercodes.webtiger.ui.StartFailed
 import com.tigercodes.webtiger.webview.AppPermissions
+import com.tigercodes.webtiger.webview.pickerTypes
 
 class MainActivity : ComponentActivity() {
     /** The app's own permissions, while this window is their way to ask the system (014). */
@@ -31,6 +33,19 @@ class MainActivity : ComponentActivity() {
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
             // Whatever the person said: what the app now holds is what counts.
             answered.also { answered = null }?.invoke()
+        }
+
+    /** What is given what the system's file picker picked (019): one picker is open at a time. */
+    private var picked: ((List<String>) -> Unit)? = null
+
+    /** The system's picker of documents, for one file and for several. */
+    private val picksOne =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { file ->
+            picked.also { picked = null }?.invoke(listOfNotNull(file?.toString()))
+        }
+    private val picksSeveral =
+        registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { files ->
+            picked.also { picked = null }?.invoke(files.map { it.toString() })
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,6 +69,13 @@ class MainActivity : ComponentActivity() {
                     asksTheSystem.launch(names)
                 }
             }
+        // A page's file input opens the system's picker of documents: this window is how it
+        // is started. Not in fake mode, whose session has no chooser to start it with.
+        session.getOrNull()?.files?.picker = { asked, done ->
+            picked = done
+            val types = pickerTypes(asked.kinds, MimeTypeMap.getSingleton()::getMimeTypeFromExtension).toTypedArray()
+            if (asked.several) picksSeveral.launch(types) else picksOne.launch(types)
+        }
         val window = ViewModelProvider(this)[WindowHolder::class.java]
         setContent {
             WebTigerTheme {

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Designed. Nothing is built yet: on a Mac and on Android a page's "Choose File" button does nothing, because neither engine picks a file by itself; on an iPhone WebKit shows its own picker |
+| **Status** | Built and tested on the Mac (the WebKit adapter, against real WebKit) and on Android (the System WebView adapter, on an emulator), each with a picker of the tests' own. The system's own picker was run by hand on Android, on the emulator; **the Mac's open panel has not been run** (§7). On an iPhone WebKit shows its own picker. Windows is not started |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "uploads" |
 | **Contract** | None. Nothing about browsing is decided here: the engine lets a page ask only when the person pressed something on it, and what the page gets is what the person picks in the system's own picker |
 | **Builds on** | [001](001-foundations.md): the engine adapters. [014](014-permissions.md): an engine brings nothing of the system's up unless the app itself, started for real, made it so |
@@ -50,15 +50,30 @@ The engine notices that the page asks for a file, which it lets a page do only w
 | The answer | The files' addresses, or none | The files' addresses, or none |
 | The system's picker | An open panel, as a sheet of the window | The system's document picker, started by the window |
 
-What each does in fact, as observed, is written here when built.
+**As built on the Mac** (`WebKitFiles.swift`: `FilePicker`, `Files`, the page's UI delegate; `FilePicker.system` in the shell), and as seen against real WebKit:
+
+- WebKit asks the page's delegate when a file input is pressed with the mouse; the adapter asks the engine's picker, saying whether several may be chosen, and gives WebKit the files' addresses. The page then has each file's name and size and can read it.
+- **Nothing picked** is told to WebKit as nothing: the page's input says so (its `cancel` event), and the page may ask again.
+- An engine as it is made has the picker that picks nothing; the app, started for real and not in fake mode, gives its engine the Mac's open panel, as a sheet of the window in front, with folders never offered.
+
+**As built on Android** (`Files.kt`: `FileChooser`, `Files`, `AppFiles`; `onShowFileChooser`; the window's two launchers), and as seen on the emulator (System WebView 133):
+
+- The WebView says whether several files may be chosen and the kinds the page accepts, as the page wrote them (`text/plain`, `.txt`); the adapter passes both to the chooser, and gives the WebView the addresses that were picked. A file of the app's own, named by its `file:` address, was read by the page.
+- **The system's picker** is the system's picker of documents, for one file or for several, started by the app's window. The kinds a page accepts are given to it as media types; an ending is given as the type the system knows it by, and with nothing it can go by every file is offered.
+- **By hand, on the emulator**, with the app started for real: a press on "Choose File" brought up the system's picker; a file put in the emulator's Downloads was picked there; the page then said its name, its size and its words. The same with the input for several. The emulator was put back afterwards.
+
+On both, one picker at a time for a web view, and a web view that is destroyed while its picker is open is told nothing; what the person then picks goes nowhere.
 
 ## 5. Tests
 
 | Where | What |
 |---|---|
-| The test site | A page with a file input for one file and one for several, which says in its title what it was given: each file's name and size, and the words of the first |
-| Adapter suites (WebKit on the Mac; System WebView on the emulator) | With a picker of the test's own that picks a file the test wrote: a press on the input asks the picker once, saying whether several may be chosen; the page then has the file, by its name and with its words; several files where several may be chosen; nothing picked, and the page has nothing and may ask again; an engine given no picker shows nothing and gives nothing; a web view destroyed while its picker is open |
-| The shells | The system's pickers are not shown by any test. In fake mode a press on the input shows nothing of the system's, checked in the apps |
+| The test site | A page with a file input for one file and one for several (which says it accepts text), which says in its title what it was given: each file's name and size, and the words of the first; or that the picker was closed with nothing chosen |
+| WebKit adapter suite (`WebKitFileTests`, 6 on the Mac, 2 on the iPhone simulator) | On the Mac, against real WebKit, the input pressed with the mouse's own events and a picker of the test's that picks files the test wrote: a press asks the picker once, for one file, and the page has the file by its name, its size and its words; several files where several may be chosen; nothing picked, and the page is told so and may ask again; an engine given no picker gives the page nothing. On both, at the seam where a picker can be held open: one at a time for a web view, at once and with no second picker; a web view that is destroyed is given nothing of what is then picked; a page that may have one file is given no more; nothing picked is nothing. Seven of the rules checked by breaking them |
+| System WebView adapter, on the JVM (`FilesTest`, 8) | Through the engine, with a chooser that answers when the test says: a page that asks is given what was picked, and the chooser is told whether several may be chosen and the kinds accepted; one file and no more; nothing picked is nothing, and the page may ask again; one chooser at a time for a web view, and an answer is given once; a web view that is destroyed is told nothing, and what is then picked goes nowhere; an engine given no chooser picks nothing; the kinds a page accepts as the system's picker takes them; the app's chooser picks nothing until a window gives it the way to the system's. Nine of the rules checked by breaking them |
+| System WebView adapter suite (`SystemWebViewFileTest`, 3, on the emulator) | With a finger on the test site's inputs, against the real WebView: a press asks the chooser once and the page has the file; several files, and the kinds the page accepts as the WebView passes them on; nothing picked, and the page is told so and may ask again |
+| The apps, in fake mode | A press on the page's file input shows nothing of the system's, and the page is told that nothing was chosen: on the Mac (no sheet and no dialog) and on the emulator (the app's window is still the one on the screen) |
+| By hand | Android's own picker, as §4 says. No test shows a picker of the system's |
 
 ## 6. Decisions
 
@@ -70,13 +85,16 @@ What each does in fact, as observed, is written here when built.
 
 ## 7. What is not verified
 
-- **The system's own pickers.** No test shows one: the Mac's open panel and Android's document picker are each a few lines that were read, and are to be run by hand.
-- The rest: written when built.
+- **The Mac's open panel.** No test shows a dialog of the system's, and nobody ran the app for real on this Mac: the dozen lines that show the panel were read, not run. A release build that is sandboxed needs the entitlement for files the person chooses; today's builds have no sandbox.
+- **Android's picker**, by hand once, on an emulator: one file picked, in each of the two inputs. Picking several at once, a file from another app's provider (a drive in the cloud), and a phone were not tried.
+- **A page in a frame** that asks, and a page that asks without a press: each engine's own rule; not tried.
+- **Large files**, and what a page does with a file while it is being sent: the engine's.
+- **A picker left open while the tab is closed**, with the system's picker: the rule is tested at the seam; the system's picker was not left open by hand.
 
 ## 8. Done checklist
 
-- [ ] The test site's page.
-- [ ] Apple: the Mac's adapter and its suite; the system's picker for the app; fake mode shows nothing.
-- [ ] Android: the adapter, on the JVM and the device; the system's picker for the app; fake mode shows nothing.
-- [ ] `Tools/test.sh all` green, and `android-device`.
+- [x] The test site's page.
+- [x] Apple: the Mac's adapter and its suite (6); the system's picker for the app (not run); fake mode shows nothing, checked in the app.
+- [x] Android: the adapter, on the JVM (8) and the device (3); the system's picker for the app, run by hand on the emulator; fake mode starts nothing, checked in the app.
+- [x] `Tools/test.sh all` green, and `android-device` (130 on the emulator).
 - [ ] Windows shell.
