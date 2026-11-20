@@ -146,6 +146,33 @@ internal class SystemWebViewDownloadTest : AdapterTestCase() {
     }
 
     @Test
+    fun aFileThePersonChoseThatIsSomewhereElseIsNotFetchedThereAsThisSite() {
+        // Signed in at this site, in this web view's login set.
+        create(1)
+        load(1, site.url("/set?v=ada"))
+        await(1, "the cookie to be set") { finished(it) && hasTitle("Set")(it) }
+
+        // A file of this site, chosen in a menu (022), that says who asked for it: fetched as
+        // the login set.
+        onMain { engine.saveFile(1, site.url("/whose-file")) }
+        await(1, "the file to be offered") { reports -> reports.count { it.download_requested != null } == 1 }
+        assertEquals(site.url("/whose-file"), asked().last().url)
+        assertEquals("the person chose it", true, asked().last().user_asked)
+        assertEquals("who=ada", saved(save(asked().last(), "here.txt")))
+
+        // The same file, at an address of this site that sends whoever fetches it on to
+        // another site (the server by its other name): what this site knows the person by is
+        // not sent there.
+        onMain { engine.saveFile(1, site.url("/to-whose-file?port=${site.port}")) }
+        await(1, "the file to be offered") { reports -> reports.count { it.download_requested != null } == 2 }
+        // Offered as where the file is, with what the site there says of it.
+        assertEquals("http://localhost:${site.port}/whose-file", asked().last().url)
+        assertEquals("who.txt", asked().last().suggested_filename)
+        assertEquals("text/plain", asked().last().mime_type)
+        assertEquals("who=none", saved(save(asked().last(), "elsewhere.txt")))
+    }
+
+    @Test
     fun aDownloadTheCoreDropsFetchesNothing() {
         page()
         val download = tapLink("attachment")

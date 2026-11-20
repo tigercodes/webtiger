@@ -79,11 +79,14 @@ internal class SystemWebViewLinkTest : AdapterTestCase() {
         val (webView, what) = pressed.first()
         onMain { engine.saveFile(webView, what.picture) }
 
+        // The site is asked what the picture is before it is offered: not at once.
+        await(1, "the picture to be offered") { reports -> reports.any { it.download_requested != null } }
         val asked = reports(1).mapNotNull { it.download_requested }
         assertEquals(1, asked.size)
         assertEquals(site.url("/tiger.svg"), asked.first().url)
         assertEquals("the person chose it: no page asked", true, asked.first().user_asked)
-        assertEquals("nobody has asked the site yet: it has suggested no name", "", asked.first().suggested_filename)
+        assertEquals("the site suggests no name", "", asked.first().suggested_filename)
+        assertEquals("what kind of file the site says it is", "image/svg+xml", asked.first().mime_type)
         // The page is where it was: nothing of its own became a download.
         assertEquals(listOf(site.url("/pictures")), addresses(1))
     }

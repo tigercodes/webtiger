@@ -875,6 +875,18 @@ internal class AppWindowTest {
         compose.onNodeWithTag("link-cancel").performClick()
         compose.waitUntil(15_000) { menus() == 0 }
         file.delete()
+
+        // A picture whose address does not say what kind of file it is: the site is asked
+        // before the file is named, and the name has the ending of its kind.
+        PageTouch.longPress(checkNotNull(shownWebView()), "unnamed")
+        compose.waitUntil(15_000) { menus() == 1 }
+        compose.onNodeWithTag("link-address").assertTextEquals(site.url("/poster"))
+        compose.onNodeWithTag("picture-download").performClick()
+        val poster = File(folder, "poster.svg")
+        compose.waitUntil(60_000) { poster.isFile && poster.length() > 0L }
+        assertTrue(poster.readText().startsWith("<svg"))
+        assertEquals("under that name and no other", listOf("poster.svg"), folder.listFiles().orEmpty().map { it.name })
+        poster.delete()
     }
 
     /**

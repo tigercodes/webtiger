@@ -338,11 +338,18 @@
       "note": "A picture with a name of its own, big enough to press."
     },
     {
+      "path": "/poster",
+      "type": "image/svg+xml",
+      "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"160\" height=\"80\"><rect width=\"160\" height=\"80\" fill=\"#06c\"/></svg>",
+      "note": "A picture at an address that does not say what kind of file it is: only the site's answer does."
+    },
+    {
       "path": "/pictures",
       "title": "Pictures",
       "body": [
         "<p><img id=\"plain\" alt=\"a picture\" width=\"160\" height=\"80\" src=\"/tiger.svg\"></p>",
         "<p><a id=\"linked\" href=\"/landed?from=picture\"><img alt=\"a picture that is a link\" width=\"160\" height=\"80\" src=\"/tiger.svg\"></a></p>",
+        "<p><img id=\"unnamed\" alt=\"a picture whose address has no ending\" width=\"160\" height=\"80\" src=\"/poster\"></p>",
         "<p id=\"words\">words that are no picture</p>",
         "<script>",
         "if ('{query:menu|engine}' === 'own') {",
@@ -354,7 +361,16 @@
         "}",
         "</script>"
       ],
-      "note": "A picture, a picture that is a link, and words. With ?menu=own the page takes the menu's event for itself, before anything else of the page can hear it: it keeps the engine's menu from opening, and says so in its title. For a picture's menu."
+      "note": "A picture, a picture that is a link, a picture whose address does not say what kind of file it is, and words. With ?menu=own the page takes the menu's event for itself, before anything else of the page can hear it: it keeps the engine's menu from opening, and says so in its title. For a picture's menu."
+    },
+    {
+      "path": "/to-whose-file",
+      "status": "302 Found",
+      "headers": [
+        "Location: http://localhost:{query:port|80}/whose-file"
+      ],
+      "content": "",
+      "note": "Sends whoever fetches it on to /whose-file at the server's other name (localhost), on the port ?port= says: another site. For what is sent along when a file a person chose to save turns out to be somewhere else."
     },
     {
       "path": "/words",

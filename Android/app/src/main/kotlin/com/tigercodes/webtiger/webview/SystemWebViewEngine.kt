@@ -52,6 +52,8 @@ class SystemWebViewEngine internal constructor(
     system: SystemPermissions = NoSystemPermissions,
     /** How a page's file input is given files (019): nothing is picked unless the app itself gave the way to the system's picker. */
     chooser: FileChooser = NoFiles,
+    /** Asks where a file the person chose is, and what its site says of it, before it is fetched (022). */
+    asker: Asker = NoAsker,
     /** Runs something a moment later, on the main thread: how the downloads' progress is asked after. */
     private val later: (() -> Unit) -> Unit = {},
 ) : HostServices {
@@ -70,6 +72,7 @@ class SystemWebViewEngine internal constructor(
         SystemFetcher(context.applicationContext, downloads),
         system,
         files,
+        SystemAsker(),
         Handler(Looper.getMainLooper()).let { main -> { tick: () -> Unit -> main.postDelayed(tick, DOWNLOAD_PACE_MS) } },
     )
 
@@ -77,7 +80,7 @@ class SystemWebViewEngine internal constructor(
     private val permissions = Permissions(system) { event -> core?.report(event) }
 
     /** Downloads: what is being fetched for a page, and what waits for the core's word. */
-    private val downloads = Downloads(fetcher) { event -> core?.report(event) }
+    private val downloads = Downloads(fetcher, asker) { event -> core?.report(event) }
 
     /** What pages say or ask (016), while the core has not said how each is answered. */
     private val dialogs = Dialogs { event -> core?.report(event) }

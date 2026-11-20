@@ -61,7 +61,7 @@ internal object NoFetcher : Fetcher {
 }
 
 /** The downloads of one engine. Used on the main thread, as the engine is. */
-internal class Downloads(private val fetcher: Fetcher, private val report: (EngineEvent) -> Unit) {
+internal class Downloads(private val fetcher: Fetcher, private val asker: Asker = NoAsker, private val report: (EngineEvent) -> Unit) {
     private class Asked(val webViewId: Long, val loginSet: String, val offer: DownloadOffer)
 
     private class Coming(val webViewId: Long, val handle: Long, var said: FetchStatus.Coming? = null)
@@ -79,8 +79,23 @@ internal class Downloads(private val fetcher: Fetcher, private val report: (Engi
     /** Something is being fetched: its progress is worth asking after. */
     val isBusy: Boolean get() = coming.isNotEmpty()
 
-    /** A page of `webViewId`, in `loginSet`, asked for a download. Nothing is fetched yet. */
+    /**
+     * A page of `webViewId`, in `loginSet`, asked for a download; or the person chose a file in
+     * a menu (022). Nothing is fetched yet. A file the person chose is only an address: where
+     * it is, and what its site says of it, is asked first (FileAsker.kt), and it is offered as
+     * that.
+     */
     fun offered(webViewId: Long, loginSet: String, offer: DownloadOffer) {
+        if (!offer.chosen) {
+            offer(webViewId, loginSet, offer)
+            return
+        }
+        asker.ask(offer.url, offer.userAgent, loginSet) { told ->
+            offer(webViewId, loginSet, offer.copy(url = told.url, suggestedName = told.suggestedName, mimeType = told.mimeType, length = told.length))
+        }
+    }
+
+    private fun offer(webViewId: Long, loginSet: String, offer: DownloadOffer) {
         named += 1
         asked[named] = Asked(webViewId, loginSet, offer)
         report(

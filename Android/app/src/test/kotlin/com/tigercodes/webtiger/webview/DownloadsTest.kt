@@ -49,7 +49,15 @@ class DownloadsTest {
 
     /** Whatever the engine would do a moment later is kept here, for a test to do when it likes. */
     private val later = ArrayList<() -> Unit>()
-    private val engine = SystemWebViewEngine(pages, fetcher) { later.add(it) }.also { it.attach(core) }
+    /** Whoever asks after a file the person chose is kept waiting here, for a test to answer when it likes. */
+    private val asks = ArrayList<Triple<String, String, String>>()
+    private val answers = ArrayList<(Told) -> Unit>()
+    private val asker =
+        Asker { url, userAgent, loginSet, answer ->
+            asks.add(Triple(url, userAgent, loginSet))
+            answers.add(answer)
+        }
+    private val engine = SystemWebViewEngine(pages, fetcher, asker = asker) { later.add(it) }.also { it.attach(core) }
 
     private val notes = DownloadOffer(url = "https://example.com/notes", userAgent = "Agent/1", suggestedName = "notes.txt", mimeType = "text/plain", length = 26)
 
@@ -93,6 +101,32 @@ class DownloadsTest {
             assertNotNull(start(1, "My notes.txt").ack)
 
             assertEquals("the address, the login set whose cookies it is fetched with, and the core's name", listOf(Triple("https://example.com/notes", MINE, "My notes.txt")), fetcher.started)
+        }
+
+    @Test
+    fun aFileThePersonChoseIsAskedAfterFirstAndOfferedAsWhereItIsAndWhatItsSiteSays() =
+        runTest {
+            val page = aWebView(4)
+
+            engine.saveFile(4, "https://example.com/files/report")
+
+            // Asked after, as the page's requests say who they are and in the page's login set;
+            // nothing is said to the core until the answer.
+            assertEquals(listOf(Triple("https://example.com/files/report", "Agent/1", MINE)), asks)
+            assertEquals(listOf("https://example.com/files/report"), page.saved)
+            assertEquals(emptyList<String>(), told())
+            assertTrue("a page's own offer is not asked after", run { page.host.download(4, notes); asks.size == 1 })
+
+            // The file is somewhere else, and its site says what it is.
+            answers.single()(Told("https://cdn.example.net/2026/report.pdf", "application/pdf", "Report 2026.pdf", 4096))
+
+            assertEquals(listOf("asked 1 by 4: notes.txt text/plain 26", "asked 2 by 4: Report 2026.pdf application/pdf 4096"), told())
+            val offered = core.reports.last().download_requested
+            assertEquals("where the file is, not where it was asked for", "https://cdn.example.net/2026/report.pdf", offered?.url)
+            assertEquals("the person chose it", true, offered?.user_asked)
+            // And that is the address the system is handed to fetch, with that site's cookies.
+            assertNotNull(start(2, "Report 2026.pdf").ack)
+            assertEquals(listOf(Triple("https://cdn.example.net/2026/report.pdf", MINE, "Report 2026.pdf")), fetcher.started)
         }
 
     @Test

@@ -346,11 +346,29 @@ enum TestSitePages {
             authorization: ""
         ),
         TestSitePage(
+            path: "/poster",
+            status: "200 OK",
+            type: "image/svg+xml",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"160\" height=\"80\"><rect width=\"160\" height=\"80\" fill=\"#06c\"/></svg>")],
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
+        TestSitePage(
             path: "/pictures",
             status: "200 OK",
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
-            body: [.text("<!doctype html><title>Pictures</title><h1>Pictures</h1><p><img id=\"plain\" alt=\"a picture\" width=\"160\" height=\"80\" src=\"/tiger.svg\"></p>\n<p><a id=\"linked\" href=\"/landed?from=picture\"><img alt=\"a picture that is a link\" width=\"160\" height=\"80\" src=\"/tiger.svg\"></a></p>\n<p id=\"words\">words that are no picture</p>\n<script>\nif ('"), .query("menu", or: "engine"), .text("' === 'own') {\n  window.addEventListener('contextmenu', function (event) {\n    event.preventDefault();\n    event.stopImmediatePropagation();\n    document.title = 'own menu';\n  }, true);\n}\n</script>")],
+            body: [.text("<!doctype html><title>Pictures</title><h1>Pictures</h1><p><img id=\"plain\" alt=\"a picture\" width=\"160\" height=\"80\" src=\"/tiger.svg\"></p>\n<p><a id=\"linked\" href=\"/landed?from=picture\"><img alt=\"a picture that is a link\" width=\"160\" height=\"80\" src=\"/tiger.svg\"></a></p>\n<p><img id=\"unnamed\" alt=\"a picture whose address has no ending\" width=\"160\" height=\"80\" src=\"/poster\"></p>\n<p id=\"words\">words that are no picture</p>\n<script>\nif ('"), .query("menu", or: "engine"), .text("' === 'own') {\n  window.addEventListener('contextmenu', function (event) {\n    event.preventDefault();\n    event.stopImmediatePropagation();\n    document.title = 'own menu';\n  }, true);\n}\n</script>")],
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
+        TestSitePage(
+            path: "/to-whose-file",
+            status: "302 Found",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")], [.text("Location: http://localhost:"), .query("port", or: "80"), .text("/whose-file")]],
+            body: [],
             delayMilliseconds: 0,
             authorization: ""
         ),
