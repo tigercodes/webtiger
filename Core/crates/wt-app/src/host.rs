@@ -113,7 +113,8 @@ impl Expected {
             | host_request::Kind::WebViewSetZoom(_)
             | host_request::Kind::DownloadStart(_)
             | host_request::Kind::DownloadCancel(_)
-            | host_request::Kind::PermissionAnswer(_) => Expected::Ack,
+            | host_request::Kind::PermissionAnswer(_)
+            | host_request::Kind::DialogAnswer(_) => Expected::Ack,
         }
     }
 

@@ -14,7 +14,7 @@ use wt_proto::v1::{
 
 use crate::app::App;
 use crate::error::AppError;
-use crate::model::Settled;
+use crate::model::{AskedFor, Settled, Waited};
 
 /// How long a prompt must have been before the person to be answered (014
 /// §3). A press that was on its way to the page when the prompt appeared
@@ -93,7 +93,7 @@ impl App {
     fn permission_requested(&self, web_view: WebViewId, asked: &PermissionRequested) {
         let request = asked.request_id;
         // Said twice: the request it names is the one that waits.
-        if self.state.borrow().is_asking(request, false) {
+        if self.state.borrow().is_asking(request, Waited::Permission) {
             return;
         }
         let Some(decided) = self.decide(web_view, asked) else {
@@ -126,10 +126,10 @@ impl App {
             return Some(true);
         }
         let request = asked.request_id;
-        let asking = self
-            .state
-            .borrow_mut()
-            .ask(web_view, request, asker, kinds, None);
+        let asking =
+            self.state
+                .borrow_mut()
+                .ask(web_view, request, asker, kinds, AskedFor::Permission);
         (!asking).then_some(false)
     }
 
@@ -146,14 +146,14 @@ impl App {
     }
 
     /// What waited for the person has its answer: the page that asked is
-    /// told, or the download that waited starts or is dropped (015).
+    /// told, the download that waited starts or is dropped (015), or the
+    /// page that spoke is answered as if the person had closed it (016).
     pub(crate) fn settle(&self, settled: Settled, granted: bool) {
-        if !settled.download {
-            self.answer_page(settled.request, granted);
-        } else if granted {
-            self.start_waiting(settled.request);
-        } else {
-            self.drop_waiting(settled.request);
+        match settled.waited {
+            Waited::Permission => self.answer_page(settled.request, granted),
+            Waited::Download if granted => self.start_waiting(settled.request),
+            Waited::Download => self.drop_waiting(settled.request),
+            Waited::Dialog => self.answer_dialog(settled.request, false, ""),
         }
     }
 
@@ -228,6 +228,20 @@ impl App {
                 AppError::new("tab.unknown").field("tab_id")
             }
         })?;
+        // What a page said or asked (016) is answered by itself: nothing
+        // is allowed by it, and nothing remembered but that it spoke.
+        if let Some(may_silence) = asking.dialog() {
+            let silence = answer.silence && may_silence;
+            let accepted = answer.allow && !silence;
+            self.answer_dialog(asking.request, accepted, &answer.text);
+            if silence {
+                let silenced = self.state.borrow_mut().silence(tab);
+                for other in silenced {
+                    self.settle(other, false);
+                }
+            }
+            return Ok(response::Kind::Ack(Ack {}));
+        }
         self.settle(asking.settled(), answer.allow);
         let settled = if !answer.allow {
             self.state.borrow_mut().settle_refused(tab)

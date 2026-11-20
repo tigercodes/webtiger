@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | Designed; nothing is built. To be read before it is: §8 lists what it decides |
+| **Status** | In progress: the contract (1.12) and the core's rules (§3) are built and tested. No adapter reports a page saying anything yet, and no shell draws it (§10): until then WebKit drops a page's dialogs and the System WebView shows its own, as before |
 | **Phase** | W1 of [000](000-master-plan.md) §9: a browser a day's ordinary use needs no other for. Pages say things (`alert`), ask yes or no (`confirm`) and ask for a line of text (`prompt`); today WebKit drops all three, and the System WebView shows them in a dialog of its own |
-| **Contract** | 1.12, to be added: `DialogRequested`; the host request `DialogAnswer`; `DialogPrompt`, a third kind of `PromptView`; two fields of `AnswerPrompt` |
+| **Contract** | 1.12: `DialogRequested`; the host request `DialogAnswer`; `DialogPrompt`, a third kind of `PromptView`; two fields of `AnswerPrompt` |
 | **Builds on** | [014](014-permissions.md): a tab's prompt, its queue, and the rule that it is not answered in the moment it appears |
 | **Last updated** | 2026-11-20 |
 
@@ -46,7 +46,8 @@ The engine notices that a page calls one of the three, and says so; the page's s
 | presses **Cancel** (not offered for `alert`) | returns | false | null |
 
 - **Not in the moment it appears**, and not from a tab behind: 014's rule, unchanged. A `confirm` that a moving finger or a key meant for the page could answer "OK" is the reason for that rule.
-- **A page that says more can be silenced.** From a page's second dialog on, the prompt offers a third answer, to stop the page's messages. It dismisses this one, whatever else of the page's waits, and every later one, with nobody shown anything, until another page has loaded in the tab.
+- **A page that says more can be silenced.** From a page's second dialog on, the prompt offers a third answer, to stop the page's messages. It dismisses this one, whatever else of the page's waits, and every later one, with nobody shown anything, until another page has loaded in the tab. Asked of a page's first dialog, it is asking nothing. It stops nothing else that waits in the tab: a permission the page asked for is still asked about.
+- **What a page says is its own kind of thing.** A yes to it allows nothing, and a yes or a no to something else (a camera, a download) neither answers it nor dismisses it. The shell numbers its dialogs, its downloads and its pages' requests each from one: the core keeps the three apart.
 - **A new page in the tab, the loss of its renderer, and the tab closing** dismiss what waited.
 - **A tab behind keeps its dialog** until it is in front; its page's script waits meanwhile, as it does in front.
 - **Nothing of it is logged**: a page's words are what was visited.
@@ -115,7 +116,7 @@ The same bar (014 §7), taller. The site's name with "says" on a line of its own
 
 | Where | What |
 |---|---|
-| Core (through `FakeShell`) | Each of the three is shown under the site's name with the page's words, and the page waits; OK and Cancel are answered as §3's table says, a prompt with its text; an alert that is "cancelled" still returns. Dismissed with nothing shown: a web view that is no tab's, a tab with no page, a frame from another site, a kind unknown. Words longer than 2,000 characters are cut, and not inside a character. Dialogs wait their turn, and a fifth is dismissed. The second dialog of a page can be silenced, the first cannot; silenced, this one, those that wait and later ones are dismissed, until another page. A new page, a lost renderer and a closed tab dismiss what waited. A tab behind keeps its dialog. The half second. A dialog, a download and a permission request with the same number from the shell are not taken for each other |
+| Core (`wt-app/tests/dialogs.rs`, 12 through `FakeShell`) | What a page says is shown in its tab, under the site's name, and the page's script waits. OK and Cancel answer each of the three as §3's table says: a prompt with the text in its field, which may be nothing; what was typed and then cancelled is not passed on. Dismissed with nothing shown: a web view that is no tab's, a tab with no page, a frame from another site, another of the site's names, another scheme, no origin, and what is none of the three; the page's own origin is itself however a shell spells it. A page not over `https` may speak, and is named with its scheme. Words at length are cut to 2,000 characters, never inside one, and so is the text a prompt offers; only a prompt offers text. Four wait, a fifth is dismissed, and they are shown one at a time in order. A page's first cannot be stopped and its second can; stopped, that one, those that waited and those that follow are dismissed, also after the page changes its own address, until another page, whose first is its first. A new page and a lost renderer dismiss what waited; a closed tab takes it with it. A tab behind keeps its dialog, and it is not answered in the moment it appears. Said twice, shown once. A dialog, a download and a request that the shell gave the same number are each their own: a yes to one allows nothing of another, a no dismisses nothing of another, and stopping a page's messages stops nothing else. Sixteen of the rules checked by breaking them |
 | Adapter suites (WebKit on the Mac and the iPhone simulator; System WebView on the emulator) | A page of the test site calls each of the three by a button and writes what it got: each is reported with its words, who asks and which it is, and the page waits; answered, the page has what §3's table says; a prompt's offered text is reported and its answer returned; a web view destroyed while its page waits; leaving a page that asks to hold the person is not held up |
 | The shells | Against a scripted core: the bar for each of the three, with the site's name, the words, the field and the buttons each has; what each button sends; the third button only when the core says it may; long words scroll. Pictures. The apps, with the real core and engines: a page asks, the bar shows its words under the site's name, each answer reaches the page |
 
@@ -131,12 +132,13 @@ The same bar (014 §7), taller. The site's name with "says" on a line of its own
 
 ## 9. What is not verified
 
-Written when built.
+- **Another login set**, as everywhere until W2.
+- The adapters and the shells: written when built.
 
 ## 10. Done checklist
 
-- [ ] Contract 1.12 and its version in every place it is written.
-- [ ] The core: the rules of §3.
+- [x] Contract 1.12 and its version in every place it is written.
+- [x] The core: the rules of §3. 12 tests through `FakeShell`.
 - [ ] The test site's page.
 - [ ] Android: the adapter, on the JVM and the device; the bar; pictures; a device test.
 - [ ] Apple: the adapter and its suite; the bar; pictures; a UI test.

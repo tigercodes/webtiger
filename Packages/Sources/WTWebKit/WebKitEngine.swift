@@ -147,6 +147,10 @@ public final class WebKitEngine: HostServices {
         case let .downloadCancel(cancel):
             downloads.cancel(cancel.downloadID)
             return .ack(WTAck())
+        case .dialogAnswer:
+            // The page's answer to what it said or asked (016). This adapter reports no page
+            // saying anything yet, so there is none to answer: as for one it no longer has.
+            return .ack(WTAck())
         case let .permissionAnswer(answer):
             // The core's word on what a page asked to use (014). Done, also for a request
             // that no longer waits: its page went away.

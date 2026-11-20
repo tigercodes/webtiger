@@ -51,3 +51,14 @@ enum PermissionKind {
   // (SitePermissions.kinds).
   PERMISSION_KIND_DOWNLOADS = 4;
 }
+
+// What a page calls to say something or to ask (016). Since 1.12.
+enum DialogKind {
+  DIALOG_KIND_UNSPECIFIED = 0;
+  // `alert`: something said, to be acknowledged.
+  DIALOG_KIND_ALERT = 1;
+  // `confirm`: yes or no.
+  DIALOG_KIND_CONFIRM = 2;
+  // `prompt`: a line of text, or nothing.
+  DIALOG_KIND_PROMPT = 3;
+}

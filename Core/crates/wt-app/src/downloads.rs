@@ -14,7 +14,7 @@ use wt_store::{COMING, Download, FINISHED};
 
 use crate::app::App;
 use crate::error::{AppError, is_code};
-use crate::model::Asker;
+use crate::model::{AskedFor, Asker};
 
 /// A web view starts no more than one download in this long (013 §2): until
 /// a site's first download is asked about, a page cannot fill a folder
@@ -152,7 +152,9 @@ impl App {
             shell_id,
             asker,
             vec![DOWNLOADS],
-            Some(wanted.name.clone()),
+            AskedFor::Download {
+                file_name: wanted.name.clone(),
+            },
         );
         // A tab that asks as much as it may asks no more.
         (!asking).then_some(false)

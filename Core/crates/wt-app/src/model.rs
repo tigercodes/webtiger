@@ -8,9 +8,9 @@ use wt_core::{
     zoom_out,
 };
 use wt_proto::v1::{
-    AddressView, DownloadPrompt, EngineKind, FindView, LoadState, PermissionKind, PermissionPrompt,
-    PromptView, TabSummary, TabView, WindowSnapshot, ZoomView, address_view, engine_event,
-    prompt_view,
+    AddressView, DialogKind, DialogPrompt, DownloadPrompt, EngineKind, FindView, LoadState,
+    PermissionKind, PermissionPrompt, PromptView, TabSummary, TabView, WindowSnapshot, ZoomView,
+    address_view, engine_event, prompt_view,
 };
 use wt_store::{SavedTab, Space};
 
@@ -41,22 +41,59 @@ pub(crate) struct Asking {
     /// Who asks, as the prompt names it.
     site: String,
     pub(crate) kinds: Vec<PermissionKind>,
-    /// With a download that waits to be allowed (015): the name its file
-    /// would be saved under. `request` is then the shell's name for the
-    /// download, and not for a request of a page's.
-    file_name: Option<String>,
+    /// What it is that waits: a page's request for permission, a download,
+    /// or what a page says.
+    what: AskedFor,
+}
+
+/// What a prompt is about. The shell names each kind's requests by numbers
+/// of its own, from one: the kind is part of the name.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum AskedFor {
+    /// A page asks to use something of the device's (014).
+    Permission,
+    /// A download waits to be allowed (015), under this name.
+    Download { file_name: String },
+    /// A page says something, or asks (016).
+    Dialog {
+        kind: DialogKind,
+        message: String,
+        default_text: String,
+        /// The page said something before: it can be stopped.
+        may_silence: bool,
+    },
+}
+
+/// The kind of thing that waited for the person.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Waited {
+    Permission,
+    Download,
+    Dialog,
 }
 
 impl Asking {
     fn view(&self) -> PromptView {
-        let kind = match &self.file_name {
-            Some(file_name) => prompt_view::Kind::Download(DownloadPrompt {
+        let kind = match &self.what {
+            AskedFor::Download { file_name } => prompt_view::Kind::Download(DownloadPrompt {
                 site: self.site.clone(),
                 file_name: file_name.clone(),
             }),
-            None => prompt_view::Kind::Permission(PermissionPrompt {
+            AskedFor::Permission => prompt_view::Kind::Permission(PermissionPrompt {
                 site: self.site.clone(),
                 kinds: self.kinds.iter().map(|kind| *kind as i32).collect(),
+            }),
+            AskedFor::Dialog {
+                kind,
+                message,
+                default_text,
+                may_silence,
+            } => prompt_view::Kind::Dialog(DialogPrompt {
+                site: self.site.clone(),
+                kind: *kind as i32,
+                message: message.clone(),
+                default_text: default_text.clone(),
+                may_silence: *may_silence,
             }),
         };
         PromptView {
@@ -65,22 +102,51 @@ impl Asking {
         }
     }
 
+    /// The kind of thing this is.
+    pub(crate) fn waited(&self) -> Waited {
+        match self.what {
+            AskedFor::Permission => Waited::Permission,
+            AskedFor::Download { .. } => Waited::Download,
+            AskedFor::Dialog { .. } => Waited::Dialog,
+        }
+    }
+
+    /// When this is what a page said or asked: whether it may be silenced.
+    pub(crate) fn dialog(&self) -> Option<bool> {
+        match self.what {
+            AskedFor::Dialog { may_silence, .. } => Some(may_silence),
+            _ => None,
+        }
+    }
+
     /// What is to be answered, once this is settled.
     pub(crate) fn settled(&self) -> Settled {
         Settled {
             request: self.request,
-            download: self.file_name.is_some(),
+            waited: self.waited(),
         }
     }
 }
 
-/// Something that waited for the person and has its answer: a page's request
-/// for permission, or a download, by the shell's name for it. The two are
-/// named apart: a shell counts each from one.
+/// Something that waited for the person and has its answer, by the shell's
+/// name for it among its kind.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Settled {
     pub(crate) request: u64,
-    pub(crate) download: bool,
+    pub(crate) waited: Waited,
+}
+
+/// Who says something in a web view's page (016): the page's origin, the
+/// name it is shown by, and how the page stands with the person.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct Speaker {
+    pub(crate) login_set: LoginSetId,
+    pub(crate) origin: String,
+    pub(crate) site: String,
+    /// The person stopped this page's messages.
+    pub(crate) silenced: bool,
+    /// The page has said something before.
+    pub(crate) spoke_before: bool,
 }
 
 /// Who asks for a download, and whether the person asked for it themselves
@@ -164,6 +230,11 @@ pub(crate) struct Tab {
     /// download that comes of it is what they asked for (015). Good for
     /// one.
     own_load: bool,
+    /// The page has said something or asked (016): its next can be stopped.
+    spoke: bool,
+    /// The person stopped this page's messages: it says no more until
+    /// another page has committed.
+    silenced: bool,
 }
 
 /// The visit a tab's page is in the store, and what has been written of it.
@@ -211,6 +282,8 @@ impl Tab {
             prompts: VecDeque::new(),
             refused: Vec::new(),
             own_load: false,
+            spoke: false,
+            silenced: false,
         }
     }
 
@@ -314,6 +387,9 @@ impl Tab {
                 // A page came of what the person asked for: what the page
                 // then starts is the page's.
                 self.own_load = false;
+                // And a new page has said nothing yet.
+                self.spoke = false;
+                self.silenced = false;
                 self.had_page = true;
                 self.pending = None;
                 self.title.clear();
@@ -368,7 +444,8 @@ impl Tab {
             | Kind::DownloadFinished(_)
             | Kind::DownloadFailed(_)
             | Kind::PermissionRequested(_)
-            | Kind::PermissionWithdrawn(_) => {}
+            | Kind::PermissionWithdrawn(_)
+            | Kind::DialogRequested(_) => {}
             // What the engine found is for the text now looked for (010).
             // With no find, it is a late word about one that has stopped.
             Kind::FindResult(result) => {
@@ -828,13 +905,54 @@ impl State {
         })
     }
 
-    /// Whether a request by that name of the shell's waits in some tab: a
-    /// page's for permission, or with `download`, a download.
-    pub(crate) fn is_asking(&self, request: u64, download: bool) -> bool {
+    /// Who says something in a web view's page (016 §3). `None` when the
+    /// web view is no tab's, or its tab has no page of the web's.
+    pub(crate) fn speaker(&self, web_view: WebViewId) -> Option<Speaker> {
+        let tab = self.tab_of(web_view)?;
+        let origin = tab.committed.as_ref()?.origin()?;
+        let site = Address::parse(&origin).map_or_else(|_| origin.clone(), |named| named.display());
+        Some(Speaker {
+            login_set: tab.login_set,
+            origin,
+            site,
+            silenced: tab.silenced,
+            spoke_before: tab.spoke,
+        })
+    }
+
+    /// A web view's page has now said something: its next can be stopped.
+    pub(crate) fn spoke(&mut self, web_view: WebViewId) {
+        if let Some(tab) = self.tab_of_mut(web_view) {
+            tab.spoke = true;
+        }
+    }
+
+    /// The person stopped a tab's page's messages: it says no more until
+    /// another page, and what it was saying that waited is taken away. The
+    /// shell's names for those.
+    pub(crate) fn silence(&mut self, tab_id: TabId) -> Vec<Settled> {
+        let Some(tab) = self.tabs.get_mut(&tab_id) else {
+            return Vec::new();
+        };
+        tab.silenced = true;
+        let mut settled = Vec::new();
+        tab.prompts.retain(|asking| {
+            let said = asking.waited() == Waited::Dialog;
+            if said {
+                settled.push(asking.settled());
+            }
+            !said
+        });
+        settled
+    }
+
+    /// Whether a request by that name of the shell's, among its kind, waits
+    /// in some tab.
+    pub(crate) fn is_asking(&self, request: u64, waited: Waited) -> bool {
         self.tabs.values().any(|tab| {
             tab.prompts
                 .iter()
-                .any(|asking| asking.request == request && asking.file_name.is_some() == download)
+                .any(|asking| asking.request == request && asking.waited() == waited)
         })
     }
 
@@ -845,16 +963,15 @@ impl State {
             .is_some_and(|tab| kinds.iter().any(|kind| tab.refused.contains(kind)))
     }
 
-    /// Puts a request before the person: the tab's prompt, or behind the
-    /// ones it has. With `file_name`, a download that waits to be allowed.
-    /// False when the tab has as many as it may.
+    /// Puts something before the person: the tab's prompt, or behind the
+    /// ones it has. False when the tab has as many as it may.
     pub(crate) fn ask(
         &mut self,
         web_view: WebViewId,
         request: u64,
         asker: Asker,
         kinds: Vec<PermissionKind>,
-        file_name: Option<String>,
+        what: AskedFor,
     ) -> bool {
         let prompt = self.ids.mint();
         let Some(tab) = self.tab_of_mut(web_view) else {
@@ -869,7 +986,7 @@ impl State {
             origin: asker.origin,
             site: asker.site,
             kinds,
-            file_name,
+            what,
         });
         let window = tab.window;
         self.dirty.insert(window);
@@ -884,7 +1001,7 @@ impl State {
         };
         let before = tab.prompts.len();
         tab.prompts
-            .retain(|asking| asking.request != request || asking.file_name.is_some());
+            .retain(|asking| asking.request != request || asking.waited() != Waited::Permission);
         if tab.prompts.len() != before {
             let window = tab.window;
             self.dirty.insert(window);
@@ -939,7 +1056,10 @@ impl State {
             }
             let before = tab.prompts.len();
             tab.prompts.retain(|asking| {
+                // What a page says wants nothing that can be allowed: it
+                // waits for its own answer.
                 let all = asking.origin == origin
+                    && !asking.kinds.is_empty()
                     && asking.kinds.iter().all(|kind| allowed.contains(kind));
                 if all {
                     settled.push(asking.settled());

@@ -123,6 +123,42 @@ impl PermissionKind {
         }
     }
 }
+/// What a page calls to say something or to ask (016). Since 1.12.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum DialogKind {
+    Unspecified = 0,
+    /// `alert`: something said, to be acknowledged.
+    Alert = 1,
+    /// `confirm`: yes or no.
+    Confirm = 2,
+    /// `prompt`: a line of text, or nothing.
+    Prompt = 3,
+}
+impl DialogKind {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "DIALOG_KIND_UNSPECIFIED",
+            Self::Alert => "DIALOG_KIND_ALERT",
+            Self::Confirm => "DIALOG_KIND_CONFIRM",
+            Self::Prompt => "DIALOG_KIND_PROMPT",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "DIALOG_KIND_UNSPECIFIED" => Some(Self::Unspecified),
+            "DIALOG_KIND_ALERT" => Some(Self::Alert),
+            "DIALOG_KIND_CONFIRM" => Some(Self::Confirm),
+            "DIALOG_KIND_PROMPT" => Some(Self::Prompt),
+            _ => None,
+        }
+    }
+}
 /// Opens a window in the default Space, with one tab. Answered with
 /// WindowOpened. In fake mode the tab opens FakeOptions.start_address.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
@@ -612,7 +648,7 @@ pub struct PromptView {
     /// The core's own, never used twice. What the answer names it by.
     #[prost(uint64, tag = "1")]
     pub prompt_id: u64,
-    #[prost(oneof = "prompt_view::Kind", tags = "2, 3")]
+    #[prost(oneof = "prompt_view::Kind", tags = "2, 3, 4")]
     pub kind: ::core::option::Option<prompt_view::Kind>,
 }
 /// Nested message and enum types in `PromptView`.
@@ -624,7 +660,30 @@ pub mod prompt_view {
         /// Since 1.11
         #[prost(message, tag = "3")]
         Download(super::DownloadPrompt),
+        /// Since 1.12
+        #[prost(message, tag = "4")]
+        Dialog(super::DialogPrompt),
     }
+}
+/// A page says something, or asks (016). The words are the page's, and a
+/// shell shows them as the page's: under `site`, which is the core's.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct DialogPrompt {
+    /// Who says it, as an address field shows it.
+    #[prost(string, tag = "1")]
+    pub site: ::prost::alloc::string::String,
+    #[prost(enumeration = "DialogKind", tag = "2")]
+    pub kind: i32,
+    /// The page's words, cut to 2,000 characters.
+    #[prost(string, tag = "3")]
+    pub message: ::prost::alloc::string::String,
+    /// With DIALOG_KIND_PROMPT: the text the page offers, cut the same.
+    #[prost(string, tag = "4")]
+    pub default_text: ::prost::alloc::string::String,
+    /// The page said something before: the person may stop its messages
+    /// (AnswerPrompt.silence).
+    #[prost(bool, tag = "5")]
+    pub may_silence: bool,
 }
 /// A page asks to download a file, and its site was not yet allowed to (015).
 /// Nothing is saved, and nothing is listed, until the person has said.
@@ -664,7 +723,12 @@ pub struct PermissionPrompt {
 /// is remembered for its origin in its login set until it is taken back
 /// (ForgetPermissions). Not allowing is for this page only: it is told no,
 /// and does not get to ask for the same again until another page has loaded.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+///
+/// For a DialogPrompt (since 1.12): `allow` is OK, with `text` for a prompt;
+/// not allowing is Cancel. With `silence`, where the prompt says it may be
+/// silenced: this dialog is dismissed, and so is every other of the page's,
+/// now and later, until another page has loaded.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct AnswerPrompt {
     #[prost(uint64, tag = "1")]
     pub tab_id: u64,
@@ -672,6 +736,11 @@ pub struct AnswerPrompt {
     pub prompt_id: u64,
     #[prost(bool, tag = "3")]
     pub allow: bool,
+    /// Since 1.12
+    #[prost(string, tag = "4")]
+    pub text: ::prost::alloc::string::String,
+    #[prost(bool, tag = "5")]
+    pub silence: bool,
 }
 /// Asks what the sites of a window's login set were allowed to use. Answered
 /// with PermissionsPage, or "window.unknown".
@@ -945,7 +1014,7 @@ pub struct EngineEvent {
     pub web_view_id: u64,
     #[prost(
         oneof = "engine_event::Kind",
-        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20"
+        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21"
     )]
     pub kind: ::core::option::Option<engine_event::Kind>,
 }
@@ -996,6 +1065,9 @@ pub mod engine_event {
         PermissionRequested(super::PermissionRequested),
         #[prost(message, tag = "20")]
         PermissionWithdrawn(super::PermissionWithdrawn),
+        /// Since 1.12
+        #[prost(message, tag = "21")]
+        DialogRequested(super::DialogRequested),
     }
 }
 /// A load began. The page it asks for does not own the web view yet.
@@ -1203,9 +1275,34 @@ pub struct PermissionWithdrawn {
     #[prost(uint64, tag = "1")]
     pub request_id: u64,
 }
+/// A page says something, or asks (016): `alert`, `confirm` or `prompt`. The
+/// page's script waits: the shell answers it only when the core has said how
+/// (DialogAnswer, host.proto), and shows nothing of its own.
+///
+/// `request_id` is the shell's own name for it, never used twice. `origin` is
+/// the frame that called, as for a PermissionRequested: the core dismisses
+/// what is not the page's own.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct DialogRequested {
+    #[prost(uint64, tag = "1")]
+    pub request_id: u64,
+    #[prost(string, tag = "2")]
+    pub origin: ::prost::alloc::string::String,
+    #[prost(enumeration = "DialogKind", tag = "3")]
+    pub kind: i32,
+    /// The page's words.
+    #[prost(string, tag = "4")]
+    pub message: ::prost::alloc::string::String,
+    /// With DIALOG_KIND_PROMPT: the text the page offers.
+    #[prost(string, tag = "5")]
+    pub default_text: ::prost::alloc::string::String,
+}
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct HostRequest {
-    #[prost(oneof = "host_request::Kind", tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11")]
+    #[prost(
+        oneof = "host_request::Kind",
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12"
+    )]
     pub kind: ::core::option::Option<host_request::Kind>,
 }
 /// Nested message and enum types in `HostRequest`.
@@ -1239,6 +1336,9 @@ pub mod host_request {
         /// Since 1.10
         #[prost(message, tag = "11")]
         PermissionAnswer(super::PermissionAnswer),
+        /// Since 1.12
+        #[prost(message, tag = "12")]
+        DialogAnswer(super::DialogAnswer),
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -1395,6 +1495,20 @@ pub struct PermissionAnswer {
     pub request_id: u64,
     #[prost(bool, tag = "2")]
     pub granted: bool,
+}
+/// The page's answer to what it said or asked (016). `accepted` is OK: an
+/// `alert` returns, a `confirm` is true, a `prompt` is `text`. Not accepted,
+/// the page is answered as if the person had closed it: an `alert` returns
+/// all the same, a `confirm` is false, a `prompt` is null. Answered with Ack,
+/// also for a request the shell no longer has.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct DialogAnswer {
+    #[prost(uint64, tag = "1")]
+    pub request_id: u64,
+    #[prost(bool, tag = "2")]
+    pub accepted: bool,
+    #[prost(string, tag = "3")]
+    pub text: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Envelope {

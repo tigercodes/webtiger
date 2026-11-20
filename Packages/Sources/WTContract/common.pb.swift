@@ -167,6 +167,55 @@ public nonisolated enum WTPermissionKind: SwiftProtobuf.Enum, Swift.CaseIterable
 
 }
 
+/// What a page calls to say something or to ask (016). Since 1.12.
+public nonisolated enum WTDialogKind: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+
+  /// `alert`: something said, to be acknowledged.
+  case alert // = 1
+
+  /// `confirm`: yes or no.
+  case confirm // = 2
+
+  /// `prompt`: a line of text, or nothing.
+  case prompt // = 3
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .alert
+    case 2: self = .confirm
+    case 3: self = .prompt
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .alert: return 1
+    case .confirm: return 2
+    case .prompt: return 3
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [WTDialogKind] = [
+    .unspecified,
+    .alert,
+    .confirm,
+    .prompt,
+  ]
+
+}
+
 /// A failure, as a stable code of the form "area.reason" ("tab.unknown",
 /// "host.timeout"). User-visible text never crosses the boundary: the shells
 /// turn codes into words.
@@ -210,6 +259,10 @@ nonisolated extension WTNavigationCommand: SwiftProtobuf._ProtoNameProviding {
 
 nonisolated extension WTPermissionKind: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0PERMISSION_KIND_UNSPECIFIED\0\u{1}PERMISSION_KIND_CAMERA\0\u{1}PERMISSION_KIND_MICROPHONE\0\u{1}PERMISSION_KIND_LOCATION\0\u{1}PERMISSION_KIND_DOWNLOADS\0")
+}
+
+nonisolated extension WTDialogKind: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0DIALOG_KIND_UNSPECIFIED\0\u{1}DIALOG_KIND_ALERT\0\u{1}DIALOG_KIND_CONFIRM\0\u{1}DIALOG_KIND_PROMPT\0")
 }
 
 nonisolated extension WTError: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {

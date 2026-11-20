@@ -73,6 +73,7 @@ async fn answer(shell: &mut FakeShell, tab: u64, prompt: u64, allow: bool) -> re
             tab_id: tab,
             prompt_id: prompt,
             allow,
+            ..Default::default()
         }))
         .await
 }

@@ -37,6 +37,8 @@ message HostRequest {
     DownloadCancel download_cancel = 10;
     // Since 1.10
     PermissionAnswer permission_answer = 11;
+    // Since 1.12
+    DialogAnswer dialog_answer = 12;
   }
 }
 
@@ -163,4 +165,15 @@ message DownloadCancel {
 message PermissionAnswer {
   uint64 request_id = 1;
   bool granted = 2;
+}
+
+// The page's answer to what it said or asked (016). `accepted` is OK: an
+// `alert` returns, a `confirm` is true, a `prompt` is `text`. Not accepted,
+// the page is answered as if the person had closed it: an `alert` returns
+// all the same, a `confirm` is false, a `prompt` is null. Answered with Ack,
+// also for a request the shell no longer has.
+message DialogAnswer {
+  uint64 request_id = 1;
+  bool accepted = 2;
+  string text = 3 [(wt.redact) = true];
 }

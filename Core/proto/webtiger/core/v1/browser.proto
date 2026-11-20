@@ -394,7 +394,24 @@ message PromptView {
     PermissionPrompt permission = 2;
     // Since 1.11
     DownloadPrompt download = 3;
+    // Since 1.12
+    DialogPrompt dialog = 4;
   }
+}
+
+// A page says something, or asks (016). The words are the page's, and a
+// shell shows them as the page's: under `site`, which is the core's.
+message DialogPrompt {
+  // Who says it, as an address field shows it.
+  string site = 1 [(wt.redact) = true];
+  DialogKind kind = 2;
+  // The page's words, cut to 2,000 characters.
+  string message = 3 [(wt.redact) = true];
+  // With DIALOG_KIND_PROMPT: the text the page offers, cut the same.
+  string default_text = 4 [(wt.redact) = true];
+  // The page said something before: the person may stop its messages
+  // (AnswerPrompt.silence).
+  bool may_silence = 5;
 }
 
 // A page asks to download a file, and its site was not yet allowed to (015).
@@ -431,10 +448,18 @@ message PermissionPrompt {
 // is remembered for its origin in its login set until it is taken back
 // (ForgetPermissions). Not allowing is for this page only: it is told no,
 // and does not get to ask for the same again until another page has loaded.
+//
+// For a DialogPrompt (since 1.12): `allow` is OK, with `text` for a prompt;
+// not allowing is Cancel. With `silence`, where the prompt says it may be
+// silenced: this dialog is dismissed, and so is every other of the page's,
+// now and later, until another page has loaded.
 message AnswerPrompt {
   uint64 tab_id = 1;
   uint64 prompt_id = 2;
   bool allow = 3;
+  // Since 1.12
+  string text = 4 [(wt.redact) = true];
+  bool silence = 5;
 }
 
 // Asks what the sites of a window's login set were allowed to use. Answered

@@ -979,14 +979,52 @@ public nonisolated struct WTPromptView: Sendable {
     set {kind = .download(newValue)}
   }
 
+  /// Since 1.12
+  public var dialog: WTDialogPrompt {
+    get {
+      if case .dialog(let v)? = kind {return v}
+      return WTDialogPrompt()
+    }
+    set {kind = .dialog(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
     case permission(WTPermissionPrompt)
     /// Since 1.11
     case download(WTDownloadPrompt)
+    /// Since 1.12
+    case dialog(WTDialogPrompt)
 
   }
+
+  public init() {}
+}
+
+/// A page says something, or asks (016). The words are the page's, and a
+/// shell shows them as the page's: under `site`, which is the core's.
+public nonisolated struct WTDialogPrompt: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Who says it, as an address field shows it.
+  public var site: String = String()
+
+  public var kind: WTDialogKind = .unspecified
+
+  /// The page's words, cut to 2,000 characters.
+  public var message: String = String()
+
+  /// With DIALOG_KIND_PROMPT: the text the page offers, cut the same.
+  public var defaultText: String = String()
+
+  /// The page said something before: the person may stop its messages
+  /// (AnswerPrompt.silence).
+  public var maySilence: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 }
@@ -1043,6 +1081,11 @@ public nonisolated struct WTPermissionPrompt: Sendable {
 /// is remembered for its origin in its login set until it is taken back
 /// (ForgetPermissions). Not allowing is for this page only: it is told no,
 /// and does not get to ask for the same again until another page has loaded.
+///
+/// For a DialogPrompt (since 1.12): `allow` is OK, with `text` for a prompt;
+/// not allowing is Cancel. With `silence`, where the prompt says it may be
+/// silenced: this dialog is dismissed, and so is every other of the page's,
+/// now and later, until another page has loaded.
 public nonisolated struct WTAnswerPrompt: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -1053,6 +1096,11 @@ public nonisolated struct WTAnswerPrompt: Sendable {
   public var promptID: UInt64 = 0
 
   public var allow: Bool = false
+
+  /// Since 1.12
+  public var text: String = String()
+
+  public var silence: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2487,7 +2535,7 @@ nonisolated extension WTForgetDownloads: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension WTPromptView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".PromptView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}prompt_id\0\u{1}permission\0\u{1}download\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}prompt_id\0\u{1}permission\0\u{1}download\0\u{1}dialog\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2522,6 +2570,19 @@ nonisolated extension WTPromptView: SwiftProtobuf.Message, SwiftProtobuf._Messag
           self.kind = .download(v)
         }
       }()
+      case 4: try {
+        var v: WTDialogPrompt?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .dialog(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .dialog(v)
+        }
+      }()
       default: break
       }
     }
@@ -2544,6 +2605,10 @@ nonisolated extension WTPromptView: SwiftProtobuf.Message, SwiftProtobuf._Messag
       guard case .download(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
     }()
+    case .dialog?: try {
+      guard case .dialog(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+    }()
     case nil: break
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -2552,6 +2617,56 @@ nonisolated extension WTPromptView: SwiftProtobuf.Message, SwiftProtobuf._Messag
   public static func ==(lhs: WTPromptView, rhs: WTPromptView) -> Bool {
     if lhs.promptID != rhs.promptID {return false}
     if lhs.kind != rhs.kind {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTDialogPrompt: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DialogPrompt"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}site\0\u{1}kind\0\u{1}message\0\u{3}default_text\0\u{3}may_silence\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.site) }()
+      case 2: try { try decoder.decodeSingularEnumField(value: &self.kind) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.message) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.defaultText) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.maySilence) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.site.isEmpty {
+      try visitor.visitSingularStringField(value: self.site, fieldNumber: 1)
+    }
+    if self.kind != .unspecified {
+      try visitor.visitSingularEnumField(value: self.kind, fieldNumber: 2)
+    }
+    if !self.message.isEmpty {
+      try visitor.visitSingularStringField(value: self.message, fieldNumber: 3)
+    }
+    if !self.defaultText.isEmpty {
+      try visitor.visitSingularStringField(value: self.defaultText, fieldNumber: 4)
+    }
+    if self.maySilence != false {
+      try visitor.visitSingularBoolField(value: self.maySilence, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTDialogPrompt, rhs: WTDialogPrompt) -> Bool {
+    if lhs.site != rhs.site {return false}
+    if lhs.kind != rhs.kind {return false}
+    if lhs.message != rhs.message {return false}
+    if lhs.defaultText != rhs.defaultText {return false}
+    if lhs.maySilence != rhs.maySilence {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2629,7 +2744,7 @@ nonisolated extension WTPermissionPrompt: SwiftProtobuf.Message, SwiftProtobuf._
 
 nonisolated extension WTAnswerPrompt: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".AnswerPrompt"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}prompt_id\0\u{1}allow\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}prompt_id\0\u{1}allow\0\u{1}text\0\u{1}silence\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2640,6 +2755,8 @@ nonisolated extension WTAnswerPrompt: SwiftProtobuf.Message, SwiftProtobuf._Mess
       case 1: try { try decoder.decodeSingularUInt64Field(value: &self.tabID) }()
       case 2: try { try decoder.decodeSingularUInt64Field(value: &self.promptID) }()
       case 3: try { try decoder.decodeSingularBoolField(value: &self.allow) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.text) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.silence) }()
       default: break
       }
     }
@@ -2655,6 +2772,12 @@ nonisolated extension WTAnswerPrompt: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if self.allow != false {
       try visitor.visitSingularBoolField(value: self.allow, fieldNumber: 3)
     }
+    if !self.text.isEmpty {
+      try visitor.visitSingularStringField(value: self.text, fieldNumber: 4)
+    }
+    if self.silence != false {
+      try visitor.visitSingularBoolField(value: self.silence, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2662,6 +2785,8 @@ nonisolated extension WTAnswerPrompt: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if lhs.tabID != rhs.tabID {return false}
     if lhs.promptID != rhs.promptID {return false}
     if lhs.allow != rhs.allow {return false}
+    if lhs.text != rhs.text {return false}
+    if lhs.silence != rhs.silence {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -62,6 +62,7 @@ async fn answer(shell: &mut FakeShell, tab: u64, subscription: u64, allow: bool)
             tab_id: tab,
             prompt_id: prompt,
             allow,
+            ..Default::default()
         }))
         .await;
     assert!(matches!(done, response::Kind::Ack(_)), "{done:?}");

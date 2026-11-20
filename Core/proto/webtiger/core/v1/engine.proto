@@ -51,6 +51,8 @@ message EngineEvent {
     // Since 1.10
     PermissionRequested permission_requested = 19;
     PermissionWithdrawn permission_withdrawn = 20;
+    // Since 1.12
+    DialogRequested dialog_requested = 21;
   }
 }
 
@@ -224,4 +226,21 @@ message PermissionRequested {
 // the engine did. Nothing is to be answered.
 message PermissionWithdrawn {
   uint64 request_id = 1;
+}
+
+// A page says something, or asks (016): `alert`, `confirm` or `prompt`. The
+// page's script waits: the shell answers it only when the core has said how
+// (DialogAnswer, host.proto), and shows nothing of its own.
+//
+// `request_id` is the shell's own name for it, never used twice. `origin` is
+// the frame that called, as for a PermissionRequested: the core dismisses
+// what is not the page's own.
+message DialogRequested {
+  uint64 request_id = 1;
+  string origin = 2 [(wt.redact) = true];
+  DialogKind kind = 3;
+  // The page's words.
+  string message = 4 [(wt.redact) = true];
+  // With DIALOG_KIND_PROMPT: the text the page offers.
+  string default_text = 5 [(wt.redact) = true];
 }

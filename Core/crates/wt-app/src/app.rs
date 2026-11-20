@@ -199,6 +199,10 @@ impl App {
         if self.permission_event(web_view, &kind) {
             return;
         }
+        // And so is a page that says something, or asks (016).
+        if self.dialog_event(web_view, &kind) {
+            return;
+        }
         // History (008): a page that commits, or changes its own address, is
         // a visit; the page before it is left, and takes the title it ended
         // with. A title that arrives is the visit's when it is its first.

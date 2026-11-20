@@ -128,6 +128,7 @@ async fn allow_downloads(shell: &mut FakeShell, window: u64, tab: u64, subscript
             tab_id: tab,
             prompt_id: asked.prompt_id,
             allow: true,
+            ..Default::default()
         }))
         .await;
     assert!(matches!(allowed, response::Kind::Ack(_)), "{allowed:?}");

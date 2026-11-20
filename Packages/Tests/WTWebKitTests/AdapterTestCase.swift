@@ -208,6 +208,7 @@ class AdapterTestCase: XCTestCase {
             case let .downloadFailed(failed): "download failed(\(failed.code))"
             case .permissionRequested: "permission"
             case .permissionWithdrawn: "permission withdrawn"
+            case let .dialogRequested(dialog): "says(\(dialog.kind))"
             // At the engine's own pace, like a page's progress.
             case .progressChanged, .downloadProgress: nil
             }

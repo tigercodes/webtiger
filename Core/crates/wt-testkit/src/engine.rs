@@ -5,12 +5,12 @@
 use std::collections::BTreeMap;
 
 use wt_proto::v1::{
-    Ack, AddressChanged, CloseRequested, DownloadFailed, DownloadFinished, DownloadProgress,
-    DownloadRequested, EngineEvent, EngineKind, Error, FindResult, HistoryChanged, HostPong,
-    NavigationCommand, NavigationCommitted, NavigationFailed, NavigationFinished,
-    NavigationStarted, NewWindowRequested, OutsideLinkRequested, PermissionKind,
-    PermissionRequested, PermissionWithdrawn, ProgressChanged, RendererGone, TitleChanged,
-    engine_event, host_request, host_response,
+    Ack, AddressChanged, CloseRequested, DialogKind, DialogRequested, DownloadFailed,
+    DownloadFinished, DownloadProgress, DownloadRequested, EngineEvent, EngineKind, Error,
+    FindResult, HistoryChanged, HostPong, NavigationCommand, NavigationCommitted, NavigationFailed,
+    NavigationFinished, NavigationStarted, NewWindowRequested, OutsideLinkRequested,
+    PermissionKind, PermissionRequested, PermissionWithdrawn, ProgressChanged, RendererGone,
+    TitleChanged, engine_event, host_request, host_response,
 };
 
 /// A page of the scripted web.
@@ -71,6 +71,10 @@ pub struct FakeEngine {
     /// something (014), in order: its name for the request, and whether it
     /// was granted.
     pub permission_answers: Vec<(u64, bool)>,
+    /// How this shell was told to answer the pages that said something or
+    /// asked (016), in order: its name for the dialog, whether it was
+    /// accepted, and the text.
+    pub dialog_answers: Vec<(u64, bool, String)>,
 }
 
 impl FakeEngine {
@@ -88,6 +92,7 @@ impl FakeEngine {
             download_cancels: Vec::new(),
             downloads_not_started: Vec::new(),
             permission_answers: Vec::new(),
+            dialog_answers: Vec::new(),
         }
     }
 
@@ -293,6 +298,11 @@ impl FakeEngine {
                 self.download_cancels.push(cancel.download_id);
                 (ack, Vec::new())
             }
+            Kind::DialogAnswer(answer) => {
+                self.dialog_answers
+                    .push((answer.request_id, answer.accepted, answer.text));
+                (ack, Vec::new())
+            }
             Kind::PermissionAnswer(answer) => {
                 self.permission_answers
                     .push((answer.request_id, answer.granted));
@@ -423,6 +433,29 @@ impl FakeEngine {
                 request_id: request,
                 origin: origin.to_owned(),
                 kinds: kinds.iter().map(|kind| *kind as i32).collect(),
+            }),
+        )
+    }
+
+    /// A web view's page says something, or asks (016): the shell names it
+    /// `request`, and says who called.
+    #[must_use]
+    pub fn dialog_requested(
+        id: u64,
+        request: u64,
+        origin: &str,
+        kind: DialogKind,
+        message: &str,
+        default_text: &str,
+    ) -> EngineEvent {
+        event(
+            id,
+            engine_event::Kind::DialogRequested(DialogRequested {
+                request_id: request,
+                origin: origin.to_owned(),
+                kind: kind as i32,
+                message: message.to_owned(),
+                default_text: default_text.to_owned(),
             }),
         )
     }

@@ -202,6 +202,15 @@ public nonisolated struct WTEngineEvent: Sendable {
     set {kind = .permissionWithdrawn(newValue)}
   }
 
+  /// Since 1.12
+  public var dialogRequested: WTDialogRequested {
+    get {
+      if case .dialogRequested(let v)? = kind {return v}
+      return WTDialogRequested()
+    }
+    set {kind = .dialogRequested(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -229,6 +238,8 @@ public nonisolated struct WTEngineEvent: Sendable {
     /// Since 1.10
     case permissionRequested(WTPermissionRequested)
     case permissionWithdrawn(WTPermissionWithdrawn)
+    /// Since 1.12
+    case dialogRequested(WTDialogRequested)
 
   }
 
@@ -576,13 +587,42 @@ public nonisolated struct WTPermissionWithdrawn: Sendable {
   public init() {}
 }
 
+/// A page says something, or asks (016): `alert`, `confirm` or `prompt`. The
+/// page's script waits: the shell answers it only when the core has said how
+/// (DialogAnswer, host.proto), and shows nothing of its own.
+///
+/// `request_id` is the shell's own name for it, never used twice. `origin` is
+/// the frame that called, as for a PermissionRequested: the core dismisses
+/// what is not the page's own.
+public nonisolated struct WTDialogRequested: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var requestID: UInt64 = 0
+
+  public var origin: String = String()
+
+  public var kind: WTDialogKind = .unspecified
+
+  /// The page's words.
+  public var message: String = String()
+
+  /// With DIALOG_KIND_PROMPT: the text the page offers.
+  public var defaultText: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
 
 nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EngineEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{3}navigation_started\0\u{3}navigation_committed\0\u{3}navigation_finished\0\u{3}navigation_failed\0\u{3}address_changed\0\u{3}title_changed\0\u{3}progress_changed\0\u{3}history_changed\0\u{3}renderer_gone\0\u{3}new_window_requested\0\u{3}close_requested\0\u{3}outside_link_requested\0\u{3}find_result\0\u{3}download_requested\0\u{3}download_progress\0\u{3}download_finished\0\u{3}download_failed\0\u{3}permission_requested\0\u{3}permission_withdrawn\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{3}navigation_started\0\u{3}navigation_committed\0\u{3}navigation_finished\0\u{3}navigation_failed\0\u{3}address_changed\0\u{3}title_changed\0\u{3}progress_changed\0\u{3}history_changed\0\u{3}renderer_gone\0\u{3}new_window_requested\0\u{3}close_requested\0\u{3}outside_link_requested\0\u{3}find_result\0\u{3}download_requested\0\u{3}download_progress\0\u{3}download_finished\0\u{3}download_failed\0\u{3}permission_requested\0\u{3}permission_withdrawn\0\u{3}dialog_requested\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -838,6 +878,19 @@ nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
           self.kind = .permissionWithdrawn(v)
         }
       }()
+      case 21: try {
+        var v: WTDialogRequested?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .dialogRequested(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .dialogRequested(v)
+        }
+      }()
       default: break
       }
     }
@@ -927,6 +980,10 @@ nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
     case .permissionWithdrawn?: try {
       guard case .permissionWithdrawn(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 20)
+    }()
+    case .dialogRequested?: try {
+      guard case .dialogRequested(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 21)
     }()
     case nil: break
     }
@@ -1568,6 +1625,56 @@ nonisolated extension WTPermissionWithdrawn: SwiftProtobuf.Message, SwiftProtobu
 
   public static func ==(lhs: WTPermissionWithdrawn, rhs: WTPermissionWithdrawn) -> Bool {
     if lhs.requestID != rhs.requestID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTDialogRequested: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DialogRequested"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}request_id\0\u{1}origin\0\u{1}kind\0\u{1}message\0\u{3}default_text\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.requestID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.origin) }()
+      case 3: try { try decoder.decodeSingularEnumField(value: &self.kind) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.message) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.defaultText) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.requestID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.requestID, fieldNumber: 1)
+    }
+    if !self.origin.isEmpty {
+      try visitor.visitSingularStringField(value: self.origin, fieldNumber: 2)
+    }
+    if self.kind != .unspecified {
+      try visitor.visitSingularEnumField(value: self.kind, fieldNumber: 3)
+    }
+    if !self.message.isEmpty {
+      try visitor.visitSingularStringField(value: self.message, fieldNumber: 4)
+    }
+    if !self.defaultText.isEmpty {
+      try visitor.visitSingularStringField(value: self.defaultText, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTDialogRequested, rhs: WTDialogRequested) -> Bool {
+    if lhs.requestID != rhs.requestID {return false}
+    if lhs.origin != rhs.origin {return false}
+    if lhs.kind != rhs.kind {return false}
+    if lhs.message != rhs.message {return false}
+    if lhs.defaultText != rhs.defaultText {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
