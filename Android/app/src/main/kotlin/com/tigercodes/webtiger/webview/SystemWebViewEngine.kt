@@ -49,6 +49,8 @@ class SystemWebViewEngine internal constructor(
     fetcher: Fetcher = NoFetcher,
     /** What the system lets the app itself use (014): a page is let have no more. */
     system: SystemPermissions = NoSystemPermissions,
+    /** How a page's file input is given files (019): nothing is picked unless the app itself gave the way to the system's picker. */
+    chooser: FileChooser = NoFiles,
     /** Runs something a moment later, on the main thread: how the downloads' progress is asked after. */
     private val later: (() -> Unit) -> Unit = {},
 ) : HostServices {
@@ -57,10 +59,16 @@ class SystemWebViewEngine internal constructor(
      * is told the device's: only the app itself, started for real, saves where the person's own
      * files are (013).
      */
-    constructor(context: Context, downloads: DownloadPlace = DownloadPlace.APP, system: SystemPermissions = AppPermissions(context)) : this(
+    constructor(
+        context: Context,
+        downloads: DownloadPlace = DownloadPlace.APP,
+        system: SystemPermissions = AppPermissions(context),
+        files: FileChooser = NoFiles,
+    ) : this(
         WebViewPages(context.applicationContext),
         SystemFetcher(context.applicationContext, downloads),
         system,
+        files,
         Handler(Looper.getMainLooper()).let { main -> { tick: () -> Unit -> main.postDelayed(tick, DOWNLOAD_PACE_MS) } },
     )
 
@@ -72,6 +80,9 @@ class SystemWebViewEngine internal constructor(
 
     /** What pages say or ask (016), while the core has not said how each is answered. */
     private val dialogs = Dialogs { event -> core?.report(event) }
+
+    /** The web views whose pages have a file chooser open (019). */
+    private val files = Files(chooser)
 
     /** The servers that asked who is there (017), while the core has not said how each is answered. */
     private val signIns = SignIns { event -> core?.report(event) }
@@ -197,6 +208,7 @@ class SystemWebViewEngine internal constructor(
                     permissions.dropped(destroy.web_view_id)
                     dialogs.dropped(destroy.web_view_id)
                     signIns.dropped(destroy.web_view_id)
+                    files.dropped(destroy.web_view_id)
                     pages.remove(destroy.web_view_id)?.close()
                     loginSets.remove(destroy.web_view_id)
                     done
@@ -311,6 +323,8 @@ class SystemWebViewEngine internal constructor(
 
         override fun signIn(webViewId: Long, host: String, realm: String, heading: String, again: Boolean, answer: (Typed?) -> Unit) =
             signIns.asked(webViewId, host, realm, heading, again, answer)
+
+        override fun files(webViewId: Long, asked: FilesAsked, give: (List<String>?) -> Unit) = files.choose(webViewId, asked, give)
 
         override fun linkPressed(webViewId: Long, url: String) {
             // A link the WebView could say nothing of leads nowhere.

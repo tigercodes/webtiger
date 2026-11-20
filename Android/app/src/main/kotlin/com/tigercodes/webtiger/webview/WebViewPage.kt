@@ -10,6 +10,7 @@ import android.content.MutableContextWrapper
 import android.graphics.Bitmap
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.Uri
 import android.net.http.SslError
 import android.os.Handler
 import android.os.Looper
@@ -24,6 +25,7 @@ import android.webkit.PermissionRequest
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.SslErrorHandler
 import android.webkit.URLUtil
+import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -457,6 +459,18 @@ internal class WebViewPage(
          * asks, and waits for the core's word. Whatever else a page asks for this way
          * (protected media, MIDI) is not offered: a request with any of it is refused whole.
          */
+        /**
+         * A page's file input was pressed (019). Left alone the WebView does nothing. The
+         * engine's chooser is asked, and the WebView given what was picked, or told that
+         * nothing was. A source to capture from (the camera) is not offered: the chooser is.
+         */
+        override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
+            if (view !== webView) return false
+            val asked = FilesAsked(several = params.mode == FileChooserParams.MODE_OPEN_MULTIPLE, kinds = params.acceptTypes.orEmpty().filter { it.isNotBlank() })
+            host.files(id, asked) { picked -> callback.onReceiveValue(picked?.map(Uri::parse)?.toTypedArray()) }
+            return true
+        }
+
         override fun onPermissionRequest(request: PermissionRequest) {
             val kinds =
                 request.resources.orEmpty().map { resource ->

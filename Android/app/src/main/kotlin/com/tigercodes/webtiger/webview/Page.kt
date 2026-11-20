@@ -88,6 +88,12 @@ internal interface PageHost {
      * what comes of it is the link's menu.
      */
     fun linkPressed(webViewId: Long, url: String)
+
+    /**
+     * A page of the web view `webViewId` asks for a file (019). `give` gives the engine what
+     * was picked, once: the files' addresses, or null for none.
+     */
+    fun files(webViewId: Long, asked: FilesAsked, give: (List<String>?) -> Unit)
 }
 
 /** Makes pages. [WebViewPages] makes real ones. */

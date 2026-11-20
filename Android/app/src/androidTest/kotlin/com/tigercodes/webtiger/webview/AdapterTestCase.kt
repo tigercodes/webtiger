@@ -48,11 +48,18 @@ internal abstract class AdapterTestCase {
      */
     protected open fun systemPermissions(context: Context): SystemPermissions = AppPermissions(context)
 
+    /**
+     * How the engine picks files for a page (019). None, as for every engine that is not the
+     * app's own: a test that wants files picked gives a chooser of its own, and the system's
+     * picker is never started.
+     */
+    protected open fun fileChooser(): FileChooser = NoFiles
+
     @Before
     fun attach() {
         onMain {
             val context = ApplicationProvider.getApplicationContext<Context>()
-            engine = SystemWebViewEngine(context, system = systemPermissions(context))
+            engine = SystemWebViewEngine(context, system = systemPermissions(context), files = fileChooser())
             engine.attach(core)
         }
     }
