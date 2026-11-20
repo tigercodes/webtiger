@@ -19,6 +19,9 @@ pub enum Logins {
     Of(SpaceId),
 }
 
+/// The setting that says which Space the window shows.
+const SHOWN_SPACE: &str = "session.space";
+
 /// A row of `space` as `SELECT id, name, login_set_id` gives it.
 type SpaceRow = (i64, String, Vec<u8>);
 
@@ -123,6 +126,38 @@ impl Store {
             )
             .map_err(|_| StoreError::Query)?;
         Ok(renamed > 0)
+    }
+
+    /// The Space the window showed when this was last written (009, 024):
+    /// the one a window shows when the app starts. `None` when none was
+    /// written, or the one written is not a Space there is.
+    ///
+    /// # Errors
+    /// `Query` when the database refuses.
+    pub fn shown_space(&self) -> Result<Option<SpaceId>, StoreError> {
+        let id: Option<i64> = self
+            .connection
+            .prepare_cached(
+                "SELECT space.id FROM setting \
+                 JOIN space ON space.id = CAST(setting.value AS INTEGER) \
+                 WHERE setting.key = ?1",
+            )
+            .and_then(|mut statement| {
+                statement
+                    .query_row(params![SHOWN_SPACE], |row| row.get(0))
+                    .optional()
+            })
+            .map_err(|_| StoreError::Query)?;
+        Ok(id.and_then(|id| u64::try_from(id).ok()).map(SpaceId))
+    }
+
+    /// Writes which Space the window shows.
+    ///
+    /// # Errors
+    /// `Query` when the database refuses; what was written before is then
+    /// what is still there.
+    pub fn show_space(&mut self, space: SpaceId) -> Result<(), StoreError> {
+        self.set_setting(SHOWN_SPACE, &space.0.to_string())
     }
 }
 
@@ -239,6 +274,38 @@ mod tests {
             assert!(!store.rename_space(nowhere, "Nobody").unwrap());
         }
         assert_eq!(names(&store), ["Home", "The office"]);
+    }
+
+    #[test]
+    fn the_space_the_window_shows_is_kept_and_only_while_it_is_a_space() {
+        let folder = tempfile::tempdir().unwrap();
+        let path = folder.path().join("webtiger.sqlite");
+        let work = {
+            let mut store = Store::open(&path).unwrap();
+            let own = store.default_space(FIRST, Timestamp(1)).unwrap();
+            assert_eq!(store.shown_space().unwrap(), None, "none was written");
+            let work = store
+                .create_space("Work", Logins::Own(WORK), Timestamp(2))
+                .unwrap()
+                .unwrap();
+            store.show_space(own.id).unwrap();
+            assert_eq!(store.shown_space().unwrap(), Some(own.id));
+            // Written again, it is the one written last.
+            store.show_space(work.id).unwrap();
+            work
+        };
+
+        let mut store = Store::open(&path).unwrap();
+        assert_eq!(store.shown_space().unwrap(), Some(work.id));
+
+        // One that is no Space, or no number at all (a store that was
+        // meddled with), is none.
+        store.show_space(SpaceId(9_999)).unwrap();
+        assert_eq!(store.shown_space().unwrap(), None);
+        store.set_setting(SHOWN_SPACE, "Work").unwrap();
+        assert_eq!(store.shown_space().unwrap(), None);
+        store.set_setting(SHOWN_SPACE, "").unwrap();
+        assert_eq!(store.shown_space().unwrap(), None);
     }
 
     #[test]
