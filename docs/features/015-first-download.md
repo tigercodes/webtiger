@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | Designed; nothing is built. To be read before it is: §7 lists what it decides |
+| **Status** | In progress: the contract (1.11) and the core's rule (§3) are built and tested. No shell has the prompt's words yet: until one does, a download that has to be asked about waits unseen (§9) |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "downloads", the part [013](013-downloads.md) §2 left for the prompt that permissions needed. That prompt is [014](014-permissions.md)'s |
-| **Contract** | 1.11, to be added: `DownloadPrompt`, a second kind of `PromptView`; `PERMISSION_KIND_DOWNLOADS`, among what a site was allowed |
+| **Contract** | 1.11: `DownloadPrompt`, a second kind of `PromptView`; `PERMISSION_KIND_DOWNLOADS`, among what a site was allowed |
 | **Builds on** | 013: a download waits for the core's word in every shell. 014: a tab's prompt, what was allowed per origin, and the list where it is taken back |
 | **Last updated** | 2026-11-20 |
 
@@ -27,7 +27,7 @@ A page I am reading starts a download. Before anything is saved, WebTiger asks m
 A download a page asks for (`DownloadRequested`) is, in this order:
 
 1. **dropped**, as before, when its web view is no tab's, or the web view started one less than a second ago (013 §3);
-2. **started without asking when the person asked for the address**: the load in flight in the tab is the person's own (an address typed, or chosen from history or from what was offered) and has not yet become a page. Whatever that address turns out to be, a file or a redirect to one, they asked for it;
+2. **started without asking when the person asked for the address**: the person sent the tab somewhere (an address typed, or chosen from history or from what was offered), and no page has come of it. Whatever that address turns out to be, a file or a redirect to one, they asked for it. It is good for one download: the next is the page's that is still there. A page that arrives, and a load that fails, end it;
 3. **started without asking when the site was allowed** before, in this login set;
 4. **dropped when the person said no to this page already**: until the tab commits another page, its downloads are dropped with nobody asked;
 5. **asked about** otherwise: the tab gains a prompt (014 §4) that names the site and the file, and the download waits. "Allow" starts it, and writes down that the site may download. "Don't Allow" drops it, and is remembered for this page only.
@@ -82,7 +82,7 @@ The same bar (014 §7), with a sentence of its own: "*site* wants to download �
 
 | Where | What |
 |---|---|
-| Core (through `FakeShell`) | A page's first download asks, naming the site and the file, and nothing is started or listed; "Allow" starts it under the core's name, lists it, and the site's next download starts unasked, also after the app starts again; "Don't Allow" drops it, lists nothing, and the page's later downloads are dropped unasked until another page; an address the person typed is downloaded without asking, also when it redirects, and a page's own download a moment later is asked about; a tab with no page asks in the name of where the file comes from; what waited is dropped with a new page, a lost renderer and a closed tab; what else waited for the same answer has it; the limits of 013 and 014 still hold; an engine cannot ask for downloads as a permission; the site is in the list of what was allowed, and taken back it asks again. 013's tests, with the site allowed first |
+| Core (`wt-app/tests/first_download.rs`, 14 through `FakeShell`) | A site's first download asks, naming the page's site and the file by the name the core made, and nothing is started or listed. "Allow" starts it under the core's name and lists it; the site is among what was allowed; its next download, and one from another page of it, start unasked, also after the app starts again; another site is asked about. "Don't Allow" drops it, lists nothing and writes nothing, and the page's later downloads are dropped unasked until another page has loaded. An address the person sent the tab to is downloaded without asking, also when it sends the browser on to a file; that is good for one, and is not lent to a page that arrived or to the page that is still there when the load failed. A tab with no page asks in the name of where the file comes from. A page not over `https` may ask to download, and is named with its scheme. What waited is dropped with a new page, a lost renderer and a closed tab. What else waited for the same answer has it: the site's download in a tab behind, after a yes; the page's other downloads, after a no. One a second from a web view, also while the first waits; four wait and a fifth is dropped; said twice, asked once. A download and a page's request that the shell gave the same number are not taken for each other, whichever came first, nor is the download what a page withdraws. To download is not an engine's to ask for. Taken back, the site asks again, and what is coming goes on. Fifteen parts of the rule checked by breaking them. 013's tests (15) pass as they were, each page's site allowed first as a person would allow it |
 | The shells | The bar's sentence for a download, against a scripted core, and a picture; "Downloads" in the Permissions list. The apps' tests of a download (013) press "Allow" first |
 
 ## 7. Decisions
@@ -96,12 +96,14 @@ The same bar (014 §7), with a sentence of its own: "*site* wants to download �
 
 ## 8. What is not verified
 
-Written when built.
+- **Which word comes first from an engine.** When an address the person typed turns out to be a file, an adapter reports the download and that the load stopped. The core's rule does not depend on which comes first: the person's wish outlives a load that stopped. The tests give the order the System WebView adapter gives (the load stops, then the download); the other order was not tried.
+- **A page that starts a download in the moment between the person sending the tab somewhere and that page arriving** borrows the person's wish, once: the core cannot tell whose download it is. Not tried against an engine.
+- The shells: written when built.
 
 ## 9. Done checklist
 
-- [ ] Contract 1.11 and its version in every place it is written.
-- [ ] The core: the rule of §3. 013's tests still pass, with the site allowed.
+- [x] Contract 1.11 and its version in every place it is written.
+- [x] The core: the rule of §3. 14 tests through `FakeShell`; 013's 15 still pass, with the site allowed.
 - [ ] Android: the bar's sentence, the list's word; the device test of a download.
 - [ ] Apple: the bar's sentence, the list's word; the UI test of a download.
 - [ ] `Tools/test.sh all` green, and `android-device`.

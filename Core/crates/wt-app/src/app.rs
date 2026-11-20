@@ -22,7 +22,7 @@ use wt_proto::v1::{
 };
 use wt_store::{SavedTab, Space, Store};
 
-use crate::downloads::Downloading;
+use crate::downloads::{Downloading, Wanted};
 use crate::error::AppError;
 use crate::host::{Host, HostFuture};
 use crate::model::{LoadTarget, State};
@@ -89,6 +89,9 @@ pub struct App {
     /// When each web view last had a download started, for those that had
     /// one within [`DOWNLOAD_INTERVAL`].
     pub(crate) downloaded: Rc<RefCell<BTreeMap<WebViewId, Instant>>>,
+    /// The downloads that wait while the person is asked whether their site
+    /// may download (015), by the shell's name for each.
+    pub(crate) waiting: Rc<RefCell<BTreeMap<u64, Wanted>>>,
     /// The prompt each window's snapshot last showed, and since when (014):
     /// only what was shown, and for a moment, can be answered.
     pub(crate) prompts_shown: Rc<RefCell<BTreeMap<WindowId, (u64, Instant)>>>,
@@ -128,6 +131,7 @@ impl App {
             clock: options.clock,
             downloads: Rc::new(RefCell::new(BTreeMap::new())),
             downloaded: Rc::new(RefCell::new(BTreeMap::new())),
+            waiting: Rc::new(RefCell::new(BTreeMap::new())),
             prompts_shown: Rc::new(RefCell::new(BTreeMap::new())),
         }
     }
@@ -141,9 +145,18 @@ impl App {
     pub fn request(&self, kind: request::Kind) -> AppFuture {
         match kind {
             request::Kind::OpenWindow(_) => self.open_window(),
-            request::Kind::CloseWindow(close) => self.close_window(&close),
+            request::Kind::CloseWindow(close) => {
+                let closing = self.close_window(&close);
+                // What waited in its tabs for the person has nobody to ask.
+                self.drop_orphaned_downloads();
+                closing
+            }
             request::Kind::OpenTab(open) => self.open_tab(&open),
-            request::Kind::CloseTab(close) => self.close_tab(&close),
+            request::Kind::CloseTab(close) => {
+                let closing = self.close_tab(&close);
+                self.drop_orphaned_downloads();
+                closing
+            }
             request::Kind::ActivateTab(activate) => self.activate_tab(&activate),
             request::Kind::SubmitAddress(submit) => self.submit_address(&submit),
             request::Kind::TabCommand(command) => self.tab_command(&command),
@@ -214,7 +227,8 @@ impl App {
             self.zoom_arrived(web_view);
         }
         // A page that closed its own tab may have left one that is asleep
-        // in front.
+        // in front, and a download that waited there for the person (015).
+        self.drop_orphaned_downloads();
         self.wake_in_the_background();
         if let Some(web_view) = unwanted {
             let destroying =

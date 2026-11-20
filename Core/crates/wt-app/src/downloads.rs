@@ -7,13 +7,14 @@ use tokio::time::Instant;
 use wt_core::{Address, LoginSetId, WebViewId, WindowId, download_file_name};
 use wt_proto::v1::{
     Ack, CancelDownload, DownloadCancel, DownloadEntry, DownloadProgress, DownloadRequested,
-    DownloadStart, DownloadState, DownloadsPage, ForgetDownloads, QueryDownloads, engine_event,
-    forget_downloads, host_request, response,
+    DownloadStart, DownloadState, DownloadsPage, ForgetDownloads, PermissionKind, QueryDownloads,
+    engine_event, forget_downloads, host_request, response,
 };
 use wt_store::{COMING, Download, FINISHED};
 
 use crate::app::App;
 use crate::error::{AppError, is_code};
+use crate::model::Asker;
 
 /// A web view starts no more than one download in this long (013 §2): until
 /// a site's first download is asked about, a page cannot fill a folder
@@ -27,6 +28,23 @@ pub const DOWNLOADS_PAGE: u32 = 100;
 const CANCELLED: &str = "download.cancelled";
 /// A download ended, and the shell did not say why in a code.
 const FAILED: &str = "download.failed";
+
+/// To download, as something a site is allowed (015).
+const DOWNLOADS: PermissionKind = PermissionKind::Downloads;
+
+/// A download a page asked for, as it would be started: kept while the
+/// person is asked whether its site may download (015).
+#[derive(Clone, Debug)]
+pub(crate) struct Wanted {
+    web_view: WebViewId,
+    login_set: LoginSetId,
+    url: String,
+    /// The name its file is saved under: the core's (013 §4).
+    name: String,
+    mime_type: String,
+    /// 0 when the site did not say.
+    expected: u64,
+}
 
 /// A download that is coming. The shell's name for it is what it is kept
 /// by; the store's is what a list shows.
@@ -68,25 +86,127 @@ impl App {
         true
     }
 
-    /// A page asked for a download: it starts, under a name the core makes,
-    /// or the shell is told to drop it.
+    /// A page asked for a download: it starts, under a name the core makes;
+    /// or it waits while the person is asked whether the site may download
+    /// (015); or the shell is told to drop it.
     fn download_requested(&self, web_view: WebViewId, asked: &DownloadRequested) {
         let shell_id = asked.download_id;
-        // Said twice: the download it names is the one that is coming.
-        if self.downloads.borrow().contains_key(&shell_id) {
+        // Said twice: the download it names is the one that is coming, or
+        // the one that waits.
+        if self.downloads.borrow().contains_key(&shell_id)
+            || self.waiting.borrow().contains_key(&shell_id)
+        {
             return;
         }
         let Some(login_set) = self.may_download(web_view) else {
             self.drop_download(shell_id);
             return;
         };
-        let name = download_file_name(&asked.suggested_filename, &asked.url, &asked.mime_type);
-        let total = (asked.expected_bytes > 0).then_some(asked.expected_bytes);
+        let wanted = Wanted {
+            web_view,
+            login_set,
+            url: asked.url.clone(),
+            name: download_file_name(&asked.suggested_filename, &asked.url, &asked.mime_type),
+            mime_type: asked.mime_type.clone(),
+            expected: asked.expected_bytes,
+        };
+        match self.may_start(web_view, shell_id, &wanted) {
+            Some(true) => self.start_download(shell_id, wanted),
+            Some(false) => self.drop_download(shell_id),
+            // The person is asked: it waits for their answer.
+            None => {
+                self.waiting.borrow_mut().insert(shell_id, wanted);
+            }
+        }
+    }
+
+    /// Whether a download starts with nobody asked (015 §3): yes, no, or
+    /// `None` when the person has been asked.
+    fn may_start(&self, web_view: WebViewId, shell_id: u64, wanted: &Wanted) -> Option<bool> {
+        let Some(who) = self.state.borrow_mut().downloader(web_view, &wanted.url) else {
+            return Some(false);
+        };
+        // An address the person sent the tab to themselves: whatever it
+        // turned out to be, they asked for it.
+        if who.own {
+            return Some(true);
+        }
+        let allowed = who
+            .origin
+            .as_ref()
+            .is_some_and(|origin| self.allowed(who.login_set, origin).contains(&DOWNLOADS));
+        if allowed {
+            return Some(true);
+        }
+        // The person said no to this page already.
+        if self.state.borrow().refused_here(web_view, &[DOWNLOADS]) {
+            return Some(false);
+        }
+        let asker = Asker {
+            login_set: who.login_set,
+            origin: who.origin.unwrap_or_default(),
+            site: who.site,
+        };
+        let asking = self.state.borrow_mut().ask(
+            web_view,
+            shell_id,
+            asker,
+            vec![DOWNLOADS],
+            Some(wanted.name.clone()),
+        );
+        // A tab that asks as much as it may asks no more.
+        (!asking).then_some(false)
+    }
+
+    /// The person let a download that waited start.
+    pub(crate) fn start_waiting(&self, shell_id: u64) {
+        if let Some(wanted) = self.waiting.borrow_mut().remove(&shell_id) {
+            self.start_download(shell_id, wanted);
+        }
+    }
+
+    /// A download that waited is not to start: the shell is told to drop it.
+    pub(crate) fn drop_waiting(&self, shell_id: u64) {
+        if self.waiting.borrow_mut().remove(&shell_id).is_some() {
+            self.drop_download(shell_id);
+        }
+    }
+
+    /// The downloads that waited in a tab that is gone go with it: nobody is
+    /// left to be asked. (Those that waited on a page that left were dropped
+    /// with its prompts.)
+    pub(crate) fn drop_orphaned_downloads(&self) {
+        let orphaned: Vec<u64> = {
+            let state = self.state.borrow();
+            self.waiting
+                .borrow()
+                .iter()
+                .filter(|(_, wanted)| state.login_set_of(wanted.web_view).is_none())
+                .map(|(shell_id, _)| *shell_id)
+                .collect()
+        };
+        for shell_id in orphaned {
+            self.drop_waiting(shell_id);
+        }
+    }
+
+    /// Starts a download: its record is written, and the shell is asked to
+    /// fetch it under the core's name.
+    fn start_download(&self, shell_id: u64, wanted: Wanted) {
+        let Wanted {
+            login_set,
+            url,
+            name,
+            mime_type,
+            expected,
+            ..
+        } = wanted;
+        let total = (expected > 0).then_some(expected);
         let written = self.store.borrow_mut().add_download(
             login_set,
-            &asked.url,
+            &url,
             &name,
-            &asked.mime_type,
+            &mime_type,
             total,
             self.clock.now(),
         );
@@ -101,7 +221,7 @@ impl App {
                 record,
                 login_set,
                 received: 0,
-                expected: asked.expected_bytes,
+                expected,
             },
         );
         self.publish_downloads(login_set);

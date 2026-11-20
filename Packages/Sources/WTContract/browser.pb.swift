@@ -970,12 +970,42 @@ public nonisolated struct WTPromptView: Sendable {
     set {kind = .permission(newValue)}
   }
 
+  /// Since 1.11
+  public var download: WTDownloadPrompt {
+    get {
+      if case .download(let v)? = kind {return v}
+      return WTDownloadPrompt()
+    }
+    set {kind = .download(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
     case permission(WTPermissionPrompt)
+    /// Since 1.11
+    case download(WTDownloadPrompt)
 
   }
+
+  public init() {}
+}
+
+/// A page asks to download a file, and its site was not yet allowed to (015).
+/// Nothing is saved, and nothing is listed, until the person has said.
+public nonisolated struct WTDownloadPrompt: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Who asks, as an address field shows it: the page's own site, or with
+  /// no page in the tab, where the file comes from.
+  public var site: String = String()
+
+  /// The name the file would be saved under: the core's (013), made safe.
+  public var fileName: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 }
@@ -1003,6 +1033,11 @@ public nonisolated struct WTPermissionPrompt: Sendable {
 /// half a second. A press that was on its way to the page when the prompt
 /// appeared under it must not answer for the person: a shell that is told so
 /// leaves the prompt where it is, and the person presses again.
+///
+/// For a DownloadPrompt (since 1.11): `allow` starts the download, and the
+/// site's later downloads start with nobody asked, until that is taken back
+/// (ForgetPermissions). Not allowing drops it, and the page's later downloads
+/// with it until another page has loaded.
 ///
 /// For a PermissionPrompt: `allow` lets the page use what it asked for, and
 /// is remembered for its origin in its login set until it is taken back
@@ -2452,7 +2487,7 @@ nonisolated extension WTForgetDownloads: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension WTPromptView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".PromptView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}prompt_id\0\u{1}permission\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}prompt_id\0\u{1}permission\0\u{1}download\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2474,6 +2509,19 @@ nonisolated extension WTPromptView: SwiftProtobuf.Message, SwiftProtobuf._Messag
           self.kind = .permission(v)
         }
       }()
+      case 3: try {
+        var v: WTDownloadPrompt?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .download(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .download(v)
+        }
+      }()
       default: break
       }
     }
@@ -2487,15 +2535,58 @@ nonisolated extension WTPromptView: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if self.promptID != 0 {
       try visitor.visitSingularUInt64Field(value: self.promptID, fieldNumber: 1)
     }
-    try { if case .permission(let v)? = self.kind {
+    switch self.kind {
+    case .permission?: try {
+      guard case .permission(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-    } }()
+    }()
+    case .download?: try {
+      guard case .download(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+    }()
+    case nil: break
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: WTPromptView, rhs: WTPromptView) -> Bool {
     if lhs.promptID != rhs.promptID {return false}
     if lhs.kind != rhs.kind {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTDownloadPrompt: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DownloadPrompt"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}site\0\u{3}file_name\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.site) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.fileName) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.site.isEmpty {
+      try visitor.visitSingularStringField(value: self.site, fieldNumber: 1)
+    }
+    if !self.fileName.isEmpty {
+      try visitor.visitSingularStringField(value: self.fileName, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTDownloadPrompt, rhs: WTDownloadPrompt) -> Bool {
+    if lhs.site != rhs.site {return false}
+    if lhs.fileName != rhs.fileName {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

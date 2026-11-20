@@ -392,7 +392,19 @@ message PromptView {
   uint64 prompt_id = 1;
   oneof kind {
     PermissionPrompt permission = 2;
+    // Since 1.11
+    DownloadPrompt download = 3;
   }
+}
+
+// A page asks to download a file, and its site was not yet allowed to (015).
+// Nothing is saved, and nothing is listed, until the person has said.
+message DownloadPrompt {
+  // Who asks, as an address field shows it: the page's own site, or with
+  // no page in the tab, where the file comes from.
+  string site = 1 [(wt.redact) = true];
+  // The name the file would be saved under: the core's (013), made safe.
+  string file_name = 2 [(wt.redact) = true];
 }
 
 // A page asks to use something of the device's (014).
@@ -409,6 +421,11 @@ message PermissionPrompt {
 // half a second. A press that was on its way to the page when the prompt
 // appeared under it must not answer for the person: a shell that is told so
 // leaves the prompt where it is, and the person presses again.
+//
+// For a DownloadPrompt (since 1.11): `allow` starts the download, and the
+// site's later downloads start with nobody asked, until that is taken back
+// (ForgetPermissions). Not allowing drops it, and the page's later downloads
+// with it until another page has loaded.
 //
 // For a PermissionPrompt: `allow` lets the page use what it asked for, and
 // is remembered for its origin in its login set until it is taken back

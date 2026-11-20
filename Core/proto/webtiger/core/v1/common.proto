@@ -45,4 +45,9 @@ enum PermissionKind {
   PERMISSION_KIND_MICROPHONE = 2;
   // Where the device is.
   PERMISSION_KIND_LOCATION = 3;
+  // Since 1.11. To download (015). Never asked for by an engine: the core
+  // asks before a site's first download, and an engine that reports a
+  // request for it is refused. It is among what a site was allowed
+  // (SitePermissions.kinds).
+  PERMISSION_KIND_DOWNLOADS = 4;
 }

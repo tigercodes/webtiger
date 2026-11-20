@@ -23,7 +23,7 @@ A page wants my camera for a call. WebTiger asks me, and says which site is aski
 - **A frame from another site asking**, as an embedded call does: refused without asking (§3). Handing a frame the page's permission (`allow="camera"`) arrives when a site that needs it is in front of us.
 - **A mark on a tab that is using the camera or the microphone**: "audio and capture state" (000 §5.5), its own feature. The system's own mark is there meanwhile.
 - **Motion and orientation** (WebKit asks for it on an iPhone, by itself), **protected media** and **MIDI** (Android): left to the engine, or refused.
-- **Asking before a site's first download** (013 §2): the same kind of prompt. Built on this, next.
+- **Asking before a site's first download** (013 §2): the same kind of prompt, a second case of it. [015](015-first-download.md).
 - **Alerts, confirmations and other things a page puts in front of a person**: later prompts of the tab. This feature makes the place for them (§4).
 
 ## 3. Who does what

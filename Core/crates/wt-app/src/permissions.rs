@@ -14,6 +14,7 @@ use wt_proto::v1::{
 
 use crate::app::App;
 use crate::error::AppError;
+use crate::model::Settled;
 
 /// How long a prompt must have been before the person to be answered (014
 /// §3). A press that was on its way to the page when the prompt appeared
@@ -26,6 +27,7 @@ fn name(kind: PermissionKind) -> Option<&'static str> {
         PermissionKind::Camera => Some("camera"),
         PermissionKind::Microphone => Some("microphone"),
         PermissionKind::Location => Some("location"),
+        PermissionKind::Downloads => Some("downloads"),
         PermissionKind::Unspecified => None,
     }
 }
@@ -37,6 +39,7 @@ fn kind(name: &str) -> Option<PermissionKind> {
         "camera" => Some(PermissionKind::Camera),
         "microphone" => Some(PermissionKind::Microphone),
         "location" => Some(PermissionKind::Location),
+        "downloads" => Some(PermissionKind::Downloads),
         _ => None,
     }
 }
@@ -49,6 +52,11 @@ fn kinds_asked(asked: &[i32]) -> Option<Vec<PermissionKind>> {
     for number in asked {
         let kind = PermissionKind::try_from(*number).ok()?;
         name(kind)?;
+        // To download is not an engine's to ask for: the core asks, before a
+        // site's first download (015).
+        if kind == PermissionKind::Downloads {
+            return None;
+        }
         if !kinds.contains(&kind) {
             kinds.push(kind);
         }
@@ -85,7 +93,7 @@ impl App {
     fn permission_requested(&self, web_view: WebViewId, asked: &PermissionRequested) {
         let request = asked.request_id;
         // Said twice: the request it names is the one that waits.
-        if self.state.borrow().is_asking(request) {
+        if self.state.borrow().is_asking(request, false) {
             return;
         }
         let Some(decided) = self.decide(web_view, asked) else {
@@ -118,13 +126,16 @@ impl App {
             return Some(true);
         }
         let request = asked.request_id;
-        let asking = self.state.borrow_mut().ask(web_view, request, asker, kinds);
+        let asking = self
+            .state
+            .borrow_mut()
+            .ask(web_view, request, asker, kinds, None);
         (!asking).then_some(false)
     }
 
     /// What an origin was allowed in a login set. A store that refuses has
     /// allowed nothing: the person is asked.
-    fn allowed(&self, login_set: LoginSetId, origin: &str) -> Vec<PermissionKind> {
+    pub(crate) fn allowed(&self, login_set: LoginSetId, origin: &str) -> Vec<PermissionKind> {
         self.store
             .borrow()
             .allowed(login_set, origin)
@@ -132,6 +143,18 @@ impl App {
             .iter()
             .filter_map(|name| kind(name))
             .collect()
+    }
+
+    /// What waited for the person has its answer: the page that asked is
+    /// told, or the download that waited starts or is dropped (015).
+    pub(crate) fn settle(&self, settled: Settled, granted: bool) {
+        if !settled.download {
+            self.answer_page(settled.request, granted);
+        } else if granted {
+            self.start_waiting(settled.request);
+        } else {
+            self.drop_waiting(settled.request);
+        }
     }
 
     /// Tells the shell how to answer the page that asked.
@@ -154,8 +177,8 @@ impl App {
     /// renderer: what it was asking is refused.
     pub(crate) fn prompts_ended(&self, web_view: WebViewId) {
         let ended = self.state.borrow_mut().end_prompts(web_view);
-        for request in ended {
-            self.answer_page(request, false);
+        for settled in ended {
+            self.settle(settled, false);
         }
     }
 
@@ -205,8 +228,13 @@ impl App {
                 AppError::new("tab.unknown").field("tab_id")
             }
         })?;
-        self.answer_page(asking.request, answer.allow);
-        let settled = if answer.allow {
+        self.settle(asking.settled(), answer.allow);
+        let settled = if !answer.allow {
+            self.state.borrow_mut().settle_refused(tab)
+        } else if asking.origin.is_empty() {
+            // Nothing of the web's to remember it by: allowed this once.
+            Vec::new()
+        } else {
             let names: Vec<&str> = asking.kinds.iter().filter_map(|kind| name(*kind)).collect();
             // A store that refuses remembers nothing: the page has its
             // answer all the same, and the person is asked again next time.
@@ -219,12 +247,10 @@ impl App {
             self.state
                 .borrow_mut()
                 .settle_allowed(login_set, &asking.origin, &allowed)
-        } else {
-            self.state.borrow_mut().settle_refused(tab)
         };
         // What else waited for the same answer has it.
-        for request in settled {
-            self.answer_page(request, answer.allow);
+        for other in settled {
+            self.settle(other, answer.allow);
         }
         Ok(response::Kind::Ack(Ack {}))
     }

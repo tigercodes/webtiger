@@ -1,6 +1,10 @@
 //! Downloads (013), through the contract, against the scripted engine:
 //! which downloads start and under what name, what the list and the
 //! snapshot say of them, and what is asked of the shell.
+//!
+//! A site's first download asks the person (015): every page here is of a
+//! site that was allowed to download first, as a person would allow it. What
+//! asking does is in `first_download.rs`.
 #![allow(
     clippy::unwrap_used,
     clippy::expect_used,
@@ -11,10 +15,10 @@
 use std::path::Path;
 use std::time::Duration;
 
-use wt_app::DOWNLOAD_INTERVAL;
+use wt_app::{DOWNLOAD_INTERVAL, PROMPT_DELAY};
 use wt_proto::v1::{
-    CancelDownload, DownloadEntry, DownloadState, ForgetDownloads, QueryDownloads, TabView,
-    forget_downloads, request, response,
+    AnswerPrompt, CancelDownload, DownloadEntry, DownloadState, ForgetDownloads, QueryDownloads,
+    TabView, forget_downloads, request, response,
 };
 use wt_testkit::{FakeEngine, FakeShell, run};
 
@@ -100,14 +104,49 @@ async fn forget(
         .await
 }
 
-/// A window whose one tab shows example.com. Its window, tab, subscription
-/// and the tab's web view.
+/// Has the person allow the site of the page in the tab in front to
+/// download (015): its first download asks, they say yes, and that download
+/// is stopped and forgotten. A test then begins with nothing listed, nothing
+/// coming, nothing asked of the shell, and no download in the last second.
+async fn allow_downloads(shell: &mut FakeShell, window: u64, tab: u64, subscription: u64) {
+    let web_view = front(shell, subscription).web_view_id;
+    shell.report(FakeEngine::download_requested(
+        web_view,
+        9_000,
+        REPORT,
+        "the first of all.pdf",
+        "application/pdf",
+        1,
+    ));
+    shell.settle().await;
+    let asked = front(shell, subscription)
+        .prompt
+        .expect("a site's first download asks");
+    tokio::time::advance(PROMPT_DELAY).await;
+    let allowed = shell
+        .request(request::Kind::AnswerPrompt(AnswerPrompt {
+            tab_id: tab,
+            prompt_id: asked.prompt_id,
+            allow: true,
+        }))
+        .await;
+    assert!(matches!(allowed, response::Kind::Ack(_)), "{allowed:?}");
+    let everything = forget_downloads::What::Everything(true);
+    forget(shell, window, Some(everything)).await;
+    tokio::time::advance(DOWNLOAD_INTERVAL).await;
+    shell.engine.download_starts.clear();
+    shell.engine.download_cancels.clear();
+}
+
+/// A window whose one tab shows example.com, which may download. Its
+/// window, tab, subscription and the tab's web view.
 async fn a_page(shell: &mut FakeShell) -> (u64, u64, u64, u64) {
     shell.engine.page("https://example.com/", "Example");
     shell.engine.page("https://example.org/", "Another");
     let (window, tab, subscription) = shell.open_window().await;
     shell.submit(tab, "example.com").await;
     let web_view = front(shell, subscription).web_view_id;
+    allow_downloads(shell, window, tab, subscription).await;
     (window, tab, subscription, web_view)
 }
 
@@ -265,7 +304,7 @@ fn a_web_view_starts_one_download_a_second() {
         let other_tab = shell.open_tab(window, "example.org").await;
         let other_view = front(&shell, subscription).web_view_id;
         assert_ne!(other_view, web_view);
-        let _ = other_tab;
+        allow_downloads(&mut shell, window, other_tab, subscription).await;
 
         ask(&mut shell, web_view, 7, "first.pdf").await;
         ask(&mut shell, web_view, 8, "second.pdf").await;
@@ -548,6 +587,7 @@ fn a_download_that_was_coming_when_the_app_ended_is_listed_as_interrupted() {
         let (window, tab, subscription) = shell.open_window().await;
         shell.submit(tab, "example.com").await;
         let web_view = front(&shell, subscription).web_view_id;
+        allow_downloads(&mut shell, window, tab, subscription).await;
         ask(&mut shell, web_view, 7, "done.pdf").await;
         shell.report(FakeEngine::download_finished(7, "done.pdf"));
         shell.settle().await;

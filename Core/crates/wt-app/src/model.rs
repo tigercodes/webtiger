@@ -8,8 +8,9 @@ use wt_core::{
     zoom_out,
 };
 use wt_proto::v1::{
-    AddressView, EngineKind, FindView, LoadState, PermissionKind, PermissionPrompt, PromptView,
-    TabSummary, TabView, WindowSnapshot, ZoomView, address_view, engine_event, prompt_view,
+    AddressView, DownloadPrompt, EngineKind, FindView, LoadState, PermissionKind, PermissionPrompt,
+    PromptView, TabSummary, TabView, WindowSnapshot, ZoomView, address_view, engine_event,
+    prompt_view,
 };
 use wt_store::{SavedTab, Space};
 
@@ -40,18 +41,62 @@ pub(crate) struct Asking {
     /// Who asks, as the prompt names it.
     site: String,
     pub(crate) kinds: Vec<PermissionKind>,
+    /// With a download that waits to be allowed (015): the name its file
+    /// would be saved under. `request` is then the shell's name for the
+    /// download, and not for a request of a page's.
+    file_name: Option<String>,
 }
 
 impl Asking {
     fn view(&self) -> PromptView {
-        PromptView {
-            prompt_id: self.prompt,
-            kind: Some(prompt_view::Kind::Permission(PermissionPrompt {
+        let kind = match &self.file_name {
+            Some(file_name) => prompt_view::Kind::Download(DownloadPrompt {
+                site: self.site.clone(),
+                file_name: file_name.clone(),
+            }),
+            None => prompt_view::Kind::Permission(PermissionPrompt {
                 site: self.site.clone(),
                 kinds: self.kinds.iter().map(|kind| *kind as i32).collect(),
-            })),
+            }),
+        };
+        PromptView {
+            prompt_id: self.prompt,
+            kind: Some(kind),
         }
     }
+
+    /// What is to be answered, once this is settled.
+    pub(crate) fn settled(&self) -> Settled {
+        Settled {
+            request: self.request,
+            download: self.file_name.is_some(),
+        }
+    }
+}
+
+/// Something that waited for the person and has its answer: a page's request
+/// for permission, or a download, by the shell's name for it. The two are
+/// named apart: a shell counts each from one.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Settled {
+    pub(crate) request: u64,
+    pub(crate) download: bool,
+}
+
+/// Who asks for a download, and whether the person asked for it themselves
+/// (015 §3).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct Downloader {
+    pub(crate) login_set: LoginSetId,
+    /// The site: the page's origin, or with no page, where the file comes
+    /// from. `None` when neither is the web's: there is nothing to remember
+    /// an answer by.
+    pub(crate) origin: Option<String>,
+    /// The site as the prompt names it.
+    pub(crate) site: String,
+    /// The load in flight was the person's own, and no page has come of it:
+    /// what it turns out to be, they asked for.
+    pub(crate) own: bool,
 }
 
 /// Who a web view's page is to a request for permission (014): its login
@@ -115,6 +160,10 @@ pub(crate) struct Tab {
     /// What the person would not let this page use: it is not asked for the
     /// same again until another page has committed.
     refused: Vec<PermissionKind>,
+    /// The person sent the tab somewhere, and no page has come of it yet: a
+    /// download that comes of it is what they asked for (015). Good for
+    /// one.
+    own_load: bool,
 }
 
 /// The visit a tab's page is in the store, and what has been written of it.
@@ -161,6 +210,7 @@ impl Tab {
             zoom: ACTUAL_SIZE,
             prompts: VecDeque::new(),
             refused: Vec::new(),
+            own_load: false,
         }
     }
 
@@ -225,6 +275,7 @@ impl Tab {
     /// The user sent the tab to `address`.
     fn begin_user_load(&mut self, address: Address) {
         self.asleep = false;
+        self.own_load = true;
         self.pending = Some(address);
         self.load = Load::Loading;
         self.progress = 0.0;
@@ -260,6 +311,9 @@ impl Tab {
                 // still asking is ended by the app, which tells the shell.)
                 self.find = None;
                 self.refused.clear();
+                // A page came of what the person asked for: what the page
+                // then starts is the page's.
+                self.own_load = false;
                 self.had_page = true;
                 self.pending = None;
                 self.title.clear();
@@ -281,6 +335,9 @@ impl Tab {
                     self.progress = 0.0;
                     self.pending = None;
                 } else {
+                    // Nothing came of what the person asked for, and the
+                    // page that is still there is not it.
+                    self.own_load = false;
                     self.fail(&failed.code);
                 }
             }
@@ -740,11 +797,45 @@ impl State {
         })
     }
 
-    /// Whether a request by that name of the shell's waits in some tab.
-    pub(crate) fn is_asking(&self, request: u64) -> bool {
-        self.tabs
-            .values()
-            .any(|tab| tab.prompts.iter().any(|asking| asking.request == request))
+    /// Who asks for a download in a web view, of the file at `url` (015
+    /// §3). `None` for a web view no tab has. Said once: if the person asked
+    /// for it themselves, that is used up by saying so.
+    pub(crate) fn downloader(&mut self, web_view: WebViewId, url: &str) -> Option<Downloader> {
+        let tab = self.tab_of_mut(web_view)?;
+        let own = std::mem::take(&mut tab.own_load);
+        // The page that asks, wherever the file comes from; with no page,
+        // where the file comes from.
+        let from = Address::parse(url).ok();
+        let named = tab
+            .committed
+            .as_ref()
+            .filter(|page| page.origin().is_some())
+            .or(from.as_ref());
+        let origin = named.and_then(Address::origin);
+        let site = match &origin {
+            Some(origin) => {
+                Address::parse(origin).map_or_else(|_| origin.clone(), |site| site.display())
+            }
+            // A page that is not the web's, with a file that is not either:
+            // named by what kind of address it is, and no more.
+            None => named.map_or_else(String::new, |address| address.scheme().to_owned()),
+        };
+        Some(Downloader {
+            login_set: tab.login_set,
+            origin,
+            site,
+            own,
+        })
+    }
+
+    /// Whether a request by that name of the shell's waits in some tab: a
+    /// page's for permission, or with `download`, a download.
+    pub(crate) fn is_asking(&self, request: u64, download: bool) -> bool {
+        self.tabs.values().any(|tab| {
+            tab.prompts
+                .iter()
+                .any(|asking| asking.request == request && asking.file_name.is_some() == download)
+        })
     }
 
     /// Whether the person would not let the web view's page use one of
@@ -755,13 +846,15 @@ impl State {
     }
 
     /// Puts a request before the person: the tab's prompt, or behind the
-    /// ones it has. False when the tab has as many as it may.
+    /// ones it has. With `file_name`, a download that waits to be allowed.
+    /// False when the tab has as many as it may.
     pub(crate) fn ask(
         &mut self,
         web_view: WebViewId,
         request: u64,
         asker: Asker,
         kinds: Vec<PermissionKind>,
+        file_name: Option<String>,
     ) -> bool {
         let prompt = self.ids.mint();
         let Some(tab) = self.tab_of_mut(web_view) else {
@@ -776,6 +869,7 @@ impl State {
             origin: asker.origin,
             site: asker.site,
             kinds,
+            file_name,
         });
         let window = tab.window;
         self.dirty.insert(window);
@@ -789,7 +883,8 @@ impl State {
             return;
         };
         let before = tab.prompts.len();
-        tab.prompts.retain(|asking| asking.request != request);
+        tab.prompts
+            .retain(|asking| asking.request != request || asking.file_name.is_some());
         if tab.prompts.len() != before {
             let window = tab.window;
             self.dirty.insert(window);
@@ -836,7 +931,7 @@ impl State {
         login_set: LoginSetId,
         origin: &str,
         allowed: &[PermissionKind],
-    ) -> Vec<u64> {
+    ) -> Vec<Settled> {
         let mut settled = Vec::new();
         for tab in self.tabs.values_mut() {
             if tab.login_set != login_set {
@@ -847,7 +942,7 @@ impl State {
                 let all = asking.origin == origin
                     && asking.kinds.iter().all(|kind| allowed.contains(kind));
                 if all {
-                    settled.push(asking.request);
+                    settled.push(asking.settled());
                 }
                 !all
             });
@@ -860,7 +955,7 @@ impl State {
 
     /// What a tab's page was just refused, it is refused wherever else it
     /// waits in that tab. The shell's names for those requests.
-    pub(crate) fn settle_refused(&mut self, tab_id: TabId) -> Vec<u64> {
+    pub(crate) fn settle_refused(&mut self, tab_id: TabId) -> Vec<Settled> {
         let Some(tab) = self.tabs.get_mut(&tab_id) else {
             return Vec::new();
         };
@@ -869,7 +964,7 @@ impl State {
         tab.prompts.retain(|asking| {
             let any = asking.kinds.iter().any(|kind| refused.contains(kind));
             if any {
-                settled.push(asking.request);
+                settled.push(asking.settled());
             }
             !any
         });
@@ -878,14 +973,18 @@ impl State {
 
     /// The page a web view showed is gone: whatever it was asking is over.
     /// The shell's names for the requests that waited.
-    pub(crate) fn end_prompts(&mut self, web_view: WebViewId) -> Vec<u64> {
+    pub(crate) fn end_prompts(&mut self, web_view: WebViewId) -> Vec<Settled> {
         let Some(tab) = self.tab_of_mut(web_view) else {
             return Vec::new();
         };
         if tab.prompts.is_empty() {
             return Vec::new();
         }
-        let ended = tab.prompts.drain(..).map(|asking| asking.request).collect();
+        let ended = tab
+            .prompts
+            .drain(..)
+            .map(|asking| asking.settled())
+            .collect();
         let window = tab.window;
         self.dirty.insert(window);
         ended

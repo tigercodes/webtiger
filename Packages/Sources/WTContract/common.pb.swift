@@ -122,6 +122,12 @@ public nonisolated enum WTPermissionKind: SwiftProtobuf.Enum, Swift.CaseIterable
 
   /// Where the device is.
   case location // = 3
+
+  /// Since 1.11. To download (015). Never asked for by an engine: the core
+  /// asks before a site's first download, and an engine that reports a
+  /// request for it is refused. It is among what a site was allowed
+  /// (SitePermissions.kinds).
+  case downloads // = 4
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -134,6 +140,7 @@ public nonisolated enum WTPermissionKind: SwiftProtobuf.Enum, Swift.CaseIterable
     case 1: self = .camera
     case 2: self = .microphone
     case 3: self = .location
+    case 4: self = .downloads
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -144,6 +151,7 @@ public nonisolated enum WTPermissionKind: SwiftProtobuf.Enum, Swift.CaseIterable
     case .camera: return 1
     case .microphone: return 2
     case .location: return 3
+    case .downloads: return 4
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -154,6 +162,7 @@ public nonisolated enum WTPermissionKind: SwiftProtobuf.Enum, Swift.CaseIterable
     .camera,
     .microphone,
     .location,
+    .downloads,
   ]
 
 }
@@ -200,7 +209,7 @@ nonisolated extension WTNavigationCommand: SwiftProtobuf._ProtoNameProviding {
 }
 
 nonisolated extension WTPermissionKind: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0PERMISSION_KIND_UNSPECIFIED\0\u{1}PERMISSION_KIND_CAMERA\0\u{1}PERMISSION_KIND_MICROPHONE\0\u{1}PERMISSION_KIND_LOCATION\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0PERMISSION_KIND_UNSPECIFIED\0\u{1}PERMISSION_KIND_CAMERA\0\u{1}PERMISSION_KIND_MICROPHONE\0\u{1}PERMISSION_KIND_LOCATION\0\u{1}PERMISSION_KIND_DOWNLOADS\0")
 }
 
 nonisolated extension WTError: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {

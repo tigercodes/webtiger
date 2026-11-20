@@ -91,6 +91,11 @@ pub enum PermissionKind {
     Microphone = 2,
     /// Where the device is.
     Location = 3,
+    /// Since 1.11. To download (015). Never asked for by an engine: the core
+    /// asks before a site's first download, and an engine that reports a
+    /// request for it is refused. It is among what a site was allowed
+    /// (SitePermissions.kinds).
+    Downloads = 4,
 }
 impl PermissionKind {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -103,6 +108,7 @@ impl PermissionKind {
             Self::Camera => "PERMISSION_KIND_CAMERA",
             Self::Microphone => "PERMISSION_KIND_MICROPHONE",
             Self::Location => "PERMISSION_KIND_LOCATION",
+            Self::Downloads => "PERMISSION_KIND_DOWNLOADS",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -112,6 +118,7 @@ impl PermissionKind {
             "PERMISSION_KIND_CAMERA" => Some(Self::Camera),
             "PERMISSION_KIND_MICROPHONE" => Some(Self::Microphone),
             "PERMISSION_KIND_LOCATION" => Some(Self::Location),
+            "PERMISSION_KIND_DOWNLOADS" => Some(Self::Downloads),
             _ => None,
         }
     }
@@ -605,7 +612,7 @@ pub struct PromptView {
     /// The core's own, never used twice. What the answer names it by.
     #[prost(uint64, tag = "1")]
     pub prompt_id: u64,
-    #[prost(oneof = "prompt_view::Kind", tags = "2")]
+    #[prost(oneof = "prompt_view::Kind", tags = "2, 3")]
     pub kind: ::core::option::Option<prompt_view::Kind>,
 }
 /// Nested message and enum types in `PromptView`.
@@ -614,7 +621,22 @@ pub mod prompt_view {
     pub enum Kind {
         #[prost(message, tag = "2")]
         Permission(super::PermissionPrompt),
+        /// Since 1.11
+        #[prost(message, tag = "3")]
+        Download(super::DownloadPrompt),
     }
+}
+/// A page asks to download a file, and its site was not yet allowed to (015).
+/// Nothing is saved, and nothing is listed, until the person has said.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct DownloadPrompt {
+    /// Who asks, as an address field shows it: the page's own site, or with
+    /// no page in the tab, where the file comes from.
+    #[prost(string, tag = "1")]
+    pub site: ::prost::alloc::string::String,
+    /// The name the file would be saved under: the core's (013), made safe.
+    #[prost(string, tag = "2")]
+    pub file_name: ::prost::alloc::string::String,
 }
 /// A page asks to use something of the device's (014).
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -632,6 +654,11 @@ pub struct PermissionPrompt {
 /// half a second. A press that was on its way to the page when the prompt
 /// appeared under it must not answer for the person: a shell that is told so
 /// leaves the prompt where it is, and the person presses again.
+///
+/// For a DownloadPrompt (since 1.11): `allow` starts the download, and the
+/// site's later downloads start with nobody asked, until that is taken back
+/// (ForgetPermissions). Not allowing drops it, and the page's later downloads
+/// with it until another page has loaded.
 ///
 /// For a PermissionPrompt: `allow` lets the page use what it asked for, and
 /// is remembered for its origin in its login set until it is taken back
