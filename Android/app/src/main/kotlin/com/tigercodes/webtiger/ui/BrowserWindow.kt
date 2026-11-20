@@ -141,7 +141,7 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
                     model.hasFailed ->
                         FailedPage(code = model.tab.error_code, onRetry = { model.perform(NavigationCommand.NAVIGATION_COMMAND_RELOAD) })
                     model.hasPage -> WebViewHost(session.engine, model.tab.web_view_id, Modifier.fillMaxSize().testTag("page"))
-                    else -> EmptyTab()
+                    else -> EmptyTab(searchesGoTo = model.searchEngineName, onChangeSearch = model::changeSearch)
                 }
                 // What is offered for what is typed (011): under the toolbar, over the page.
                 if (model.suggestions.isNotEmpty()) SuggestionList(model, onChosen = { page.requestFocus() })
@@ -150,6 +150,16 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
                     LinkMenu(link, onOpen = model::openPressedLink, onCopy = model::copyPressedLink, onDismiss = model::dismissLinkMenu)
                 }
             }
+        }
+        // Where searches go (020): over the window. At the first run it is there before the
+        // window is used, and stays until an engine is chosen.
+        model.search?.takeIf { model.asksWhereSearchesGo }?.let { settings ->
+            SearchEngines(
+                settings = settings,
+                onChoose = model::chooseSearchEngine,
+                onKeep = (model::keepSearch).takeIf { settings.chosen },
+                modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing),
+            )
         }
         // Over the window, which stays as it is underneath: the page's web view is not taken
         // out of it. A visit chosen loads in the tab in front; the system's Back closes the
@@ -671,7 +681,7 @@ private fun ProgressLine(model: BrowserModel) {
 
 /** A tab with no page yet. */
 @Composable
-internal fun EmptyTab() {
+internal fun EmptyTab(searchesGoTo: String? = null, onChangeSearch: () -> Unit = {}) {
     Column(
         // Words in the middle of the space they have, which scroll when it is too small for
         // them: at the largest text sizes they would otherwise run off both ends of it.
@@ -690,6 +700,17 @@ internal fun EmptyTab() {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
+        // Where what is typed goes when it is not an address (020), said where it is about to
+        // happen, with the way to change it. Not said until the core has said.
+        if (searchesGoTo != null) {
+            Text(
+                text = stringResource(R.string.search_goes_to, searchesGoTo),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = Tokens.Space.m).testTag("search-goes-to"),
+            )
+            TextButton(onClick = onChangeSearch, modifier = Modifier.testTag("search-change")) { Text(stringResource(R.string.search_change)) }
+        }
     }
 }
 

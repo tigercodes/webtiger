@@ -37,6 +37,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
@@ -821,6 +822,45 @@ internal class AppWindowTest {
         compose.waitUntil(15_000) { menus() == 0 }
         assertEquals("Links", pageTitle())
         compose.onAllNodesWithTag("tab").assertCountEquals(2)
+    }
+
+    /**
+     * Where searches go (020), with the real core: an empty tab says which engine, "Change…"
+     * opens the list with that engine marked, a press on another changes it for the whole
+     * app, and the empty tab says so. (The first run's question itself is not asked here: the
+     * tests share one core, started in fake mode, where nobody is there to be asked.)
+     */
+    @Test
+    fun anEmptyTabSaysWhereSearchesGoAndItCanBeChanged() {
+        fun lists(): Int = compose.onAllNodesWithTag("search-engines").fetchSemanticsNodes().size
+        awaitPage("Home")
+        compose.onNodeWithTag("new-tab").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("search-goes-to").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("search-goes-to").assertTextEquals("Searches go to DuckDuckGo.")
+        assertEquals("nobody is asked in fake mode", 0, lists())
+        compose.onRoot().tryPerformAccessibilityChecks()
+
+        compose.onNodeWithTag("search-change").performClick()
+        compose.waitUntil(15_000) { lists() == 1 }
+        compose.onNodeWithTag("search-engine-duckduckgo").assertTextEquals("DuckDuckGo", "duckduckgo.com", "In use")
+        compose.onNodeWithTag("search-engine-ecosia").assertTextEquals("Ecosia", "www.ecosia.org")
+        compose.onRoot().tryPerformAccessibilityChecks()
+
+        try {
+            compose.onNodeWithTag("search-engine-ecosia").performScrollTo().performClick()
+            compose.waitUntil(15_000) { lists() == 0 }
+            compose.onNodeWithTag("search-goes-to").assertTextEquals("Searches go to Ecosia.")
+            // The choice is the app's: another new tab says the same.
+            compose.onNodeWithTag("new-tab").performClick()
+            compose.onNodeWithTag("search-goes-to").assertTextEquals("Searches go to Ecosia.")
+        } finally {
+            // The tests share one core: it is left as it was found.
+            compose.onNodeWithTag("search-change").performClick()
+            compose.waitUntil(15_000) { lists() == 1 }
+            compose.onNodeWithTag("search-engine-duckduckgo").performScrollTo().performClick()
+            compose.waitUntil(15_000) { lists() == 0 }
+        }
+        compose.onNodeWithTag("search-goes-to").assertTextEquals("Searches go to DuckDuckGo.")
     }
 
     /**

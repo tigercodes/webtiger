@@ -68,6 +68,8 @@ import com.tigercodes.webtiger.core.v1.PermissionKind
 import com.tigercodes.webtiger.core.v1.PermissionPrompt
 import com.tigercodes.webtiger.core.v1.PermissionsPage
 import com.tigercodes.webtiger.core.v1.PromptView
+import com.tigercodes.webtiger.core.v1.SearchEngine
+import com.tigercodes.webtiger.core.v1.SearchSettings
 import com.tigercodes.webtiger.core.v1.SignInPrompt
 import com.tigercodes.webtiger.core.v1.Response
 import com.tigercodes.webtiger.core.v1.SitePermissions
@@ -102,6 +104,8 @@ internal enum class CatalogueState(@StringRes val title: Int) {
     PROMPT_ALERT(R.string.catalogue_state_prompt_alert),
     PROMPT_CONFIRM(R.string.catalogue_state_prompt_confirm),
     PROMPT_TEXT(R.string.catalogue_state_prompt_text),
+    SEARCH_QUESTION(R.string.catalogue_state_search_question),
+    SEARCH_CHANGE(R.string.catalogue_state_search_change),
     LINK_MENU(R.string.catalogue_state_link_menu),
     PROMPT_SIGN_IN(R.string.catalogue_state_prompt_sign_in),
     PROMPT_SIGN_IN_AGAIN(R.string.catalogue_state_prompt_sign_in_again),
@@ -109,6 +113,27 @@ internal enum class CatalogueState(@StringRes val title: Int) {
 
     /** The window's zoom bar is open in this state. */
     val zooming: Boolean get() = this == ZOOM
+
+    /**
+     * What a core says of where searches go, in this state. Every window is told that an engine
+     * is in use; in the first run's state nobody chose it, and the question is over the window.
+     */
+    val searching: SearchSettings
+        get() =
+            SearchSettings(
+                engines =
+                    listOf(
+                        SearchEngine(id = "bing", name = "Bing", host = "www.bing.com"),
+                        SearchEngine(id = "brave", name = "Brave Search", host = "search.brave.com"),
+                        SearchEngine(id = "duckduckgo", name = "DuckDuckGo", host = "duckduckgo.com"),
+                        SearchEngine(id = "ecosia", name = "Ecosia", host = "www.ecosia.org"),
+                    ),
+                chosen_id = if (this == SEARCH_CHANGE) "ecosia" else "duckduckgo",
+                chosen = this != SEARCH_QUESTION,
+            )
+
+    /** The list of engines is open in this state to change the one in use. */
+    val changingSearch: Boolean get() = this == SEARCH_CHANGE
 
     /** The link whose menu is open in this state, when one is: an address longer than the menu is wide. */
     val pressing: String? get() = if (this == LINK_MENU) "https://example.com/articles/2026/11/a-long-read-about-links-and-where-they-lead?from=the-front-page" else null
@@ -160,7 +185,8 @@ internal enum class CatalogueState(@StringRes val title: Int) {
         get() {
             val tab =
                 when (this) {
-                    EMPTY -> TabView(tab_id = 2, load_state = LoadState.LOAD_STATE_IDLE)
+                    // An empty tab, under the list of search engines in the two states that show it.
+                    EMPTY, SEARCH_QUESTION, SEARCH_CHANGE -> TabView(tab_id = 2, load_state = LoadState.LOAD_STATE_IDLE)
                     LOADING -> page("https://example.com/", "example.com").copy(load_state = LoadState.LOAD_STATE_LOADING, progress = 0.4)
                     SECURE -> page("https://example.com/", "example.com")
                     INSECURE -> page("http://example.com/", "http://example.com", AddressView.Security.SECURITY_INSECURE)
@@ -478,7 +504,7 @@ internal fun CatalogueWindow(state: CatalogueState, modifier: Modifier = Modifie
     val context = LocalContext.current.applicationContext
     val scope = rememberCoroutineScope()
     val session = remember(state) { state.session(context, scope) }
-    val model = remember(session) { BrowserModel(session, finding = state.finding, typing = state.typing, offered = state.offered, zooming = state.zooming, pressing = state.pressing) }
+    val model = remember(session) { BrowserModel(session, finding = state.finding, typing = state.typing, offered = state.offered, zooming = state.zooming, pressing = state.pressing, searching = state.searching, changingSearch = state.changingSearch) }
     // A window takes the system's Back for its page. These are pictures of windows: Back leaves
     // the catalogue, whatever state one of them shows.
     val lifecycle = LocalLifecycleOwner.current.lifecycle

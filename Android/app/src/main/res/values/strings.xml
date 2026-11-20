@@ -68,6 +68,10 @@
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_prompt_text">A page asks for a word</string>
     <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_search_change">Changing where searches go</string>
+    <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_search_question">The first run asks where searches go</string>
+    <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_secure">A secure page</string>
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_suggestions">Places offered as an address is typed</string>
@@ -245,6 +249,18 @@
     <string name="prompt_sign_in_password">Password</string>
     <!-- Button in the bar that shows what a page says, from the page's second message on: this page is shown no more messages until another page loads. -->
     <string name="prompt_silence">Stop This Page’s Messages</string>
+    <!-- Button beside 'Searches go to …' on an empty tab: opens the list of search engines. -->
+    <string name="search_change">Change…</string>
+    <!-- On an empty tab, under its hint. %@ is a search engine's own name, such as Ecosia. -->
+    <string name="search_goes_to">Searches go to %s.</string>
+    <!-- Said of the search engine that searches go to now, in the list of search engines when it is opened to change it. -->
+    <string name="search_in_use">In use</string>
+    <!-- Button that closes the list of search engines without changing where searches go. Not shown at the first run, when one has to be chosen. -->
+    <string name="search_keep">Cancel</string>
+    <!-- Under the heading of the list of search engines. -->
+    <string name="search_question_detail">What you type in the address field that is not an address is sent to the search engine you choose. Nothing is sent until you search.</string>
+    <!-- Heading of the first run's question, and of the same list when it is opened again: the person chooses a search engine. -->
+    <string name="search_question_title">Where should your searches go?</string>
     <!-- Accessibility label of the list of places offered under the address field as it is typed in. -->
     <string name="suggestions_list">Suggestions</string>
     <!-- Hint under the heading of an empty tab. -->

@@ -9,6 +9,7 @@ import com.tigercodes.webtiger.core.v1.ActivateTab
 import com.tigercodes.webtiger.core.v1.AddressSuggestion
 import com.tigercodes.webtiger.core.v1.AddressView
 import com.tigercodes.webtiger.core.v1.AnswerPrompt
+import com.tigercodes.webtiger.core.v1.ChooseSearchEngine
 import com.tigercodes.webtiger.core.v1.CloseTab
 import com.tigercodes.webtiger.core.v1.DialogKind
 import com.tigercodes.webtiger.core.v1.FindInPage
@@ -16,7 +17,9 @@ import com.tigercodes.webtiger.core.v1.LoadState
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.core.v1.OpenTab
 import com.tigercodes.webtiger.core.v1.PromptView
+import com.tigercodes.webtiger.core.v1.QuerySearch
 import com.tigercodes.webtiger.core.v1.Request
+import com.tigercodes.webtiger.core.v1.SearchSettings
 import com.tigercodes.webtiger.core.v1.SubmitAddress
 import com.tigercodes.webtiger.core.v1.SuggestAddresses
 import com.tigercodes.webtiger.core.v1.TabCommand
@@ -42,6 +45,8 @@ class BrowserModel(
     offered: List<AddressSuggestion> = emptyList(),
     zooming: Boolean = false,
     pressing: String? = null,
+    searching: SearchSettings? = null,
+    changingSearch: Boolean = false,
 ) {
     /** The tab in front, as the core last published it. The window's controls act on it. */
     var tab by mutableStateOf(TabView())
@@ -112,6 +117,9 @@ class BrowserModel(
         session.engine.onLinkPressed = ::linkPressed
         try {
             window = session.openWindow(::apply)
+            // Where searches go, and whether anybody chose it (020): asked once, when the
+            // window has opened.
+            askWhereSearchesGo()
         } catch (_: CoreError) {
             // The core would not open a window: the tab stays empty.
         } finally {
@@ -279,6 +287,66 @@ class BrowserModel(
         val front = frontTabId ?: return
         val shown = prompt ?: return
         session.send(Request(answer_prompt = AnswerPrompt(tab_id = front, prompt_id = shown.prompt_id, allow = allow, text = text, silence = silence, secret = secret)))
+    }
+
+    // Where searches go (020)
+
+    /**
+     * What the core says of where searches go: the engines, the one in use, and whether anybody
+     * chose it. Null until the core has said. A model made with `searching` starts with that:
+     * for a picture (004).
+     */
+    var search by mutableStateOf(searching)
+        private set
+
+    /** The list is open to change where searches go: an empty tab's "Change…" was pressed. */
+    var isChangingSearch by mutableStateOf(changingSearch)
+        private set
+
+    /**
+     * The list of engines is before the person: because nobody has chosen yet (the first run's
+     * question, which stays until one is chosen), or because they asked to change.
+     */
+    val asksWhereSearchesGo: Boolean get() = search.let { it != null && (!it.chosen || isChangingSearch) }
+
+    /** The name of the engine searches go to now. Null until the core has said. */
+    val searchEngineName: String? get() = search?.let { settings -> settings.engines.firstOrNull { it.id == settings.chosen_id }?.name }
+
+    /** Asks the core where searches go. Its answer is what the window then shows. */
+    private fun askWhereSearchesGo() {
+        session.scope.launch {
+            val answer =
+                try {
+                    session.core.request(Request(query_search = QuerySearch())).search_settings
+                } catch (_: CoreError) {
+                    null
+                }
+            if (answer != null) search = answer
+        }
+    }
+
+    /** The person's choice of an engine. The list goes when the core has taken it; a choice it refuses leaves the list as it is. */
+    fun chooseSearchEngine(id: String) {
+        session.scope.launch {
+            try {
+                session.core.request(Request(choose_search_engine = ChooseSearchEngine(id = id)))
+            } catch (_: CoreError) {
+                return@launch
+            }
+            isChangingSearch = false
+            // The core's own word on what is now in use, and by whose choice.
+            askWhereSearchesGo()
+        }
+    }
+
+    /** An empty tab's "Change…". */
+    fun changeSearch() {
+        isChangingSearch = true
+    }
+
+    /** The list is closed with nothing changed. */
+    fun keepSearch() {
+        isChangingSearch = false
     }
 
     // A link's menu (018)

@@ -103,6 +103,9 @@ class MainActivity : ComponentActivity() {
         /** `--es webtiger.fake.start <address>`: what every new window opens in fake mode. */
         const val EXTRA_FAKE_START = "webtiger.fake.start"
 
+        /** `--ez webtiger.fake.first_run true`: in fake mode, nobody has chosen where searches go yet (020). */
+        const val EXTRA_FAKE_FIRST_RUN = "webtiger.fake.first_run"
+
         /** `--ez webtiger.catalogue true`: the design catalogue instead of a browser (004). Debuggable builds only. */
         const val EXTRA_CATALOGUE = "webtiger.catalogue"
 
@@ -115,7 +118,12 @@ class MainActivity : ComponentActivity() {
             if (!debuggable || intent == null) return LaunchOptions()
             val catalogue = intent.getBooleanExtra(EXTRA_CATALOGUE, false)
             if (!intent.getBooleanExtra(EXTRA_FAKE, false)) return LaunchOptions(catalogue = catalogue)
-            return LaunchOptions(fake = true, fakeStart = intent.getStringExtra(EXTRA_FAKE_START).orEmpty(), catalogue = catalogue)
+            return LaunchOptions(
+                fake = true,
+                fakeStart = intent.getStringExtra(EXTRA_FAKE_START).orEmpty(),
+                catalogue = catalogue,
+                firstRun = intent.getBooleanExtra(EXTRA_FAKE_FIRST_RUN, false),
+            )
         }
     }
 }

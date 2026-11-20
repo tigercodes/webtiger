@@ -72,9 +72,11 @@ class BrowserModelTest {
             val model = BrowserModel(session(core))
             model.open()
             model.open() // once only
-            assertEquals(2, core.requests.size)
+            assertEquals(3, core.requests.size)
             assertNotNull(core.requests[0].open_window)
             assertEquals(1L, core.requests[1].subscribe?.window?.window_id)
+            // And, the window open, where searches go (020).
+            assertNotNull(core.requests[2].query_search)
         }
 
     @Test
@@ -388,7 +390,8 @@ class BrowserModelTest {
             model.close()
             assertEquals(1L, core.requests.last().close_window?.window_id)
             model.close() // once only
-            assertEquals(4, core.requests.size)
+            // The window, its subscription, where searches go, the reload, and the closing.
+            assertEquals(5, core.requests.size)
             // A closed window draws nothing more.
             core.emit(snapshot(title = "Late"), subscription = 3)
             assertEquals("", model.tab.title)
@@ -430,7 +433,8 @@ class BrowserModelTest {
             model.addressText = "example.com"
             model.submit()
             model.perform(NavigationCommand.NAVIGATION_COMMAND_BACK)
-            assertEquals(4, core.requests.size)
+            // The window, its subscription, where searches go, and the two that were refused.
+            assertEquals(5, core.requests.size)
         }
 
     @Test

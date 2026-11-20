@@ -397,6 +397,30 @@
         }
       }
     },
+    "catalogue.state.search_change": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changing where searches go"
+          }
+        }
+      }
+    },
+    "catalogue.state.search_question": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The first run asks where searches go"
+          }
+        }
+      }
+    },
     "catalogue.state.secure": {
       "comment": "Design catalogue: a state of the window.",
       "extractionState": "manual",
@@ -1461,6 +1485,78 @@
           "stringUnit": {
             "state": "translated",
             "value": "Stop This Page’s Messages"
+          }
+        }
+      }
+    },
+    "search.change": {
+      "comment": "Button beside 'Searches go to …' on an empty tab: opens the list of search engines.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change…"
+          }
+        }
+      }
+    },
+    "search.goes_to": {
+      "comment": "On an empty tab, under its hint. %@ is a search engine's own name, such as Ecosia.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Searches go to %@."
+          }
+        }
+      }
+    },
+    "search.in_use": {
+      "comment": "Said of the search engine that searches go to now, in the list of search engines when it is opened to change it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In use"
+          }
+        }
+      }
+    },
+    "search.keep": {
+      "comment": "Button that closes the list of search engines without changing where searches go. Not shown at the first run, when one has to be chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        }
+      }
+    },
+    "search.question.detail": {
+      "comment": "Under the heading of the list of search engines.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What you type in the address field that is not an address is sent to the search engine you choose. Nothing is sent until you search."
+          }
+        }
+      }
+    },
+    "search.question.title": {
+      "comment": "Heading of the first run's question, and of the same list when it is opened again: the person chooses a search engine.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where should your searches go?"
           }
         }
       }

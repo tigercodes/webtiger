@@ -35,7 +35,13 @@ import kotlinx.coroutines.launch
  * memory and makes ids deterministic; [fakeStart] names an address every new window opens.
  * [catalogue] asks for the design catalogue in place of a browser (004).
  */
-data class LaunchOptions(val fake: Boolean = false, val fakeStart: String = "", val catalogue: Boolean = false)
+data class LaunchOptions(
+    val fake: Boolean = false,
+    val fakeStart: String = "",
+    val catalogue: Boolean = false,
+    /** Fake mode: the run is to be a first run, in which nobody has chosen where searches go (020). */
+    val firstRun: Boolean = false,
+)
 
 /**
  * The app's connection to the core: started once, shared by every window. Used on the main
@@ -178,7 +184,7 @@ class BrowserSession(
                 app_version = appVersion,
                 engines = listOf(engine),
                 test_mode = if (launch.fake) TestMode.TEST_MODE_FAKE else TestMode.TEST_MODE_LIVE,
-                fake = if (launch.fake) FakeOptions(start_address = launch.fakeStart) else null,
+                fake = if (launch.fake) FakeOptions(start_address = launch.fakeStart, first_run = launch.firstRun) else null,
                 data_dir = if (launch.fake) "" else dataDir,
             )
     }
