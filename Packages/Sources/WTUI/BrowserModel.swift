@@ -52,7 +52,15 @@ public final class BrowserModel {
 
     /// What the core says of where searches go (020): the engines, the one in use, and whether
     /// anybody chose it. `nil` until the core has said.
-    public internal(set) var search: WTSearchSettings?
+    public internal(set) var search: WTSearchSettings? {
+        didSet {
+            // The menu of selected words names the engine a search for them goes to (023).
+            session.engine.linkMenu?.searchWords = searchEngineName.map {
+                String(format: String(localized: "selection.search_with", bundle: .module), $0)
+            }
+        }
+    }
+
     /// The list is open to change where searches go: an empty tab's "Change…" was pressed.
     public internal(set) var isChangingSearch = false
 

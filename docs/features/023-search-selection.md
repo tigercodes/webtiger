@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress. The contract (1.17), the core's rule and the Android shell (on an emulator) are built and tested. The Apple shells are not: there the item is still the system's, which hands the words to the system's choice of search engine, in another app (§5, as found) |
+| **Status** | In progress. The contract (1.17), the core's rule, the Android shell (on an emulator) and the Mac are built and tested; the Mac app's own test of its menu is written and has not run (§8). The iPhone is not built: there the item is still the system's, which hands the words to the system's choice of search engine, in another app |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "context menus". After a link's ([018](018-link-in-new-tab.md)) and a picture's ([022](022-picture-menu.md)): the menu of words that are selected |
 | **Contract** | 1.17: `SearchRequested` |
 | **Builds on** | [020](020-search-engine.md): the person's choice of where searches go. 018: a tab opened from another. 022: the Mac's script that says what a right-click was on |
@@ -80,7 +80,14 @@ message SearchRequested {
 - **The item's words are the WebView's**, "Web search", in the WebView's own translation: they do not name the engine. Where searches go is said on every empty tab (020), and the new tab's address field shows it from the start.
 - **The activity is never shown.** Started some other way, it does nothing and goes.
 
-What the Apple shells do in fact, as observed, is written here when built.
+**As built on the Mac** (`WebKitMenus.swift`: the script, `MenuWebView`, `search`; `BrowserModel`), and as seen against real WebKit:
+
+- **The words** come from the adapter's script (022), which now says with each right-click what is selected in the page, up to 2,000 characters: a selected word of the test site's page was told as that word, and words typed in an ordinary field as those words.
+- **What is typed in a password's field is not read.** The script says no words when the click was in such a field, or one has the keyboard, wherever in the page the field is: in the script's own world it sees into the parts of a page that are closed to the page's own scripts, and a password's field there was told as nothing. Without that rule, what WebKit gave the script for a password's field was its dots, one for each character, never the characters themselves; with it, dots are not offered for a search either.
+- **The menu**: in place of WebKit's item that searches stands one of the adapter's own, under WebKit's name for it and the shell's words, "Search with DuckDuckGo", which reports `SearchRequested` with the words as they were selected. It is there only when words were selected and the shell has said where searches go. **Otherwise WebKit's item is taken out**: it is never left in the menu, since what it does is go elsewhere.
+- **The item's words follow the choice**: the shell gives the adapter "Search with" and the engine's name when the core says where searches go, and again when another engine is chosen. Until the core has said, there are none, and no search is offered.
+
+**The iPhone**: not built. What its menu of selected words offers was not established: a first look, with the app's test holding a finger on a word in the simulator, did not find the menu's items.
 
 ## 6. Tests
 
@@ -90,9 +97,9 @@ What the Apple shells do in fact, as observed, is written here when built.
 | Core, as built (`wt-app/tests/search_selection.rs`, 7; `wt-core`, 1) | All of the row above; and the words' tidying and cutting by itself. Six parts of the rule checked by breaking them |
 | System WebView adapter, on the JVM (`SearchingContextTest`, 3; `LinksTest`, 1 more) | A request for a web search is heard, with its words, however it is asked, and starts nothing; one with no words is heard as none; every other request goes on as it was. The engine reports a search for a web view's words as the person's doing. Six of the rules checked by breaking them |
 | System WebView adapter suite (`SystemWebViewSearchTest`, 1, on the emulator) | Against the real WebView, with a finger held on a word of the test site: the word is selected; the WebView's bar offers "Web search"; that item, chosen as a press chooses it, is reported with the word, as the person's doing; nothing asked the system to start anything (the test stops and counts whatever does); the page is where it was. Without the manifest's activity the item was not offered |
-| The adapters' own rules, Apple | What the shell's item is called; that the system's item is not in the menu; that choosing the shell's reports the words as the person's doing |
-| Adapter suites, Apple | The words selected in a page are the ones reported |
-| The apps | The menu of selected words has the shell's item, named for the engine, and not the system's. **No test chooses it**: a search goes to the internet |
+| WebKit adapter suite (`WebKitSearchTests`, 5 on the Mac, 1 on the iPhone simulator) | A search is reported with the words as they were selected, as the person's doing, and the page stays. On the Mac, against real WebKit with the mouse's own right-click: a selected word is told as that word; a password's field as nothing, in the page and inside a part of it that is closed to scripts, though there was something typed there; words typed in an ordinary field as those words. WebKit's item that searches is replaced by the shell's, that item and no other, and choosing it tells the adapter the words; it is taken out when the shell has no words for it, when no words or only white space were selected, and when nothing was said of the click. The menu that opens after a right-click on a selected word searches for that word. Nine of the rules checked by breaking them |
+| The Apple shell (`SearchModelTests`, 1 more) | The menu has no words for a search until the core has said where searches go; then it names the engine in use, and the one chosen after |
+| The Mac app (`MenuTests`, written; not yet run, §8) | The menu of a word that is right-clicked has one item that searches, the shell's, named for the engine, and not WebKit's. **No test chooses it**: a search goes to the internet |
 
 ## 7. Decisions
 
@@ -110,13 +117,16 @@ What the Apple shells do in fact, as observed, is written here when built.
 - **Android: the search itself, in the app.** No test chooses the item with a core behind it: the tab would load the search engine. The adapter suite chooses it with no core; the core's own tests open the tab against a scripted engine.
 - **Android: words selected in a frame, in a field, and a password's field.** The WebView's own judgement, not looked at.
 - **Android: a phone.** It ran on an emulator.
-- **The Apple shells**: not built.
+- **The Mac app's test of its menu has not run.** It was written with the rest; a dialog of the system's was on the screen, and the Mac's UI suite is not started while one is. What is tested on the Mac is the adapter, against real WebKit, with a menu the test made.
+- **The Mac: that the script's word of what is selected always comes before the menu** (as 022 §8). Late, the search would be missing from that menu, not wrong.
+- **The Mac: words selected in a frame.** The script is in every frame; no test has one.
+- **The iPhone**: not built, and what its menu offers not established.
 
 ## 9. Done checklist
 
 - [x] Contract 1.17 and its version in every place it is written.
 - [x] The core: the rule of §3 (7 tests through `FakeShell`).
-- [ ] The Mac.
+- [x] The Mac: the script's words; the menu's item; the adapter suite (5). The app's test is written and has not run.
 - [x] Android: the WebView's own item, heard by the adapter; the adapter suite on the emulator.
 - [ ] iPhone.
 - [ ] `Tools/test.sh all` green, and `android-device`.

@@ -17,6 +17,10 @@ public struct LinkMenu {
     public var downloadLinkedFile: String
     /// "Copy Link".
     public var copyLink: String
+    /// "Search with …", naming the engine the person chose (023): the words of the item
+    /// that searches for what is selected. Nil until the shell knows where searches go:
+    /// until then no such item is shown.
+    public var searchWords: String?
     /// Puts a link's address where it can be pasted from.
     public var copy: @MainActor (URL) -> Void
 

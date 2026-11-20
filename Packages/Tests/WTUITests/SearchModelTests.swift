@@ -60,7 +60,7 @@ final class SearchModelTests: XCTestCase {
     private let told = Told()
 
     /// A model over a core that opens a window, says where searches go, and says Ack to the rest.
-    private func opened() async -> (BrowserModel, ScriptedCore) {
+    private func opened(awaiting: Bool = true) async -> (BrowserModel, ScriptedCore) {
         let told = told
         let core = ScriptedCore { request in
             if let answer = told.answer(request) {
@@ -82,7 +82,9 @@ final class SearchModelTests: XCTestCase {
         }
         let model = BrowserModel(session: BrowserSession(core: core, engine: WebKitEngine()))
         await model.open()
-        await settle { model.search != nil }
+        if awaiting {
+            await settle { model.search != nil }
+        }
         return (model, core)
     }
 
@@ -117,6 +119,24 @@ final class SearchModelTests: XCTestCase {
         XCTAssertEqual(choices(core), ["ecosia"])
         XCTAssertFalse(model.asksWhereSearchesGo, "answered, and gone")
         XCTAssertEqual(model.searchEngineName, "Ecosia", "what the empty tab says")
+    }
+
+    func testTheMenuOfSelectedWordsNamesTheEngineASearchGoesTo() async {
+        // Until the core has said where searches go, the menu has no words for a search.
+        told.set(known: false)
+        let (unknowing, _) = await opened(awaiting: false)
+        await settle()
+        XCTAssertNotNil(unknowing.session.engine.linkMenu, "the session's menu is there")
+        XCTAssertNil(unknowing.session.engine.linkMenu?.searchWords)
+
+        // Told, it names the engine in use; and the one chosen after.
+        told.set(known: true)
+        let (model, _) = await opened()
+        XCTAssertEqual(model.session.engine.linkMenu?.searchWords, "Search with DuckDuckGo")
+
+        model.chooseSearchEngine("ecosia")
+        await settle { model.searchEngineName == "Ecosia" }
+        XCTAssertEqual(model.session.engine.linkMenu?.searchWords, "Search with Ecosia")
     }
 
     func testAChoiceTheCoreRefusesLeavesTheListAsItIs() async {

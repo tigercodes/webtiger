@@ -20,16 +20,29 @@ public extension WebKitEngine {
             self?.downloads.adopt(download, from: webViewID, chosen: true)
         }
     }
+
+    /// The person chose, in the menu of words they selected in a web view's page, to search
+    /// for them (023). The core is told: where the search goes, and whether a tab opens for
+    /// it, are its to say.
+    func search(webViewID: UInt64, words: String) {
+        var asked = WTSearchRequested()
+        asked.text = words
+        asked.userGesture = true
+        report(webViewID, .searchRequested(asked))
+    }
 }
 
 #if os(macOS)
     import AppKit
 
     /// What a right-click was on, as the adapter's script said: the address of the picture
-    /// and of the link, where there was one of the web's.
+    /// and of the link, where there was one of the web's, and the words that were selected.
     struct Pressed: Equatable {
         var picture: URL?
         var link: URL?
+        /// The words selected in the page as the click happened (023). Never what is typed
+        /// in a password's field.
+        var words = ""
     }
 
     /// The adapter's ear for what was right-clicked. Its script is in every page and every
@@ -63,7 +76,21 @@ public extension WebKitEngine {
                         link = node.href;
                     }
                 }
-                tell.postMessage({ picture: picture, link: link });
+                // The words that are selected, for a search for them. What is typed in a
+                // password's field is nobody's to read: not when the click was in one, and not
+                // when one has the keyboard, wherever in the page the field is. (In this world
+                // the script sees into the parts of a page that are closed to the page's own.)
+                var secret = false;
+                var fields = path.slice();
+                var active = document.activeElement;
+                while (active && active.shadowRoot && active.shadowRoot.activeElement) { active = active.shadowRoot.activeElement; }
+                fields.push(active);
+                for (var j = 0; j < fields.length; j += 1) {
+                    var field = fields[j];
+                    if (field && field.nodeType === 1 && field.localName === 'input' && field.type === 'password') { secret = true; }
+                }
+                var words = secret ? '' : String(window.getSelection()).slice(0, 2000);
+                tell.postMessage({ picture: picture, link: link, words: words });
             }, true);
         }());
         """
@@ -91,7 +118,10 @@ public extension WebKitEngine {
 
         func userContentController(_: WKUserContentController, didReceive message: WKScriptMessage) {
             guard let webView = message.webView, let body = message.body as? [String: Any] else { return }
-            said.setObject(Told(Pressed(picture: Self.address(body["picture"]), link: Self.address(body["link"]))), forKey: webView)
+            let pressed = Pressed(
+                picture: Self.address(body["picture"]), link: Self.address(body["link"]), words: body["words"] as? String ?? ""
+            )
+            said.setObject(Told(pressed), forKey: webView)
         }
 
         /// What the last right-click in a web view was on. Said once, and only of a click
@@ -127,7 +157,9 @@ public extension WebKitEngine {
     /// The web view the adapter makes on a Mac. WebKit builds its menu itself. Two of its
     /// items open something in a new window, which the core opens as a tab (006): they are
     /// given the shell's words for what they do here. Two save a file, and do not: they are
-    /// given the address the adapter's script named, or taken out when it named none.
+    /// given the address the adapter's script named, or taken out when it named none. One
+    /// searches for the words that are selected, with the system's search engine and in the
+    /// system's browser: in its place stands the shell's, which tells the core (023).
     final class MenuWebView: WKWebView {
         /// WebKit's own names for its items. They are not declared constants: should WebKit
         /// rename one, that item is left as WebKit made it, and the app's test of the menu
@@ -136,20 +168,31 @@ public extension WebKitEngine {
         static let opensImageInNewWindow = "WKMenuItemIdentifierOpenImageInNewWindow"
         static let downloadsImage = "WKMenuItemIdentifierDownloadImage"
         static let downloadsLinkedFile = "WKMenuItemIdentifierDownloadLinkedFile"
+        static let searchesWeb = "WKMenuItemIdentifierSearchWeb"
 
         override func willOpenMenu(_ menu: NSMenu, with event: NSEvent) {
             super.willOpenMenu(menu, with: event)
             guard let page = navigationDelegate as? Page, let engine = page.engine else { return }
             let webViewID = page.id
-            Self.arrange(menu, pressed: engine.pressed.take(for: self), words: engine.linkMenu) { [weak engine] address in
-                engine?.saveFile(webViewID: webViewID, url: address)
-            }
+            Self.arrange(
+                menu, pressed: engine.pressed.take(for: self), words: engine.linkMenu,
+                save: { [weak engine] address in engine?.saveFile(webViewID: webViewID, url: address) },
+                search: { [weak engine] words in engine?.search(webViewID: webViewID, words: words) }
+            )
         }
 
-        /// Makes WebKit's menu the app's: the shell's words on the items that open a tab, and
-        /// on the items that save, the address to save, with `save` to do it. An item that
-        /// saves and has no address is taken out: it would do nothing.
-        static func arrange(_ menu: NSMenu, pressed: Pressed?, words: LinkMenu?, save: @escaping @MainActor (URL) -> Void) {
+        /// Makes WebKit's menu the app's: the shell's words on the items that open a tab; on
+        /// the items that save, the address to save, with `save` to do it; and in place of
+        /// the item that searches, the shell's, with `search` to do it. An item that has
+        /// nothing to save or to search for, or no words of the shell's to say what it does,
+        /// is taken out: it would do nothing, or go where the person did not choose.
+        static func arrange(
+            _ menu: NSMenu,
+            pressed: Pressed?,
+            words: LinkMenu?,
+            save: @escaping @MainActor (URL) -> Void,
+            search: @escaping @MainActor (String) -> Void = { _ in }
+        ) {
             for item in menu.items {
                 switch item.identifier?.rawValue {
                 case opensLinkInNewWindow:
@@ -157,9 +200,16 @@ public extension WebKitEngine {
                 case opensImageInNewWindow:
                     item.title = words?.openImageInNewTab ?? item.title
                 case downloadsImage:
-                    give(item, of: menu, pressed?.picture, save)
+                    put(pressed?.picture.map { address in MenuChoice { save(address) } }, titled: item.title, for: item, of: menu)
                 case downloadsLinkedFile:
-                    give(item, of: menu, pressed?.link, save)
+                    put(pressed?.link.map { address in MenuChoice { save(address) } }, titled: item.title, for: item, of: menu)
+                case searchesWeb:
+                    // Only for words there are, and under words of the shell's that name
+                    // where the search goes: WebKit's name the system's engine.
+                    let selected = pressed?.words ?? ""
+                    let known = !selected.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    let title = words?.searchWords
+                    put(known && title != nil ? MenuChoice { search(selected) } : nil, titled: title ?? "", for: item, of: menu)
                 default:
                     break
                 }
@@ -167,14 +217,13 @@ public extension WebKitEngine {
             tidy(menu)
         }
 
-        /// Puts an item of the adapter's own where WebKit's stood, with WebKit's words and
-        /// name, that saves `address`; or takes WebKit's out when there is nothing to save.
-        private static func give(_ item: NSMenuItem, of menu: NSMenu, _ address: URL?, _ save: @escaping @MainActor (URL) -> Void) {
+        /// Puts an item of the adapter's own where WebKit's stood, under `title` and WebKit's
+        /// name for the item, that does `choice`; or takes WebKit's out when there is none.
+        private static func put(_ choice: MenuChoice?, titled title: String, for item: NSMenuItem, of menu: NSMenu) {
             let place = menu.index(of: item)
             menu.removeItem(item)
-            guard let address else { return }
-            let choice = MenuChoice { save(address) }
-            let own = NSMenuItem(title: item.title, action: #selector(MenuChoice.chosen(_:)), keyEquivalent: "")
+            guard let choice else { return }
+            let own = NSMenuItem(title: title, action: #selector(MenuChoice.chosen(_:)), keyEquivalent: "")
             own.identifier = item.identifier
             own.target = choice
             // An item does not hold its target: this does.

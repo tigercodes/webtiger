@@ -3,7 +3,8 @@
 // WebKit's: what the adapter's script says a right-click was on, against a real web view with
 // the mouse's own events; that a page cannot say so itself; and what the adapter makes of
 // WebKit's items. No menu is opened here: the page of these tests keeps WebKit's from
-// opening, and the menu the adapter is handed is one the test made.
+// opening, and the menu the adapter is handed is one the test made. (A search for words that
+// are selected is in WebKitSearchTests.swift.)
 import WebKit
 import WTContract
 import WTCoreClient

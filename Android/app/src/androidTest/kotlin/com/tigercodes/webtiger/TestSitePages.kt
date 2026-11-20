@@ -357,6 +357,15 @@ internal object TestSitePages {
                 authorization = "",
             ),
             TestSitePage(
+                path = "/words",
+                status = "200 OK",
+                type = "text/html",
+                headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
+                body = listOf(TestSitePiece.Text("<!doctype html><title>Words</title><h1>Words</h1><p>some <span id=\"word\">tigers</span> in the wild</p>\n<p><input id=\"field\" value=\"typed words\"></p>\n<p><input id=\"secret\" type=\"password\" value=\"hunter2\"></p>\n<p><span id=\"closed\"></span></p>\n<script>\nvar closed = document.getElementById('closed').attachShadow({ mode: 'closed' });\nclosed.innerHTML = '<input type=\"password\" value=\"open sesame\">';\nfunction choose(id) {\n  var element = id === 'closed' ? closed.querySelector('input') : document.getElementById(id);\n  if (element.select) { element.focus(); element.select(); } else { window.getSelection().selectAllChildren(element); }\n}\nif ('"), TestSitePiece.Query("menu", or = "engine"), TestSitePiece.Text("' === 'own') {\n  window.addEventListener('contextmenu', function (event) {\n    event.preventDefault();\n    event.stopImmediatePropagation();\n    document.title = 'own menu';\n  }, true);\n}\n</script>")),
+                delayMilliseconds = 0,
+                authorization = "",
+            ),
+            TestSitePage(
                 path = "/upload",
                 status = "200 OK",
                 type = "text/html",

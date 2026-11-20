@@ -357,6 +357,32 @@
       "note": "A picture, a picture that is a link, and words. With ?menu=own the page takes the menu's event for itself, before anything else of the page can hear it: it keeps the engine's menu from opening, and says so in its title. For a picture's menu."
     },
     {
+      "path": "/words",
+      "title": "Words",
+      "body": [
+        "<p>some <span id=\"word\">tigers</span> in the wild</p>",
+        "<p><input id=\"field\" value=\"typed words\"></p>",
+        "<p><input id=\"secret\" type=\"password\" value=\"hunter2\"></p>",
+        "<p><span id=\"closed\"></span></p>",
+        "<script>",
+        "var closed = document.getElementById('closed').attachShadow({ mode: 'closed' });",
+        "closed.innerHTML = '<input type=\"password\" value=\"open sesame\">';",
+        "function choose(id) {",
+        "  var element = id === 'closed' ? closed.querySelector('input') : document.getElementById(id);",
+        "  if (element.select) { element.focus(); element.select(); } else { window.getSelection().selectAllChildren(element); }",
+        "}",
+        "if ('{query:menu|engine}' === 'own') {",
+        "  window.addEventListener('contextmenu', function (event) {",
+        "    event.preventDefault();",
+        "    event.stopImmediatePropagation();",
+        "    document.title = 'own menu';",
+        "  }, true);",
+        "}",
+        "</script>"
+      ],
+      "note": "A word to select, a field with words typed in it, a password's field, and another password's field inside a part of the page that is closed to scripts (in #closed). choose(id) selects what is in one of them. With ?menu=own the page takes the menu's event for itself, which keeps the engine's menu from opening. For a search for words that are selected."
+    },
+    {
       "path": "/upload",
       "title": "Upload",
       "body": [

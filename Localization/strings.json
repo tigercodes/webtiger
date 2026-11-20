@@ -38,6 +38,7 @@
     "search.change": { "en": "Change…", "note": "Button beside 'Searches go to …' on an empty tab: opens the list of search engines." },
     "search.in_use": { "en": "In use", "note": "Said of the search engine that searches go to now, in the list of search engines when it is opened to change it." },
     "search.keep": { "en": "Cancel", "note": "Button that closes the list of search engines without changing where searches go. Not shown at the first run, when one has to be chosen." },
+    "selection.search_with": { "en": "Search with %@", "note": "In the menu of words that are selected in a page: search for those words, in a new tab. %@ is the search engine's own name, such as Ecosia." },
     "link.menu": { "en": "Link", "note": "Accessibility name of the menu shown for a link of a page that was pressed and held." },
     "link.open_new_tab": { "en": "Open in New Tab", "note": "In a link's menu: open the link in a new tab, behind the one being read." },
     "link.open_link_new_tab": { "en": "Open Link in New Tab", "note": "In the menu a Mac shows for a link (right-click), beside the system's own items such as Copy Link: open the link in a new tab." },

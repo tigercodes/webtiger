@@ -279,6 +279,8 @@
     <string name="search_question_detail">What you type in the address field that is not an address is sent to the search engine you choose. Nothing is sent until you search.</string>
     <!-- Heading of the first run's question, and of the same list when it is opened again: the person chooses a search engine. -->
     <string name="search_question_title">Where should your searches go?</string>
+    <!-- In the menu of words that are selected in a page: search for those words, in a new tab. %@ is the search engine's own name, such as Ecosia. -->
+    <string name="selection_search_with">Search with %s</string>
     <!-- Accessibility label of the list of places offered under the address field as it is typed in. -->
     <string name="suggestions_list">Suggestions</string>
     <!-- Hint under the heading of an empty tab. -->

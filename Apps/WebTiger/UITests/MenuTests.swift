@@ -1,7 +1,8 @@
-// What a menu saves (022), in the apps, in fake mode: with the real core and WebKit, against
-// the test site. On a Mac the menu is WebKit's own, opened with the mouse; on an iPhone it is
-// the shell's, for a link pressed and held. What is saved goes to a folder of the engine's
-// own among the temporary files, never to anybody's Downloads.
+// What a menu saves (022) and a search for words that are selected (023), in the apps, in
+// fake mode: with the real core and WebKit, against the test site. On a Mac the menu is
+// WebKit's own, opened with the mouse; on an iPhone it is the shell's, for a link pressed and
+// held. What is saved goes to a folder of the engine's own among the temporary files, never
+// to anybody's Downloads. No search is made.
 import XCTest
 
 final class MenuTests: AppTestCase {
@@ -58,6 +59,30 @@ final class MenuTests: AppTestCase {
             press(app.buttons["downloads-done"])
             XCTAssertTrue(pageShows("Pictures", in: app), "and the page is where it was")
             XCTAssertEqual(app.buttons.matching(identifier: "tab").count, 1)
+        }
+
+        /// A search for words that are selected (023): WebKit's menu has the shell's item for
+        /// it, named for the engine searches go to, and not WebKit's own, which goes to the
+        /// system's engine in another app. The item is not chosen: a search goes to the
+        /// internet.
+        func testTheMenuOfSelectedWordsOffersASearchWithTheEngineThePersonChose() {
+            let app = launch(start: site.url("/words"))
+            XCTAssertTrue(pageShows("Words", in: app), "the page of words loaded")
+            let word = app.webViews.staticTexts["tigers"]
+            XCTAssertTrue(word.waitForExistence(timeout: 30), "the page's word is there to select")
+
+            // A right-click on a word selects it, and opens the menu of selected words.
+            word.rightClick()
+            // Fake mode takes the engine that stands in as chosen (020).
+            XCTAssertTrue(app.menuItems["Search with DuckDuckGo"].waitForExistence(timeout: 30), "the shell's search, named for the engine")
+            let webKits = NSPredicate(format: "identifier == 'WKMenuItemIdentifierSearchWeb'")
+            XCTAssertEqual(app.menuItems.matching(webKits).count, 1, "one item searches")
+            XCTAssertEqual(app.menuItems.matching(webKits).firstMatch.title, "Search with DuckDuckGo", "and it is the shell's")
+            XCTAssertFalse(app.menuItems["Search with Google"].exists)
+            // Put away, with nothing chosen: no tab opens, and nothing was asked of anybody.
+            app.typeKey(.escape, modifierFlags: [])
+            XCTAssertEqual(app.buttons.matching(identifier: "tab").count, 1)
+            XCTAssertEqual(site.requests.filter { $0 != "/words" && $0 != "/favicon.ico" }, [], "\(site.requests)")
         }
     #else
         func testWhatALinkLeadsToIsSavedFromItsMenuWithNobodyAsked() {

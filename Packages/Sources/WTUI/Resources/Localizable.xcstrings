@@ -1669,6 +1669,18 @@
         }
       }
     },
+    "selection.search_with": {
+      "comment": "In the menu of words that are selected in a page: search for those words, in a new tab. %@ is the search engine's own name, such as Ecosia.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search with %@"
+          }
+        }
+      }
+    },
     "suggestions.list": {
       "comment": "Accessibility label of the list of places offered under the address field as it is typed in.",
       "extractionState": "manual",
