@@ -16,13 +16,13 @@ final class Dialogs {
         let answer: (Bool, String) -> Void
     }
 
-    private let report: (UInt64, WTEngineEvent.OneOf_Kind) -> Void
+    private let report: @MainActor (UInt64, WTEngineEvent.OneOf_Kind) -> Void
     /// How many dialogs this engine has named. Each has the next number, and none is used
     /// twice: the ids are the shell's own (engine.proto, `DialogRequested`).
     private var named: UInt64 = 0
     private var waiting: [UInt64: Waiting] = [:]
 
-    init(report: @escaping (UInt64, WTEngineEvent.OneOf_Kind) -> Void) {
+    init(report: @escaping @MainActor (UInt64, WTEngineEvent.OneOf_Kind) -> Void) {
         self.report = report
     }
 

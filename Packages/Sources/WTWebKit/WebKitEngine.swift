@@ -37,9 +37,7 @@ public final class WebKitEngine: HostServices {
     public let downloadsFolder: URL
 
     /// Downloads: what WebKit is fetching for a page, and what waits for the core's word.
-    private(set) lazy var downloads = Downloads(folder: downloadsFolder) { [weak self] webView, kind in
-        self?.report(webView, kind)
-    }
+    private(set) lazy var downloads = Downloads(folder: downloadsFolder, report: reporting)
 
     /// Whether a page is let have what the core grants it (014). Never, unless the engine is
     /// made otherwise: only the app itself, started for real, may bring up the system's own
@@ -47,13 +45,17 @@ public final class WebKitEngine: HostServices {
     public let deviceAccess: DeviceAccess
 
     /// What pages ask to use of the device's, while the core has not said.
-    private(set) lazy var permissions = Permissions(access: deviceAccess) { [weak self] webView, kind in
-        self?.report(webView, kind)
-    }
+    private(set) lazy var permissions = Permissions(access: deviceAccess, report: reporting)
 
     /// What pages say or ask (016), while the core has not said how each is answered.
-    private(set) lazy var dialogs = Dialogs { [weak self] webView, kind in
-        self?.report(webView, kind)
+    private(set) lazy var dialogs = Dialogs(report: reporting)
+
+    /// The servers that asked who is there (017), while the core has not said how each is answered.
+    private(set) lazy var signIns = SignIns(report: reporting)
+
+    /// Where each of those sends what it has to say of a web view: to the core.
+    private var reporting: @MainActor (UInt64, WTEngineEvent.OneOf_Kind) -> Void {
+        { [weak self] in self?.report($0, $1) }
     }
 
     public init(downloads folder: URL? = nil, deviceAccess: DeviceAccess = .never) {
@@ -121,6 +123,7 @@ public final class WebKitEngine: HostServices {
             // What its page was asking goes with it: refused, while WebKit can be told.
             permissions.drop(webViewID: destroy.webViewID)
             dialogs.drop(webViewID: destroy.webViewID)
+            signIns.drop(webViewID: destroy.webViewID)
             if let page = pages.removeValue(forKey: destroy.webViewID) {
                 page.close()
                 if page.isPrivate, !pages.values.contains(where: { $0.isPrivate && $0.loginSet == page.loginSet }) {
@@ -158,9 +161,10 @@ public final class WebKitEngine: HostServices {
             // no longer waits.
             dialogs.answer(answer.requestID, accepted: answer.accepted, text: answer.text)
             return .ack(WTAck())
-        case .signInAnswer:
-            // The answer to a server that asked who is there (017). This adapter reports
-            // no server asking yet, so there is none to answer: as for one it no longer has.
+        case let .signInAnswer(answer):
+            // The core's word on a server that asked who is there (017). Done, also for one
+            // that no longer waits.
+            signIns.answer(answer.requestID, accepted: answer.accepted, name: answer.name, password: answer.password)
             return .ack(WTAck())
         case let .permissionAnswer(answer):
             // The core's word on what a page asked to use (014). Done, also for a request
@@ -350,7 +354,7 @@ final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
     private(set) weak var engine: WebKitEngine?
     private var observations: [NSKeyValueObservation] = []
     /// A main-frame load has started and not yet committed or failed.
-    private var provisional = false
+    private(set) var provisional = false
     /// The address last reported as the page on screen, by a commit or an address change.
     private var reportedURL: URL?
     /// A navigation was refused on the core's verdict while a load had started and not yet

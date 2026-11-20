@@ -29,13 +29,13 @@ final class Permissions {
     }
 
     private let access: DeviceAccess
-    private let report: (UInt64, WTEngineEvent.OneOf_Kind) -> Void
+    private let report: @MainActor (UInt64, WTEngineEvent.OneOf_Kind) -> Void
     /// How many requests this engine has named. Each has the next number, and none is used
     /// twice: the ids are the shell's own (engine.proto, `PermissionRequested`).
     private var named: UInt64 = 0
     private var waiting: [UInt64: Waiting] = [:]
 
-    init(access: DeviceAccess, report: @escaping (UInt64, WTEngineEvent.OneOf_Kind) -> Void) {
+    init(access: DeviceAccess, report: @escaping @MainActor (UInt64, WTEngineEvent.OneOf_Kind) -> Void) {
         self.access = access
         self.report = report
     }
