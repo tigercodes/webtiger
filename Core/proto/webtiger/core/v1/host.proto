@@ -39,6 +39,8 @@ message HostRequest {
     PermissionAnswer permission_answer = 11;
     // Since 1.12
     DialogAnswer dialog_answer = 12;
+    // Since 1.13
+    SignInAnswer sign_in_answer = 13;
   }
 }
 
@@ -176,4 +178,17 @@ message DialogAnswer {
   uint64 request_id = 1;
   bool accepted = 2;
   string text = 3 [(wt.redact) = true];
+}
+
+// The answer to a server that asked who is there (017). `accepted`: the
+// engine answers it with `name` and `password`, and may keep them for that
+// server until the app quits, in the web view's login set and no other. Not
+// accepted: the engine gives the server no answer, and shows what it sent
+// with its refusal. Answered with Ack, also for a request the shell no
+// longer has.
+message SignInAnswer {
+  uint64 request_id = 1;
+  bool accepted = 2;
+  string name = 3 [(wt.redact) = true];
+  string password = 4 [(wt.redact) = true];
 }

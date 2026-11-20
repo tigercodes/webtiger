@@ -158,6 +158,10 @@ public final class WebKitEngine: HostServices {
             // no longer waits.
             dialogs.answer(answer.requestID, accepted: answer.accepted, text: answer.text)
             return .ack(WTAck())
+        case .signInAnswer:
+            // The answer to a server that asked who is there (017). This adapter reports
+            // no server asking yet, so there is none to answer: as for one it no longer has.
+            return .ack(WTAck())
         case let .permissionAnswer(answer):
             // The core's word on what a page asked to use (014). Done, also for a request
             // that no longer waits: its page went away.

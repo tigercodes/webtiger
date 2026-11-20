@@ -145,6 +145,15 @@ public nonisolated struct WTHostRequest: Sendable {
     set {kind = .dialogAnswer(newValue)}
   }
 
+  /// Since 1.13
+  public var signInAnswer: WTSignInAnswer {
+    get {
+      if case .signInAnswer(let v)? = kind {return v}
+      return WTSignInAnswer()
+    }
+    set {kind = .signInAnswer(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -166,6 +175,8 @@ public nonisolated struct WTHostRequest: Sendable {
     case permissionAnswer(WTPermissionAnswer)
     /// Since 1.12
     case dialogAnswer(WTDialogAnswer)
+    /// Since 1.13
+    case signInAnswer(WTSignInAnswer)
 
   }
 
@@ -474,13 +485,37 @@ public nonisolated struct WTDialogAnswer: Sendable {
   public init() {}
 }
 
+/// The answer to a server that asked who is there (017). `accepted`: the
+/// engine answers it with `name` and `password`, and may keep them for that
+/// server until the app quits, in the web view's login set and no other. Not
+/// accepted: the engine gives the server no answer, and shows what it sent
+/// with its refusal. Answered with Ack, also for a request the shell no
+/// longer has.
+public nonisolated struct WTSignInAnswer: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var requestID: UInt64 = 0
+
+  public var accepted: Bool = false
+
+  public var name: String = String()
+
+  public var password: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
 
 nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".HostRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{3}web_view_create\0\u{3}web_view_load\0\u{3}web_view_command\0\u{3}web_view_destroy\0\u{3}open_outside\0\u{3}web_view_find\0\u{3}web_view_set_zoom\0\u{3}download_start\0\u{3}download_cancel\0\u{3}permission_answer\0\u{3}dialog_answer\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{3}web_view_create\0\u{3}web_view_load\0\u{3}web_view_command\0\u{3}web_view_destroy\0\u{3}open_outside\0\u{3}web_view_find\0\u{3}web_view_set_zoom\0\u{3}download_start\0\u{3}download_cancel\0\u{3}permission_answer\0\u{3}dialog_answer\0\u{3}sign_in_answer\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -644,6 +679,19 @@ nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
           self.kind = .dialogAnswer(v)
         }
       }()
+      case 13: try {
+        var v: WTSignInAnswer?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .signInAnswer(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .signInAnswer(v)
+        }
+      }()
       default: break
       }
     }
@@ -702,6 +750,10 @@ nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
     case .dialogAnswer?: try {
       guard case .dialogAnswer(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
+    }()
+    case .signInAnswer?: try {
+      guard case .signInAnswer(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
     }()
     case nil: break
     }
@@ -1278,6 +1330,51 @@ nonisolated extension WTDialogAnswer: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if lhs.requestID != rhs.requestID {return false}
     if lhs.accepted != rhs.accepted {return false}
     if lhs.text != rhs.text {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTSignInAnswer: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SignInAnswer"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}request_id\0\u{1}accepted\0\u{1}name\0\u{1}password\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.requestID) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.accepted) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.password) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.requestID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.requestID, fieldNumber: 1)
+    }
+    if self.accepted != false {
+      try visitor.visitSingularBoolField(value: self.accepted, fieldNumber: 2)
+    }
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 3)
+    }
+    if !self.password.isEmpty {
+      try visitor.visitSingularStringField(value: self.password, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTSignInAnswer, rhs: WTSignInAnswer) -> Bool {
+    if lhs.requestID != rhs.requestID {return false}
+    if lhs.accepted != rhs.accepted {return false}
+    if lhs.name != rhs.name {return false}
+    if lhs.password != rhs.password {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

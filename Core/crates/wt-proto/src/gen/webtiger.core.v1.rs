@@ -648,7 +648,7 @@ pub struct PromptView {
     /// The core's own, never used twice. What the answer names it by.
     #[prost(uint64, tag = "1")]
     pub prompt_id: u64,
-    #[prost(oneof = "prompt_view::Kind", tags = "2, 3, 4")]
+    #[prost(oneof = "prompt_view::Kind", tags = "2, 3, 4, 5")]
     pub kind: ::core::option::Option<prompt_view::Kind>,
 }
 /// Nested message and enum types in `PromptView`.
@@ -663,7 +663,26 @@ pub mod prompt_view {
         /// Since 1.12
         #[prost(message, tag = "4")]
         Dialog(super::DialogPrompt),
+        /// Since 1.13
+        #[prost(message, tag = "5")]
+        SignIn(super::SignInPrompt),
     }
+}
+/// A server asks for a name and a password before it answers (017). Nothing
+/// in it is the server's own words.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SignInPrompt {
+    /// The server that asks, as an address field shows a site. It is who gets
+    /// what is typed.
+    #[prost(string, tag = "1")]
+    pub site: ::prost::alloc::string::String,
+    /// What is typed reaches the server unread: https, or this device itself.
+    /// When it is not so, a shell says that it can be read on the way.
+    #[prost(bool, tag = "2")]
+    pub confidential: bool,
+    /// The server refused what was sent before.
+    #[prost(bool, tag = "3")]
+    pub again: bool,
 }
 /// A page says something, or asks (016). The words are the page's, and a
 /// shell shows them as the page's: under `site`, which is the core's.
@@ -728,6 +747,11 @@ pub struct PermissionPrompt {
 /// not allowing is Cancel. With `silence`, where the prompt says it may be
 /// silenced: this dialog is dismissed, and so is every other of the page's,
 /// now and later, until another page has loaded.
+///
+/// For a SignInPrompt (since 1.13): `allow` answers the server with `text` as
+/// the name and `secret` as the password; not allowing gives it no answer.
+/// Either way every other question of the same server that waits has the
+/// same answer.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct AnswerPrompt {
     #[prost(uint64, tag = "1")]
@@ -741,6 +765,9 @@ pub struct AnswerPrompt {
     pub text: ::prost::alloc::string::String,
     #[prost(bool, tag = "5")]
     pub silence: bool,
+    /// Since 1.13
+    #[prost(string, tag = "6")]
+    pub secret: ::prost::alloc::string::String,
 }
 /// Asks what the sites of a window's login set were allowed to use. Answered
 /// with PermissionsPage, or "window.unknown".
@@ -1014,7 +1041,7 @@ pub struct EngineEvent {
     pub web_view_id: u64,
     #[prost(
         oneof = "engine_event::Kind",
-        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21"
+        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22"
     )]
     pub kind: ::core::option::Option<engine_event::Kind>,
 }
@@ -1068,6 +1095,9 @@ pub mod engine_event {
         /// Since 1.12
         #[prost(message, tag = "21")]
         DialogRequested(super::DialogRequested),
+        /// Since 1.13
+        #[prost(message, tag = "22")]
+        SignInRequested(super::SignInRequested),
     }
 }
 /// A load began. The page it asks for does not own the web view yet.
@@ -1297,11 +1327,43 @@ pub struct DialogRequested {
     #[prost(string, tag = "5")]
     pub default_text: ::prost::alloc::string::String,
 }
+/// A server asks who is there before it answers (017): HTTP authentication
+/// that a name and a password answer. The load waits: the shell answers the
+/// engine only when the core has said how (SignInAnswer, host.proto), and
+/// shows nothing of its own.
+///
+/// `request_id` is the shell's own name for it, never used twice. A proxy's
+/// question, and one that a name and a password do not answer (a
+/// certificate), are not reported: they are the engine's, as before.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SignInRequested {
+    #[prost(uint64, tag = "1")]
+    pub request_id: u64,
+    /// The server that asks: its host, as the engine names it.
+    #[prost(string, tag = "2")]
+    pub host: ::prost::alloc::string::String,
+    /// The server's origin, where the engine names it; empty where it names
+    /// the host alone.
+    #[prost(string, tag = "3")]
+    pub origin: ::prost::alloc::string::String,
+    /// The server's own name for what it protects. Questions are told apart
+    /// by it; it is never shown.
+    #[prost(string, tag = "4")]
+    pub realm: ::prost::alloc::string::String,
+    /// Where the web view's load was heading when the server asked, redirects
+    /// followed; empty when no load was in flight. The core asks the person
+    /// only about a server the tab is going to, or its page's own.
+    #[prost(string, tag = "5")]
+    pub heading: ::prost::alloc::string::String,
+    /// The server refused an answer to this already.
+    #[prost(bool, tag = "6")]
+    pub again: bool,
+}
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct HostRequest {
     #[prost(
         oneof = "host_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13"
     )]
     pub kind: ::core::option::Option<host_request::Kind>,
 }
@@ -1339,6 +1401,9 @@ pub mod host_request {
         /// Since 1.12
         #[prost(message, tag = "12")]
         DialogAnswer(super::DialogAnswer),
+        /// Since 1.13
+        #[prost(message, tag = "13")]
+        SignInAnswer(super::SignInAnswer),
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -1509,6 +1574,23 @@ pub struct DialogAnswer {
     pub accepted: bool,
     #[prost(string, tag = "3")]
     pub text: ::prost::alloc::string::String,
+}
+/// The answer to a server that asked who is there (017). `accepted`: the
+/// engine answers it with `name` and `password`, and may keep them for that
+/// server until the app quits, in the web view's login set and no other. Not
+/// accepted: the engine gives the server no answer, and shows what it sent
+/// with its refusal. Answered with Ack, also for a request the shell no
+/// longer has.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SignInAnswer {
+    #[prost(uint64, tag = "1")]
+    pub request_id: u64,
+    #[prost(bool, tag = "2")]
+    pub accepted: bool,
+    #[prost(string, tag = "3")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub password: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Envelope {

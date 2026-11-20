@@ -10,7 +10,7 @@ use wt_proto::v1::{
     FindResult, HistoryChanged, HostPong, NavigationCommand, NavigationCommitted, NavigationFailed,
     NavigationFinished, NavigationStarted, NewWindowRequested, OutsideLinkRequested,
     PermissionKind, PermissionRequested, PermissionWithdrawn, ProgressChanged, RendererGone,
-    TitleChanged, engine_event, host_request, host_response,
+    SignInRequested, TitleChanged, engine_event, host_request, host_response,
 };
 
 /// A page of the scripted web.
@@ -75,6 +75,10 @@ pub struct FakeEngine {
     /// asked (016), in order: its name for the dialog, whether it was
     /// accepted, and the text.
     pub dialog_answers: Vec<(u64, bool, String)>,
+    /// How this shell was told to answer the servers that asked who is
+    /// there (017), in order: its name for the question, and the name and
+    /// password, or `None` for no answer.
+    pub sign_in_answers: Vec<(u64, Option<(String, String)>)>,
 }
 
 impl FakeEngine {
@@ -93,6 +97,7 @@ impl FakeEngine {
             downloads_not_started: Vec::new(),
             permission_answers: Vec::new(),
             dialog_answers: Vec::new(),
+            sign_in_answers: Vec::new(),
         }
     }
 
@@ -303,6 +308,11 @@ impl FakeEngine {
                     .push((answer.request_id, answer.accepted, answer.text));
                 (ack, Vec::new())
             }
+            Kind::SignInAnswer(answer) => {
+                let typed = answer.accepted.then_some((answer.name, answer.password));
+                self.sign_in_answers.push((answer.request_id, typed));
+                (ack, Vec::new())
+            }
             Kind::PermissionAnswer(answer) => {
                 self.permission_answers
                     .push((answer.request_id, answer.granted));
@@ -458,6 +468,13 @@ impl FakeEngine {
                 default_text: default_text.to_owned(),
             }),
         )
+    }
+
+    /// A server asks who is there in a web view (017), as the shell says
+    /// it.
+    #[must_use]
+    pub fn sign_in_requested(id: u64, asked: SignInRequested) -> EngineEvent {
+        event(id, engine_event::Kind::SignInRequested(asked))
     }
 
     /// A web view's page no longer waits for an answer to a request.

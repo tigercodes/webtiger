@@ -9,8 +9,8 @@ use wt_core::{
 };
 use wt_proto::v1::{
     AddressView, DialogKind, DialogPrompt, DownloadPrompt, EngineKind, FindView, LoadState,
-    PermissionKind, PermissionPrompt, PromptView, TabSummary, TabView, WindowSnapshot, ZoomView,
-    address_view, engine_event, prompt_view,
+    PermissionKind, PermissionPrompt, PromptView, SignInPrompt, TabSummary, TabView,
+    WindowSnapshot, ZoomView, address_view, engine_event, prompt_view,
 };
 use wt_store::{SavedTab, Space};
 
@@ -62,6 +62,16 @@ pub(crate) enum AskedFor {
         /// The page said something before: it can be stopped.
         may_silence: bool,
     },
+    /// A server asks who is there (017).
+    SignIn {
+        /// The server's own name for what it protects: its questions are
+        /// told apart by it, and it is never shown.
+        realm: String,
+        /// What is typed reaches the server unread.
+        confidential: bool,
+        /// The server refused an answer already.
+        again: bool,
+    },
 }
 
 /// The kind of thing that waited for the person.
@@ -70,6 +80,7 @@ pub(crate) enum Waited {
     Permission,
     Download,
     Dialog,
+    SignIn,
 }
 
 impl Asking {
@@ -95,6 +106,15 @@ impl Asking {
                 default_text: default_text.clone(),
                 may_silence: *may_silence,
             }),
+            AskedFor::SignIn {
+                confidential,
+                again,
+                ..
+            } => prompt_view::Kind::SignIn(SignInPrompt {
+                site: self.site.clone(),
+                confidential: *confidential,
+                again: *again,
+            }),
         };
         PromptView {
             prompt_id: self.prompt,
@@ -108,6 +128,15 @@ impl Asking {
             AskedFor::Permission => Waited::Permission,
             AskedFor::Download { .. } => Waited::Download,
             AskedFor::Dialog { .. } => Waited::Dialog,
+            AskedFor::SignIn { .. } => Waited::SignIn,
+        }
+    }
+
+    /// When this is a server asking who is there: its realm.
+    pub(crate) fn sign_in(&self) -> Option<&str> {
+        match &self.what {
+            AskedFor::SignIn { realm, .. } => Some(realm),
+            _ => None,
         }
     }
 
@@ -445,7 +474,8 @@ impl Tab {
             | Kind::DownloadFailed(_)
             | Kind::PermissionRequested(_)
             | Kind::PermissionWithdrawn(_)
-            | Kind::DialogRequested(_) => {}
+            | Kind::DialogRequested(_)
+            | Kind::SignInRequested(_) => {}
             // What the engine found is for the text now looked for (010).
             // With no find, it is a late word about one that has stopped.
             Kind::FindResult(result) => {
@@ -918,6 +948,96 @@ impl State {
             silenced: tab.silenced,
             spoke_before: tab.spoke,
         })
+    }
+
+    /// The server that asks who is there in a web view (017 §3), when it is
+    /// the tab's own: the one its load is heading for, or its page's. By
+    /// its origin where the engine names one, and by its host where it
+    /// names no more: the server is then taken to be at the scheme and port
+    /// of the address that matched.
+    pub(crate) fn server(
+        &self,
+        web_view: WebViewId,
+        host: &str,
+        origin: &str,
+        heading: &str,
+    ) -> Option<Asker> {
+        let tab = self.tab_of(web_view)?;
+        let heading = Address::parse(heading).ok();
+        let named = Address::parse(origin)
+            .ok()
+            .and_then(|server| server.origin());
+        // No origin named: the host alone. (An origin that cannot be read is
+        // no server at all, whatever host is beside it.)
+        let by_host = origin.is_empty();
+        let origin = [heading.as_ref(), tab.committed.as_ref()]
+            .into_iter()
+            .flatten()
+            .find_map(|own| {
+                let theirs = own.origin()?;
+                let same = match &named {
+                    Some(named) => *named == theirs,
+                    None => by_host && own.host().is_some_and(|own| own.eq_ignore_ascii_case(host)),
+                };
+                same.then_some(theirs)
+            })?;
+        let site = Address::parse(&origin).map_or_else(|_| origin.clone(), |named| named.display());
+        Some(Asker {
+            login_set: tab.login_set,
+            origin,
+            site,
+        })
+    }
+
+    /// A server's question has its answer: every other of the same server
+    /// and realm that waits in the login set is taken away, in whatever
+    /// tab (017 §3). The shell's names for them.
+    pub(crate) fn settle_signed_in(
+        &mut self,
+        login_set: LoginSetId,
+        origin: &str,
+        realm: &str,
+    ) -> Vec<Settled> {
+        let mut settled = Vec::new();
+        for tab in self.tabs.values_mut() {
+            if tab.login_set != login_set {
+                continue;
+            }
+            let before = tab.prompts.len();
+            tab.prompts.retain(|asking| {
+                let same = asking.origin == origin && asking.sign_in() == Some(realm);
+                if same {
+                    settled.push(asking.settled());
+                }
+                !same
+            });
+            if tab.prompts.len() != before {
+                self.dirty.insert(tab.window);
+            }
+        }
+        settled
+    }
+
+    /// A web view's load is over, or another began: the servers that asked
+    /// who is there in it wait no more. The shell's names for their
+    /// questions.
+    pub(crate) fn end_sign_ins(&mut self, web_view: WebViewId) -> Vec<Settled> {
+        let Some(tab) = self.tab_of_mut(web_view) else {
+            return Vec::new();
+        };
+        let mut ended = Vec::new();
+        tab.prompts.retain(|asking| {
+            let asked = asking.waited() == Waited::SignIn;
+            if asked {
+                ended.push(asking.settled());
+            }
+            !asked
+        });
+        if !ended.is_empty() {
+            let window = tab.window;
+            self.dirty.insert(window);
+        }
+        ended
     }
 
     /// A web view's page has now said something: its next can be stopped.

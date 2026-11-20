@@ -203,6 +203,19 @@ impl App {
         if self.dialog_event(web_view, &kind) {
             return;
         }
+        // And a server that asks who is there (017).
+        if self.sign_in_event(web_view, &kind) {
+            return;
+        }
+        // A server's question is its load's: when another load begins, or
+        // one fails or is stopped, no server waits for an answer any more.
+        // (A page that commits ends it with everything else, below.)
+        if matches!(
+            kind,
+            engine_event::Kind::NavigationStarted(_) | engine_event::Kind::NavigationFailed(_)
+        ) {
+            self.sign_ins_ended(web_view);
+        }
         // History (008): a page that commits, or changes its own address, is
         // a visit; the page before it is left, and takes the title it ended
         // with. A title that arrives is the visit's when it is its first.

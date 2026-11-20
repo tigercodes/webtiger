@@ -209,6 +209,7 @@ class AdapterTestCase: XCTestCase {
             case .permissionRequested: "permission"
             case .permissionWithdrawn: "permission withdrawn"
             case let .dialogRequested(dialog): "says(\(dialog.kind))"
+            case let .signInRequested(asked): asked.again ? "sign-in(again)" : "sign-in"
             // At the engine's own pace, like a page's progress.
             case .progressChanged, .downloadProgress: nil
             }

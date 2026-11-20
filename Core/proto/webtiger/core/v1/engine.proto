@@ -53,6 +53,8 @@ message EngineEvent {
     PermissionWithdrawn permission_withdrawn = 20;
     // Since 1.12
     DialogRequested dialog_requested = 21;
+    // Since 1.13
+    SignInRequested sign_in_requested = 22;
   }
 }
 
@@ -243,4 +245,30 @@ message DialogRequested {
   string message = 4 [(wt.redact) = true];
   // With DIALOG_KIND_PROMPT: the text the page offers.
   string default_text = 5 [(wt.redact) = true];
+}
+
+// A server asks who is there before it answers (017): HTTP authentication
+// that a name and a password answer. The load waits: the shell answers the
+// engine only when the core has said how (SignInAnswer, host.proto), and
+// shows nothing of its own.
+//
+// `request_id` is the shell's own name for it, never used twice. A proxy's
+// question, and one that a name and a password do not answer (a
+// certificate), are not reported: they are the engine's, as before.
+message SignInRequested {
+  uint64 request_id = 1;
+  // The server that asks: its host, as the engine names it.
+  string host = 2 [(wt.redact) = true];
+  // The server's origin, where the engine names it; empty where it names
+  // the host alone.
+  string origin = 3 [(wt.redact) = true];
+  // The server's own name for what it protects. Questions are told apart
+  // by it; it is never shown.
+  string realm = 4 [(wt.redact) = true];
+  // Where the web view's load was heading when the server asked, redirects
+  // followed; empty when no load was in flight. The core asks the person
+  // only about a server the tab is going to, or its page's own.
+  string heading = 5 [(wt.redact) = true];
+  // The server refused an answer to this already.
+  bool again = 6;
 }

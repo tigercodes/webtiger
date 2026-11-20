@@ -988,6 +988,15 @@ public nonisolated struct WTPromptView: Sendable {
     set {kind = .dialog(newValue)}
   }
 
+  /// Since 1.13
+  public var signIn: WTSignInPrompt {
+    get {
+      if case .signIn(let v)? = kind {return v}
+      return WTSignInPrompt()
+    }
+    set {kind = .signIn(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -996,8 +1005,33 @@ public nonisolated struct WTPromptView: Sendable {
     case download(WTDownloadPrompt)
     /// Since 1.12
     case dialog(WTDialogPrompt)
+    /// Since 1.13
+    case signIn(WTSignInPrompt)
 
   }
+
+  public init() {}
+}
+
+/// A server asks for a name and a password before it answers (017). Nothing
+/// in it is the server's own words.
+public nonisolated struct WTSignInPrompt: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// The server that asks, as an address field shows a site. It is who gets
+  /// what is typed.
+  public var site: String = String()
+
+  /// What is typed reaches the server unread: https, or this device itself.
+  /// When it is not so, a shell says that it can be read on the way.
+  public var confidential: Bool = false
+
+  /// The server refused what was sent before.
+  public var again: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 }
@@ -1086,6 +1120,11 @@ public nonisolated struct WTPermissionPrompt: Sendable {
 /// not allowing is Cancel. With `silence`, where the prompt says it may be
 /// silenced: this dialog is dismissed, and so is every other of the page's,
 /// now and later, until another page has loaded.
+///
+/// For a SignInPrompt (since 1.13): `allow` answers the server with `text` as
+/// the name and `secret` as the password; not allowing gives it no answer.
+/// Either way every other question of the same server that waits has the
+/// same answer.
 public nonisolated struct WTAnswerPrompt: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -1101,6 +1140,9 @@ public nonisolated struct WTAnswerPrompt: Sendable {
   public var text: String = String()
 
   public var silence: Bool = false
+
+  /// Since 1.13
+  public var secret: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2535,7 +2577,7 @@ nonisolated extension WTForgetDownloads: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension WTPromptView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".PromptView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}prompt_id\0\u{1}permission\0\u{1}download\0\u{1}dialog\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}prompt_id\0\u{1}permission\0\u{1}download\0\u{1}dialog\0\u{3}sign_in\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2583,6 +2625,19 @@ nonisolated extension WTPromptView: SwiftProtobuf.Message, SwiftProtobuf._Messag
           self.kind = .dialog(v)
         }
       }()
+      case 5: try {
+        var v: WTSignInPrompt?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .signIn(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .signIn(v)
+        }
+      }()
       default: break
       }
     }
@@ -2609,6 +2664,10 @@ nonisolated extension WTPromptView: SwiftProtobuf.Message, SwiftProtobuf._Messag
       guard case .dialog(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
     }()
+    case .signIn?: try {
+      guard case .signIn(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
+    }()
     case nil: break
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -2617,6 +2676,46 @@ nonisolated extension WTPromptView: SwiftProtobuf.Message, SwiftProtobuf._Messag
   public static func ==(lhs: WTPromptView, rhs: WTPromptView) -> Bool {
     if lhs.promptID != rhs.promptID {return false}
     if lhs.kind != rhs.kind {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTSignInPrompt: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SignInPrompt"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}site\0\u{1}confidential\0\u{1}again\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.site) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.confidential) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.again) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.site.isEmpty {
+      try visitor.visitSingularStringField(value: self.site, fieldNumber: 1)
+    }
+    if self.confidential != false {
+      try visitor.visitSingularBoolField(value: self.confidential, fieldNumber: 2)
+    }
+    if self.again != false {
+      try visitor.visitSingularBoolField(value: self.again, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTSignInPrompt, rhs: WTSignInPrompt) -> Bool {
+    if lhs.site != rhs.site {return false}
+    if lhs.confidential != rhs.confidential {return false}
+    if lhs.again != rhs.again {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2744,7 +2843,7 @@ nonisolated extension WTPermissionPrompt: SwiftProtobuf.Message, SwiftProtobuf._
 
 nonisolated extension WTAnswerPrompt: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".AnswerPrompt"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}prompt_id\0\u{1}allow\0\u{1}text\0\u{1}silence\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}prompt_id\0\u{1}allow\0\u{1}text\0\u{1}silence\0\u{1}secret\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2757,6 +2856,7 @@ nonisolated extension WTAnswerPrompt: SwiftProtobuf.Message, SwiftProtobuf._Mess
       case 3: try { try decoder.decodeSingularBoolField(value: &self.allow) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.text) }()
       case 5: try { try decoder.decodeSingularBoolField(value: &self.silence) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.secret) }()
       default: break
       }
     }
@@ -2778,6 +2878,9 @@ nonisolated extension WTAnswerPrompt: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if self.silence != false {
       try visitor.visitSingularBoolField(value: self.silence, fieldNumber: 5)
     }
+    if !self.secret.isEmpty {
+      try visitor.visitSingularStringField(value: self.secret, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2787,6 +2890,7 @@ nonisolated extension WTAnswerPrompt: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if lhs.allow != rhs.allow {return false}
     if lhs.text != rhs.text {return false}
     if lhs.silence != rhs.silence {return false}
+    if lhs.secret != rhs.secret {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

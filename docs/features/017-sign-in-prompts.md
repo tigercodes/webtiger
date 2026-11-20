@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Designed. Nothing is built yet: until it is, WebKit and the System WebView give a server that asks no answer, and show what it sent with its refusal |
+| **Status** | In progress: the contract (1.13) and the core's rule (§3) are built and tested. No adapter reports a server asking yet, and no shell draws it (§9): until then WebKit and the System WebView give a server that asks no answer, and show what it sent with its refusal |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "sign-in prompts". A server may ask for a name and a password before it answers at all (HTTP authentication): routers, printers, staging sites and many an intranet do |
 | **Contract** | 1.13: `SignInRequested`; the host request `SignInAnswer`; `SignInPrompt`, a fourth kind of `PromptView`; one field of `AnswerPrompt` |
 | **Builds on** | [014](014-permissions.md): a tab's prompt, its queue, and the rule that it is not answered in the moment it appears. [016](016-page-dialogs.md): a prompt with a field |
@@ -43,7 +43,9 @@ Any other server is given no answer, with nobody asked: a picture or a frame fro
 
 A wrong answer makes the server ask again: the engine reports it as a new question, and says it is not the first. There is no limit to how often; "Cancel" ends it.
 
-**It ends with its load.** A question that waits is over when its web view starts another load, when a load of its fails or is stopped, when a page commits, when its renderer is lost, and when its tab closes: the engine is told to give no answer (it usually has none to give by then).
+**It ends with its load.** A question that waits is over when its web view starts another load, when a load of its fails or is stopped, when a page commits, and when its renderer is lost: the engine is told to give no answer (it usually has none to give by then). When its tab closes, the web view is destroyed, and the adapter gives the engine its answer for whatever waited there.
+
+What a page said (016) and what it asked to use (014) are the page's, and outlive a load that only begins; a server's question does not.
 
 The rest is 014's, unchanged: one prompt at a time, three behind it; not answered in its first half second, nor from a tab behind.
 
@@ -119,7 +121,7 @@ What is typed is the shell's only until it is sent: it is in no snapshot, no log
 
 | Where | What |
 |---|---|
-| Core (through `FakeShell`) | The rule of §3, each part of it, and each checked by breaking it |
+| Core (`wt-app/tests/sign_in.rs`, 16 through `FakeShell`) | The server a load is heading for asks in the tab, under its own name and not the page's, and the load waits. The name and the password are the server's answer; Cancel is none, whatever was typed; a password with no name. The page's own server may ask. Any other is given no answer with nobody asked: another server while the page sits there or while a load heads elsewhere, the page's host at another port or not over `https`, an origin that cannot be read, a server nobody names, a web view that is no tab's. Named by its host alone, a server is the tab's own by its host, however the host is written, and is taken to be where the load is going before where the page is. Where a redirect took the load is who may ask and who is named. A server not over `https` is named with its scheme and said to be read on the way; this device itself is not. A server that refused asks again and the prompt says so. Not answered in the moment it appears. Every question of the same server and realm that waits has the same answer, in whatever tab, and no other server's or realm's has. A question is over when another load begins, when one is stopped or fails, when a page arrives, and when the renderer is lost; what a page said outlives a load that only begins. Said twice, asked once; four wait and a fifth is given no answer. A server, a page's dialog and a page's request that the shell gave one number are not taken for each other, and a yes to the camera is no answer to a server. A realm is told apart by its first two hundred characters. Twenty-three parts of the rule checked by breaking them; a twenty-fourth showed a condition that did nothing, which was removed |
 | The test site | A page that answers only to a name and a password, the same in all three of its servers |
 | Adapter suites (WebKit on the Mac and the iPhone simulator; System WebView on the emulator) | A load to that page is reported with who asks and where the load is heading, and waits; the right answer loads the page; a wrong one asks again and says so; no answer shows the server's refusal; a second load needs no second answer; **another login set is asked again** (isolation, as a security property); a web view destroyed while it waits |
 | The shells | Against a scripted core: the bar, its lines, its two fields and what each button sends. Pictures. The apps, with the real core and engines: an address that asks, the bar under the server's name, the answer typed, the page |
@@ -142,8 +144,8 @@ Written when built. Known now:
 
 ## 10. Done checklist
 
-- [ ] Contract 1.13 and its version in every place it is written.
-- [ ] The core: the rule of §3, through `FakeShell`.
+- [x] Contract 1.13 and its version in every place it is written.
+- [x] The core: the rule of §3. 16 tests through `FakeShell`.
 - [ ] The test site's page.
 - [ ] Android: the adapter, on the JVM and the device; the bar; pictures; a device test.
 - [ ] Apple: the adapter and its suite; the bar; pictures; a UI test.

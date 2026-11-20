@@ -396,7 +396,22 @@ message PromptView {
     DownloadPrompt download = 3;
     // Since 1.12
     DialogPrompt dialog = 4;
+    // Since 1.13
+    SignInPrompt sign_in = 5;
   }
+}
+
+// A server asks for a name and a password before it answers (017). Nothing
+// in it is the server's own words.
+message SignInPrompt {
+  // The server that asks, as an address field shows a site. It is who gets
+  // what is typed.
+  string site = 1 [(wt.redact) = true];
+  // What is typed reaches the server unread: https, or this device itself.
+  // When it is not so, a shell says that it can be read on the way.
+  bool confidential = 2;
+  // The server refused what was sent before.
+  bool again = 3;
 }
 
 // A page says something, or asks (016). The words are the page's, and a
@@ -453,6 +468,11 @@ message PermissionPrompt {
 // not allowing is Cancel. With `silence`, where the prompt says it may be
 // silenced: this dialog is dismissed, and so is every other of the page's,
 // now and later, until another page has loaded.
+//
+// For a SignInPrompt (since 1.13): `allow` answers the server with `text` as
+// the name and `secret` as the password; not allowing gives it no answer.
+// Either way every other question of the same server that waits has the
+// same answer.
 message AnswerPrompt {
   uint64 tab_id = 1;
   uint64 prompt_id = 2;
@@ -460,6 +480,8 @@ message AnswerPrompt {
   // Since 1.12
   string text = 4 [(wt.redact) = true];
   bool silence = 5;
+  // Since 1.13
+  string secret = 6 [(wt.redact) = true];
 }
 
 // Asks what the sites of a window's login set were allowed to use. Answered

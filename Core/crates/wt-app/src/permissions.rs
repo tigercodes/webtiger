@@ -154,6 +154,7 @@ impl App {
             Waited::Download if granted => self.start_waiting(settled.request),
             Waited::Download => self.drop_waiting(settled.request),
             Waited::Dialog => self.answer_dialog(settled.request, false, ""),
+            Waited::SignIn => self.answer_sign_in(settled.request, None),
         }
     }
 
@@ -228,6 +229,24 @@ impl App {
                 AppError::new("tab.unknown").field("tab_id")
             }
         })?;
+        // A server that asked who is there (017) has the name and the
+        // password, or no answer; and so has every other question of that
+        // server and realm that waits in the login set. Nothing of it is
+        // remembered here.
+        if let Some(realm) = asking.sign_in() {
+            let typed = answer
+                .allow
+                .then_some((answer.text.as_str(), answer.secret.as_str()));
+            self.answer_sign_in(asking.request, typed);
+            let others = self
+                .state
+                .borrow_mut()
+                .settle_signed_in(login_set, &asking.origin, realm);
+            for other in others {
+                self.answer_sign_in(other.request, typed);
+            }
+            return Ok(response::Kind::Ack(Ack {}));
+        }
         // What a page said or asked (016) is answered by itself: nothing
         // is allowed by it, and nothing remembered but that it spoke.
         if let Some(may_silence) = asking.dialog() {

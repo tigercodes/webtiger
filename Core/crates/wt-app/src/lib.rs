@@ -22,6 +22,7 @@ mod fence;
 mod host;
 mod model;
 mod permissions;
+mod signin;
 
 pub use app::{
     App, AppFuture, AppOptions, DEFAULT_SEARCH_TEMPLATE, HISTORY_PAGE, OUTSIDE_LINK_INTERVAL,

@@ -211,6 +211,15 @@ public nonisolated struct WTEngineEvent: Sendable {
     set {kind = .dialogRequested(newValue)}
   }
 
+  /// Since 1.13
+  public var signInRequested: WTSignInRequested {
+    get {
+      if case .signInRequested(let v)? = kind {return v}
+      return WTSignInRequested()
+    }
+    set {kind = .signInRequested(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -240,6 +249,8 @@ public nonisolated struct WTEngineEvent: Sendable {
     case permissionWithdrawn(WTPermissionWithdrawn)
     /// Since 1.12
     case dialogRequested(WTDialogRequested)
+    /// Since 1.13
+    case signInRequested(WTSignInRequested)
 
   }
 
@@ -616,13 +627,52 @@ public nonisolated struct WTDialogRequested: Sendable {
   public init() {}
 }
 
+/// A server asks who is there before it answers (017): HTTP authentication
+/// that a name and a password answer. The load waits: the shell answers the
+/// engine only when the core has said how (SignInAnswer, host.proto), and
+/// shows nothing of its own.
+///
+/// `request_id` is the shell's own name for it, never used twice. A proxy's
+/// question, and one that a name and a password do not answer (a
+/// certificate), are not reported: they are the engine's, as before.
+public nonisolated struct WTSignInRequested: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var requestID: UInt64 = 0
+
+  /// The server that asks: its host, as the engine names it.
+  public var host: String = String()
+
+  /// The server's origin, where the engine names it; empty where it names
+  /// the host alone.
+  public var origin: String = String()
+
+  /// The server's own name for what it protects. Questions are told apart
+  /// by it; it is never shown.
+  public var realm: String = String()
+
+  /// Where the web view's load was heading when the server asked, redirects
+  /// followed; empty when no load was in flight. The core asks the person
+  /// only about a server the tab is going to, or its page's own.
+  public var heading: String = String()
+
+  /// The server refused an answer to this already.
+  public var again: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
 
 nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EngineEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{3}navigation_started\0\u{3}navigation_committed\0\u{3}navigation_finished\0\u{3}navigation_failed\0\u{3}address_changed\0\u{3}title_changed\0\u{3}progress_changed\0\u{3}history_changed\0\u{3}renderer_gone\0\u{3}new_window_requested\0\u{3}close_requested\0\u{3}outside_link_requested\0\u{3}find_result\0\u{3}download_requested\0\u{3}download_progress\0\u{3}download_finished\0\u{3}download_failed\0\u{3}permission_requested\0\u{3}permission_withdrawn\0\u{3}dialog_requested\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{3}navigation_started\0\u{3}navigation_committed\0\u{3}navigation_finished\0\u{3}navigation_failed\0\u{3}address_changed\0\u{3}title_changed\0\u{3}progress_changed\0\u{3}history_changed\0\u{3}renderer_gone\0\u{3}new_window_requested\0\u{3}close_requested\0\u{3}outside_link_requested\0\u{3}find_result\0\u{3}download_requested\0\u{3}download_progress\0\u{3}download_finished\0\u{3}download_failed\0\u{3}permission_requested\0\u{3}permission_withdrawn\0\u{3}dialog_requested\0\u{3}sign_in_requested\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -891,6 +941,19 @@ nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
           self.kind = .dialogRequested(v)
         }
       }()
+      case 22: try {
+        var v: WTSignInRequested?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .signInRequested(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .signInRequested(v)
+        }
+      }()
       default: break
       }
     }
@@ -984,6 +1047,10 @@ nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
     case .dialogRequested?: try {
       guard case .dialogRequested(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 21)
+    }()
+    case .signInRequested?: try {
+      guard case .signInRequested(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 22)
     }()
     case nil: break
     }
@@ -1675,6 +1742,61 @@ nonisolated extension WTDialogRequested: SwiftProtobuf.Message, SwiftProtobuf._M
     if lhs.kind != rhs.kind {return false}
     if lhs.message != rhs.message {return false}
     if lhs.defaultText != rhs.defaultText {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTSignInRequested: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SignInRequested"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}request_id\0\u{1}host\0\u{1}origin\0\u{1}realm\0\u{1}heading\0\u{1}again\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.requestID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.host) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.origin) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.realm) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.heading) }()
+      case 6: try { try decoder.decodeSingularBoolField(value: &self.again) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.requestID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.requestID, fieldNumber: 1)
+    }
+    if !self.host.isEmpty {
+      try visitor.visitSingularStringField(value: self.host, fieldNumber: 2)
+    }
+    if !self.origin.isEmpty {
+      try visitor.visitSingularStringField(value: self.origin, fieldNumber: 3)
+    }
+    if !self.realm.isEmpty {
+      try visitor.visitSingularStringField(value: self.realm, fieldNumber: 4)
+    }
+    if !self.heading.isEmpty {
+      try visitor.visitSingularStringField(value: self.heading, fieldNumber: 5)
+    }
+    if self.again != false {
+      try visitor.visitSingularBoolField(value: self.again, fieldNumber: 6)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTSignInRequested, rhs: WTSignInRequested) -> Bool {
+    if lhs.requestID != rhs.requestID {return false}
+    if lhs.host != rhs.host {return false}
+    if lhs.origin != rhs.origin {return false}
+    if lhs.realm != rhs.realm {return false}
+    if lhs.heading != rhs.heading {return false}
+    if lhs.again != rhs.again {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
