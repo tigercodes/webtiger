@@ -109,6 +109,48 @@ fn a_load_that_fails_for_a_certificate_the_adapter_holds_may_be_gone_on_with() {
     });
 }
 
+/// The address field never lies: a load that failed left no page, and the
+/// mark beside the address it failed at says nothing of one. Beside a
+/// certificate that was just refused, "secure" would be the lie.
+#[test]
+fn the_mark_says_nothing_of_a_load_that_failed() {
+    run(async {
+        let mut shell = shell();
+        let (_, tab, subscription) = shell.open_window().await;
+
+        // A certificate that is not trusted: the address that failed is
+        // shown, as before, and nothing is said of how safe it is.
+        shell.submit(tab, ROUTER).await;
+        let view = front(&shell, subscription);
+        assert_eq!(view.load_state(), LoadState::Failed);
+        assert_eq!(view.address.as_ref().unwrap().url, ROUTER);
+        assert_eq!(mark(&shell, subscription), Security::Unspecified);
+
+        // Any failure: a site that is not there, over https and over http.
+        shell.submit(tab, "https://nowhere.example.com").await;
+        assert_eq!(front(&shell, subscription).error_code, "net.dns");
+        assert_eq!(mark(&shell, subscription), Security::Unspecified);
+        shell.submit(tab, "http://nowhere.example.com").await;
+        assert_eq!(front(&shell, subscription).error_code, "net.dns");
+        assert_eq!(mark(&shell, subscription), Security::Unspecified);
+
+        // A page that loads is marked as it always was.
+        shell.submit(tab, OTHER).await;
+        assert_eq!(mark(&shell, subscription), Security::Secure);
+
+        // Where a person went on past a certificate, a later failure there
+        // is still marked as not secure: that much is known of it.
+        shell.submit(tab, ROUTER).await;
+        go_on(&mut shell, tab).await;
+        assert_eq!(mark(&shell, subscription), Security::Insecure);
+        let web_view = front(&shell, subscription).web_view_id;
+        shell.report(failed(web_view, "net.connect", STATUS, false));
+        shell.settle().await;
+        assert_eq!(front(&shell, subscription).load_state(), LoadState::Failed);
+        assert_eq!(mark(&shell, subscription), Security::Insecure);
+    });
+}
+
 #[test]
 fn any_other_failure_is_as_it_was_and_going_on_is_refused() {
     run(async {

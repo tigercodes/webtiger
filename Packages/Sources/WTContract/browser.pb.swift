@@ -523,7 +523,9 @@ public nonisolated struct WTAddressView: Sendable {
   public nonisolated enum Security: SwiftProtobuf.Enum, Swift.CaseIterable {
     public typealias RawValue = Int
 
-    /// No page: an empty tab.
+    /// No page: an empty tab, or a load that failed. (Since 1.20 a failed
+    /// load says this whatever its address: the mark speaks of a page, and
+    /// none came.)
     case unspecified // = 0
 
     /// https.

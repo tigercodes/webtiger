@@ -172,7 +172,9 @@ message AddressView {
   Security security = 5;
 
   enum Security {
-    // No page: an empty tab.
+    // No page: an empty tab, or a load that failed. (Since 1.20 a failed
+    // load says this whatever its address: the mark speaks of a page, and
+    // none came.)
     SECURITY_UNSPECIFIED = 0;
     // https.
     SECURITY_SECURE = 1;

@@ -370,7 +370,9 @@ pub mod address_view {
     )]
     #[repr(i32)]
     pub enum Security {
-        /// No page: an empty tab.
+        /// No page: an empty tab, or a load that failed. (Since 1.20 a failed
+        /// load says this whatever its address: the mark speaks of a page, and
+        /// none came.)
         Unspecified = 0,
         /// https.
         Secure = 1,

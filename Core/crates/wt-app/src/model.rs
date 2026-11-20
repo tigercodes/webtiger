@@ -546,10 +546,17 @@ impl Tab {
 
     fn view(&self, id: TabId) -> TabView {
         let shown = self.shown();
+        let mut address = shown.map_or_else(AddressView::default, address_view);
+        // A load that failed left no page, and the mark beside the address
+        // speaks of a page: beside an address whose certificate was just
+        // refused, "secure" would be a lie (026 §3).
+        if self.load == Load::Failed {
+            address.security = address_view::Security::Unspecified as i32;
+        }
         TabView {
             tab_id: id.get(),
             web_view_id: self.web_view.map_or(0, WebViewId::get),
-            address: Some(shown.map_or_else(AddressView::default, address_view)),
+            address: Some(address),
             title: self.title.clone(),
             load_state: match self.load {
                 Load::Idle => LoadState::Idle,
