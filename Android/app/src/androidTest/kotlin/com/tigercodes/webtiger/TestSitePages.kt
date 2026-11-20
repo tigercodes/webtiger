@@ -229,6 +229,22 @@ internal object TestSitePages {
                 body = listOf(TestSitePiece.Text("who="), TestSitePiece.Cookie("who", or = "none")),
                 delayMilliseconds = 0,
             ),
+            TestSitePage(
+                path = "/asks",
+                status = "200 OK",
+                type = "text/html",
+                headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
+                body = listOf(TestSitePiece.Text("<!doctype html><title>Asks</title><h1>Asks</h1><p><button id=\"camera\" onclick=\"ask('camera')\">the camera</button></p>\n<p><button id=\"microphone\" onclick=\"ask('microphone')\">the microphone</button></p>\n<p><button id=\"both\" onclick=\"ask('both')\">the camera and the microphone</button></p>\n<p><button id=\"location\" onclick=\"ask('location')\">where the device is</button></p>\n<p id=\"said\">nothing asked</p>\n<script>\nfunction say(what) { document.getElementById('said').textContent = what; document.title = what; if (parent !== window) parent.postMessage(what, '*'); }\nfunction ask(what) {\n  say('asking ' + what);\n  if (what === 'location') {\n    navigator.geolocation.getCurrentPosition(function () { say('granted location'); }, function (failed) { say(failed.code === 1 ? 'refused location' : 'granted location, no place ' + failed.code); }, { timeout: 4000 });\n    return;\n  }\n  navigator.mediaDevices.getUserMedia({ video: what !== 'microphone', audio: what !== 'camera' }).then(function (stream) {\n    var tracks = stream.getTracks(); tracks.forEach(function (track) { track.stop(); });\n    say('granted ' + what + ' ' + tracks.length);\n  }, function (failed) { say('refused ' + what + ' ' + failed.name); });\n}\nvar now = '"), TestSitePiece.Query("now", or = "nothing"), TestSitePiece.Text("'; if (now !== 'nothing') ask(now);\n</script>")),
+                delayMilliseconds = 0,
+            ),
+            TestSitePage(
+                path = "/asks-in-a-frame",
+                status = "200 OK",
+                type = "text/html",
+                headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
+                body = listOf(TestSitePiece.Text("<!doctype html><title>Asks in a frame</title><h1>Asks in a frame</h1><iframe id=\"frame\" allow=\"camera; microphone; geolocation\" width=\"320\" height=\"240\"></iframe>\n<script>\naddEventListener('message', function (said) { document.title = 'frame: ' + said.data; });\ndocument.getElementById('frame').src = 'http://localhost:' + location.port + '/asks?now="), TestSitePiece.Query("now", or = "camera"), TestSitePiece.Text("';\n</script>")),
+                delayMilliseconds = 0,
+            ),
         )
 
     /** What every other path is answered with. */

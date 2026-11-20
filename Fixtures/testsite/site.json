@@ -209,6 +209,45 @@
       "headers": ["Content-Disposition: attachment; filename=\"who.txt\""],
       "content": "who={cookie:who|none}",
       "note": "An attachment that says who the cookie says is signed in: a download is fetched as its login set."
+    },
+    {
+      "path": "/asks",
+      "title": "Asks",
+      "body": [
+        "<p><button id=\"camera\" onclick=\"ask('camera')\">the camera</button></p>",
+        "<p><button id=\"microphone\" onclick=\"ask('microphone')\">the microphone</button></p>",
+        "<p><button id=\"both\" onclick=\"ask('both')\">the camera and the microphone</button></p>",
+        "<p><button id=\"location\" onclick=\"ask('location')\">where the device is</button></p>",
+        "<p id=\"said\">nothing asked</p>",
+        "<script>",
+        "function say(what) { document.getElementById('said').textContent = what; document.title = what; if (parent !== window) parent.postMessage(what, '*'); }",
+        "function ask(what) {",
+        "  say('asking ' + what);",
+        "  if (what === 'location') {",
+        "    navigator.geolocation.getCurrentPosition(function () { say('granted location'); }, function (failed) { say(failed.code === 1 ? 'refused location' : 'granted location, no place ' + failed.code); }, { timeout: 4000 });",
+        "    return;",
+        "  }",
+        "  navigator.mediaDevices.getUserMedia({ video: what !== 'microphone', audio: what !== 'camera' }).then(function (stream) {",
+        "    var tracks = stream.getTracks(); tracks.forEach(function (track) { track.stop(); });",
+        "    say('granted ' + what + ' ' + tracks.length);",
+        "  }, function (failed) { say('refused ' + what + ' ' + failed.name); });",
+        "}",
+        "var now = '{query:now|nothing}'; if (now !== 'nothing') ask(now);",
+        "</script>"
+      ],
+      "note": "Asks to use the camera, the microphone, both, or the device's location, by a button or at once with ?now=, and says in its title what became of it: 'asking camera', then 'granted camera 1' (with how many tracks it was given, which it stops at once) or 'refused camera NotAllowedError'. In a frame it tells its parent the same. For permission prompts."
+    },
+    {
+      "path": "/asks-in-a-frame",
+      "title": "Asks in a frame",
+      "body": [
+        "<iframe id=\"frame\" allow=\"camera; microphone; geolocation\" width=\"320\" height=\"240\"></iframe>",
+        "<script>",
+        "addEventListener('message', function (said) { document.title = 'frame: ' + said.data; });",
+        "document.getElementById('frame').src = 'http://localhost:' + location.port + '/asks?now={query:now|camera}';",
+        "</script>"
+      ],
+      "note": "Holds /asks in a frame from another origin (the same server by its other name, localhost), which asks at once and is allowed by the page to: says in its title what the frame said became of it. For who a permission request is reported to be from."
     }
   ],
   "not_found": {

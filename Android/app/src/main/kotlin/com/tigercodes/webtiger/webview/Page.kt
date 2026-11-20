@@ -8,6 +8,7 @@ import com.tigercodes.webtiger.core.RequestVerdict
 import com.tigercodes.webtiger.core.ResourceType
 import com.tigercodes.webtiger.core.v1.EngineEvent
 import com.tigercodes.webtiger.core.v1.NavigationCommand
+import com.tigercodes.webtiger.core.v1.PermissionKind
 
 /** One web view, as the engine holds it. [WebViewPage] is the real one. */
 internal interface Page {
@@ -54,6 +55,16 @@ internal interface PageHost {
 
     /** The page of the web view `webViewId` offered something to be downloaded (013). */
     fun download(webViewId: Long, offer: DownloadOffer)
+
+    /**
+     * A page of the web view `webViewId` asks, as `origin`, to use something of the device's
+     * (014). `answer` tells the page yes or no, once the core has said. The adapter's name for
+     * the request, to withdraw it by.
+     */
+    fun permissionAsked(webViewId: Long, origin: String, kinds: List<PermissionKind>, answer: (Boolean) -> Unit): Long
+
+    /** The page no longer waits for an answer to that request. */
+    fun permissionWithdrawn(request: Long)
 }
 
 /** Makes pages. [WebViewPages] makes real ones. */

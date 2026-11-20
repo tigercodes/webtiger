@@ -14,15 +14,17 @@ import android.net.http.SslError
 import android.os.Message
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.GeolocationPermissions
+import android.webkit.PermissionRequest
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.SslErrorHandler
+import android.webkit.URLUtil
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.webkit.URLUtil
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.tigercodes.webtiger.core.NavigationVerdict
@@ -31,6 +33,7 @@ import com.tigercodes.webtiger.core.ResourceType
 import com.tigercodes.webtiger.core.v1.CloseRequested
 import com.tigercodes.webtiger.core.v1.EngineEvent
 import com.tigercodes.webtiger.core.v1.NavigationCommand
+import com.tigercodes.webtiger.core.v1.PermissionKind
 import java.io.ByteArrayInputStream
 
 /** Makes pages over this device's WebView. */
@@ -367,7 +370,64 @@ internal class WebViewPage(
         override fun onCloseWindow(window: WebView) {
             if (window === webView) host.report(EngineEvent(web_view_id = id, close_requested = CloseRequested()))
         }
+
+        /**
+         * A page asks for the camera, the microphone or both (014). It is reported, with who
+         * asks, and waits for the core's word. Whatever else a page asks for this way
+         * (protected media, MIDI) is not offered: a request with any of it is refused whole.
+         */
+        override fun onPermissionRequest(request: PermissionRequest) {
+            val kinds =
+                request.resources.orEmpty().map { resource ->
+                    when (resource) {
+                        PermissionRequest.RESOURCE_VIDEO_CAPTURE -> PermissionKind.PERMISSION_KIND_CAMERA
+                        PermissionRequest.RESOURCE_AUDIO_CAPTURE -> PermissionKind.PERMISSION_KIND_MICROPHONE
+                        else -> null
+                    }
+                }
+            if (kinds.isEmpty() || kinds.any { it == null }) {
+                request.deny()
+                return
+            }
+            asking[request] =
+                host.permissionAsked(id, request.origin?.toString().orEmpty(), kinds.filterNotNull()) { granted ->
+                    asking.remove(request)
+                    // A request whose page has gone meanwhile has nobody to tell.
+                    try {
+                        if (granted) request.grant(request.resources) else request.deny()
+                    } catch (_: RuntimeException) {
+                    }
+                }
+        }
+
+        override fun onPermissionRequestCanceled(request: PermissionRequest) {
+            asking.remove(request)?.let(host::permissionWithdrawn)
+        }
+
+        /**
+         * A page asks where the device is (014). The WebView is never told to keep the answer:
+         * what a site was allowed is the core's to remember, per login set.
+         */
+        override fun onGeolocationPermissionsShowPrompt(origin: String?, callback: GeolocationPermissions.Callback?) {
+            if (origin == null || callback == null) return
+            locating =
+                host.permissionAsked(id, origin, listOf(PermissionKind.PERMISSION_KIND_LOCATION)) { granted ->
+                    locating = null
+                    callback.invoke(origin, granted, false)
+                }
+        }
+
+        override fun onGeolocationPermissionsHidePrompt() {
+            locating?.let(host::permissionWithdrawn)
+            locating = null
+        }
     }
+
+    /** The page's requests for the camera or the microphone that wait for an answer, each by the adapter's name for it. */
+    private val asking = HashMap<PermissionRequest, Long>()
+
+    /** The page's request for the location that waits for an answer. */
+    private var locating: Long? = null
 
     private companion object {
         const val ACTUAL_SIZE = 100

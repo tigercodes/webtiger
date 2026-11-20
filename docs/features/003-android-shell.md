@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built, and **run on an emulator** (Android 16, System WebView 133): the app starts, a page loads through the core, and 93 tests pass on the device, among them the adapter suite against the real WebView and isolation between login sets. 209 more pass on the JVM, 28 of them driving the real core through JNI. **Not yet run on a physical device, on any other WebView version, or folded** (§8) |
+| **Status** | Built, and **run on an emulator** (Android 16, System WebView 133): the app starts, a page loads through the core, and 103 tests pass on the device, among them the adapter suite against the real WebView and isolation between login sets. 222 more pass on the JVM, 28 of them driving the real core through JNI. **Not yet run on a physical device, on any other WebView version, or folded** (§8) |
 | **Phase** | W0 of [000](000-master-plan.md) §9; item 1 of [001](001-foundations.md) §12 |
 | **Stack** | 000 §5.1: Kotlin, Jetpack Compose, Material 3, `androidx.webkit`, Wire, JNI through `wt-ffi` |
 | **Last updated** | 2026-11-18 (run on an emulator; the device suite) |
@@ -235,7 +235,7 @@ The line above was run against the emulator, with a page served from the Mac (`1
 
 An emulator without a window, made by `Tools/android/emulator.sh` from the Google APIs image for Android 16 (API 36, `arm64-v8a`, revision 7) with the Pixel 8 profile, on a Mac with Apple silicon; its System WebView is **133.0.6943.137**. 2026-11-18.
 
-`Tools/test.sh android-device` runs the tests in `Android/app/src/androidTest` there: 93 pass. From a cold emulator the whole step took 40 s, the boot included.
+`Tools/test.sh android-device` runs the tests in `Android/app/src/androidTest` there: 103 pass. From a cold emulator the whole step took 40 s, the boot included.
 
 | Suite | Count | What it shows |
 |---|---|---|
@@ -246,6 +246,7 @@ An emulator without a window, made by `Tools/android/emulator.sh` from the Googl
 | `SystemWebViewZoomTest` | 5 | Zoom ([012](012-zoom.md)): the WebView scales a page's text and not the page; the zoom stays for the next page, and is one web view's own |
 | `SystemWebViewFindTest` | 9 | Find on the page ([010](010-find-in-page.md)): the WebView's own find through the adapter, with its counts; next, back and round; not found; other text, stopping, and a new page each start again; a new page is not looked in until it is asked |
 | `SystemWebViewDownloadTest` | 8 | Downloads ([013](013-downloads.md)), with a finger on the page and the system's own `DownloadManager` fetching into the app's own folder: an attachment, a kind nothing shows and a link that says "download" are each reported, and nothing is fetched until the core says under what name; the file is fetched as its login set; one the core drops is never fetched; a name that is taken is not written over, and a name that is a path is held to its last part |
+| `SystemWebViewPermissionTest` | 10 | A page asks to use the camera, the microphone or the location ([014](014-permissions.md)), with a finger on the page: reported with who asks, and the page waits; refused; granted with the system's permission given to the test, when the page gets the emulator's camera; refused when the system refuses the app; a frame from another origin is reported as itself |
 | `SystemOpenerTest` | 2 | The system's own opener: the activity it starts for a letter and for a number, caught before it leaves the app; a scheme nothing opens is said to be so |
 | `SystemWebViewRestoreTest` | 3 | What a sleeping tab keeps (Q5; 001 §11.3): `saveState` is one small byte array, and a new web view in the same profile wakes from it with the page, its history, its login set, and, once the engine has had a second to record them, the scroll position and the text typed into a form |
 | `AppWindowTest` | 20 | The app, started in fake mode, with the real core and the real WebView in its window: a page loads through the core; a typed address loads, and the window's Back and the system's Back go back; a failure is shown in words, over the engine's own error page; the address field at rest, tapped, and when it took the focus by itself (§6); **turning the device reloads nothing**: the same activity, the same web view, no second request; tabs open, switch and close, each with a web view of its own ([005](005-tabs.md)); a link that opens a window, touched, opens a tab beside the one it was in, and closing it brings that one forward, and a window opened on a letter to write leaves no tab behind (006); a touch on a link to write a letter leaves the page as it was and starts no activity (007); history lists what was visited, finds it, opens it again and forgets it ([008](008-history.md)); find on the page counts, follows next and previous, and says when the text is not there (010); a place visited is offered when part of its name is typed, and a long press on the field at rest is not typing ([011](011-suggestions.md)); zoom goes through the core, the bar says the level and the WebView draws its text at it (012); a file a link offers is fetched into the app's own folder and listed beside History (013); the design catalogue opens in place of a browser (004); **Android's accessibility checks** (Google's Accessibility Test Framework, through Compose's test rule) pass over a page, a failed page and the catalogue, which has every state the window has |
@@ -283,7 +284,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | `cd Core && cargo test --workspace --locked` | 139 passed |
 | `Tools/test.sh android`, from nothing | OK, 48 s |
 | … `:core-engine:testDebugUnitTest` | 31 passed |
-| … `:app:testDebugUnitTest` | 178 passed |
+| … `:app:testDebugUnitTest` | 191 passed |
 | … `:app:assembleDebug` | `app-debug.apk`, with `libwebtiger_core.so` for `arm64-v8a` and `x86_64` |
 | `Tools/strings/strings.py --check`, `Tools/design/tokens.py --check` | up to date; the Apple outputs' checksums unchanged |
 | `./gradlew :app:lintDebug` | no errors. Apart from notices that newer versions exist, two warnings are left on purpose: no launcher icon (the brand is not settled, 001 F10), and `toolbar_open_location` unused (it is the Mac's ⌘L) |
@@ -303,6 +304,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | `HistoryModelTest`, `HistoryListTest` | 5, 7 | The History list's model, and the list drawn: what it shows and what a person's choices send (008) |
 | `SuggestionModelTest`, `SuggestionListTest` | 8, 3 | The places offered as the address field is typed in: what the model asks and shows, and the list drawn (011) |
 | `ZoomModelTest`, `ZoomBarTest` | 5, 3 | Zoom: what the model asks and when its bar is open, and the bar drawn (012) |
+| `PermissionsTest`, `AppPermissionsTest` | 9, 4 | What a page asks to use: reported, answered on the core's word, and what the system's own permission has to do with it (014) |
 | `DownloadsModelTest`, `DownloadsListTest` | 5, 8 | The Downloads list's model, and the list drawn: what it shows, what a person's choices send, the switch beside History and the dot on its button (013) |
 | `WordsTest`, `LaunchOptionsTest` | 3, 5 | Codes into words; fake mode's and the catalogue's extras |
 | `CatalogueSnapshotTest` | 13 | The design catalogue as pictures, drawn on the JVM, and the failed page at twice the text size (004) |
@@ -324,7 +326,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | A10 | No launcher icon | The brand is not settled (001 F10) |
 | A12 | The device suite's site is in the test's own process, on the device's `127.0.0.1` | Its pages must be a secure context for the Cache API and service workers, which the Mac's address as an emulator sees it is not; and a suite then needs nothing running beside it. Its pages are the one definition every shell's suite serves (`Fixtures/testsite/site.json`, 001 F12) |
 | A13 | The device suite leaves its login sets' profiles behind | The WebView deletes none that was used since the app started (§5.2). They go with the app's data when the runner uninstalls it |
-| A11 | The WebView's activity lifecycle (`onPause`, `onResume`), file choosers, permission prompts, full screen, (new windows as tabs have arrived since, [006](006-new-windows.md), opening a letter, a number or a message in the system, [007](007-outside-links.md), and downloads, [013](013-downloads.md)) | Not W0: they arrive with the host services that own them (000 §5.5) |
+| A11 | The WebView's activity lifecycle (`onPause`, `onResume`), file choosers, full screen, (permission prompts are arriving, [014](014-permissions.md)) (new windows as tabs have arrived since, [006](006-new-windows.md), opening a letter, a number or a message in the system, [007](007-outside-links.md), and downloads, [013](013-downloads.md)) | Not W0: they arrive with the host services that own them (000 §5.5) |
 
 ## 10. Found in the core and the contract, from the Android side
 

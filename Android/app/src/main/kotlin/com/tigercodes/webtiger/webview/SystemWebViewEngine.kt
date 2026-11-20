@@ -33,6 +33,7 @@ import com.tigercodes.webtiger.core.v1.HostRequest
 import com.tigercodes.webtiger.core.v1.HostResponse
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.core.v1.NewWindowRequested
+import com.tigercodes.webtiger.core.v1.PermissionKind
 import com.tigercodes.webtiger.core.v1.WebViewCommand
 import com.tigercodes.webtiger.core.v1.WebViewCreate
 import com.tigercodes.webtiger.core.v1.WebViewLoad
@@ -44,6 +45,8 @@ import com.tigercodes.webtiger.core.v1.WebViewLoad
 class SystemWebViewEngine internal constructor(
     private val factory: PageFactory,
     fetcher: Fetcher = NoFetcher,
+    /** What the system lets the app itself use (014): a page is let have no more. */
+    system: SystemPermissions = NoSystemPermissions,
     /** Runs something a moment later, on the main thread: how the downloads' progress is asked after. */
     private val later: (() -> Unit) -> Unit = {},
 ) : HostServices {
@@ -52,11 +55,15 @@ class SystemWebViewEngine internal constructor(
      * is told the device's: only the app itself, started for real, saves where the person's own
      * files are (013).
      */
-    constructor(context: Context, downloads: DownloadPlace = DownloadPlace.APP) : this(
+    constructor(context: Context, downloads: DownloadPlace = DownloadPlace.APP, system: SystemPermissions = AppPermissions(context)) : this(
         WebViewPages(context.applicationContext),
         SystemFetcher(context.applicationContext, downloads),
+        system,
         Handler(Looper.getMainLooper()).let { main -> { tick: () -> Unit -> main.postDelayed(tick, DOWNLOAD_PACE_MS) } },
     )
+
+    /** What pages ask to use of the device's (014), while the core has not said. */
+    private val permissions = Permissions(system) { event -> core?.report(event) }
 
     /** Downloads: what is being fetched for a page, and what waits for the core's word. */
     private val downloads = Downloads(fetcher) { event -> core?.report(event) }
@@ -105,6 +112,7 @@ class SystemWebViewEngine internal constructor(
         val zoom = request.web_view_set_zoom
         val start = request.download_start
         val cancel = request.download_cancel
+        val permission = request.permission_answer
         val response =
             when {
                 // The core's word on a download this adapter reported (013).
@@ -117,6 +125,12 @@ class SystemWebViewEngine internal constructor(
                     }
                 cancel != null -> {
                     downloads.cancel(cancel.download_id)
+                    done
+                }
+                // The core's word on what a page asked to use (014). Done, also for a request
+                // that no longer waits: its page went away.
+                permission != null -> {
+                    permissions.answer(permission.request_id, permission.granted)
                     done
                 }
                 zoom != null -> {
@@ -142,6 +156,8 @@ class SystemWebViewEngine internal constructor(
                 load != null -> load(load)
                 command != null -> command(command)
                 destroy != null -> {
+                    // What its page was asking goes with it: refused, while there is a page to tell.
+                    permissions.dropped(destroy.web_view_id)
                     pages.remove(destroy.web_view_id)?.close()
                     loginSets.remove(destroy.web_view_id)
                     done
@@ -245,6 +261,11 @@ class SystemWebViewEngine internal constructor(
             core?.requestVerdict(url, sourceUrl, webViewId, resource) ?: RequestVerdict.ALLOW
 
         override fun newWindow(askingId: Long, userGesture: Boolean): Page? = this@SystemWebViewEngine.newWindow(askingId, userGesture)
+
+        override fun permissionAsked(webViewId: Long, origin: String, kinds: List<PermissionKind>, answer: (Boolean) -> Unit): Long =
+            permissions.asked(webViewId, origin, kinds, answer)
+
+        override fun permissionWithdrawn(request: Long) = permissions.withdrawn(request)
 
         override fun download(webViewId: Long, offer: DownloadOffer) {
             // A download is its login set's: its cookies are what the fetch is given.

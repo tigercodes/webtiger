@@ -5,6 +5,20 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- What a page may ask to use (014): the camera, the microphone, where the device is. None
+         is held until the system has asked the person, which happens the first time a site the
+         person allowed needs it, and not before. MODIFY_AUDIO_SETTINGS is the WebView's, for
+         a microphone; it is granted at install. No part of the device is required: the app
+         installs on one without a camera. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <uses-feature android:name="android.hardware.location" android:required="false" />
+
     <!-- allowBackup is off, and dataExtractionRules excludes everything: the store and the
          WebView's profiles hold cookies and history, and whether any of it may leave the device
          is a decision not yet taken.

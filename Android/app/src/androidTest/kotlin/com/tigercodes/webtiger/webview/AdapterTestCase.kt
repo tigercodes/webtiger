@@ -42,10 +42,17 @@ internal abstract class AdapterTestCase {
     /** A window on the screen for the web views a test touches, opened when one first is. */
     private var stage: ActivityScenario<ComponentActivity>? = null
 
+    /**
+     * What the system lets the app use, as the engine is to see it (014). The app's own, which
+     * uses what the app holds and asks the system nothing: no test brings its dialog up.
+     */
+    protected open fun systemPermissions(context: Context): SystemPermissions = AppPermissions(context)
+
     @Before
     fun attach() {
         onMain {
-            engine = SystemWebViewEngine(ApplicationProvider.getApplicationContext<Context>())
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            engine = SystemWebViewEngine(context, system = systemPermissions(context))
             engine.attach(core)
         }
     }
@@ -181,6 +188,8 @@ internal abstract class AdapterTestCase {
                 report.download_progress != null -> "download-progress"
                 report.download_finished != null -> "downloaded"
                 report.download_failed != null -> "download-failed(${report.download_failed?.code})"
+                report.permission_requested != null -> "permission"
+                report.permission_withdrawn != null -> "permission-withdrawn"
                 else -> null
             }
         }

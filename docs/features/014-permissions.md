@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress: the store's record of what was allowed (§5), the contract (1.10) and the core (§3) are built and tested. No shell reports a page asking yet, and none draws the prompt (§11). The design is to be read before the rest is built: §9 lists what it decides, and §10 what cannot be tested here and why |
+| **Status** | In progress: the store's record of what was allowed (§5), the contract (1.10) and the core (§3) are built and tested. No shell draws the prompt yet (§11): on Android a page that asks waits, and on Apple it is not reported. The System WebView adapter reports a page asking and answers it as the core says, run on an emulator (§6). The design is to be read before the rest is built: §9 lists what it decides, and §10 what cannot be tested here and why |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "permission prompts". Site permissions per login set (000 §5.6, `wt-permissions`) in their first form, and the first of a tab's prompts |
 | **Contract** | 1.10: `PermissionRequested`, `PermissionWithdrawn`; the host request `PermissionAnswer`; `TabView.prompt`; `AnswerPrompt`; `QueryPermissions`, `ForgetPermissions` |
 | **Last updated** | 2026-11-19 |
@@ -18,7 +18,7 @@ A page wants my camera for a call. WebTiger asks me, and says which site is aski
 **Not in, each with where it goes:**
 
 - **Notifications and web push.** Not offered on a system web view (000 §4.7): a page that asks is told no by the engine.
-- **Location on Apple.** WebKit hands the app no public way to answer a page's request for location: it asks the person itself, or refuses. Nothing is built for it, and no test asks for it (§10).
+- **Location on Apple before system 27.** WebKit hands the app a public way to answer a page's request for location only from macOS 27 and iOS 27 (`requestGeolocationPermissionFor`, read in that system's header; the first form of this document said there was none). The app runs from 26: there WebKit asks the person itself, or refuses, and nothing is built for it.
 - **"Only this time", and "Never for this site".** There are two answers: allow, which is remembered, and not now, which is not. The others arrive with the sheet a site's own settings will have (with certificate pages, where the padlock gains a sheet).
 - **A frame from another site asking**, as an embedded call does: refused without asking (§3). Handing a frame the page's permission (`allow="camera"`) arrives when a site that needs it is in front of us.
 - **A mark on a tab that is using the camera or the microphone**: "audio and capture state" (000 §5.5), its own feature. The system's own mark is there meanwhile.
@@ -158,7 +158,7 @@ It is not `site_setting` (012), whose rows are one to a site: these are several 
 | | WebKit | System WebView |
 |---|---|---|
 | Camera, microphone | `WKUIDelegate`: `requestMediaCapturePermissionFor:initiatedByFrame:type:`, answered with grant or deny | `WebChromeClient.onPermissionRequest`, for video and audio capture; `grant` or `deny` |
-| Location | WebKit's own (§2) | `onGeolocationPermissionsShowPrompt`, answered through its callback; never "retained": the core remembers, not the WebView |
+| Location | From system 27, `WKUIDelegate`: `requestGeolocationPermissionFor:initiatedByFrame:`, answered with grant or deny. On 26, WebKit's own (§2) | `onGeolocationPermissionsShowPrompt`, answered through its callback; never "retained": the core remembers, not the WebView |
 | Withdrawn | The web view going away | `onPermissionRequestCanceled`, `onGeolocationPermissionsHidePrompt` |
 | Anything else a page asks | WebKit's own answer | Refused |
 
@@ -171,6 +171,16 @@ It is not `site_setting` (012), whose rows are one to a site: these are several 
 
 - An engine grants a capture only when it was made to: the app, started for real, makes its engine so. Every engine a test makes, and fake mode's, **answers the page "no" whatever the core said**, on Apple; on Android it uses what the app already holds and never asks the system. A test cannot bring the system's dialog up by a mistake of its own.
 - What "granted" does is tested at the seam between the adapter and the engine, and on Android with a permission the test is given without a dialog (the test rule that grants it).
+
+**As built on Android** (`Permissions` and `AppPermissions` in the adapter):
+
+- The WebView asks its `WebChromeClient`; the adapter reports who asks and for what, under an id of its own, and answers the WebView only when the core has said. The camera and the microphone come as one request, for one or both; the location by a callback of its own, which is never told to keep the answer. The WebView keeps none either: a page that asks again is reported again, each time.
+- **Who asks is the frame that asked.** Seen on the emulator: a frame from another origin, which its page had let ask (`allow="camera"`), is reported by the frame's own origin and not the page's. So the core's rule holds as written: such a frame is refused.
+- **The system's permission** (`AppPermissions`): a request the core grants is granted when the app holds what the system wants for it; otherwise the system is asked first, one question at a time, and its answer is the page's. The location is asked for both ways, as the system requires, and is held when either is granted: a person may give only where they roughly are. With no way to ask (every engine a test makes, and fake mode), nobody is asked: the answer is what the app holds.
+- A request that names anything the contract has no kind for (protected media, MIDI) is refused whole, there and then: there is nothing to report it as.
+- A web view that is destroyed refuses what its pages were asking, before it is closed.
+- The manifest names the camera, the microphone (and the WebView's own audio settings) and the location, fine and coarse; none is held until the system has asked the person, and no part of a device is required.
+- **Not yet**: the app's window gives the adapter no way to ask the system. It comes with the bar, where it can be seen to work.
 
 ## 7. The shells
 
@@ -188,8 +198,9 @@ It is not `site_setting` (012), whose rows are one to a site: these are several 
 | Store (`wt-store`, 9) | The migration from version 5, which keeps what was there. What an origin was allowed is written and read back, a kind once; an origin is itself, and not its site's other names, another scheme or another port; another login set was never asked; the origins listed in order, each with what it may use; taking back one origin's, and all of a login set's; nothing is written for a login set the store does not have; a refusal in the store is not read as an allowance, and a verdict that is neither is not written; what was taken back is not left in the store's files. Three of the rules checked by breaking them, and a fourth that no test noticed until one was written for it |
 | An address's origin (`wt-core`, 2) | The scheme, the host, and a port that is not the scheme's own; never the part before an `@`; none for an address that is not the web's. An address is its own over `https`, or when it never left the device: `localhost` and what ends in it, the loopback addresses; not a private network's, and not a name that only looks local |
 | Core (`wt-app/tests/permissions.rs`, 23 through `FakeShell`) | A page that asks is asked about in its tab, by the site's name, and waits. "Allow" grants it and is remembered: the next request is granted unasked, on another page of the origin too, and after the app starts again over the same store; another origin, and another kind, were not allowed by it. "Don't Allow" refuses it, writes nothing, and the page is not asked for the same again, also after it changes its own address, until another page has loaded. Who asks must be the page: a frame from elsewhere, another of the site's names, another scheme or port, no origin, and the page the tab has left are refused; the page's own origin is itself however a shell spells it. A page not over `https` is refused unless it is this device, which is named with its scheme and port. A web view that is no tab's, and a tab with no page. Nothing, no kind, a later contract's kind, and one of each. Camera and microphone are asked about together and granted together, each named once; one of two allowed is not a grant in part. Four wait, a fifth is told no, and they are asked one at a time in order. What else waited for the same answer has it, after a yes and after a no; in another tab too, and not another origin's. A new page refuses what waited, and a page that only changes its address goes on asking; a lost renderer. A tab behind keeps its prompt until it is in front. A tab that closes. An answer to a prompt the tab does not show, to one that waits its turn, and twice. Withdrawn, and not by another web view's word. Said twice. What was allowed is listed in the order of the names shown, and taken back, one origin's and all; naming nothing; a window there is not. Seventeen of the rules checked by breaking them: two had no test until that showed it |
-| WebKit adapter suite | On a Mac that has a camera or a microphone: a page that asks is reported with its origin and what it asks for, and waits; told no, its promise fails as refused. With no such device the engine never asks, and the test says it was skipped. What "granted" does, at the seam. Never run: a capture that starts (§10) |
-| System WebView adapter | On the JVM: requests reported and answered, the system's permission asked only when the core granted, and "no" when it says no. On the emulator: camera, microphone, both, and location, each reported with its origin and waiting; refused; granted, with the permission given to the test, and the page gets a stream from the emulated camera |
+| WebKit adapter | At the seam between the adapter and WebKit, with no web view: a request is reported with an id of its own, who asks and for what, and waits; the core's word answers it; an engine a test makes says no to the page whatever the core said; a web view that is destroyed refuses what waited with it. Not run against WebKit on this machine (§10) |
+| System WebView adapter, on the JVM | `PermissionsTest` (9), through the engine with a system that says what the test tells it: a page that asks is reported with who asks and for what, and waits, with the system asked nothing; each request has a name of the shell's own, never given again; a request the core refuses is refused, and the system is not asked; one it grants is granted when the app holds what the system wants; what the app does not hold the system is asked for, and its answer is the page's ("the site was allowed; the device was not"); a request the page withdraws is reported and never answered; a web view that is destroyed refuses what its pages asked, and not another's; a word about a request there is not; a request is answered once. `AppPermissionsTest` (4): what the app holds, and that rough location is location; with no window to ask from nobody is asked; the system is asked for what a kind needs and the answer is what the app then holds; one question at a time, and not again for what was granted meanwhile. Eleven of the rules checked by breaking them |
+| System WebView adapter suite (`SystemWebViewPermissionTest`, 10, on the emulator) | With a finger on each of the test site's buttons. The camera: reported with the page's origin and a name of the shell's, the page waits, and told no its promise fails as not allowed, with the system asked nothing. The microphone, and both together, are reported as what they are. Granted, with the system's permission given to the test without a dialog: the page gets one track from the emulator's camera, and two for camera and microphone. A site the core allows is refused when the system refuses the app. Where the device is: reported, the page waits, refused; granted, the page is not refused. A page asks again each time. A frame from another origin is reported as itself. A web view destroyed while its page asks. A word about a request there is not |
 | The shells' models and bars | Against `ScriptedCore`: the bar is there when the snapshot has a prompt and gone when it has not; each button sends its answer with the prompt's id; the words for each kind and for camera and microphone together; Return answers nothing. Pictures of the bar, light and dark. The list of what was allowed: its model, drawn, and pictures |
 | The apps | In fake mode, with the real core and engine: a page asks; the bar names the site; "Don't Allow" and the page says it was refused; asked again, the bar does not come back. On Android also "Allow", with the permission given to the test |
 
@@ -210,8 +221,8 @@ A page of the test site asks for each thing by a button, and writes what became 
 - **Another login set, through the core.** As for zoom and downloads: one Space and one login set until W2. That one login set's permissions are not another's is the store's test.
 
 - **A capture that starts, on Apple.** Granting one makes the system ask, with its own dialog, whether the app may use the camera: no test may raise it, and nobody is at this Mac to answer it. That WebKit starts the capture on "granted", and that the system then asks, will be written and not seen until a person runs the app.
-- **Apple, on a machine with no camera or microphone**: WebKit does not ask at all there, and that is every iPhone simulator and GitHub's Macs. The adapter's suite can run only on a Mac that has one.
-- **Location on Apple**: not built, and not asked for by any test, since asking may raise the system's own dialog.
+- **Apple, on a machine with no camera or microphone**: WebKit does not ask at all there, and that is every iPhone simulator, GitHub's Macs, and the Mac this is built on (the system lists no camera and no audio input). So WebKit's asking for a camera or a microphone is not run against the engine here at all, not even to be told no: the adapter is tested at its seam.
+- **Location on Apple, against the engine.** It could be asked for here. Whether WebKit, asked for a location and told no, leaves the system's own location dialog alone is not known, and finding out by trying could raise it on this Mac's screen. It is not tried until its owner says to; until then, the seam.
 - **The system's dialog on Android**: asked through a seam that the tests replace. Its real form is run only by a person.
 - **A phone.** Android's part runs on an emulator, with an emulated camera.
 
@@ -220,8 +231,9 @@ A page of the test site asks for each thing by a button, and writes what became 
 - [x] The store: migration 6; what was allowed. 9 tests.
 - [x] Contract 1.10 and its version in every place it is written.
 - [x] The core: the rules of §3, the tab's prompt, what was allowed. 23 tests through `FakeShell`, and 2 of an address's origin.
-- [ ] The test site's page.
+- [x] The test site's pages: one that asks by its buttons, and one that holds it in a frame from another origin.
 - [ ] Apple: the adapter and its suite; the reasons in `Info.plist`; the bar, its model's tests and pictures; the list; a UI test.
-- [ ] Android: the adapter, the system's permission behind a seam, on the JVM and the device; the bar; the list; pictures; a device test.
+- [x] Android: the adapter, and the system's permission behind a seam, on the JVM (13) and the device (10).
+- [ ] Android: the window's way to ask the system; the bar; the list; pictures; a device test.
 - [ ] `Tools/test.sh all` green, and `android-device`.
 - [ ] Windows shell.
