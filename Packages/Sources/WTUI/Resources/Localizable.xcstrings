@@ -349,6 +349,30 @@
         }
       }
     },
+    "catalogue.state.prompt_sign_in": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A server asks who is there"
+          }
+        }
+      }
+    },
+    "catalogue.state.prompt_sign_in_again": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A server asks again, over a connection that is not private"
+          }
+        }
+      }
+    },
     "catalogue.state.prompt_text": {
       "comment": "Design catalogue: a state of the window.",
       "extractionState": "manual",
@@ -1281,6 +1305,78 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ says:"
+          }
+        }
+      }
+    },
+    "prompt.sign_in": {
+      "comment": "The first line of the bar a tab shows when a server asks for a name and a password before it answers (HTTP authentication). %@ is the server, as the address field shows a site: it is who gets what is typed.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in to %@"
+          }
+        }
+      }
+    },
+    "prompt.sign_in.again": {
+      "comment": "In the sign-in bar, when the server refused what was sent before and asks again.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That name or password was not accepted."
+          }
+        }
+      }
+    },
+    "prompt.sign_in.go": {
+      "comment": "Button in the sign-in bar: sends the name and the password to the server that asked.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign In"
+          }
+        }
+      }
+    },
+    "prompt.sign_in.name": {
+      "comment": "The sign-in bar's first field: the name to sign in with. Shown in the empty field and read as its label.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        }
+      }
+    },
+    "prompt.sign_in.not_private": {
+      "comment": "In the sign-in bar, when the server is not reached over https: the name and password travel unprotected.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This connection is not private. What you type could be read by others."
+          }
+        }
+      }
+    },
+    "prompt.sign_in.password": {
+      "comment": "The sign-in bar's second field. Shown in the empty field and read as its label.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Password"
           }
         }
       }

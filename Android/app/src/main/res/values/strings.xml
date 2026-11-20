@@ -60,6 +60,10 @@
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_prompt_download">A page asks to download a file</string>
     <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_prompt_sign_in">A server asks who is there</string>
+    <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_prompt_sign_in_again">A server asks again, over a connection that is not private</string>
+    <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_prompt_text">A page asks for a word</string>
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_secure">A secure page</string>
@@ -215,6 +219,18 @@
     <string name="prompt_refuse">Don’t Allow</string>
     <!-- The first line of the bar a tab shows when a page says something or asks (alert, confirm, prompt). %@ is the site, as the address field shows it; the page's own words follow on the next lines. -->
     <string name="prompt_says">%s says:</string>
+    <!-- The first line of the bar a tab shows when a server asks for a name and a password before it answers (HTTP authentication). %@ is the server, as the address field shows a site: it is who gets what is typed. -->
+    <string name="prompt_sign_in">Sign in to %s</string>
+    <!-- In the sign-in bar, when the server refused what was sent before and asks again. -->
+    <string name="prompt_sign_in_again">That name or password was not accepted.</string>
+    <!-- Button in the sign-in bar: sends the name and the password to the server that asked. -->
+    <string name="prompt_sign_in_go">Sign In</string>
+    <!-- The sign-in bar's first field: the name to sign in with. Shown in the empty field and read as its label. -->
+    <string name="prompt_sign_in_name">Name</string>
+    <!-- In the sign-in bar, when the server is not reached over https: the name and password travel unprotected. -->
+    <string name="prompt_sign_in_not_private">This connection is not private. What you type could be read by others.</string>
+    <!-- The sign-in bar's second field. Shown in the empty field and read as its label. -->
+    <string name="prompt_sign_in_password">Password</string>
     <!-- Button in the bar that shows what a page says, from the page's second message on: this page is shown no more messages until another page loads. -->
     <string name="prompt_silence">Stop This Page’s Messages</string>
     <!-- Accessibility label of the list of places offered under the address field as it is typed in. -->

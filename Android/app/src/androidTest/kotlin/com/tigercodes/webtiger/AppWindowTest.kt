@@ -15,6 +15,8 @@ import android.view.ViewGroup
 import android.webkit.WebView
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -36,6 +38,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.tryPerformAccessibilityChecks
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -769,6 +772,55 @@ internal class AppWindowTest {
         awaitPage("alert returned")
         PageTouch.tap(checkNotNull(shownWebView()), "confirm")
         awaitPage("confirm false")
+        assertEquals(0, bars())
+    }
+
+    /**
+     * A server asks who is there (017), with the real core and WebView: the tab asks for a name
+     * and a password under the server's name while the page before it stays; a wrong answer is
+     * said to be one and asked for again; the right one loads the page. And no answer shows
+     * what the server sent with its refusal.
+     */
+    @Test
+    fun aServerThatAsksWhoIsThereIsAnsweredInTheTab() {
+        fun bars(): Int = compose.onAllNodesWithTag("prompt").fetchSemanticsNodes().size
+
+        /** Types a name and a password, and presses a button once the bar has been there long enough to be answered. */
+        fun answer(name: String, password: String, button: String) {
+            compose.onNodeWithTag("prompt-name").performTextReplacement(name)
+            compose.onNodeWithTag("prompt-password").performTextReplacement(password)
+            Thread.sleep(700)
+            compose.onNodeWithTag(button).performClick()
+        }
+        awaitPage("Home")
+
+        type(site.url("/staff"))
+
+        // The load waits: the page before it is still there, and the tab asks under the
+        // name of the server that will get what is typed.
+        compose.waitUntil(15_000) { bars() == 1 }
+        compose.onNodeWithTag("prompt-site").assertTextEquals("Sign in to ${shown("/")}")
+        // This device itself: nothing travels, and it is the first time of asking.
+        compose.onAllNodesWithTag("prompt-not-private").assertCountEquals(0)
+        compose.onAllNodesWithTag("prompt-again").assertCountEquals(0)
+        assertEquals("no page has come of it", "Home", pageTitle())
+        compose.onRoot().tryPerformAccessibilityChecks()
+
+        // A wrong password: the server asks again, and the bar says so, with empty fields.
+        answer("ada", "wrong", "prompt-sign-in")
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("prompt-again").fetchSemanticsNodes().size == 1 }
+        compose.onNodeWithTag("prompt-name").assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("")))
+        compose.onRoot().tryPerformAccessibilityChecks()
+
+        // The right one: the page loads, and its picture, the same server's, asks nothing.
+        answer("ada", "lovelace", "prompt-sign-in")
+        awaitPage("Staff only")
+        assertEquals(0, bars())
+
+        // In a new tab the engine answers for itself: it kept the answer for this server.
+        compose.onNodeWithTag("new-tab").performClick()
+        type(site.url("/staff"))
+        awaitPage("Staff only")
         assertEquals(0, bars())
     }
 

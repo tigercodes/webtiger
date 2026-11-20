@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress: the contract (1.13) and the core's rule (§3) are built and tested. No adapter reports a server asking yet, and no shell draws it (§9): until then WebKit and the System WebView give a server that asks no answer, and show what it sent with its refusal |
+| **Status** | In progress: the contract (1.13) and the core's rule (§3) are built and tested. The Android shell reports a server that asks and draws the prompt, run on an emulator against the real System WebView. On Apple nothing is built yet (§9): there WebKit still gives a server that asks no answer, and shows what it sent with its refusal |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "sign-in prompts". A server may ask for a name and a password before it answers at all (HTTP authentication): routers, printers, staging sites and many an intranet do |
 | **Contract** | 1.13: `SignInRequested`; the host request `SignInAnswer`; `SignInPrompt`, a fourth kind of `PromptView`; one field of `AnswerPrompt` |
 | **Builds on** | [014](014-permissions.md): a tab's prompt, its queue, and the rule that it is not answered in the moment it appears. [016](016-page-dialogs.md): a prompt with a field |
@@ -109,7 +109,16 @@ An adapter does not report a proxy's question, nor one that a name and a passwor
 | The answer | A credential kept for the session | `proceed(name, password)` |
 | No answer | The challenge is cancelled | `cancel()` |
 
-What each does in fact, as observed, is written here when built.
+**As built on Android** (`SignIns` in the adapter; `onReceivedHttpAuthRequest`), and as seen on the emulator (System WebView 133):
+
+- **The WebView names the server's host and nothing more**: for the test site, `127.0.0.1`, with no port and no scheme. So the adapter reports a host and no origin, and the core goes by the host (§3, §9).
+- **The load waits.** Half a second after the server asked, no page had come of the load; it came when the core's word did.
+- **Where the load is heading** is what the adapter's own tracker knows: the address it was told to load, and after that each address the navigation policy let the main frame go on to. A load sent on to the server's other name was reported as heading there. Once a page has arrived nothing is heading anywhere, and a picture of the page's own server that asks is reported so.
+- **A wrong answer** makes the server ask again within the same load: the WebView says its stored answer is no longer to be used, and the adapter reports that as "again".
+- **No answer** (`cancel()`): what the server sent with its refusal is shown, as a page at the address asked for, and nobody is asked again.
+- **The WebView keeps an answer** for the server, and it stays in its login set: another web view of the same login set loaded the page with nobody asked; a web view of another login set was asked. Tested as isolation is.
+- **A picture from another server is not asked about at all**: this WebView gives it no answer by itself, and reports nothing. (The core's rule would say the same of an engine that did ask.)
+- A web view that is destroyed gives the WebView its answer for what waited: none.
 
 ## 6. The shells
 
@@ -117,14 +126,20 @@ The same bar (014 §7). "Sign in to *server*" on a line of its own; when the ser
 
 What is typed is the shell's only until it is sent: it is in no snapshot, no log, and no picture.
 
+**As built on Android** (`SignInBar`; `BrowserModel.answerPrompt`): as above. Each field's name is shown in it while it is empty, and is what a screen reader calls it. The password is drawn as dots, and the field is a password to the keyboard and to assistive services. The keyboard's Next, in the name's field, goes to the password; its Done there signs in. Cancel passes on nothing that was typed. What is typed is kept in the bar and not in the window's saved state: a password is not written down to be restored, so turning the device empties the fields. A server that asks again is a new prompt, and starts empty.
+
 ## 7. Tests
 
 | Where | What |
 |---|---|
 | Core (`wt-app/tests/sign_in.rs`, 16 through `FakeShell`) | The server a load is heading for asks in the tab, under its own name and not the page's, and the load waits. The name and the password are the server's answer; Cancel is none, whatever was typed; a password with no name. The page's own server may ask. Any other is given no answer with nobody asked: another server while the page sits there or while a load heads elsewhere, the page's host at another port or not over `https`, an origin that cannot be read, a server nobody names, a web view that is no tab's. Named by its host alone, a server is the tab's own by its host, however the host is written, and is taken to be where the load is going before where the page is. Where a redirect took the load is who may ask and who is named. A server not over `https` is named with its scheme and said to be read on the way; this device itself is not. A server that refused asks again and the prompt says so. Not answered in the moment it appears. Every question of the same server and realm that waits has the same answer, in whatever tab, and no other server's or realm's has. A question is over when another load begins, when one is stopped or fails, when a page arrives, and when the renderer is lost; what a page said outlives a load that only begins. Said twice, asked once; four wait and a fifth is given no answer. A server, a page's dialog and a page's request that the shell gave one number are not taken for each other, and a yes to the camera is no answer to a server. A realm is told apart by its first two hundred characters. Twenty-three parts of the rule checked by breaking them; a twenty-fourth showed a condition that did nothing, which was removed |
 | The test site | A page that answers only to a name and a password, the same in all three of its servers |
-| Adapter suites (WebKit on the Mac and the iPhone simulator; System WebView on the emulator) | A load to that page is reported with who asks and where the load is heading, and waits; the right answer loads the page; a wrong one asks again and says so; no answer shows the server's refusal; a second load needs no second answer; **another login set is asked again** (isolation, as a security property); a web view destroyed while it waits |
-| The shells | Against a scripted core: the bar, its lines, its two fields and what each button sends. Pictures. The apps, with the real core and engines: an address that asks, the bar under the server's name, the answer typed, the page |
+| System WebView adapter, on the JVM (`SignInsTest`, 4) | Through the engine, as the core speaks to it: a server that asks is reported with its host, no origin, its realm, where the load is heading now and not where it began, and whether it refused before; and the load waits. With no load on its way nothing is said of where one is heading. The core's word is the server's answer, a name and a password or none, whatever came with a no; each question has a name of its own and is answered once. A web view that is destroyed gives its servers no answer, and not another's. Ten of the rules checked by breaking them |
+| System WebView adapter suite (`SystemWebViewSignInTest`, 8, on the emulator) | Against the real WebView and the test site. A server that asks is reported and the load waits for the core's word; its page then loads, and its picture asks nothing more. A wrong answer asks again and says so. No answer shows what the server sent with its refusal. **What the engine keeps of an answer stays in its login set**: the same login set is not asked again, another is. Where a redirect took the load is where it is heading. A picture of the page's own server asks with no load on its way; a picture from another server is given no answer by the WebView itself. A web view destroyed while a server waits |
+| WebKit adapter suite | As above, when built |
+| The Android bar (`SignInBarTest`, 3, drawn on the JVM against `ScriptedCore`) | The bar names the server and asks for a name and a password, in two empty fields each read by its name, the second a password; nothing has the keyboard by appearing. Sign In sends both, Cancel neither; the password is drawn as dots; the keyboard's Done in the password's field signs in; another question starts empty. A server that refused before and a connection that is not private are each said, and neither without cause. Pictures of the bar, and of the bar saying both, light and dark, each looked at. Ten of the rules checked by breaking them |
+| The Android app, on the emulator | With the real core and WebView, in fake mode: an address that asks is typed; the tab asks under the server's name while the page before it stays, and Android's accessibility checks pass over the bar; a wrong password is said to be one, with the fields empty again; the right one loads the page; and in a new tab the same address loads with nobody asked |
+| The Apple bar and apps | As above, when built |
 
 ## 8. Decisions
 
@@ -138,16 +153,21 @@ What is typed is the shell's only until it is sent: it is in no snapshot, no log
 
 ## 9. What is not verified
 
-Written when built. Known now:
-
-- **The System WebView names a host, not an origin.** A server at another port of the page's host is asked about as if it were the page's own, and named with the page's scheme and port.
+- **The System WebView names a host, not an origin.** A server at another port of the page's host is asked about as if it were the page's own, and named with the page's scheme and port. Not tried: the test site has one port.
+- **Only HTTP Basic was run.** Digest and NTLM are answered by the engines with the same name and password; neither was tried against a server.
+- **A proxy that asks.** Not reported by an adapter that can tell (WebKit); the System WebView does not say which a question is, and the core gives a proxy no answer because its host is not the tab's. Not tried.
+- **That the keyboard is told the field is a password**, so that it suggests and learns nothing: how the field is written. No test on the JVM sees it; a test that makes the field an ordinary one in every other way was not noticed.
+- **What is typed, in memory.** A password is held as an ordinary string in the bar, in the contract's messages and in the core until each is dropped; none of them is wiped.
+- **The tall bar and the keyboard**, on a small screen held sideways: not tried.
+- **Android: a phone.** It ran on an emulator.
+- Apple: written when built.
 
 ## 10. Done checklist
 
 - [x] Contract 1.13 and its version in every place it is written.
 - [x] The core: the rule of §3. 16 tests through `FakeShell`.
-- [ ] The test site's page.
-- [ ] Android: the adapter, on the JVM and the device; the bar; pictures; a device test.
+- [x] The test site's pages: one that answers only to a name and a password, its picture, a redirect to it, and a page that shows the picture from its own server or another.
+- [x] Android: the adapter, on the JVM (4) and the device (8); the bar and its tests (3); pictures; a device test of the app.
 - [ ] Apple: the adapter and its suite; the bar; pictures; a UI test.
 - [ ] `Tools/test.sh all` green, and `android-device`.
 - [ ] Windows shell.

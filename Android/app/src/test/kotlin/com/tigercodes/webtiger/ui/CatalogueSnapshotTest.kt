@@ -42,6 +42,9 @@ private const val LIST_DARK = "w411dp-h560dp-night-xhdpi"
 private const val TALL_LIGHT = "w411dp-h900dp-notnight-xhdpi"
 private const val TALL_DARK = "w411dp-h900dp-night-xhdpi"
 
+/** The states of the window whose bar is taller than the window's usual picture: drawn at a list's height, so that all of it is seen. */
+private val TALL_STATES = setOf(CatalogueState.PROMPT_SIGN_IN_AGAIN)
+
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class CatalogueSnapshotTest {
@@ -62,10 +65,10 @@ class CatalogueSnapshotTest {
         verify("tokens-$theme")
     }
 
-    private fun windows(theme: String) {
+    private fun windows(theme: String, tall: Boolean = false) {
         var state by mutableStateOf(CatalogueState.EMPTY)
         show { key(state) { CatalogueWindow(state, Modifier.fillMaxSize()) } }
-        for (next in CatalogueState.entries) {
+        for (next in CatalogueState.entries.filter { (it in TALL_STATES) == tall }) {
             state = next
             verify("window-${next.name.lowercase().replace('_', '-')}-$theme")
         }
@@ -114,6 +117,12 @@ class CatalogueSnapshotTest {
 
     @Test @Config(qualifiers = DARK)
     fun everyStateOfTheWindowInTheDarkTheme() = windows("dark")
+
+    @Test @Config(qualifiers = LIST_LIGHT)
+    fun theWindowsTallStatesInTheLightTheme() = windows("light", tall = true)
+
+    @Test @Config(qualifiers = LIST_DARK)
+    fun theWindowsTallStatesInTheDarkTheme() = windows("dark", tall = true)
 
     @Test @Config(qualifiers = LIGHT)
     fun everyStateOfTheHistoryListInTheLightTheme() = historyLists("light")

@@ -68,6 +68,7 @@ import com.tigercodes.webtiger.core.v1.PermissionKind
 import com.tigercodes.webtiger.core.v1.PermissionPrompt
 import com.tigercodes.webtiger.core.v1.PermissionsPage
 import com.tigercodes.webtiger.core.v1.PromptView
+import com.tigercodes.webtiger.core.v1.SignInPrompt
 import com.tigercodes.webtiger.core.v1.Response
 import com.tigercodes.webtiger.core.v1.SitePermissions
 import com.tigercodes.webtiger.core.v1.Subscribed
@@ -101,6 +102,8 @@ internal enum class CatalogueState(@StringRes val title: Int) {
     PROMPT_ALERT(R.string.catalogue_state_prompt_alert),
     PROMPT_CONFIRM(R.string.catalogue_state_prompt_confirm),
     PROMPT_TEXT(R.string.catalogue_state_prompt_text),
+    PROMPT_SIGN_IN(R.string.catalogue_state_prompt_sign_in),
+    PROMPT_SIGN_IN_AGAIN(R.string.catalogue_state_prompt_sign_in_again),
     ;
 
     /** The window's zoom bar is open in this state. */
@@ -177,6 +180,15 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                     // Not the page's first: it can be stopped.
                     PROMPT_CONFIRM -> saying(DialogKind.DIALOG_KIND_CONFIRM, "Delete “Holiday photos”? This cannot be undone.", silence = true)
                     PROMPT_TEXT -> saying(DialogKind.DIALOG_KIND_PROMPT, "What should we call you?", offered = "Ada")
+                    // The load is on its way to a server that asks first: the page before it is still there.
+                    PROMPT_SIGN_IN ->
+                        page("https://example.com/", "example.com").copy(
+                            prompt = PromptView(prompt_id = 9, sign_in = SignInPrompt(site = "staff.example.com", confidential = true)),
+                        )
+                    PROMPT_SIGN_IN_AGAIN ->
+                        page("http://printer.example.com/", "http://printer.example.com", AddressView.Security.SECURITY_INSECURE).copy(
+                            prompt = PromptView(prompt_id = 9, sign_in = SignInPrompt(site = "http://printer.example.com", confidential = false, again = true)),
+                        )
                     PROMPT_DOWNLOAD ->
                         page("https://example.com/", "example.com").copy(
                             prompt = PromptView(prompt_id = 9, download = DownloadPrompt(site = "example.com", file_name = "Annual report 2026.pdf")),

@@ -262,19 +262,20 @@ class BrowserModel(
      * asks nothing; and for a prompt this build has no words for, which is not put before a
      * person as two buttons and no question: its page waits.
      */
-    val prompt: PromptView? get() = tab.prompt?.takeIf { asked -> asked.download != null || asked.permission?.kinds.orEmpty().isNotEmpty() || asked.dialog?.kind in SPOKEN }
+    val prompt: PromptView? get() = tab.prompt?.takeIf { asked -> asked.download != null || asked.permission?.kinds.orEmpty().isNotEmpty() || asked.dialog?.kind in SPOKEN || asked.sign_in != null }
 
     /**
      * The person's answer to the prompt the tab shows. What it lets the page do, what is
      * remembered, and whether it came too soon after the prompt appeared to be the person's
      * answer to it, are the core's: a refusal leaves the prompt where it is. For what a page
      * says or asks (016), `text` is what a prompt's field held, and `silence` stops the page's
-     * messages.
+     * messages. For a server that asks who is there (017), `text` is the name and `secret` the
+     * password: they are sent, and kept nowhere here.
      */
-    fun answerPrompt(allow: Boolean, text: String = "", silence: Boolean = false) {
+    fun answerPrompt(allow: Boolean, text: String = "", silence: Boolean = false, secret: String = "") {
         val front = frontTabId ?: return
         val shown = prompt ?: return
-        session.send(Request(answer_prompt = AnswerPrompt(tab_id = front, prompt_id = shown.prompt_id, allow = allow, text = text, silence = silence)))
+        session.send(Request(answer_prompt = AnswerPrompt(tab_id = front, prompt_id = shown.prompt_id, allow = allow, text = text, silence = silence, secret = secret)))
     }
 
     // Find on the page (010)
