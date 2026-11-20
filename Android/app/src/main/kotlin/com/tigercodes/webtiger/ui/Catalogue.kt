@@ -55,6 +55,7 @@ import com.tigercodes.webtiger.core.v1.Ack
 import com.tigercodes.webtiger.core.v1.AddressSuggestion
 import com.tigercodes.webtiger.core.v1.AddressView
 import com.tigercodes.webtiger.core.v1.DownloadEntry
+import com.tigercodes.webtiger.core.v1.DownloadPrompt
 import com.tigercodes.webtiger.core.v1.DownloadState
 import com.tigercodes.webtiger.core.v1.DownloadsPage
 import com.tigercodes.webtiger.core.v1.FindView
@@ -94,6 +95,7 @@ internal enum class CatalogueState(@StringRes val title: Int) {
     SUGGESTIONS(R.string.catalogue_state_suggestions),
     ZOOM(R.string.catalogue_state_zoom),
     PROMPT(R.string.catalogue_state_prompt),
+    PROMPT_DOWNLOAD(R.string.catalogue_state_prompt_download),
     ;
 
     /** The window's zoom bar is open in this state. */
@@ -156,6 +158,10 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                     FIND_NONE -> page("https://example.com/", "example.com").copy(find = FindView(text = "zebra", answered = true))
                     SUGGESTIONS -> page("https://example.org/", "example.org")
                     ZOOM -> page("https://example.com/", "example.com").copy(zoom = ZoomView(percent = 125, can_zoom_in = true, can_zoom_out = true))
+                    PROMPT_DOWNLOAD ->
+                        page("https://example.com/", "example.com").copy(
+                            prompt = PromptView(prompt_id = 9, download = DownloadPrompt(site = "example.com", file_name = "Annual report 2026.pdf")),
+                        )
                     PROMPT ->
                         page("https://meet.example.com/", "meet.example.com").copy(
                             prompt =
@@ -335,7 +341,11 @@ internal enum class CataloguePermissions(@StringRes val title: Int) {
                                 site = "a-site-whose-name-is-longer-than-the-list-is-wide-and-then-goes-on.example.com",
                                 kinds = listOf(PermissionKind.PERMISSION_KIND_CAMERA),
                             ),
-                            SitePermissions(origin = "http://127.0.0.1:8080", site = "http://127.0.0.1:8080", kinds = listOf(PermissionKind.PERMISSION_KIND_LOCATION)),
+                            SitePermissions(
+                                origin = "http://127.0.0.1:8080",
+                                site = "http://127.0.0.1:8080",
+                                kinds = listOf(PermissionKind.PERMISSION_KIND_LOCATION, PermissionKind.PERMISSION_KIND_DOWNLOADS),
+                            ),
                             SitePermissions(
                                 origin = "https://meet.example.com",
                                 site = "meet.example.com",

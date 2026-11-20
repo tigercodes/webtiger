@@ -54,6 +54,8 @@
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_prompt">A page asks to use the camera and the microphone</string>
     <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_prompt_download">A page asks to download a file</string>
+    <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_secure">A secure page</string>
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_suggestions">Places offered as an address is typed</string>
@@ -172,19 +174,23 @@
     <!-- Button that closes the Permissions list. -->
     <string name="permissions_done">Done</string>
     <!-- Shown in the Permissions list when no site was allowed anything. -->
-    <string name="permissions_empty">Sites you allow to use your camera, microphone or location will be listed here.</string>
+    <string name="permissions_empty">Sites you allow to download, or to use your camera, microphone or location, will be listed here.</string>
     <!-- Accessibility label of the button beside a site in the Permissions list, which takes back what it was allowed. The site will ask again. -->
     <string name="permissions_forget">Stop Allowing</string>
     <!-- What a site was allowed to use, under its name in the Permissions list. Several are joined as a list by the system. -->
     <string name="permissions_kind_camera">Camera</string>
+    <!-- What a site was allowed to do, under its name in the Permissions list: download files without asking each time. -->
+    <string name="permissions_kind_downloads">Downloads</string>
     <!-- What a site was allowed to use, under its name in the Permissions list: where the device is. -->
     <string name="permissions_kind_location">Location</string>
     <!-- What a site was allowed to use, under its name in the Permissions list. -->
     <string name="permissions_kind_microphone">Microphone</string>
-    <!-- Title of the list of sites that were allowed to use the camera, the microphone or the location, and the name of its part of the switch beside History and Downloads. -->
+    <!-- Title of the list of sites that were allowed to download, or to use the camera, the microphone or the location, and the name of its part of the switch beside History and Downloads. -->
     <string name="permissions_title">Permissions</string>
     <!-- Button in a tab's prompt: lets the site use what it asked for, now and when it asks again. -->
     <string name="prompt_allow">Allow</string>
+    <!-- The sentence in the bar a tab shows when a page starts a download and its site was not yet allowed to. %1$@ is the site, as the address field shows it; %2$@ is the name the file would be saved under, in quotation marks so that where it begins and ends can be seen. -->
+    <string name="prompt_download">%1$s wants to download “%2$s”.</string>
     <!-- What a page asks to use, in the prompt.permission sentence. -->
     <string name="prompt_kind_camera">your camera</string>
     <!-- What a page asks to use, in the prompt.permission sentence: where the device is. -->

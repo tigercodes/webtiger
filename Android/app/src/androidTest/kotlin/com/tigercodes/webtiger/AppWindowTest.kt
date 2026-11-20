@@ -558,7 +558,8 @@ internal class AppWindowTest {
 
     /**
      * A download (013), with the real core, the real WebView and the system's own fetcher: a
-     * finger on a link that offers a file; the page stays as it was; the file is listed beside
+     * finger on a link that offers a file; the person is asked whether the site may download
+     * (015), and says yes; the page stays as it was; the file is listed beside
      * History, by its name, its site and its size; it is taken off the list, and stays where it
      * was saved. That is the app's own folder: this is fake mode, and nothing is written where
      * a person's files are.
@@ -587,9 +588,20 @@ internal class AppWindowTest {
         awaitPage("Downloads")
         awaitAddress(shown("/downloads"))
 
-        // A finger on the page's link. The system fetches the file, in its own time.
+        // A finger on the page's link. It is the site's first download: the person is asked,
+        // in the tab, by the site's name and the file's (015), and nothing is fetched until
+        // they have said.
         PageTouch.tap(checkNotNull(shownWebView()), "attachment")
         val file = File(folder, "notes.txt")
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("prompt").fetchSemanticsNodes().size == 1 }
+        compose.onNodeWithTag("prompt-words").assertTextEquals("${shown("/")} wants to download “notes.txt”.")
+        compose.onRoot().tryPerformAccessibilityChecks()
+        // Not at once: a prompt is not answered in the moment it appears (014 §3).
+        Thread.sleep(700)
+        assertEquals("nothing is saved on a page's word", emptyList<String>(), folder.listFiles().orEmpty().map { it.name })
+        compose.onNodeWithTag("prompt-allow").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("prompt").fetchSemanticsNodes().isEmpty() }
+        // Allowed, the system fetches the file, in its own time.
         compose.waitUntil(60_000) { file.isFile && file.length() == 26L }
         assertEquals("Twelve notes, to be saved.", file.readText())
         assertEquals("nothing else was written", listOf("notes.txt"), folder.listFiles().orEmpty().map { it.name })

@@ -18,6 +18,7 @@ import com.tigercodes.webtiger.core.ScriptedCore
 import com.tigercodes.webtiger.core.v1.DownloadsPage
 import com.tigercodes.webtiger.core.v1.HistoryPage
 import com.tigercodes.webtiger.core.v1.PermissionKind.PERMISSION_KIND_CAMERA
+import com.tigercodes.webtiger.core.v1.PermissionKind.PERMISSION_KIND_DOWNLOADS
 import com.tigercodes.webtiger.core.v1.PermissionKind.PERMISSION_KIND_LOCATION
 import com.tigercodes.webtiger.core.v1.PermissionKind.PERMISSION_KIND_MICROPHONE
 import com.tigercodes.webtiger.core.v1.PermissionsPage
@@ -48,7 +49,7 @@ import org.robolectric.RobolectricTestRunner
 internal class PermissionsScript {
     var sites: List<SitePermissions> =
         listOf(
-            SitePermissions(origin = "http://127.0.0.1:8080", site = "http://127.0.0.1:8080", kinds = listOf(PERMISSION_KIND_LOCATION)),
+            SitePermissions(origin = "http://127.0.0.1:8080", site = "http://127.0.0.1:8080", kinds = listOf(PERMISSION_KIND_LOCATION, PERMISSION_KIND_DOWNLOADS)),
             SitePermissions(origin = "https://meet.example.com", site = "meet.example.com", kinds = listOf(PERMISSION_KIND_CAMERA, PERMISSION_KIND_MICROPHONE)),
         )
 
@@ -167,7 +168,7 @@ class PermissionsListTest {
         compose.onAllNodesWithTag("permission-site").assertCountEquals(2)
         val device = compose.onAllNodesWithTag("permission-site")[0]
         device.assertTextContains("http://127.0.0.1:8080")
-        device.assertTextContains("Location")
+        device.assertTextContains("Location and Downloads")
         val meet = compose.onAllNodesWithTag("permission-site")[1]
         meet.assertTextContains("meet.example.com")
         meet.assertTextContains("Camera and Microphone")
@@ -198,7 +199,7 @@ class PermissionsListTest {
 
         assertEquals(listOf(true), core.requests.mapNotNull { it.forget_permissions }.map { it.everything })
         compose.onAllNodesWithTag("permission-site").assertCountEquals(0)
-        compose.onNodeWithTag("permissions-nothing").assertTextContains("Sites you allow to use your camera, microphone or location will be listed here.")
+        compose.onNodeWithTag("permissions-nothing").assertTextContains("Sites you allow to download, or to use your camera, microphone or location, will be listed here.")
         compose.onNodeWithTag("permissions-clear").assertIsNotEnabled()
         compose.onNodeWithTag("permissions-done").performClick()
         assertEquals(1, done)

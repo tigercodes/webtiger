@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import com.tigercodes.webtiger.core.ScriptedCore
+import com.tigercodes.webtiger.core.v1.DownloadPrompt
 import com.tigercodes.webtiger.core.v1.PermissionKind
 import com.tigercodes.webtiger.core.v1.PermissionKind.PERMISSION_KIND_CAMERA
 import com.tigercodes.webtiger.core.v1.PermissionKind.PERMISSION_KIND_LOCATION
@@ -99,6 +100,24 @@ class PromptTest {
         // Who asks is what the core says, as it says it: a page not over https has its scheme.
         theCoreSays(asking(9, PERMISSION_KIND_CAMERA, site = "http://127.0.0.1:8080"))
         compose.onNodeWithTag("prompt-words").assertTextEquals("http://127.0.0.1:8080 wants to use your camera.")
+    }
+
+    @Test
+    fun aDownloadTheSiteWasNotYetAllowedIsAskedAboutByTheSiteAndTheFile() {
+        aWindow()
+
+        theCoreSays(
+            snapshot(url = "https://example.com/", display = "example.com", webView = 4) { tab ->
+                tab.copy(prompt = PromptView(prompt_id = 21, download = DownloadPrompt(site = "example.com", file_name = "Annual report 2026.pdf")))
+            },
+        )
+
+        compose.onNodeWithTag("prompt-words").assertTextEquals("example.com wants to download “Annual report 2026.pdf”.")
+        assertEquals(21L, model.prompt?.prompt_id)
+        // The same two answers, by the prompt's own name.
+        compose.onNodeWithTag("prompt-allow").performClick()
+        compose.waitForIdle()
+        assertEquals(listOf(Triple(2L, 21L, true)), answers().map { Triple(it.tab_id, it.prompt_id, it.allow) })
     }
 
     @Test

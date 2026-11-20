@@ -430,6 +430,9 @@ internal fun PromptBar(prompt: PromptView, onAnswer: (Boolean) -> Unit) {
  */
 @Composable
 internal fun promptWords(prompt: PromptView): String {
+    // A download a site was not yet allowed (015): the site and the file, both in the core's
+    // words. The name is in quotation marks, so that where it begins and ends can be seen.
+    prompt.download?.let { download -> return stringResource(R.string.prompt_download, download.site, download.file_name) }
     val permission = prompt.permission ?: return ""
     val wanted =
         permission.kinds.mapNotNull { kind ->

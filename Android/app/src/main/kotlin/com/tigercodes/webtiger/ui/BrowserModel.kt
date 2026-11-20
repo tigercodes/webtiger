@@ -261,7 +261,7 @@ class BrowserModel(
      * asks nothing; and for a prompt this build has no words for, which is not put before a
      * person as two buttons and no question: its page waits.
      */
-    val prompt: PromptView? get() = tab.prompt?.takeIf { asked -> asked.permission?.kinds.orEmpty().isNotEmpty() }
+    val prompt: PromptView? get() = tab.prompt?.takeIf { asked -> asked.download != null || asked.permission?.kinds.orEmpty().isNotEmpty() }
 
     /**
      * The person's answer to the prompt the tab shows. What it lets the page do, what is

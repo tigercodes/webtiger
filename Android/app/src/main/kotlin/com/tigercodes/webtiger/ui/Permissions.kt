@@ -1,6 +1,6 @@
 // The Permissions list (014 §7): the sites that were allowed to use the camera, the microphone
-// or the location, each with what it may use, and a button to take that back. Taking it back
-// stops nothing that is running: the site asks again the next time.
+// or the location, or to download (015), each with what it may do, and a button to take that
+// back. Taking it back stops nothing that is running: the site asks again the next time.
 package com.tigercodes.webtiger.ui
 
 import android.icu.text.ListFormatter
@@ -120,6 +120,7 @@ internal fun allowedWords(site: SitePermissions): String {
                 PermissionKind.PERMISSION_KIND_CAMERA -> stringResource(R.string.permissions_kind_camera)
                 PermissionKind.PERMISSION_KIND_MICROPHONE -> stringResource(R.string.permissions_kind_microphone)
                 PermissionKind.PERMISSION_KIND_LOCATION -> stringResource(R.string.permissions_kind_location)
+                PermissionKind.PERMISSION_KIND_DOWNLOADS -> stringResource(R.string.permissions_kind_downloads)
                 else -> null
             }
         }
