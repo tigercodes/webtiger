@@ -53,6 +53,32 @@ public extension BrowserModel {
         return false
     }
 
+    /// Names the Space the window shows (024 §6.3). The name goes as it was typed. False when
+    /// the core would not: `spaceRefusal` then has its code. The window says the new name when
+    /// the core's snapshot does.
+    func renameSpace(to name: String) async -> Bool {
+        guard spaceID != 0 else { return false }
+        var ask = WTRenameSpace()
+        ask.spaceID = spaceID
+        ask.name = name
+        spaceRefusal = nil
+        do {
+            switch try await session.core.send(.renameSpace(ask)).value {
+            case .ack:
+                return true
+            case let .error(refused):
+                spaceRefusal = refused.code
+            default:
+                spaceRefusal = "space.rename_failed"
+            }
+        } catch let CoreError.refused(code, _) {
+            spaceRefusal = code
+        } catch {
+            spaceRefusal = "space.rename_failed"
+        }
+        return false
+    }
+
     /// The list of Spaces is opened: it is asked for anew, and says nothing of an earlier
     /// refusal.
     func openSpaces() {
@@ -145,6 +171,13 @@ struct SpacesSheet: ViewModifier {
                             }
                         }
                     },
+                    rename: { name in
+                        Task {
+                            if await model.renameSpace(to: name) {
+                                isShown = false
+                            }
+                        }
+                    },
                     done: { isShown = false }
                 )
                 #if os(macOS)
@@ -159,8 +192,15 @@ struct SpacesSheet: ViewModifier {
     }
 }
 
-/// The list of Spaces, and the page that makes one.
+/// The list of Spaces, the page that makes one, and the page that names the one shown.
 struct SpacesView: View {
+    /// What the sheet shows.
+    private enum Page {
+        case list
+        case new
+        case rename
+    }
+
     /// The Spaces as the core listed them, in their order. `nil` until it has.
     let spaces: [WTSpaceSummary]?
     /// The Space the window shows.
@@ -171,19 +211,22 @@ struct SpacesView: View {
     let show: (UInt64) -> Void
     /// A Space is to be made: its name as typed, and the Space whose logins it shares, if any.
     let make: (String, UInt64?) -> Void
+    /// The Space the window shows is to have the name typed.
+    let rename: (String) -> Void
     let done: () -> Void
 
-    @State private var isMaking: Bool
+    @State private var page: Page
     @State private var name: String
     @State private var shares: Bool
     @State private var shareWith: UInt64
     @FocusState private var nameFocused: Bool
-    /// It is a picture of the page that makes a Space (004): it takes no keyboard.
+    /// It is a picture of one of the pages (004): it takes no keyboard.
     private let isPicture: Bool
     @Environment(\.locale) private var locale
 
     /// `making` opens on the page that makes a Space, with `name` typed and, with `sharingWith`,
-    /// that Space's logins chosen: for a picture of it (004).
+    /// that Space's logins chosen; `renaming` on the page that names the Space shown: for a
+    /// picture of either (004).
     init(
         spaces: [WTSpaceSummary]?,
         shownID: UInt64,
@@ -191,8 +234,10 @@ struct SpacesView: View {
         making: Bool = false,
         name: String = "",
         sharingWith: UInt64? = nil,
+        renaming: Bool = false,
         show: @escaping (UInt64) -> Void,
         make: @escaping (String, UInt64?) -> Void,
+        rename: @escaping (String) -> Void,
         done: @escaping () -> Void
     ) {
         self.spaces = spaces
@@ -200,10 +245,11 @@ struct SpacesView: View {
         self.refusal = refusal
         self.show = show
         self.make = make
+        self.rename = rename
         self.done = done
-        isPicture = making
-        _isMaking = State(initialValue: making)
-        _name = State(initialValue: name)
+        isPicture = making || renaming
+        _page = State(initialValue: making ? .new : renaming ? .rename : .list)
+        _name = State(initialValue: renaming ? (spaces ?? []).first { $0.spaceID == shownID }?.name ?? "" : name)
         _shares = State(initialValue: sharingWith != nil)
         // Whose logins it would share, should that be chosen: those of the Space shown.
         _shareWith = State(initialValue: sharingWith ?? Self.owner(of: shownID, among: spaces ?? []))
@@ -211,10 +257,10 @@ struct SpacesView: View {
 
     var body: some View {
         ScrollView {
-            if isMaking {
-                making
-            } else {
-                list
+            switch page {
+            case .new: making
+            case .rename: renaming
+            case .list: list
             }
         }
     }
@@ -242,7 +288,8 @@ struct SpacesView: View {
                     // Whose logins a new Space would share, should the person choose to: those
                     // of the Space the window shows.
                     shareWith = Self.owner(of: shownID, among: spaces ?? [])
-                    isMaking = true
+                    name = ""
+                    page = .new
                 } label: {
                     Text("spaces.new", bundle: .module)
                         .frame(minHeight: BrowserWindowView.hitSize)
@@ -250,6 +297,20 @@ struct SpacesView: View {
                 .buttonStyle(.bordered)
                 .tint(.primary)
                 .accessibilityIdentifier("spaces-new")
+                Button {
+                    // The name the Space has: none, for the one the app made while nobody has
+                    // named it. The shell's word for that one is not a name it was given.
+                    name = shown?.name ?? ""
+                    page = .rename
+                } label: {
+                    Text("spaces.rename", bundle: .module)
+                        .frame(minHeight: BrowserWindowView.hitSize)
+                }
+                .buttonStyle(.bordered)
+                .tint(.primary)
+                // There is none to name until the core has listed the Space the window shows.
+                .disabled(shown == nil)
+                .accessibilityIdentifier("spaces-rename")
                 Button(action: done) {
                     Text("spaces.done", bundle: .module)
                         .frame(minHeight: BrowserWindowView.hitSize)
@@ -294,6 +355,11 @@ struct SpacesView: View {
         .padding(.vertical, Tokens.Space.xs)
         .accessibilityAddTraits(isShown ? .isSelected : [])
         .accessibilityIdentifier("space-\(space.spaceID)")
+    }
+
+    /// The Space the window shows, as the core listed it.
+    private var shown: WTSpaceSummary? {
+        (spaces ?? []).first { $0.spaceID == shownID }
     }
 
     /// The name of another Space that has the same logins as `space`: the first there is.
@@ -363,14 +429,31 @@ struct SpacesView: View {
                     .accessibilityIdentifier("space-share-with")
                 }
             }
+            buttons("space.new.make", identifier: "space-make", unknown: "error.space.failed", action: submit)
+        }
+        .padding(Tokens.Space.l)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // The name is what is asked first: the keyboard is in its field when the page opens.
+        .onAppear {
+            if !isPicture {
+                nameFocused = true
+            }
+        }
+    }
+
+    /// What the core refused, in words, and a page's two buttons: back to the list, and the
+    /// one that does what the page is for, which is not to be pressed while there is no name.
+    /// (The core says so too: this only spares the press.)
+    private func buttons(_ title: LocalizedStringKey, identifier: String, unknown: String, action: @escaping () -> Void) -> some View {
+        VStack(alignment: .leading, spacing: Tokens.Space.l) {
             if let refusal {
-                Text(verbatim: Self.words(for: refusal))
+                Text(verbatim: Self.words(for: refusal, unknown: unknown))
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("space-refusal")
             }
             HStack(spacing: Tokens.Space.m) {
                 Button {
-                    isMaking = false
+                    page = .list
                 } label: {
                     Text("space.new.back", bundle: .module)
                         .frame(minHeight: BrowserWindowView.hitSize)
@@ -378,25 +461,43 @@ struct SpacesView: View {
                 .buttonStyle(.bordered)
                 .tint(.primary)
                 .accessibilityIdentifier("space-back")
-                Button(action: submit) {
+                Button(action: action) {
                     // The one that does something stands out by its weight. (White on the
                     // accent's blue, which a prominent button is, is too faint to read at this
                     // size: Apple's audit, on an iPhone.)
-                    Text("space.new.make", bundle: .module)
+                    Text(title, bundle: .module)
                         .fontWeight(.semibold)
                         .frame(minHeight: BrowserWindowView.hitSize)
                 }
                 .buttonStyle(.bordered)
                 .tint(.primary)
-                // Nothing to make of no name. (The core says so too: this only spares the
-                // press.)
                 .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .accessibilityIdentifier("space-make")
+                .accessibilityIdentifier(identifier)
             }
+        }
+    }
+
+    // MARK: Naming the one shown
+
+    private var renaming: some View {
+        VStack(alignment: .leading, spacing: Tokens.Space.l) {
+            Text("space.rename.title", bundle: .module)
+                .font(.title2.weight(.semibold))
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("space-rename-title")
+            VStack(alignment: .leading, spacing: Tokens.Space.xs) {
+                Text("space.new.name", bundle: .module)
+                    .font(.callout)
+                TextField(text: $name) { Text("space.new.name", bundle: .module) }
+                    .textFieldStyle(.roundedBorder)
+                    .focused($nameFocused)
+                    .onSubmit { rename(name) }
+                    .accessibilityIdentifier("space-name")
+            }
+            buttons("space.rename.save", identifier: "space-save", unknown: "error.space.rename_failed") { rename(name) }
         }
         .padding(Tokens.Space.l)
         .frame(maxWidth: .infinity, alignment: .leading)
-        // The name is what is asked first: the keyboard is in its field when the page opens.
         .onAppear {
             if !isPicture {
                 nameFocused = true
@@ -439,11 +540,11 @@ struct SpacesView: View {
         .accessibilityIdentifier(identifier)
     }
 
-    /// The words for why a Space was not made: the code's own, or what is said when no more
-    /// is known. Never the code's text.
-    static func words(for code: String) -> String {
+    /// The words for why a Space was not made, or not named: the code's own, or `unknown`,
+    /// what is said when no more is known. Never the code's text.
+    static func words(for code: String, unknown: String = "error.space.failed") -> String {
         let key = "error." + code
         let words = Bundle.module.localizedString(forKey: key, value: nil, table: nil)
-        return words != key ? words : Bundle.module.localizedString(forKey: "error.space.failed", value: nil, table: nil)
+        return words != key ? words : Bundle.module.localizedString(forKey: unknown, value: nil, table: nil)
     }
 }

@@ -168,6 +168,7 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
                 refusal = model.spaceRefusal,
                 onShow = model::showSpace,
                 onMake = model::makeSpace,
+                onRename = model::renameSpace,
                 onDone = model::closeSpaces,
                 modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing),
             )

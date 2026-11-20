@@ -581,6 +581,7 @@ internal enum class CatalogueSpaces(@StringRes val title: Int) {
     NEW(R.string.catalogue_state_spaces_new),
     NEW_SHARED(R.string.catalogue_state_spaces_new_shared),
     REFUSED(R.string.catalogue_state_spaces_refused),
+    RENAME(R.string.catalogue_state_spaces_rename),
     ;
 
     companion object {
@@ -611,10 +612,12 @@ internal fun CatalogueSpacesList(state: CatalogueSpaces, modifier: Modifier = Mo
                 refusal = "space.too_many".takeIf { state == CatalogueSpaces.REFUSED },
                 onShow = {},
                 onMake = { _, _ -> },
+                onRename = {},
                 onDone = {},
-                making = state != CatalogueSpaces.LIST,
-                name = if (state == CatalogueSpaces.LIST) "" else "Travel",
+                making = state in setOf(CatalogueSpaces.NEW, CatalogueSpaces.NEW_SHARED, CatalogueSpaces.REFUSED),
+                name = "Travel",
                 sharingWith = 2L.takeIf { state == CatalogueSpaces.NEW_SHARED },
+                renaming = state == CatalogueSpaces.RENAME,
             )
         }
     }

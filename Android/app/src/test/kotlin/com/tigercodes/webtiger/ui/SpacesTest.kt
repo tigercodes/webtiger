@@ -17,8 +17,10 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
 import com.tigercodes.webtiger.core.ScriptedCore
+import com.tigercodes.webtiger.core.v1.Ack
 import com.tigercodes.webtiger.core.v1.Error
 import com.tigercodes.webtiger.core.v1.Request
 import com.tigercodes.webtiger.core.v1.Response
@@ -53,6 +55,7 @@ class SpacesTest {
             SpaceSummary(space_id = 3, name = "Project", logins = 2),
         )
     private var refusal: String? = null
+    private var renameRefusal: String? = null
     private val core = ScriptedCore(::script)
 
     private fun script(request: Request): Response =
@@ -63,6 +66,12 @@ class SpacesTest {
                     val id = listed.size + 1L
                     listed = listed + SpaceSummary(space_id = id, name = request.create_space!!.name, logins = id.toInt())
                     Response(space_created = SpaceCreated(space_id = id))
+                }
+            request.rename_space != null ->
+                renameRefusal?.let { Response(error = Error(code = it)) } ?: run {
+                    val named = request.rename_space!!
+                    listed = listed.map { if (it.space_id == named.space_id) it.copy(name = named.name) else it }
+                    Response(ack = Ack())
                 }
             else -> windowScript(request)
         }
@@ -89,7 +98,18 @@ class SpacesTest {
             request.query_spaces?.let { "list" }
                 ?: request.switch_space?.let { "show ${it.space_id} in ${it.window_id}" }
                 ?: request.create_space?.let { "make '${it.name}' sharing ${it.share_logins_with}" }
+                ?: request.rename_space?.let { "name ${it.space_id} '${it.name}'" }
         }
+
+    /** What the field for a Space's name holds. */
+    private fun typed(): String =
+        compose
+            .onNodeWithTag("space-name")
+            .fetchSemanticsNode()
+            .config
+            .getOrNull(SemanticsProperties.EditableText)
+            ?.text
+            .orEmpty()
 
     private fun description(tag: String): String? =
         compose
@@ -232,6 +252,82 @@ class SpacesTest {
         compose.onNodeWithTag("spaces-new").performClick()
         compose.waitForIdle()
         compose.onAllNodesWithTag("space-refusal").assertCountEquals(0)
+    }
+
+    @Test
+    fun theSpaceShownIsNamedWithTheNameAsTypedAndTheListGoes() {
+        aWindow(shown = 2, name = "Work")
+        compose.onNodeWithTag("space-chip").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("spaces-rename").assertIsEnabled().performClick()
+        compose.waitForIdle()
+
+        // The field holds the name the Space has.
+        assertEquals("Work", typed())
+        compose.onNodeWithTag("space-save").assertIsEnabled()
+        compose.onNodeWithTag("space-name").performTextReplacement("  The office ")
+        compose.onNodeWithTag("space-save").performClick()
+        compose.waitForIdle()
+
+        // The Space the window shows, and the name as typed: tidying it is the core's.
+        assertEquals(listOf("list", "name 2 '  The office '"), asked())
+        assertEquals("named, and the list is gone", 0, lists())
+        // The chip says what the core says, and the core has not said anything yet.
+        assertEquals("Space: Work", description("space-chip"))
+    }
+
+    @Test
+    fun theSpaceNobodyNamedStartsWithAnEmptyFieldAndNoNameIsNotSaved() {
+        aWindow()
+        compose.onNodeWithTag("space-chip").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("spaces-rename").performClick()
+        compose.waitForIdle()
+
+        // "Home" is the shell's word for it, not a name it was given: the field is empty.
+        assertEquals("", typed())
+        compose.onNodeWithTag("space-save").assertIsNotEnabled()
+        compose.onNodeWithTag("space-name").performTextInput("   ")
+        compose.onNodeWithTag("space-save").assertIsNotEnabled()
+        compose.onNodeWithTag("space-name").performTextReplacement("Home base")
+        compose.onNodeWithTag("space-save").assertIsEnabled()
+
+        // Back: nothing was asked for, and the list is there again.
+        compose.onNodeWithTag("space-back").performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("list"), asked())
+        compose.onAllNodesWithTag("spaces-rename").assertCountEquals(1)
+    }
+
+    @Test
+    fun aNameTheCoreWillNotTakeSaysWhyInWordsAndThePageStays() {
+        renameRefusal = "space.unknown"
+        aWindow(shown = 2, name = "Work")
+        compose.onNodeWithTag("space-chip").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("spaces-rename").performClick()
+        compose.onNodeWithTag("space-name").performTextReplacement("Office")
+        compose.onNodeWithTag("space-save").performClick()
+        compose.waitForIdle()
+
+        assertEquals(listOf("list", "name 2 'Office'"), asked())
+        assertEquals("the page stays", 1, lists())
+        compose.onNodeWithTag("space-refusal").assertTextEquals("That Space isn’t there any more.")
+
+        // A code with no words of its own is said as "it could not be renamed", not "made".
+        renameRefusal = "store.query"
+        compose.onNodeWithTag("space-save").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("space-refusal").assertTextEquals("The Space couldn’t be renamed.")
+    }
+
+    @Test
+    fun untilTheCoreHasListedTheSpaceShownThereIsNoneToName() {
+        // A core that lists nothing of the Space the window says it shows.
+        aWindow(shown = 9, name = "Elsewhere")
+        compose.onNodeWithTag("space-chip").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("spaces-rename").assertIsNotEnabled()
     }
 
     @Test

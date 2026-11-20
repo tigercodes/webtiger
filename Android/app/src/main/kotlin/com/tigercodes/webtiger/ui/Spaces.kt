@@ -118,8 +118,11 @@ internal fun SpaceChip(name: String, compact: Boolean, onClick: () -> Unit, modi
  * the core listed them, null until it has; `shownId` is the one the window shows; `refusal` is
  * why the core would not make one, by its code.
  *
+ * `onRename` is told the name typed for the Space the window shows.
+ *
  * `making`, `name` and `sharingWith` open it on the page that makes a Space, with that name
- * typed and that Space's logins chosen: for a picture of it (004).
+ * typed and that Space's logins chosen; `renaming` on the page that names the Space shown:
+ * for a picture of either (004).
  */
 @Composable
 internal fun Spaces(
@@ -128,15 +131,18 @@ internal fun Spaces(
     refusal: String?,
     onShow: (Long) -> Unit,
     onMake: (String, Long?) -> Unit,
+    onRename: (String) -> Unit,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
     making: Boolean = false,
     name: String = "",
     sharingWith: Long? = null,
+    renaming: Boolean = false,
 ) {
-    var isMaking by rememberSaveable { mutableStateOf(making) }
-    // The system's Back leaves the page for the list, and the list for the window.
-    BackHandler { if (isMaking) isMaking = false else onDone() }
+    val pictured = making || renaming
+    var page by rememberSaveable { mutableStateOf(if (making) SpacesPage.NEW else if (renaming) SpacesPage.RENAME else SpacesPage.LIST) }
+    // The system's Back leaves a page for the list, and the list for the window.
+    BackHandler { if (page != SpacesPage.LIST) page = SpacesPage.LIST else onDone() }
     Column(
         modifier =
             modifier
@@ -146,26 +152,40 @@ internal fun Spaces(
                 .padding(vertical = Tokens.Space.l)
                 .testTag("spaces"),
     ) {
-        if (isMaking) {
-            // Whose logins a new Space would share, should the person choose to: those of the
-            // Space the window shows.
-            val all = spaces.orEmpty()
-            NewSpace(
-                owners = owners(all),
-                startsSharingWith = sharingWith,
-                wouldShareWith = owner(all, shownId),
-                startsNamed = name,
-                // A picture of the page takes no keyboard.
-                takesKeyboard = !making,
-                refusal = refusal,
-                onMake = onMake,
-                onBack = { isMaking = false },
-            )
-        } else {
-            SpaceList(spaces.orEmpty(), shownId, onShow = onShow, onNew = { isMaking = true }, onDone = onDone)
+        val all = spaces.orEmpty()
+        when (page) {
+            SpacesPage.NEW ->
+                // Whose logins a new Space would share, should the person choose to: those of
+                // the Space the window shows.
+                NewSpace(
+                    owners = owners(all),
+                    startsSharingWith = sharingWith,
+                    wouldShareWith = owner(all, shownId),
+                    startsNamed = name,
+                    // A picture of the page takes no keyboard.
+                    takesKeyboard = !pictured,
+                    refusal = refusal,
+                    onMake = onMake,
+                    onBack = { page = SpacesPage.LIST },
+                )
+            SpacesPage.RENAME ->
+                // The name the Space has: none, for the one the app made while nobody has named
+                // it. The shell's word for that one is not a name it was given.
+                SpaceRename(
+                    named = all.firstOrNull { it.space_id == shownId }?.name.orEmpty(),
+                    takesKeyboard = !pictured,
+                    refusal = refusal,
+                    onSave = onRename,
+                    onBack = { page = SpacesPage.LIST },
+                )
+            SpacesPage.LIST ->
+                SpaceList(all, shownId, onShow = onShow, onNew = { page = SpacesPage.NEW }, onRename = { page = SpacesPage.RENAME }, onDone = onDone)
         }
     }
 }
+
+/** What the list of Spaces shows: the list itself, the page that makes a Space, or the page that names one. */
+private enum class SpacesPage { LIST, NEW, RENAME }
 
 /** The Spaces a new one can share logins with: the first of each that has logins of its own. (Sharing with one that shares already is sharing with whoever it shares with.) */
 private fun owners(spaces: List<SpaceSummary>): List<SpaceSummary> = spaces.distinctBy { it.logins }
@@ -178,7 +198,7 @@ private fun owner(spaces: List<SpaceSummary>, id: Long): Long {
 }
 
 @Composable
-private fun SpaceList(spaces: List<SpaceSummary>, shownId: Long, onShow: (Long) -> Unit, onNew: () -> Unit, onDone: () -> Unit) {
+private fun SpaceList(spaces: List<SpaceSummary>, shownId: Long, onShow: (Long) -> Unit, onNew: () -> Unit, onRename: () -> Unit, onDone: () -> Unit) {
     Column(modifier = Modifier.padding(horizontal = Tokens.Space.l), verticalArrangement = Arrangement.spacedBy(Tokens.Space.s)) {
         Text(
             text = stringResource(R.string.spaces_title),
@@ -225,6 +245,10 @@ private fun SpaceList(spaces: List<SpaceSummary>, shownId: Long, onShow: (Long) 
     }
     Row(modifier = Modifier.padding(horizontal = Tokens.Space.s, vertical = Tokens.Space.s), horizontalArrangement = Arrangement.spacedBy(Tokens.Space.s)) {
         TextButton(onClick = onNew, modifier = Modifier.testTag("spaces-new")) { Text(stringResource(R.string.spaces_new)) }
+        // Names the Space the window shows: there is none to name until the core has listed it.
+        TextButton(onClick = onRename, enabled = spaces.any { it.space_id == shownId }, modifier = Modifier.testTag("spaces-rename")) {
+            Text(stringResource(R.string.spaces_rename))
+        }
         TextButton(onClick = onDone, modifier = Modifier.testTag("spaces-done")) { Text(stringResource(R.string.spaces_done)) }
     }
 }
@@ -303,17 +327,54 @@ private fun NewSpace(
             }
         }
     }
-    if (refusal != null) {
-        val context = LocalContext.current
-        Text(
-            text = spaceRefusalWords(context.resources, context.packageName, refusal),
-            modifier = Modifier.padding(horizontal = Tokens.Space.l, vertical = Tokens.Space.s).testTag("space-refusal"),
-        )
-    }
+    Refusal(refusal, R.string.error_space_failed)
     Row(modifier = Modifier.padding(horizontal = Tokens.Space.l, vertical = Tokens.Space.s), horizontalArrangement = Arrangement.spacedBy(Tokens.Space.s)) {
         TextButton(onClick = onBack, modifier = Modifier.testTag("space-back")) { Text(stringResource(R.string.space_new_back)) }
         // Nothing to make of no name. (The core says so too: this only spares the press.)
         Button(onClick = submit, enabled = name.isNotBlank(), modifier = Modifier.testTag("space-make")) { Text(stringResource(R.string.space_new_make)) }
+    }
+}
+
+/** Why the core would not do what a page asked, in words: above the page's buttons. */
+@Composable
+private fun Refusal(code: String?, unknown: Int) {
+    if (code == null) return
+    val context = LocalContext.current
+    Text(
+        text = spaceRefusalWords(context.resources, context.packageName, code, unknown),
+        modifier = Modifier.padding(horizontal = Tokens.Space.l, vertical = Tokens.Space.s).testTag("space-refusal"),
+    )
+}
+
+/** The page that names the Space the window shows (024 §6.3): a field that holds the name it has. */
+@Composable
+private fun SpaceRename(named: String, takesKeyboard: Boolean, refusal: String?, onSave: (String) -> Unit, onBack: () -> Unit) {
+    val nameField = remember { FocusRequester() }
+    LaunchedEffect(Unit) { if (takesKeyboard) nameField.requestFocus() }
+    var name by rememberSaveable { mutableStateOf(named) }
+    val submit = { if (name.isNotBlank()) onSave(name) }
+    Column(modifier = Modifier.padding(horizontal = Tokens.Space.l), verticalArrangement = Arrangement.spacedBy(Tokens.Space.m)) {
+        Text(
+            text = stringResource(R.string.space_rename_title),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.semantics { heading() },
+        )
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = { Text(stringResource(R.string.space_new_name)) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { submit() }),
+            modifier = Modifier.fillMaxWidth().focusRequester(nameField).testTag("space-name"),
+        )
+    }
+    Refusal(refusal, R.string.error_space_rename_failed)
+    Row(modifier = Modifier.padding(horizontal = Tokens.Space.l, vertical = Tokens.Space.s), horizontalArrangement = Arrangement.spacedBy(Tokens.Space.s)) {
+        TextButton(onClick = onBack, modifier = Modifier.testTag("space-back")) { Text(stringResource(R.string.space_new_back)) }
+        // No name is no name. (The core says so too: this only spares the press.)
+        Button(onClick = submit, enabled = name.isNotBlank(), modifier = Modifier.testTag("space-save")) { Text(stringResource(R.string.space_rename_save)) }
     }
 }
 

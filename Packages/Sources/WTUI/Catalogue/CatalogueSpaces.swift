@@ -8,6 +8,7 @@ enum CatalogueSpaces: String, CaseIterable, Identifiable {
     case new
     case newShared = "new-shared"
     case refused
+    case rename
 
     var id: String {
         rawValue
@@ -20,6 +21,7 @@ enum CatalogueSpaces: String, CaseIterable, Identifiable {
         case .new: "catalogue.state.spaces_new"
         case .newShared: "catalogue.state.spaces_new_shared"
         case .refused: "catalogue.state.spaces_refused"
+        case .rename: "catalogue.state.spaces_rename"
         }
     }
 
@@ -50,10 +52,11 @@ struct CatalogueSpacesList: View {
             spaces: CatalogueSpaces.spaces,
             shownID: 2,
             refusal: state == .refused ? "space.too_many" : nil,
-            making: state != .list,
-            name: state == .list ? "" : "Travel",
+            making: [.new, .newShared, .refused].contains(state),
+            name: "Travel",
             sharingWith: state == .newShared ? 2 : nil,
-            show: { _ in }, make: { _, _ in }, done: {}
+            renaming: state == .rename,
+            show: { _ in }, make: { _, _ in }, rename: { _ in }, done: {}
         )
     }
 }

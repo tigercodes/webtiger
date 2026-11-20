@@ -505,6 +505,18 @@
         }
       }
     },
+    "catalogue.state.spaces_rename": {
+      "comment": "Design catalogue: a state of the list of Spaces.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renaming a Space"
+          }
+        }
+      }
+    },
     "catalogue.state.suggestions": {
       "comment": "Design catalogue: a state of the window.",
       "extractionState": "manual",
@@ -933,6 +945,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "A Space needs a name."
+          }
+        }
+      }
+    },
+    "error.space.rename_failed": {
+      "comment": "Said on the page that renames a Space when it could not be renamed and no more is known.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Space couldn’t be renamed."
           }
         }
       }
@@ -1921,6 +1945,30 @@
         }
       }
     },
+    "space.rename.save": {
+      "comment": "Button that gives the Space the name in the field.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
+          }
+        }
+      }
+    },
+    "space.rename.title": {
+      "comment": "Heading of the page that gives a Space another name.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename Space"
+          }
+        }
+      }
+    },
     "spaces.detail": {
       "comment": "Under the heading of the list of Spaces.",
       "extractionState": "manual",
@@ -1953,6 +2001,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "New Space…"
+          }
+        }
+      }
+    },
+    "spaces.rename": {
+      "comment": "Button in the list of Spaces, beside 'New Space…': opens the page that gives the Space the window shows another name.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename…"
           }
         }
       }

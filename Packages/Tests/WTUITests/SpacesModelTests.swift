@@ -13,6 +13,7 @@ final class SpacesModelTests: XCTestCase {
         private let lock = NSLock()
         private var listed = [Told.space(1, "", logins: 1), Told.space(2, "Work", logins: 2)]
         private var refusal: String?
+        private var renameRefusal: String?
 
         private static func space(_ id: UInt64, _ name: String, logins: UInt32) -> WTSpaceSummary {
             var space = WTSpaceSummary()
@@ -24,6 +25,10 @@ final class SpacesModelTests: XCTestCase {
 
         func refuse(with code: String?) {
             lock.withLock { refusal = code }
+        }
+
+        func refuseNames(with code: String?) {
+            lock.withLock { renameRefusal = code }
         }
 
         func answer(_ request: WTRequest.OneOf_Kind) -> WTResponse.OneOf_Kind? {
@@ -44,6 +49,11 @@ final class SpacesModelTests: XCTestCase {
                     var made = WTSpaceCreated()
                     made.spaceID = id
                     return .spaceCreated(made)
+                case .renameSpace:
+                    guard let renameRefusal else { return .ack(WTAck()) }
+                    var refused = WTError()
+                    refused.code = renameRefusal
+                    return .error(refused)
                 default:
                     return nil
                 }
@@ -94,6 +104,7 @@ final class SpacesModelTests: XCTestCase {
             case .querySpaces: "list"
             case let .switchSpace(ask): "show \(ask.spaceID) in \(ask.windowID)"
             case let .createSpace(ask): "make '\(ask.name)' sharing \(ask.shareLoginsWith)"
+            case let .renameSpace(ask): "name \(ask.spaceID) '\(ask.name)'"
             default: nil
             }
         }
@@ -180,6 +191,52 @@ final class SpacesModelTests: XCTestCase {
         XCTAssertNil(model.spaceRefusal)
     }
 
+    /// A model whose window the core says shows the Space `id`.
+    private func showing(_ id: UInt64, named name: String) async -> (BrowserModel, ScriptedCore) {
+        let (model, core) = await opened()
+        var window = WTWindowSnapshot()
+        window.windowID = 1
+        window.tab.tabID = 2
+        window.spaceID = id
+        window.spaceName = name
+        core.emit(window, subscription: 3)
+        await settle { model.spaceID == id }
+        return (model, core)
+    }
+
+    func testTheSpaceShownIsNamedWithTheNameAsTyped() async {
+        let (model, core) = await showing(2, named: "Work")
+
+        let named = await model.renameSpace(to: "  The office ")
+
+        XCTAssertTrue(named)
+        // The Space the window shows, and the name as typed: tidying it is the core's.
+        XCTAssertEqual(asked(core), ["name 2 '  The office '"])
+        XCTAssertNil(model.spaceRefusal)
+        // The model names nothing by itself: the name it shows is the core's word.
+        XCTAssertEqual(model.spaceName, "Work")
+    }
+
+    func testANameTheCoreWillNotTakeSaysWhyAndBeforeTheCoreHasSaidWhichSpaceNothingIsAsked() async {
+        let (unopened, quiet) = await opened()
+        let nothing = await unopened.renameSpace(to: "Anything")
+        XCTAssertFalse(nothing)
+        XCTAssertEqual(asked(quiet), [], "no Space is shown yet: there is none to name")
+
+        let (model, core) = await showing(2, named: "Work")
+        told.refuseNames(with: "space.name_empty")
+        let named = await model.renameSpace(to: " ")
+        XCTAssertFalse(named)
+        XCTAssertEqual(model.spaceRefusal, "space.name_empty")
+        XCTAssertEqual(asked(core), ["name 2 ' '"])
+
+        // Tried again and taken, it says nothing of before.
+        told.refuseNames(with: nil)
+        let again = await model.renameSpace(to: "Office")
+        XCTAssertTrue(again)
+        XCTAssertNil(model.spaceRefusal)
+    }
+
     func testWhereThereIsNoRoomForANameASpaceIsItsInitial() {
         XCTAssertEqual(SpaceName.initial(of: "Home"), "H")
         XCTAssertEqual(SpaceName.initial(of: "work"), "W", "as a capital")
@@ -197,5 +254,10 @@ final class SpacesModelTests: XCTestCase {
         for code in ["space.random", "store.query", "space.failed", ""] {
             XCTAssertEqual(SpacesView.words(for: code), "The Space couldn’t be made.", code)
         }
+        // On the page that names a Space, it is said of naming.
+        for code in ["space.random", "store.query", "space.rename_failed", ""] {
+            XCTAssertEqual(SpacesView.words(for: code, unknown: "error.space.rename_failed"), "The Space couldn’t be renamed.", code)
+        }
+        XCTAssertEqual(SpacesView.words(for: "space.unknown", unknown: "error.space.rename_failed"), "That Space isn’t there any more.")
     }
 }

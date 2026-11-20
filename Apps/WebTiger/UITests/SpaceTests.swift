@@ -105,4 +105,48 @@ final class SpaceTests: AppTestCase {
         XCTAssertTrue(chipSays("Work", in: app))
         XCTAssertTrue(pageShows("who=none", in: app), "Work's tab is as it was left")
     }
+
+    /// The Space the window shows is named (024 §6.3): the page's field holds the name it has;
+    /// saved, the chip and the list say the new one, and its tab is as it was. Apple's
+    /// accessibility audit passes over the page.
+    func testTheSpaceTheWindowShowsIsNamed() {
+        let app = launch(start: site.url("/"))
+        XCTAssertTrue(pageShows("Home", in: app))
+        makeSpace("Work", sharing: false, in: app)
+        XCTAssertTrue(chipSays("Work", in: app))
+        go(to: "/landed", in: app)
+        XCTAssertTrue(pageShows("Landed", in: app))
+
+        press(app.buttons["space-chip"])
+        XCTAssertTrue(app.buttons["spaces-rename"].waitForExistence(timeout: 30))
+        press(app.buttons["spaces-rename"])
+        let name = app.textFields["space-name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 30), "the page that names a Space")
+        XCTAssertEqual(value(of: name), "Work")
+        audit(app, "naming a Space")
+        clear(name, in: app)
+        name.typeText("Office")
+        press(app.buttons["space-save"])
+
+        XCTAssertTrue(chipSays("Office", in: app), "the window says the new name")
+        XCTAssertFalse(name.exists, "the page that named it is gone")
+        XCTAssertTrue(pageShows("Landed", in: app), "its tab is as it was")
+        press(app.buttons["space-chip"])
+        let named = app.buttons["space-2"]
+        XCTAssertTrue(named.waitForExistence(timeout: 30))
+        XCTAssertTrue(named.label.contains("Office"), named.label)
+        XCTAssertFalse(named.label.contains("Work"), named.label)
+        XCTAssertTrue(app.buttons["space-1"].label.contains("Home"), "the other Space is called what it was")
+    }
+
+    /// Empties a field that has the keyboard: every character it holds is deleted from its end.
+    private func clear(_ field: XCUIElement, in app: XCUIApplication) {
+        press(field)
+        #if os(macOS)
+            app.typeKey("a", modifierFlags: .command)
+            field.typeText(XCUIKeyboardKey.delete.rawValue)
+        #else
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: value(of: field).count))
+        #endif
+    }
 }

@@ -20,6 +20,7 @@ import com.tigercodes.webtiger.core.v1.OpenTab
 import com.tigercodes.webtiger.core.v1.PromptView
 import com.tigercodes.webtiger.core.v1.QuerySearch
 import com.tigercodes.webtiger.core.v1.QuerySpaces
+import com.tigercodes.webtiger.core.v1.RenameSpace
 import com.tigercodes.webtiger.core.v1.Request
 import com.tigercodes.webtiger.core.v1.SearchSettings
 import com.tigercodes.webtiger.core.v1.SpaceSummary
@@ -354,7 +355,7 @@ class BrowserModel(
         isChangingSearch = false
     }
 
-    // Several Spaces (024 §6.2)
+    // Several Spaces (024 §6)
 
     /** The Space the window shows, by the core's name for it. 0 until the core has said. */
     var spaceId by mutableStateOf(0L)
@@ -375,6 +376,28 @@ class BrowserModel(
     /** Why the core would not make a Space, by its code: said on the page that asked. */
     var spaceRefusal by mutableStateOf<String?>(null)
         private set
+
+    /**
+     * Names the Space the window shows (024 §6.3), and closes the list. The name goes as it was
+     * typed. A name the core will not take leaves the list open, with the core's code in
+     * [spaceRefusal]; the chip says the new name when the core's snapshot does.
+     */
+    fun renameSpace(name: String) {
+        val shown = spaceId.takeIf { it != 0L } ?: return
+        spaceRefusal = null
+        session.scope.launch {
+            try {
+                session.core.request(Request(rename_space = RenameSpace(space_id = shown, name = name)))
+            } catch (refused: CoreError.Refused) {
+                spaceRefusal = refused.code
+                return@launch
+            } catch (_: CoreError) {
+                spaceRefusal = "space.rename_failed"
+                return@launch
+            }
+            showingSpaces = false
+        }
+    }
 
     /** Opens the list of Spaces: asked for anew, with nothing said of an earlier refusal. */
     fun openSpaces() {

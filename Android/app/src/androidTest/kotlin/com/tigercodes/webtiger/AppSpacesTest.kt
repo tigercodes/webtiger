@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import android.webkit.WebView
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -206,6 +207,22 @@ internal class AppSpacesTest {
             compose.onNodeWithTag("space-2").performClick()
             awaitSpace("Work")
             awaitPage("who=none")
+
+            // The Space the window shows is named: the field holds the name it has, and the
+            // chip and the list say the new one.
+            openSpaces()
+            compose.onNodeWithTag("spaces-rename").performClick()
+            awaitTag("space-save")
+            compose.onNodeWithTag("space-name").assert(androidx.compose.ui.test.hasText("Work"))
+            compose.onRoot().tryPerformAccessibilityChecks()
+            compose.onNodeWithTag("space-name").performTextReplacement("Office")
+            compose.onNodeWithTag("space-save").performClick()
+            awaitSpace("Office")
+            compose.onAllNodesWithTag("spaces").assertCountEquals(0)
+            awaitPage("who=none")
+            openSpaces()
+            compose.onNodeWithTag("space-2").assertTextEquals("Office", "Shown")
+            compose.onNodeWithTag("spaces-done").performClick()
         } finally {
             compose.disableAccessibilityChecks()
         }
