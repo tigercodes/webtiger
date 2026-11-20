@@ -49,7 +49,7 @@ Nothing is accepted on a person's behalf, by any adapter, for any of these: the 
 
 **As built**, and as seen:
 
-- **The System WebView** (133, on the emulator) was served a certificate that signs itself, made on the device by the test: it said "untrusted", the adapter reported `net.tls.untrusted` and cancelled the load, nothing of the site was shown, and the site was never asked for its page.
+- **The System WebView** (133, on the emulator) was served a certificate that signs itself, made on the device by the test: it said "untrusted", the adapter reported `net.tls.untrusted` and cancelled the load, no page of the site came of it, and the site was never asked for its page. (The WebView then commits its own error page at the address that failed, as after any failure, a moment later; the adapter names that address and nothing else. A first form of this test said no address was named at all, and passed only while it looked before that moment.)
 - **A server that speaks no TLS**, asked for over `https`, is `net.tls` on both engines. (The test site answers a connection that begins as TLS in plain words and closes it, as a web server does: left waiting instead, WebKit gave up after a minute and called it a timeout.)
 - **WebKit** was not served a certificate (§7): its four kinds are the adapter's rule, by their numbers.
 
@@ -59,7 +59,7 @@ Nothing is accepted on a person's behalf, by any adapter, for any of these: the 
 |---|---|
 | Core (`wt-app/tests/browsing.rs`, 1 more) | A finer code under one the shells know reaches the tab as it was reported: each of the three |
 | The adapters' own rules | WebKit (`testEngineErrorsBecomeCodes`): untrusted and unknown root; bad date and not yet valid; and every other way a secure connection is not made, as before. The System WebView (`NetErrorsTest`, 1 more; `PageTrackerTest`, 1 more): untrusted; expired, not yet valid and date invalid; another site's; whatever else, and a kind this build has not heard of; and the load is said to have failed with the kind it was |
-| Adapter suites, against the real engines | A server that speaks no TLS, asked for over `https`, is a secure connection that could not be made, and nothing of the site is shown: WebKit on the Mac and the iPhone simulator; the System WebView on the emulator (`SystemWebViewCertificateTest`, 2). On the emulator, a site whose certificate signs itself, with a key made on the device for the test and removed after it: not trusted, nothing shown, and the page never asked for |
+| Adapter suites, against the real engines | A server that speaks no TLS, asked for over `https`, is a secure connection that could not be made, and no page of the site comes of it: WebKit on the Mac and the iPhone simulator; the System WebView on the emulator (`SystemWebViewCertificateTest`, 2), where once the engine's own error page is there the load has not finished, no title is the site's, and the only address named is the one that failed. On the emulator, a site whose certificate signs itself, with a key made on the device for the test and removed after it: not trusted, no page of it, and the page never asked for |
 | The test site | A connection that begins as TLS is answered in plain words and closed, in all three of its servers |
 | The shells' words | Each of the three codes has its words; a finer code with none of its own has the words of the code above it, and with nothing above it the general ones; never the code's own text (`WordsTest`, 1 more; `testACertificateThatIsNotTrustedSaysWhy`). Seven of the rules checked by breaking them |
 
