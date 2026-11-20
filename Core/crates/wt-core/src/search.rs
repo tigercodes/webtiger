@@ -63,6 +63,22 @@ pub const SEARCH_ENGINES: [SearchEngine; 7] = [
 /// agreement. It is not a default anybody was given: the person is asked.
 pub const STAND_IN_SEARCH_ENGINE: &str = "duckduckgo";
 
+/// The most characters of selected words that are searched for (023 §3): a
+/// search for a whole page is nobody's wish.
+pub const SEARCHED_LENGTH: usize = 500;
+
+/// Words a person selected, as they are searched for (023 §3): with no white
+/// space at the ends, every run of white space inside as one space, and no
+/// more than [`SEARCHED_LENGTH`] characters. `None` when nothing is left.
+#[must_use]
+pub fn searched_words(selected: &str) -> Option<String> {
+    let tidy = selected.split_whitespace().collect::<Vec<_>>().join(" ");
+    let cut: String = tidy.chars().take(SEARCHED_LENGTH).collect();
+    // What the cut left at its end is no part of a word.
+    let words = cut.trim_end();
+    (!words.is_empty()).then(|| words.to_owned())
+}
+
 /// The engine the core knows by that name.
 #[must_use]
 pub fn search_engine(id: &str) -> Option<&'static SearchEngine> {
@@ -95,6 +111,32 @@ impl SearchEngine {
 )]
 mod tests {
     use super::*;
+
+    #[test]
+    fn selected_words_are_tidied_and_cut_and_may_come_to_nothing() {
+        assert_eq!(searched_words("tigers").as_deref(), Some("tigers"));
+        // The ends, and every run of white space of any kind inside.
+        assert_eq!(
+            searched_words("  tigers \n\t in\u{a0}the   wild\r\n").as_deref(),
+            Some("tigers in the wild")
+        );
+        // Nothing, and nothing but white space.
+        assert_eq!(searched_words(""), None);
+        assert_eq!(searched_words(" \n\t\u{a0} "), None);
+        // Cut at so many characters, not bytes, and never in the middle of one.
+        let long = "é".repeat(SEARCHED_LENGTH + 40);
+        let cut = searched_words(&long).unwrap();
+        assert_eq!(cut.chars().count(), SEARCHED_LENGTH);
+        assert!(cut.chars().all(|c| c == 'é'));
+        // Exactly as long is not cut; a space the cut leaves at the end goes.
+        let exact = "a".repeat(SEARCHED_LENGTH);
+        assert_eq!(searched_words(&exact).as_deref(), Some(exact.as_str()));
+        let spaced = format!("{} b", "a".repeat(SEARCHED_LENGTH - 1));
+        assert_eq!(
+            searched_words(&spaced).as_deref(),
+            Some("a".repeat(SEARCHED_LENGTH - 1).as_str())
+        );
+    }
 
     #[test]
     fn the_list_is_in_the_order_of_the_names_and_names_each_engine_once() {

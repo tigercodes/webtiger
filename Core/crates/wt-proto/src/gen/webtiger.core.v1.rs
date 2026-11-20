@@ -1085,7 +1085,7 @@ pub struct EngineEvent {
     pub web_view_id: u64,
     #[prost(
         oneof = "engine_event::Kind",
-        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23"
+        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24"
     )]
     pub kind: ::core::option::Option<engine_event::Kind>,
 }
@@ -1145,6 +1145,9 @@ pub mod engine_event {
         /// Since 1.14
         #[prost(message, tag = "23")]
         LinkOpenRequested(super::LinkOpenRequested),
+        /// Since 1.17
+        #[prost(message, tag = "24")]
+        SearchRequested(super::SearchRequested),
     }
 }
 /// A load began. The page it asks for does not own the web view yet.
@@ -1430,6 +1433,21 @@ pub struct LinkOpenRequested {
     /// The person did it: a choice from a menu, a press. A page that only made
     /// it look so is not obeyed.
     #[prost(bool, tag = "3")]
+    pub user_gesture: bool,
+}
+/// The person asked to search for words of the page (023): words they had
+/// selected, by the shell's item in the menu that selecting gives. The web
+/// view whose page has the words is `EngineEvent.web_view_id`. The core opens
+/// the search in a new tab, with the engine the person chose (020), or does
+/// not: nothing else comes of this. Since 1.17.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SearchRequested {
+    /// The words, as they were selected. The core tidies and cuts them.
+    #[prost(string, tag = "1")]
+    pub text: ::prost::alloc::string::String,
+    /// The person did it: a choice from a menu. A page that only made it look
+    /// so is not obeyed.
+    #[prost(bool, tag = "2")]
     pub user_gesture: bool,
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]

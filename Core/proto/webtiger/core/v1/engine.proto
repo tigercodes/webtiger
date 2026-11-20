@@ -57,6 +57,8 @@ message EngineEvent {
     SignInRequested sign_in_requested = 22;
     // Since 1.14
     LinkOpenRequested link_open_requested = 23;
+    // Since 1.17
+    SearchRequested search_requested = 24;
   }
 }
 
@@ -295,4 +297,17 @@ message LinkOpenRequested {
   // The person did it: a choice from a menu, a press. A page that only made
   // it look so is not obeyed.
   bool user_gesture = 3;
+}
+
+// The person asked to search for words of the page (023): words they had
+// selected, by the shell's item in the menu that selecting gives. The web
+// view whose page has the words is `EngineEvent.web_view_id`. The core opens
+// the search in a new tab, with the engine the person chose (020), or does
+// not: nothing else comes of this. Since 1.17.
+message SearchRequested {
+  // The words, as they were selected. The core tidies and cuts them.
+  string text = 1 [(wt.redact) = true];
+  // The person did it: a choice from a menu. A page that only made it look
+  // so is not obeyed.
+  bool user_gesture = 2;
 }

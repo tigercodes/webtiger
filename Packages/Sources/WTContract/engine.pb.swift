@@ -229,6 +229,15 @@ public nonisolated struct WTEngineEvent: Sendable {
     set {kind = .linkOpenRequested(newValue)}
   }
 
+  /// Since 1.17
+  public var searchRequested: WTSearchRequested {
+    get {
+      if case .searchRequested(let v)? = kind {return v}
+      return WTSearchRequested()
+    }
+    set {kind = .searchRequested(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -262,6 +271,8 @@ public nonisolated struct WTEngineEvent: Sendable {
     case signInRequested(WTSignInRequested)
     /// Since 1.14
     case linkOpenRequested(WTLinkOpenRequested)
+    /// Since 1.17
+    case searchRequested(WTSearchRequested)
 
   }
 
@@ -710,13 +721,35 @@ public nonisolated struct WTLinkOpenRequested: Sendable {
   public init() {}
 }
 
+/// The person asked to search for words of the page (023): words they had
+/// selected, by the shell's item in the menu that selecting gives. The web
+/// view whose page has the words is `EngineEvent.web_view_id`. The core opens
+/// the search in a new tab, with the engine the person chose (020), or does
+/// not: nothing else comes of this. Since 1.17.
+public nonisolated struct WTSearchRequested: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// The words, as they were selected. The core tidies and cuts them.
+  public var text: String = String()
+
+  /// The person did it: a choice from a menu. A page that only made it look
+  /// so is not obeyed.
+  public var userGesture: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
 
 nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EngineEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{3}navigation_started\0\u{3}navigation_committed\0\u{3}navigation_finished\0\u{3}navigation_failed\0\u{3}address_changed\0\u{3}title_changed\0\u{3}progress_changed\0\u{3}history_changed\0\u{3}renderer_gone\0\u{3}new_window_requested\0\u{3}close_requested\0\u{3}outside_link_requested\0\u{3}find_result\0\u{3}download_requested\0\u{3}download_progress\0\u{3}download_finished\0\u{3}download_failed\0\u{3}permission_requested\0\u{3}permission_withdrawn\0\u{3}dialog_requested\0\u{3}sign_in_requested\0\u{3}link_open_requested\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{3}navigation_started\0\u{3}navigation_committed\0\u{3}navigation_finished\0\u{3}navigation_failed\0\u{3}address_changed\0\u{3}title_changed\0\u{3}progress_changed\0\u{3}history_changed\0\u{3}renderer_gone\0\u{3}new_window_requested\0\u{3}close_requested\0\u{3}outside_link_requested\0\u{3}find_result\0\u{3}download_requested\0\u{3}download_progress\0\u{3}download_finished\0\u{3}download_failed\0\u{3}permission_requested\0\u{3}permission_withdrawn\0\u{3}dialog_requested\0\u{3}sign_in_requested\0\u{3}link_open_requested\0\u{3}search_requested\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1011,6 +1044,19 @@ nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
           self.kind = .linkOpenRequested(v)
         }
       }()
+      case 24: try {
+        var v: WTSearchRequested?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .searchRequested(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .searchRequested(v)
+        }
+      }()
       default: break
       }
     }
@@ -1112,6 +1158,10 @@ nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
     case .linkOpenRequested?: try {
       guard case .linkOpenRequested(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 23)
+    }()
+    case .searchRequested?: try {
+      guard case .searchRequested(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 24)
     }()
     case nil: break
     }
@@ -1902,6 +1952,41 @@ nonisolated extension WTLinkOpenRequested: SwiftProtobuf.Message, SwiftProtobuf.
   public static func ==(lhs: WTLinkOpenRequested, rhs: WTLinkOpenRequested) -> Bool {
     if lhs.url != rhs.url {return false}
     if lhs.background != rhs.background {return false}
+    if lhs.userGesture != rhs.userGesture {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTSearchRequested: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SearchRequested"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}text\0\u{3}user_gesture\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.text) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.userGesture) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.text.isEmpty {
+      try visitor.visitSingularStringField(value: self.text, fieldNumber: 1)
+    }
+    if self.userGesture != false {
+      try visitor.visitSingularBoolField(value: self.userGesture, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTSearchRequested, rhs: WTSearchRequested) -> Bool {
+    if lhs.text != rhs.text {return false}
     if lhs.userGesture != rhs.userGesture {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true

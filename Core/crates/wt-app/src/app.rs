@@ -10,15 +10,15 @@ use std::time::Duration;
 use tokio::time::Instant;
 use wt_core::{
     ACTUAL_SIZE, Address, Clock, Input, SearchEngine, TabId, Timestamp, WebViewId, WindowId,
-    classify, opens_outside, zoom_in, zoom_out,
+    classify, opens_outside, searched_words, zoom_in, zoom_out,
 };
 use wt_proto::v1::{
     Ack, ActivateTab, AddressSuggestion, AddressSuggestions, CloseTab, CloseWindow, EngineEvent,
     EngineKind, FindInPage, ForgetHistory, HistoryEntry, HistoryPage, LinkOpenRequested, LoginSet,
-    NavigationCommand, OpenOutside, OpenTab, OutsideLinkRequested, QueryHistory, SubmitAddress,
-    SuggestAddresses, TabCommand, TabOpened, WebViewCommand, WebViewCreate, WebViewDestroy,
-    WebViewFind, WebViewLoad, WebViewSetZoom, WindowOpened, WindowSnapshot, ZoomChange, ZoomPage,
-    engine_event, forget_history, host_request, request, response,
+    NavigationCommand, OpenOutside, OpenTab, OutsideLinkRequested, QueryHistory, SearchRequested,
+    SubmitAddress, SuggestAddresses, TabCommand, TabOpened, WebViewCommand, WebViewCreate,
+    WebViewDestroy, WebViewFind, WebViewLoad, WebViewSetZoom, WindowOpened, WindowSnapshot,
+    ZoomChange, ZoomPage, engine_event, forget_history, host_request, request, response,
 };
 use wt_store::{SavedTab, Space, Store};
 
@@ -193,6 +193,10 @@ impl App {
         }
         if let engine_event::Kind::LinkOpenRequested(asked) = kind {
             self.link_open(web_view, &asked);
+            return;
+        }
+        if let engine_event::Kind::SearchRequested(asked) = kind {
+            self.search_for(web_view, &asked);
             return;
         }
         // A download's reports are about the download (013), whatever has
@@ -430,6 +434,36 @@ impl App {
         // The tab is there whatever becomes of its page: a load that fails
         // shows in the tab.
         if let Some(loading) = self.begin_load_as(tab, address, false) {
+            tokio::task::spawn_local(async move {
+                let _ = loading.await;
+            });
+        }
+    }
+
+    /// The person asked to search for words of a page (023): words they
+    /// had selected. The search opens in a new tab in front, with the
+    /// engine they chose (020), or nothing happens.
+    fn search_for(&self, web_view: WebViewId, asked: &SearchRequested) {
+        // A page that only makes it look as if the person asked is not
+        // obeyed: a search sends words to somebody.
+        if !asked.user_gesture {
+            return;
+        }
+        let Some(words) = searched_words(&asked.text) else {
+            return;
+        };
+        // Always a search: the words are never taken for an address,
+        // whatever they look like.
+        let Some(address) = self.search.get().0.search(&words) else {
+            return;
+        };
+        let opened = self.state.borrow_mut().open_link_tab(web_view, false);
+        let Some(tab) = opened else {
+            return;
+        };
+        // The person's own search, as one typed in the address field is:
+        // the tab says where it goes from the start.
+        if let Some(loading) = self.begin_load_as(tab, address, true) {
             tokio::task::spawn_local(async move {
                 let _ = loading.await;
             });

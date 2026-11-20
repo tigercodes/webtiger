@@ -485,7 +485,8 @@ impl Tab {
             | Kind::PermissionWithdrawn(_)
             | Kind::DialogRequested(_)
             | Kind::SignInRequested(_)
-            | Kind::LinkOpenRequested(_) => {}
+            | Kind::LinkOpenRequested(_)
+            | Kind::SearchRequested(_) => {}
             // What the engine found is for the text now looked for (010).
             // With no find, it is a late word about one that has stopped.
             Kind::FindResult(result) => {

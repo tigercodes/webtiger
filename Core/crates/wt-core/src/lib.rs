@@ -15,6 +15,9 @@ pub use clock::{Clock, ManualClock, SystemClock, Timestamp};
 pub use download::download_file_name;
 pub use id::{IdMint, LoginSetId, SpaceId, SubscriptionId, TabId, WebViewId, WindowId};
 pub use policy::{NavigationAction, check_navigation, opens_outside};
-pub use search::{SEARCH_ENGINES, STAND_IN_SEARCH_ENGINE, SearchEngine, search_engine};
+pub use search::{
+    SEARCH_ENGINES, SEARCHED_LENGTH, STAND_IN_SEARCH_ENGINE, SearchEngine, search_engine,
+    searched_words,
+};
 pub use uuid::Uuid;
 pub use zoom::{ACTUAL_SIZE, ZOOM_LEVELS, zoom_in, zoom_out};

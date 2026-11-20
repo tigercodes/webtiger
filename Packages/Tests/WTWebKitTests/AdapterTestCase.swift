@@ -211,6 +211,7 @@ class AdapterTestCase: XCTestCase {
             case let .dialogRequested(dialog): "says(\(dialog.kind))"
             case let .signInRequested(asked): asked.again ? "sign-in(again)" : "sign-in"
             case let .linkOpenRequested(asked): asked.background ? "link(behind)" : "link(in front)"
+            case .searchRequested: "search"
             // At the engine's own pace, like a page's progress.
             case .progressChanged, .downloadProgress: nil
             }

@@ -10,8 +10,8 @@ use wt_proto::v1::{
     FindResult, HistoryChanged, HostPong, LinkOpenRequested, NavigationCommand,
     NavigationCommitted, NavigationFailed, NavigationFinished, NavigationStarted,
     NewWindowRequested, OutsideLinkRequested, PermissionKind, PermissionRequested,
-    PermissionWithdrawn, ProgressChanged, RendererGone, SignInRequested, TitleChanged,
-    engine_event, host_request, host_response,
+    PermissionWithdrawn, ProgressChanged, RendererGone, SearchRequested, SignInRequested,
+    TitleChanged, engine_event, host_request, host_response,
 };
 
 /// A page of the scripted web.
@@ -485,6 +485,19 @@ impl FakeEngine {
             engine_event::Kind::LinkOpenRequested(LinkOpenRequested {
                 url: url.to_owned(),
                 background,
+                user_gesture,
+            }),
+        )
+    }
+
+    /// The person asked to search for words of a web view's page (023), as
+    /// the shell says it.
+    #[must_use]
+    pub fn search_requested(id: u64, text: &str, user_gesture: bool) -> EngineEvent {
+        event(
+            id,
+            engine_event::Kind::SearchRequested(SearchRequested {
+                text: text.to_owned(),
                 user_gesture,
             }),
         )
