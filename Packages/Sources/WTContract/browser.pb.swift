@@ -1269,9 +1269,10 @@ public nonisolated struct WTSearchSettings: Sendable {
   /// Where searches go now: one of `engines`.
   public var chosenID: String = String()
 
-  /// The person chose it. False: nobody has been asked yet, and searches go
-  /// to the engine that stands in until somebody is. A shell that is told
-  /// so asks before anything else.
+  /// The person chose it, or kept it. False: nobody has yet, and searches go
+  /// to the default, which `chosen_id` then names. A shell that is told so
+  /// shows the choice once, with the default to keep: keeping it is choosing
+  /// it (ChooseSearchEngine with that id).
   public var chosen: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()

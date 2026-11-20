@@ -8,11 +8,11 @@ import WTDesign
 
 public extension BrowserModel {
     /// The list of engines is before the person: because nobody has chosen yet (the first
-    /// run's question, which stays until one is chosen), or because they asked to change.
+    /// run's choice, offered once with the default to keep), or because they asked to change.
     /// Not until the core has said where searches go.
     var asksWhereSearchesGo: Bool {
         guard let search else { return false }
-        return !search.chosen || isChangingSearch
+        return (!search.chosen && !hasKeptDefaultSearch) || isChangingSearch
     }
 
     /// The name of the engine searches go to now. `nil` until the core has said.
@@ -49,18 +49,29 @@ public extension BrowserModel {
         isChangingSearch = true
     }
 
-    /// The list is closed with nothing changed.
+    /// The list is closed with nothing changed. At a first run, when nobody has chosen, that
+    /// is keeping the default: it is chosen, so that the choice is not offered again.
     func keepSearch() {
+        if let search, !search.chosen {
+            hasKeptDefaultSearch = true
+            chooseSearchEngine(search.chosenID)
+        }
         isChangingSearch = false
     }
 }
 
 /// `choose` is told the engine that was pressed, by the core's name for it. `keep` closes the
-/// list with nothing changed: it is `nil` at the first run, when one has to be chosen.
+/// list with nothing changed: at the first run that keeps the default, which the button names.
 struct SearchEnginesView: View {
     let settings: WTSearchSettings
     let choose: (String) -> Void
-    let keep: (() -> Void)?
+    let keep: () -> Void
+    @Environment(\.locale) private var locale
+
+    /// The name of the engine searches go to now: the default, while nobody has chosen.
+    private var inUseName: String {
+        settings.engines.first { $0.id == settings.chosenID }?.name ?? ""
+    }
 
     var body: some View {
         ScrollView {
@@ -82,16 +93,25 @@ struct SearchEnginesView: View {
                     row(engine)
                 }
                 Divider()
-                if let keep {
-                    Button(action: keep) {
-                        Text("search.keep", bundle: .module)
-                            .frame(minHeight: BrowserWindowView.hitSize)
+                Button(action: keep) {
+                    // "Cancel" where one is in use by somebody's choice; at the first run,
+                    // "Keep DuckDuckGo": the default, by its name.
+                    Group {
+                        if settings.chosen {
+                            Text("search.keep", bundle: .module)
+                        } else {
+                            Text(verbatim: String(
+                                format: String(localized: "search.keep_default", bundle: .module, locale: locale),
+                                inUseName
+                            ))
+                        }
                     }
-                    .buttonStyle(.bordered)
-                    .tint(.primary)
-                    .padding(Tokens.Space.l)
-                    .accessibilityIdentifier("search-keep")
+                    .frame(minHeight: BrowserWindowView.hitSize)
                 }
+                .buttonStyle(.bordered)
+                .tint(.primary)
+                .padding(Tokens.Space.l)
+                .accessibilityIdentifier("search-keep")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -99,8 +119,9 @@ struct SearchEnginesView: View {
 
     /// One engine: its name, where the words are sent, and that it is in use when it is.
     private func row(_ engine: WTSearchEngine) -> some View {
-        // Marked only where somebody chose it: at the first run none is anybody's choice.
-        let inUse = settings.chosen && engine.id == settings.chosenID
+        // The engine searches go to is marked, in words: "In use" where somebody chose it,
+        // "Default" at the first run, while nobody has.
+        let inUse = engine.id == settings.chosenID
         return Button {
             choose(engine.id)
         } label: {
@@ -114,7 +135,7 @@ struct SearchEnginesView: View {
                 }
                 Spacer(minLength: Tokens.Space.m)
                 if inUse {
-                    Text("search.in_use", bundle: .module)
+                    Text(settings.chosen ? "search.in_use" : "search.default", bundle: .module)
                         .font(.callout)
                 }
             }

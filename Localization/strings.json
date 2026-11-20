@@ -38,6 +38,8 @@
     "search.change": { "en": "Change…", "note": "Button beside 'Searches go to …' on an empty tab: opens the list of search engines." },
     "search.in_use": { "en": "In use", "note": "Said of the search engine that searches go to now, in the list of search engines when it is opened to change it." },
     "search.keep": { "en": "Cancel", "note": "Button that closes the list of search engines without changing where searches go. Not shown at the first run, when one has to be chosen." },
+    "search.default": { "en": "Default", "note": "Said of the search engine that searches go to when nobody has chosen another, in the list of search engines at the first run." },
+    "search.keep_default": { "en": "Keep %@", "note": "Button under the list of search engines at the first run: leaves searches going to the default engine. %@ is that engine's own name, such as DuckDuckGo." },
     "selection.search_with": { "en": "Search with %@", "note": "In the menu of words that are selected in a page: search for those words, in a new tab. %@ is the search engine's own name, such as Ecosia." },
     "space.home": { "en": "Home", "note": "Name shown for the Space the app made itself, until the person gives it a name. A Space is a set of tabs kept apart from the others, such as home and work." },
     "space.chip": { "en": "Space: %@", "note": "Accessibility name of the button at the start of the strip of tabs that says which Space the window shows, and opens the list of Spaces. %@ is the Space's name." },

@@ -17,7 +17,7 @@ pub use download::download_file_name;
 pub use id::{IdMint, LoginSetId, SpaceId, SubscriptionId, TabId, WebViewId, WindowId};
 pub use policy::{NavigationAction, check_navigation, opens_outside};
 pub use search::{
-    SEARCH_ENGINES, SEARCHED_LENGTH, STAND_IN_SEARCH_ENGINE, SearchEngine, search_engine,
+    DEFAULT_SEARCH_ENGINE, SEARCH_ENGINES, SEARCHED_LENGTH, SearchEngine, search_engine,
     searched_words,
 };
 pub use space::{

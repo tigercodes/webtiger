@@ -81,12 +81,13 @@ class SearchEnginesTest {
     fun atAFirstRunTheQuestionIsOverTheWindowAndOnePressAnswersIt() {
         aWindow()
 
-        // Nobody has chosen: the list is there, with each engine and where it is, none of
-        // them marked, and no way to put it off.
+        // Nobody has chosen: the list is there, with each engine and where it is, the default
+        // marked as that, and a button that keeps it by its name.
         assertEquals(1, lists())
         compose.onNodeWithTag("search-engine-ecosia").assertTextEquals("Ecosia", "www.ecosia.org")
-        compose.onAllNodesWithTag("search-in-use", useUnmergedTree = true).assertCountEquals(0)
-        compose.onAllNodesWithTag("search-keep").assertCountEquals(0)
+        compose.onNodeWithTag("search-engine-duckduckgo").assertTextEquals("DuckDuckGo", "duckduckgo.com", "Default")
+        compose.onAllNodesWithTag("search-in-use", useUnmergedTree = true).assertCountEquals(1)
+        compose.onNodeWithTag("search-keep").assertTextEquals("Keep DuckDuckGo")
 
         compose.onNodeWithTag("search-engine-ecosia").performClick()
         compose.waitForIdle()
@@ -94,6 +95,29 @@ class SearchEnginesTest {
         assertEquals(listOf("ecosia"), choices())
         assertEquals("the question is answered, and gone", 0, lists())
         compose.onNodeWithTag("search-goes-to").assertTextEquals("Searches go to Ecosia.")
+    }
+
+    @Test
+    fun atAFirstRunTheDefaultIsKeptWithOnePressAndIsNotOfferedAgain() {
+        aWindow()
+        assertEquals(1, lists())
+
+        compose.onNodeWithTag("search-keep").performClick()
+        compose.waitForIdle()
+
+        // Keeping the default is choosing it: the core is told, so that it is not offered again.
+        assertEquals(listOf("duckduckgo"), choices())
+        assertEquals(0, lists())
+        compose.onNodeWithTag("search-goes-to").assertTextEquals("Searches go to DuckDuckGo.")
+
+        // Opened to change, it is in use by somebody's choice now, and its button is "Cancel".
+        compose.onNodeWithTag("search-change").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("search-engine-duckduckgo").assertTextEquals("DuckDuckGo", "duckduckgo.com", "In use")
+        compose.onNodeWithTag("search-keep").assertTextEquals("Cancel")
+        compose.onNodeWithTag("search-keep").performClick()
+        compose.waitForIdle()
+        assertEquals("nothing more was chosen", listOf("duckduckgo"), choices())
     }
 
     @Test

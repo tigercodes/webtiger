@@ -109,13 +109,11 @@ public struct BrowserWindowView: View {
         #endif
     }
 
-    /// The list of search engines (020). At the first run there is no way out of it but to
-    /// choose: it cannot be swiped away, and it has no "Cancel".
+    /// The list of search engines (020). At the first run it is offered once, with the default
+    /// to keep: its button keeps it, and so does swiping the list away.
     @ViewBuilder private var searchEngines: some View {
         if let settings = model.search {
-            let keep: (() -> Void)? = settings.chosen ? { model.keepSearch() } : nil
-            SearchEnginesView(settings: settings, choose: { model.chooseSearchEngine($0) }, keep: keep)
-                .interactiveDismissDisabled(!settings.chosen)
+            SearchEnginesView(settings: settings, choose: { model.chooseSearchEngine($0) }, keep: { model.keepSearch() })
             #if os(macOS)
                 .frame(minWidth: 480, minHeight: 420)
             #endif

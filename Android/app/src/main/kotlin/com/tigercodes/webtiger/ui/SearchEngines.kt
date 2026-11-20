@@ -36,12 +36,12 @@ import com.tigercodes.webtiger.design.Tokens
 
 /**
  * `onChoose` is told the engine that was pressed, by the core's name for it. `onKeep` closes
- * the list with nothing changed: it is null at the first run, when one has to be chosen, and
- * the system's Back then does nothing here.
+ * the list with nothing changed, and so does the system's Back: at the first run that keeps
+ * the default, which the button names.
  */
 @Composable
-internal fun SearchEngines(settings: SearchSettings, onChoose: (String) -> Unit, onKeep: (() -> Unit)?, modifier: Modifier = Modifier) {
-    BackHandler(onBack = { onKeep?.invoke() })
+internal fun SearchEngines(settings: SearchSettings, onChoose: (String) -> Unit, onKeep: () -> Unit, modifier: Modifier = Modifier) {
+    BackHandler(onBack = onKeep)
     Column(
         modifier =
             modifier
@@ -62,9 +62,10 @@ internal fun SearchEngines(settings: SearchSettings, onChoose: (String) -> Unit,
         }
         Column(modifier = Modifier.padding(top = Tokens.Space.m)) {
             for (engine in settings.engines) {
-                // Marked only where somebody chose it: at the first run none is anybody's choice.
-                val inUse = settings.chosen && engine.id == settings.chosen_id
-                val said = if (inUse) stringResource(R.string.search_in_use) else ""
+                // The engine searches go to is marked, in words: "In use" where somebody chose it,
+                // "Default" at the first run, while nobody has.
+                val inUse = engine.id == settings.chosen_id
+                val said = if (!inUse) "" else stringResource(if (settings.chosen) R.string.search_in_use else R.string.search_default)
                 HorizontalDivider(color = Tokens.Palette.hairline.current)
                 Row(
                     modifier =
@@ -88,10 +89,11 @@ internal fun SearchEngines(settings: SearchSettings, onChoose: (String) -> Unit,
             }
             HorizontalDivider(color = Tokens.Palette.hairline.current)
         }
-        if (onKeep != null) {
-            TextButton(onClick = onKeep, modifier = Modifier.padding(horizontal = Tokens.Space.s, vertical = Tokens.Space.s).testTag("search-keep")) {
-                Text(stringResource(R.string.search_keep))
-            }
+        TextButton(onClick = onKeep, modifier = Modifier.padding(horizontal = Tokens.Space.s, vertical = Tokens.Space.s).testTag("search-keep")) {
+            // "Cancel" where one is in use by somebody's choice; at the first run, "Keep
+            // DuckDuckGo": the default, by its name.
+            val default = settings.engines.firstOrNull { it.id == settings.chosen_id }?.name.orEmpty()
+            Text(if (settings.chosen) stringResource(R.string.search_keep) else stringResource(R.string.search_keep_default, default))
         }
     }
 }

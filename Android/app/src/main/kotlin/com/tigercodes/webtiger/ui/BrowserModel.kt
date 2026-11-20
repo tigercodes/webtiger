@@ -310,11 +310,14 @@ class BrowserModel(
     var isChangingSearch by mutableStateOf(changingSearch)
         private set
 
+    /** The first run's list was closed with the default kept: it is not shown again while the core takes the choice down. */
+    private var hasKeptDefaultSearch by mutableStateOf(false)
+
     /**
      * The list of engines is before the person: because nobody has chosen yet (the first run's
-     * question, which stays until one is chosen), or because they asked to change.
+     * choice, offered once with the default to keep), or because they asked to change.
      */
-    val asksWhereSearchesGo: Boolean get() = search.let { it != null && (!it.chosen || isChangingSearch) }
+    val asksWhereSearchesGo: Boolean get() = search.let { it != null && ((!it.chosen && !hasKeptDefaultSearch) || isChangingSearch) }
 
     /** The name of the engine searches go to now. Null until the core has said. */
     val searchEngineName: String? get() = search?.let { settings -> settings.engines.firstOrNull { it.id == settings.chosen_id }?.name }
@@ -351,8 +354,15 @@ class BrowserModel(
         isChangingSearch = true
     }
 
-    /** The list is closed with nothing changed. */
+    /**
+     * The list is closed with nothing changed. At a first run, when nobody has chosen, that is
+     * keeping the default: it is chosen, so that the choice is not offered again.
+     */
     fun keepSearch() {
+        search?.takeIf { !it.chosen }?.let {
+            hasKeptDefaultSearch = true
+            chooseSearchEngine(it.chosen_id)
+        }
         isChangingSearch = false
     }
 

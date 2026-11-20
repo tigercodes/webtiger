@@ -156,7 +156,7 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
             SearchEngines(
                 settings = settings,
                 onChoose = model::chooseSearchEngine,
-                onKeep = (model::keepSearch).takeIf { settings.chosen },
+                onKeep = model::keepSearch,
                 modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing),
             )
         }

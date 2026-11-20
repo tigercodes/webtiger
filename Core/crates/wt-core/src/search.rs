@@ -1,6 +1,6 @@
 //! The search engines the core knows (020): for each, a name, and the
-//! address a search is sent to. A person chooses one; none is chosen for
-//! them, and none has a place here that it paid for (000 WT-D17).
+//! address a search is sent to. One is the default, which a person keeps or
+//! changes; none has a place here that it paid for (000 WT-D17).
 
 use crate::address::{Address, search_address};
 
@@ -19,7 +19,8 @@ pub struct SearchEngine {
 /// The engines a person chooses among, in the order of their names: an
 /// order nobody can buy. Each is one anybody can use without an account.
 ///
-/// Which engines are named here is the owner's to settle (020 §3).
+/// Which engines are named here, and which is the default, the owner has
+/// settled (020 §3).
 pub const SEARCH_ENGINES: [SearchEngine; 7] = [
     SearchEngine {
         id: "bing",
@@ -58,10 +59,11 @@ pub const SEARCH_ENGINES: [SearchEngine; 7] = [
     },
 ];
 
-/// The engine searches go to until a person has chosen: the one that stood
-/// in before there was a choice (001 F3). It needs no account and no
-/// agreement. It is not a default anybody was given: the person is asked.
-pub const STAND_IN_SEARCH_ENGINE: &str = "duckduckgo";
+/// The default: where searches go until a person chooses another (the
+/// owner's decision, 020 §3). It needs no account and no agreement, and it
+/// pays nothing to be the default. At a first run the person is shown the
+/// choice, with this one to keep.
+pub const DEFAULT_SEARCH_ENGINE: &str = "duckduckgo";
 
 /// The most characters of selected words that are searched for (023 §3): a
 /// search for a whole page is nobody's wish.
@@ -186,9 +188,12 @@ mod tests {
 
     #[test]
     fn the_engine_that_stands_in_is_one_of_the_list_and_others_are_found_by_name() {
-        let stand_in = search_engine(STAND_IN_SEARCH_ENGINE).unwrap();
-        assert_eq!(stand_in.name, "DuckDuckGo");
-        assert_eq!(stand_in.host(), "duckduckgo.com");
+        let default = search_engine(DEFAULT_SEARCH_ENGINE).unwrap();
+        assert_eq!(default.name, "DuckDuckGo");
+        assert_eq!(default.host(), "duckduckgo.com");
+        // Google and Bing are among the engines to choose (the owner's list).
+        assert!(search_engine("google").is_some());
+        assert!(search_engine("bing").is_some());
         assert_eq!(search_engine("ecosia").unwrap().host(), "www.ecosia.org");
         assert_eq!(search_engine("Ecosia"), None, "by its id, as written");
         assert_eq!(search_engine(""), None);

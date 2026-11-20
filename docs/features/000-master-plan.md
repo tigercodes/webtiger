@@ -795,7 +795,7 @@ W1 to W4 are the critical path. W5 to W9 can be reordered by what is wanted firs
 | WT-D14 | Distribution | §5.12, with the Mac App Store build WebKit only | Direct only on the Mac |
 | WT-D15 | First run | One Space. Two presets: Classic (strip, no tidying) and Tidy (sidebar, 12 hours) | Arc's behaviour as the only default |
 | WT-D16 | Phasing | Parity per phase, the Mac leading; the Arc importer first | The Mac to 1.0, the others after |
-| WT-D17 | Search and money | The user picks a search engine at first run; suggestions off; no search deal, no telemetry, opt-in crash reports | A default search partner |
+| WT-D17 | Search and money | DuckDuckGo is the default search engine, shown at first run with the others to pick instead (Google and Bing among them); suggestions off; no search deal, no telemetry, opt-in crash reports. (The default is the owner's decision of 2026-11-20; before it, the user had to pick one at first run) | A default search partner: an engine that pays to be the default |
 | WT-D18 | Names | Guard, Tweaks, Preview, Quick window, Link rules; "core" for Rust, "engine" for the web | — |
 
 ---

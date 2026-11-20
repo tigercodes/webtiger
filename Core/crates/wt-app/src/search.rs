@@ -1,7 +1,7 @@
 //! Where searches go (020): the engines the core knows, the person's
 //! choice among them, and where it is kept.
 
-use wt_core::{SEARCH_ENGINES, STAND_IN_SEARCH_ENGINE, SearchEngine, search_engine};
+use wt_core::{DEFAULT_SEARCH_ENGINE, SEARCH_ENGINES, SearchEngine, search_engine};
 use wt_proto::v1::{Ack, ChooseSearchEngine, SearchSettings, response};
 use wt_store::Store;
 
@@ -11,15 +11,15 @@ use crate::error::AppError;
 /// The setting the choice is written by: the engine's id.
 const SETTING: &str = "search.engine";
 
-/// The engine that stands in until a person has chosen, or the first of
-/// the list should the list ever lose it.
-fn stand_in() -> &'static SearchEngine {
-    search_engine(STAND_IN_SEARCH_ENGINE).unwrap_or(&SEARCH_ENGINES[0])
+/// The default engine, or the first of the list should the list ever lose
+/// it.
+fn default_engine() -> &'static SearchEngine {
+    search_engine(DEFAULT_SEARCH_ENGINE).unwrap_or(&SEARCH_ENGINES[0])
 }
 
 /// Where searches go as the app starts, and whether a person chose it. What
 /// the store has, when it is an engine the core still knows; otherwise the
-/// engine that stands in, which is taken as chosen only where nobody is
+/// default, which is taken as chosen only where nobody is
 /// there to be asked (`settled`).
 pub(crate) fn kept(store: &Store, settled: bool) -> (&'static SearchEngine, bool) {
     let chosen = store
@@ -29,7 +29,7 @@ pub(crate) fn kept(store: &Store, settled: bool) -> (&'static SearchEngine, bool
         .and_then(|id| search_engine(&id));
     match chosen {
         Some(engine) => (engine, true),
-        None => (stand_in(), settled),
+        None => (default_engine(), settled),
     }
 }
 

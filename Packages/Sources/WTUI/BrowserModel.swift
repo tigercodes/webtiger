@@ -76,6 +76,9 @@ public final class BrowserModel {
 
     /// The list is open to change where searches go: an empty tab's "Change…" was pressed.
     public internal(set) var isChangingSearch = false
+    /// The first run's list was closed with the default kept: it is not shown again while the
+    /// core takes the choice down.
+    public internal(set) var hasKeptDefaultSearch = false
 
     public init(session: BrowserSession) {
         self.session = session

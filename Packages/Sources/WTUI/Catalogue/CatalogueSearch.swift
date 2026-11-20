@@ -59,6 +59,6 @@ struct CatalogueSearchEngines: View {
     let state: CatalogueSearch
 
     var body: some View {
-        SearchEnginesView(settings: state.settings, choose: { _ in }, keep: state == .change ? {} : nil)
+        SearchEnginesView(settings: state.settings, choose: { _ in }, keep: {})
     }
 }

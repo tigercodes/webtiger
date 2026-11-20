@@ -342,9 +342,32 @@ final class FeatureTests: AppTestCase {
         }
     #endif
 
-    /// Where searches go (020), with the real core, started as for a first run: the question
-    /// is there before anything else and cannot be put off; one press answers it; an empty tab
-    /// then says where searches go; and "Change…" opens the list again, with that engine
+    /// The first run's default (020), with the real core: the list is offered with DuckDuckGo
+    /// to keep; one press keeps it, an empty tab says so, and opened again the list has it in
+    /// use by somebody's choice. No search is made: a search goes to the internet.
+    func testTheFirstRunsDefaultIsKeptWithOnePress() {
+        let app = launch(start: nil, firstRun: true)
+        let keep = app.buttons["search-keep"]
+        XCTAssertTrue(keep.waitForExistence(timeout: 30), "the first run's list")
+        XCTAssertEqual(keep.label, "Keep DuckDuckGo")
+
+        press(keep)
+
+        let goesTo = app.staticTexts["search-goes-to"]
+        XCTAssertTrue(goesTo.waitForExistence(timeout: 30), "the empty tab's line")
+        XCTAssertEqual(goesTo.label.isEmpty ? value(of: goesTo) : goesTo.label, "Searches go to DuckDuckGo.")
+        XCTAssertFalse(app.buttons["search-engine-ecosia"].exists, "kept, the list is gone")
+
+        press(app.buttons["search-change"])
+        let duckDuckGo = app.buttons["search-engine-duckduckgo"]
+        XCTAssertTrue(duckDuckGo.waitForExistence(timeout: 30))
+        XCTAssertTrue(duckDuckGo.label.contains("In use"), duckDuckGo.label)
+        XCTAssertEqual(app.buttons["search-keep"].label, "Cancel")
+    }
+
+    /// Where searches go (020), with the real core, started as for a first run: the list is
+    /// there before anything else, with the default marked; one press chooses another; an empty
+    /// tab then says where searches go; and "Change…" opens the list again, with that engine
     /// marked. No search is made: a search goes to the internet.
     func testTheFirstRunAsksWhereSearchesGoAndAnEmptyTabSaysSo() {
         let app = launch(start: nil, firstRun: true)
@@ -353,12 +376,14 @@ final class FeatureTests: AppTestCase {
             return text.label.isEmpty ? value(of: text) : text.label
         }
 
-        // The question, over the window, with no way out but to choose.
+        // The list, over the window.
         let ecosia = app.buttons["search-engine-ecosia"]
         XCTAssertTrue(ecosia.waitForExistence(timeout: 30), "the first run's question")
         XCTAssertTrue(app.staticTexts["search-question"].exists)
         XCTAssertTrue(app.buttons["search-engine-duckduckgo"].exists)
-        XCTAssertFalse(app.buttons["search-keep"].exists, "nothing to put it off with")
+        // The default is marked as that, and one press keeps it; none is anybody's choice yet.
+        XCTAssertTrue(app.buttons["search-engine-duckduckgo"].label.contains("Default"), app.buttons["search-engine-duckduckgo"].label)
+        XCTAssertEqual(app.buttons["search-keep"].label, "Keep DuckDuckGo")
         XCTAssertFalse(ecosia.label.contains("In use"), "none is anybody's choice yet: \(ecosia.label)")
         audit(app, "the first run's question")
 

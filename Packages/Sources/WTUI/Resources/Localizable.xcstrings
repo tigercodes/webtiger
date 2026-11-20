@@ -1741,6 +1741,18 @@
         }
       }
     },
+    "search.default": {
+      "comment": "Said of the search engine that searches go to when nobody has chosen another, in the list of search engines at the first run.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default"
+          }
+        }
+      }
+    },
     "search.goes_to": {
       "comment": "On an empty tab, under its hint. %@ is a search engine's own name, such as Ecosia.",
       "extractionState": "manual",
@@ -1773,6 +1785,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cancel"
+          }
+        }
+      }
+    },
+    "search.keep_default": {
+      "comment": "Button under the list of search engines at the first run: leaves searches going to the default engine. %@ is that engine's own name, such as DuckDuckGo.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep %@"
           }
         }
       }

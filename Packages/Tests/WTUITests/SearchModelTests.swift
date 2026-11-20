@@ -121,6 +121,29 @@ final class SearchModelTests: XCTestCase {
         XCTAssertEqual(model.searchEngineName, "Ecosia", "what the empty tab says")
     }
 
+    func testAtAFirstRunTheDefaultIsKeptByClosingTheListAndIsNotOfferedAgain() async {
+        let (model, core) = await opened()
+        XCTAssertTrue(model.asksWhereSearchesGo)
+        XCTAssertEqual(model.searchEngineName, "DuckDuckGo", "the default, while nobody has chosen")
+
+        model.keepSearch()
+
+        // Gone at once, before the core has answered: a list that was closed does not come back.
+        XCTAssertFalse(model.asksWhereSearchesGo)
+        await settle { model.search?.chosen == true }
+        // Keeping the default is choosing it: the core is told, so that it is not offered again.
+        XCTAssertEqual(choices(core), ["duckduckgo"])
+        XCTAssertEqual(model.search?.chosen, true)
+        XCTAssertEqual(model.searchEngineName, "DuckDuckGo")
+
+        // Where somebody has chosen, closing the list changes nothing and tells the core nothing.
+        model.changeSearch()
+        XCTAssertTrue(model.asksWhereSearchesGo)
+        model.keepSearch()
+        XCTAssertFalse(model.asksWhereSearchesGo)
+        XCTAssertEqual(choices(core), ["duckduckgo"])
+    }
+
     func testTheMenuOfSelectedWordsNamesTheEngineASearchGoesTo() async {
         // Until the core has said where searches go, the menu has no words for a search.
         told.set(known: false)
