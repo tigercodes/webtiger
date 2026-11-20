@@ -24,6 +24,13 @@
             XCTAssertNotEqual(profiled, WebKitEngine.systemDownloads)
         }
 
+        func testOnlyTheAppStartedForRealLetsAPageHaveWhatTheCoreGrants() {
+            // Fake mode, where the UI suites run, can put no dialog of the system's on the screen (014).
+            XCTAssertEqual(BrowserSession.deviceAccess(fake: true), .never)
+            XCTAssertEqual(BrowserSession.deviceAccess(fake: false), .asTheCoreSays)
+            XCTAssertEqual(WebKitEngine().deviceAccess, .never, "and an engine nobody made otherwise is a test's")
+        }
+
         func testAnEngineNobodyGaveAFolderSavesAmongTheTemporaryFiles() {
             // What every test's engine is, and fake mode's: it cannot write into anybody's Downloads.
             let folder = WebKitEngine().downloadsFolder

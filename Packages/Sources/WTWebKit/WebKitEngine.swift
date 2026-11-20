@@ -41,8 +41,19 @@ public final class WebKitEngine: HostServices {
         self?.report(webView, kind)
     }
 
-    public init(downloads folder: URL? = nil) {
+    /// Whether a page is let have what the core grants it (014). Never, unless the engine is
+    /// made otherwise: only the app itself, started for real, may bring up the system's own
+    /// question about the camera, the microphone or the location.
+    public let deviceAccess: DeviceAccess
+
+    /// What pages ask to use of the device's, while the core has not said.
+    private(set) lazy var permissions = Permissions(access: deviceAccess) { [weak self] webView, kind in
+        self?.report(webView, kind)
+    }
+
+    public init(downloads folder: URL? = nil, deviceAccess: DeviceAccess = .never) {
         downloadsFolder = folder ?? FileManager.default.temporaryDirectory.appendingPathComponent("webtiger-downloads-\(UUID().uuidString)")
+        self.deviceAccess = deviceAccess
     }
 
     /// The system's place for downloads: the Downloads folder on a Mac; on an iPhone the app's
@@ -102,6 +113,8 @@ public final class WebKitEngine: HostServices {
             }
             return .ack(WTAck())
         case let .webViewDestroy(destroy):
+            // What its page was asking goes with it: refused, while WebKit can be told.
+            permissions.drop(webViewID: destroy.webViewID)
             if let page = pages.removeValue(forKey: destroy.webViewID) {
                 page.close()
                 if page.isPrivate, !pages.values.contains(where: { $0.isPrivate && $0.loginSet == page.loginSet }) {
@@ -134,9 +147,10 @@ public final class WebKitEngine: HostServices {
         case let .downloadCancel(cancel):
             downloads.cancel(cancel.downloadID)
             return .ack(WTAck())
-        case .permissionAnswer:
-            // How a page that asked is answered (014). This adapter reports no page asking
-            // yet, so there is none to answer: as for a request it no longer has, done.
+        case let .permissionAnswer(answer):
+            // The core's word on what a page asked to use (014). Done, also for a request
+            // that no longer waits: its page went away.
+            permissions.answer(answer.requestID, granted: answer.granted)
             return .ack(WTAck())
         }
     }
@@ -312,13 +326,13 @@ public final class WebKitEngine: HostServices {
 /// One web view and the delegates that turn its callbacks into the contract's events
 /// (001 §5 has the mapping).
 @MainActor
-private final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
+final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
     let id: UInt64
     let webView: WKWebView
     /// The login set the web view's pages run in, and whether it is a private one.
     let loginSet: UUID
     let isPrivate: Bool
-    private weak var engine: WebKitEngine?
+    private(set) weak var engine: WebKitEngine?
     private var observations: [NSKeyValueObservation] = []
     /// A main-frame load has started and not yet committed or failed.
     private var provisional = false

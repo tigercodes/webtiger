@@ -59,6 +59,12 @@ targets:
         NSAppTransportSecurity:
           NSAllowsArbitraryLoadsInWebContent: true
           NSAllowsLocalNetworking: true
+        # What the system says when it asks the person whether the app may use the camera,
+        # the microphone or the location (014): it asks the first time a site the person
+        # allowed needs one. Without these words the system ends the app instead of asking.
+        NSCameraUsageDescription: A site you allow can use the camera.
+        NSMicrophoneUsageDescription: A site you allow can use the microphone.
+        NSLocationWhenInUseUsageDescription: A site you allow can learn where you are.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.tigercodes.webtiger
@@ -95,6 +101,11 @@ targets:
         # Files app shows that folder, and the files can be opened where they are.
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
+        # What the system says when it asks the person whether the app may use the camera,
+        # the microphone or the location (014). Without these words it ends the app instead.
+        NSCameraUsageDescription: A site you allow can use the camera.
+        NSMicrophoneUsageDescription: A site you allow can use the microphone.
+        NSLocationWhenInUseUsageDescription: A site you allow can learn where you are.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.tigercodes.webtiger

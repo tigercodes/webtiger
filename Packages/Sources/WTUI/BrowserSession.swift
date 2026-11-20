@@ -72,9 +72,16 @@ public final class BrowserSession {
                 opener = .system
                 downloads = Self.downloadsFolder(profile: profile, data: folder)
             }
-            let engine = WebKitEngine(downloads: downloads)
+            let engine = WebKitEngine(downloads: downloads, deviceAccess: deviceAccess(fake: config.testMode == .fake))
             let core = try NativeCore.start(config: config, host: ShellHost(engine: engine, opener: opener))
             return BrowserSession(core: core, engine: engine)
+        }
+
+        /// Whether a page is let have what the core grants it of the device's (014). Not in
+        /// fake mode: letting a page start a capture makes the system put its own dialog on
+        /// the screen, which a UI suite must never do.
+        static func deviceAccess(fake: Bool) -> DeviceAccess {
+            fake ? .never : .asTheCoreSays
         }
 
         /// Where the app saves downloads (013): the system's place for them. A profile's go in

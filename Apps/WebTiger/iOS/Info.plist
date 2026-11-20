@@ -29,6 +29,12 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>A site you allow can use the camera.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>A site you allow can learn where you are.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>A site you allow can use the microphone.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
