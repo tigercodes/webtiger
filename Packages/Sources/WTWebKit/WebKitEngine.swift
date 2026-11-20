@@ -51,6 +51,11 @@ public final class WebKitEngine: HostServices {
         self?.report(webView, kind)
     }
 
+    /// What pages say or ask (016), while the core has not said how each is answered.
+    private(set) lazy var dialogs = Dialogs { [weak self] webView, kind in
+        self?.report(webView, kind)
+    }
+
     public init(downloads folder: URL? = nil, deviceAccess: DeviceAccess = .never) {
         downloadsFolder = folder ?? FileManager.default.temporaryDirectory.appendingPathComponent("webtiger-downloads-\(UUID().uuidString)")
         self.deviceAccess = deviceAccess
@@ -115,6 +120,7 @@ public final class WebKitEngine: HostServices {
         case let .webViewDestroy(destroy):
             // What its page was asking goes with it: refused, while WebKit can be told.
             permissions.drop(webViewID: destroy.webViewID)
+            dialogs.drop(webViewID: destroy.webViewID)
             if let page = pages.removeValue(forKey: destroy.webViewID) {
                 page.close()
                 if page.isPrivate, !pages.values.contains(where: { $0.isPrivate && $0.loginSet == page.loginSet }) {
@@ -147,9 +153,10 @@ public final class WebKitEngine: HostServices {
         case let .downloadCancel(cancel):
             downloads.cancel(cancel.downloadID)
             return .ack(WTAck())
-        case .dialogAnswer:
-            // The page's answer to what it said or asked (016). This adapter reports no page
-            // saying anything yet, so there is none to answer: as for one it no longer has.
+        case let .dialogAnswer(answer):
+            // The core's word on what a page said or asked (016). Done, also for one that
+            // no longer waits.
+            dialogs.answer(answer.requestID, accepted: answer.accepted, text: answer.text)
             return .ack(WTAck())
         case let .permissionAnswer(answer):
             // The core's word on what a page asked to use (014). Done, also for a request
