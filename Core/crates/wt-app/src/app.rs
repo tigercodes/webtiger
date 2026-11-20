@@ -150,6 +150,9 @@ impl App {
             request::Kind::QueryDownloads(query) => answer(self.query_downloads(&query)),
             request::Kind::CancelDownload(cancel) => answer(self.cancel_download(&cancel)),
             request::Kind::ForgetDownloads(forget) => answer(self.forget_downloads(&forget)),
+            request::Kind::AnswerPrompt(prompt) => answer(self.answer_prompt(&prompt)),
+            request::Kind::QueryPermissions(query) => answer(self.query_permissions(&query)),
+            request::Kind::ForgetPermissions(forget) => answer(self.forget_permissions(&forget)),
             request::Kind::ForgetHistory(forget) => answer(self.forget_history(&forget)),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
@@ -174,6 +177,11 @@ impl App {
         if self.download_event(web_view, &kind) {
             return;
         }
+        // A page that asks to use something of the device's (014) is
+        // answered by the app: nothing of the tab's page changes by asking.
+        if self.permission_event(web_view, &kind) {
+            return;
+        }
         // History (008): a page that commits, or changes its own address, is
         // a visit; the page before it is left, and takes the title it ended
         // with. A title that arrives is the visit's when it is its first.
@@ -184,6 +192,11 @@ impl App {
         let titled = matches!(kind, engine_event::Kind::TitleChanged(_));
         // A page that only changes its own address stays on its site.
         let committed = matches!(kind, engine_event::Kind::NavigationCommitted(_));
+        // The page is gone, by another or by its renderer: what it was
+        // asking the person is over (014).
+        if committed || matches!(kind, engine_event::Kind::RendererGone(_)) {
+            self.prompts_ended(web_view);
+        }
         if arrives {
             self.write_title(web_view, true);
         }

@@ -102,6 +102,35 @@ impl Address {
         self.registrable_domain().or_else(|| self.host())
     }
 
+    /// Who the page is to the web's own rules (014): its scheme, host and
+    /// port, as `https://example.com`, with a port only when it is not the
+    /// scheme's own. `None` for an address that is not the web's.
+    #[must_use]
+    pub fn origin(&self) -> Option<String> {
+        if !matches!(self.url.scheme(), "http" | "https") {
+            return None;
+        }
+        self.host()?;
+        Some(self.url.origin().ascii_serialization())
+    }
+
+    /// Whether what arrives from the address can be taken to be the
+    /// address's own (014): it came over `https`, or it never left this
+    /// device (`localhost`, a loopback address).
+    #[must_use]
+    pub fn is_trustworthy(&self) -> bool {
+        match self.url.scheme() {
+            "https" => true,
+            "http" => match self.url.host() {
+                Some(Host::Domain(name)) => name == "localhost" || name.ends_with(".localhost"),
+                Some(Host::Ipv4(address)) => address.is_loopback(),
+                Some(Host::Ipv6(address)) => address.is_loopback(),
+                None => false,
+            },
+            _ => false,
+        }
+    }
+
     #[must_use]
     pub fn security(&self) -> Security {
         match self.url.scheme() {
@@ -450,6 +479,76 @@ mod tests {
             address("xn--r8jz45g.xn--fiqs8s"),
             "https://xn--r8jz45g.xn--fiqs8s/"
         );
+    }
+
+    #[test]
+    fn an_origin_is_the_scheme_the_host_and_a_port_that_is_not_the_schemes_own() {
+        let origin = |text: &str| Address::parse(text).unwrap().origin();
+        for (address, expected) in [
+            (
+                "https://meet.example.com/room/7?x=1#top",
+                "https://meet.example.com",
+            ),
+            ("https://meet.example.com", "https://meet.example.com"),
+            ("https://MEET.Example.com:443/", "https://meet.example.com"),
+            (
+                "https://meet.example.com:8443/",
+                "https://meet.example.com:8443",
+            ),
+            ("http://example.com:80/", "http://example.com"),
+            ("http://127.0.0.1:8080/page", "http://127.0.0.1:8080"),
+            // Never the part before an `@`.
+            ("https://someone:secret@example.com/", "https://example.com"),
+        ] {
+            assert_eq!(origin(address).as_deref(), Some(expected), "{address}");
+        }
+        // One of a site's names is not another, and nor is another scheme.
+        assert_ne!(
+            origin("https://a.example.com/"),
+            origin("https://b.example.com/")
+        );
+        assert_ne!(
+            origin("https://example.com/"),
+            origin("http://example.com/")
+        );
+        // An address that is not the web's has none.
+        for address in [
+            "about:blank",
+            "data:text/plain,hello",
+            "blob:https://example.com/1",
+            "file:///tmp/a",
+        ] {
+            assert_eq!(origin(address), None, "{address}");
+        }
+    }
+
+    #[test]
+    fn an_address_is_its_own_over_https_or_when_it_never_left_the_device() {
+        let trusted = |text: &str| Address::parse(text).unwrap().is_trustworthy();
+        for address in [
+            "https://example.com/",
+            "http://localhost/",
+            "http://localhost:3000/app",
+            "http://dev.localhost/",
+            "http://127.0.0.1:8080/",
+            "http://127.9.9.9/",
+            "http://[::1]:8080/",
+        ] {
+            assert!(trusted(address), "{address}");
+        }
+        for address in [
+            "http://example.com/",
+            "http://192.168.1.10/",
+            "http://10.0.0.1/",
+            "http://localhost.example.com/",
+            "http://notlocalhost/",
+            "http://[2001:db8::1]/",
+            "about:blank",
+            "data:text/html,hi",
+            "file:///tmp/a.html",
+        ] {
+            assert!(!trusted(address), "{address}");
+        }
     }
 
     #[test]

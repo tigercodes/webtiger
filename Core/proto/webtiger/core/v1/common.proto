@@ -37,3 +37,12 @@ enum NavigationCommand {
   NAVIGATION_COMMAND_RELOAD = 3;
   NAVIGATION_COMMAND_STOP = 4;
 }
+
+// Something of the device's that a page may ask to use (014). Since 1.10.
+enum PermissionKind {
+  PERMISSION_KIND_UNSPECIFIED = 0;
+  PERMISSION_KIND_CAMERA = 1;
+  PERMISSION_KIND_MICROPHONE = 2;
+  // Where the device is.
+  PERMISSION_KIND_LOCATION = 3;
+}

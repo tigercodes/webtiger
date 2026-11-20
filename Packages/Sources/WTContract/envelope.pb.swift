@@ -10,7 +10,7 @@
 
 /// WebTiger Core ↔ shell contract (docs/features/000-master-plan.md §5.5,
 /// docs/features/001-foundations.md §4).
-/// Contract version: 1.9 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
+/// Contract version: 1.10 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
 ///   1.1  Tabs: OpenTab, CloseTab, ActivateTab, TabOpened; WindowSnapshot.tabs.
 ///   1.2  A page that asks for a new window: NewWindowRequested, CloseRequested;
 ///        web view ids with their top bit set are the shell's.
@@ -309,6 +309,31 @@ public nonisolated struct WTRequest: Sendable {
     set {kind = .forgetDownloads(newValue)}
   }
 
+  /// browser.proto, since 1.10
+  public var answerPrompt: WTAnswerPrompt {
+    get {
+      if case .answerPrompt(let v)? = kind {return v}
+      return WTAnswerPrompt()
+    }
+    set {kind = .answerPrompt(newValue)}
+  }
+
+  public var queryPermissions: WTQueryPermissions {
+    get {
+      if case .queryPermissions(let v)? = kind {return v}
+      return WTQueryPermissions()
+    }
+    set {kind = .queryPermissions(newValue)}
+  }
+
+  public var forgetPermissions: WTForgetPermissions {
+    get {
+      if case .forgetPermissions(let v)? = kind {return v}
+      return WTForgetPermissions()
+    }
+    set {kind = .forgetPermissions(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -339,6 +364,10 @@ public nonisolated struct WTRequest: Sendable {
     case queryDownloads(WTQueryDownloads)
     case cancelDownload(WTCancelDownload)
     case forgetDownloads(WTForgetDownloads)
+    /// browser.proto, since 1.10
+    case answerPrompt(WTAnswerPrompt)
+    case queryPermissions(WTQueryPermissions)
+    case forgetPermissions(WTForgetPermissions)
 
   }
 
@@ -429,6 +458,15 @@ public nonisolated struct WTResponse: Sendable {
     set {kind = .downloadsPage(newValue)}
   }
 
+  /// Since 1.10
+  public var permissionsPage: WTPermissionsPage {
+    get {
+      if case .permissionsPage(let v)? = kind {return v}
+      return WTPermissionsPage()
+    }
+    set {kind = .permissionsPage(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -445,6 +483,8 @@ public nonisolated struct WTResponse: Sendable {
     case addressSuggestions(WTAddressSuggestions)
     /// Since 1.9
     case downloadsPage(WTDownloadsPage)
+    /// Since 1.10
+    case permissionsPage(WTPermissionsPage)
 
   }
 
@@ -805,7 +845,7 @@ nonisolated extension WTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Request"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0\u{3}open_tab\0\u{3}close_tab\0\u{3}activate_tab\0\u{3}query_history\0\u{3}forget_history\0\u{3}find_in_page\0\u{3}suggest_addresses\0\u{3}zoom_page\0\u{3}query_downloads\0\u{3}cancel_download\0\u{3}forget_downloads\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0\u{3}open_tab\0\u{3}close_tab\0\u{3}activate_tab\0\u{3}query_history\0\u{3}forget_history\0\u{3}find_in_page\0\u{3}suggest_addresses\0\u{3}zoom_page\0\u{3}query_downloads\0\u{3}cancel_download\0\u{3}forget_downloads\0\u{3}answer_prompt\0\u{3}query_permissions\0\u{3}forget_permissions\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1060,6 +1100,45 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
           self.kind = .forgetDownloads(v)
         }
       }()
+      case 20: try {
+        var v: WTAnswerPrompt?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .answerPrompt(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .answerPrompt(v)
+        }
+      }()
+      case 21: try {
+        var v: WTQueryPermissions?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .queryPermissions(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .queryPermissions(v)
+        }
+      }()
+      case 22: try {
+        var v: WTForgetPermissions?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .forgetPermissions(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .forgetPermissions(v)
+        }
+      }()
       default: break
       }
     }
@@ -1147,6 +1226,18 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       guard case .forgetDownloads(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 19)
     }()
+    case .answerPrompt?: try {
+      guard case .answerPrompt(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 20)
+    }()
+    case .queryPermissions?: try {
+      guard case .queryPermissions(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 21)
+    }()
+    case .forgetPermissions?: try {
+      guard case .forgetPermissions(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 22)
+    }()
     case nil: break
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -1161,7 +1252,7 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 nonisolated extension WTResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Response"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}error\0\u{1}ack\0\u{1}pong\0\u{1}subscribed\0\u{3}window_opened\0\u{3}tab_opened\0\u{3}history_page\0\u{3}address_suggestions\0\u{3}downloads_page\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}error\0\u{1}ack\0\u{1}pong\0\u{1}subscribed\0\u{3}window_opened\0\u{3}tab_opened\0\u{3}history_page\0\u{3}address_suggestions\0\u{3}downloads_page\0\u{3}permissions_page\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1286,6 +1377,19 @@ nonisolated extension WTResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
           self.kind = .downloadsPage(v)
         }
       }()
+      case 10: try {
+        var v: WTPermissionsPage?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .permissionsPage(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .permissionsPage(v)
+        }
+      }()
       default: break
       }
     }
@@ -1332,6 +1436,10 @@ nonisolated extension WTResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     case .downloadsPage?: try {
       guard case .downloadsPage(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 9)
+    }()
+    case .permissionsPage?: try {
+      guard case .permissionsPage(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
     }()
     case nil: break
     }

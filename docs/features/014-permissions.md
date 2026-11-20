@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | In progress: the store's record of what was allowed (§5) is built and tested. Nothing else is. The design is to be read before the rest is built: §9 lists what it decides, and §10 what cannot be tested here and why |
+| **Status** | In progress: the store's record of what was allowed (§5), the contract (1.10) and the core (§3) are built and tested. No shell reports a page asking yet, and none draws the prompt (§11). The design is to be read before the rest is built: §9 lists what it decides, and §10 what cannot be tested here and why |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "permission prompts". Site permissions per login set (000 §5.6, `wt-permissions`) in their first form, and the first of a tab's prompts |
-| **Contract** | 1.10, to be added: `PermissionRequested`, `PermissionWithdrawn`; the host request `PermissionAnswer`; `TabView.prompt`; `AnswerPrompt`; `QueryPermissions`, `ForgetPermissions` |
+| **Contract** | 1.10: `PermissionRequested`, `PermissionWithdrawn`; the host request `PermissionAnswer`; `TabView.prompt`; `AnswerPrompt`; `QueryPermissions`, `ForgetPermissions` |
 | **Last updated** | 2026-11-19 |
 
 ## 1. User story
@@ -50,7 +50,9 @@ Otherwise:
 - **Else the person is asked**: the tab gains a prompt (§4). One prompt is shown at a time; later ones wait in order. A tab that is not in front keeps its prompt until it is: its page waits.
 - **"Allow"** grants the request, and writes down each kind it asked for, for the origin and the login set. **"Don't Allow"** refuses it, and is remembered for this page only (rule 5).
 - **A request is granted whole or not at all**: a page that asks for camera and microphone gets both or neither.
-- **A new page in the tab, or the tab closing, ends what was waiting**: each request is refused, and its prompt goes. Nothing is written down.
+- **A new page in the tab ends what was waiting**, and so does the loss of its renderer: each request is refused, and its prompt goes. Nothing is written down. **A tab that closes** takes its prompts with it; the shell refuses what waits with a web view it destroys, and the core says nothing more of it.
+- **What else waited for the same answer has it.** After a yes, every request of that origin that wanted no more than is now allowed is granted, in whatever tab of the login set it waited. After a no, whatever else in that tab wants something that was refused is refused.
+- **A request said twice is asked about once**, and an answer names the prompt the tab shows: one that waits its turn cannot be answered ahead of it.
 
 **What was allowed** is listed by `QueryPermissions` (the sites of a window's login set, each with what it may use) and taken back by `ForgetPermissions` (one site's, or all). Taking it back stops nothing that is running: the page asks again the next time it wants it.
 
@@ -184,7 +186,8 @@ It is not `site_setting` (012), whose rows are one to a site: these are several 
 | Where | What |
 |---|---|
 | Store (`wt-store`, 9) | The migration from version 5, which keeps what was there. What an origin was allowed is written and read back, a kind once; an origin is itself, and not its site's other names, another scheme or another port; another login set was never asked; the origins listed in order, each with what it may use; taking back one origin's, and all of a login set's; nothing is written for a login set the store does not have; a refusal in the store is not read as an allowance, and a verdict that is neither is not written; what was taken back is not left in the store's files. Three of the rules checked by breaking them, and a fourth that no test noticed until one was written for it |
-| Core (through `FakeShell`) | Each rule of §3 by a test that fails without it: an unknown web view; no committed page; another origin than the page's; a frame's origin; an origin that is neither `https` nor this device; a kind unknown. A request is asked about once, in the tab's snapshot, naming the site; "Allow" grants it and is remembered: the next request is granted unasked, also after the core starts again over the same store; "Don't Allow" refuses it and the page is not asked again, until a new page. Camera and microphone together are granted together, and asked about together when only one was allowed. A second request waits behind the first; the fifth is refused. A new page, and the tab closing, refuse what waited. A tab behind keeps its prompt. An answer to a prompt that is gone. Withdrawn. What was allowed is listed, and taken back; another login set's is not there |
+| An address's origin (`wt-core`, 2) | The scheme, the host, and a port that is not the scheme's own; never the part before an `@`; none for an address that is not the web's. An address is its own over `https`, or when it never left the device: `localhost` and what ends in it, the loopback addresses; not a private network's, and not a name that only looks local |
+| Core (`wt-app/tests/permissions.rs`, 23 through `FakeShell`) | A page that asks is asked about in its tab, by the site's name, and waits. "Allow" grants it and is remembered: the next request is granted unasked, on another page of the origin too, and after the app starts again over the same store; another origin, and another kind, were not allowed by it. "Don't Allow" refuses it, writes nothing, and the page is not asked for the same again, also after it changes its own address, until another page has loaded. Who asks must be the page: a frame from elsewhere, another of the site's names, another scheme or port, no origin, and the page the tab has left are refused; the page's own origin is itself however a shell spells it. A page not over `https` is refused unless it is this device, which is named with its scheme and port. A web view that is no tab's, and a tab with no page. Nothing, no kind, a later contract's kind, and one of each. Camera and microphone are asked about together and granted together, each named once; one of two allowed is not a grant in part. Four wait, a fifth is told no, and they are asked one at a time in order. What else waited for the same answer has it, after a yes and after a no; in another tab too, and not another origin's. A new page refuses what waited, and a page that only changes its address goes on asking; a lost renderer. A tab behind keeps its prompt until it is in front. A tab that closes. An answer to a prompt the tab does not show, to one that waits its turn, and twice. Withdrawn, and not by another web view's word. Said twice. What was allowed is listed in the order of the names shown, and taken back, one origin's and all; naming nothing; a window there is not. Seventeen of the rules checked by breaking them: two had no test until that showed it |
 | WebKit adapter suite | On a Mac that has a camera or a microphone: a page that asks is reported with its origin and what it asks for, and waits; told no, its promise fails as refused. With no such device the engine never asks, and the test says it was skipped. What "granted" does, at the seam. Never run: a capture that starts (§10) |
 | System WebView adapter | On the JVM: requests reported and answered, the system's permission asked only when the core granted, and "no" when it says no. On the emulator: camera, microphone, both, and location, each reported with its origin and waiting; refused; granted, with the permission given to the test, and the page gets a stream from the emulated camera |
 | The shells' models and bars | Against `ScriptedCore`: the bar is there when the snapshot has a prompt and gone when it has not; each button sends its answer with the prompt's id; the words for each kind and for camera and microphone together; Return answers nothing. Pictures of the bar, light and dark. The list of what was allowed: its model, drawn, and pictures |
@@ -204,6 +207,8 @@ A page of the test site asks for each thing by a button, and writes what became 
 
 ## 10. What will not be verified here, and why
 
+- **Another login set, through the core.** As for zoom and downloads: one Space and one login set until W2. That one login set's permissions are not another's is the store's test.
+
 - **A capture that starts, on Apple.** Granting one makes the system ask, with its own dialog, whether the app may use the camera: no test may raise it, and nobody is at this Mac to answer it. That WebKit starts the capture on "granted", and that the system then asks, will be written and not seen until a person runs the app.
 - **Apple, on a machine with no camera or microphone**: WebKit does not ask at all there, and that is every iPhone simulator and GitHub's Macs. The adapter's suite can run only on a Mac that has one.
 - **Location on Apple**: not built, and not asked for by any test, since asking may raise the system's own dialog.
@@ -213,8 +218,8 @@ A page of the test site asks for each thing by a button, and writes what became 
 ## 11. Done checklist
 
 - [x] The store: migration 6; what was allowed. 9 tests.
-- [ ] Contract 1.10 and its version in every place it is written.
-- [ ] The core: the rules of §3, the tab's prompt, what was allowed.
+- [x] Contract 1.10 and its version in every place it is written.
+- [x] The core: the rules of §3, the tab's prompt, what was allowed. 23 tests through `FakeShell`, and 2 of an address's origin.
 - [ ] The test site's page.
 - [ ] Apple: the adapter and its suite; the reasons in `Info.plist`; the bar, its model's tests and pictures; the list; a UI test.
 - [ ] Android: the adapter, the system's permission behind a seam, on the JVM and the device; the bar; the list; pictures; a device test.

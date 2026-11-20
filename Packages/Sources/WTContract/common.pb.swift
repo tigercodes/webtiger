@@ -113,6 +113,51 @@ public nonisolated enum WTNavigationCommand: SwiftProtobuf.Enum, Swift.CaseItera
 
 }
 
+/// Something of the device's that a page may ask to use (014). Since 1.10.
+public nonisolated enum WTPermissionKind: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case camera // = 1
+  case microphone // = 2
+
+  /// Where the device is.
+  case location // = 3
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .camera
+    case 2: self = .microphone
+    case 3: self = .location
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .camera: return 1
+    case .microphone: return 2
+    case .location: return 3
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [WTPermissionKind] = [
+    .unspecified,
+    .camera,
+    .microphone,
+    .location,
+  ]
+
+}
+
 /// A failure, as a stable code of the form "area.reason" ("tab.unknown",
 /// "host.timeout"). User-visible text never crosses the boundary: the shells
 /// turn codes into words.
@@ -152,6 +197,10 @@ nonisolated extension WTEngineKind: SwiftProtobuf._ProtoNameProviding {
 
 nonisolated extension WTNavigationCommand: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0NAVIGATION_COMMAND_UNSPECIFIED\0\u{1}NAVIGATION_COMMAND_BACK\0\u{1}NAVIGATION_COMMAND_FORWARD\0\u{1}NAVIGATION_COMMAND_RELOAD\0\u{1}NAVIGATION_COMMAND_STOP\0")
+}
+
+nonisolated extension WTPermissionKind: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0PERMISSION_KIND_UNSPECIFIED\0\u{1}PERMISSION_KIND_CAMERA\0\u{1}PERMISSION_KIND_MICROPHONE\0\u{1}PERMISSION_KIND_LOCATION\0")
 }
 
 nonisolated extension WTError: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {

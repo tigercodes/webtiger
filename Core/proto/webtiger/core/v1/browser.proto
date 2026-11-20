@@ -126,6 +126,9 @@ message TabView {
   // Since 1.8. What the tab's page is zoomed to (012). Not set while the tab
   // has no page with a site.
   ZoomView zoom = 13;
+  // Since 1.10. What the tab asks the person (014). Not set when it asks
+  // nothing. One at a time: what else waits is shown when this is answered.
+  PromptView prompt = 14;
 }
 
 enum LoadState {
@@ -377,6 +380,70 @@ message ForgetDownloads {
   uint64 window_id = 1;
   oneof what {
     uint64 download_id = 2;
+    bool everything = 3;
+  }
+}
+
+// What a tab asks the person, for a shell to draw in that tab: never over
+// the window, and never answered by a key that was meant for the page. A
+// prompt names who asks in the core's words; nothing in it is the page's.
+message PromptView {
+  // The core's own, never used twice. What the answer names it by.
+  uint64 prompt_id = 1;
+  oneof kind {
+    PermissionPrompt permission = 2;
+  }
+}
+
+// A page asks to use something of the device's (014).
+message PermissionPrompt {
+  // Who asks, as an address field shows it: the page's own host.
+  string site = 1 [(wt.redact) = true];
+  repeated PermissionKind kinds = 2;
+}
+
+// The person's answer to the prompt a tab shows. Answered with Ack;
+// "tab.unknown"; "prompt.unknown" when the tab shows no such prompt: it was
+// answered already, or its page went away.
+//
+// For a PermissionPrompt: `allow` lets the page use what it asked for, and
+// is remembered for its origin in its login set until it is taken back
+// (ForgetPermissions). Not allowing is for this page only: it is told no,
+// and does not get to ask for the same again until another page has loaded.
+message AnswerPrompt {
+  uint64 tab_id = 1;
+  uint64 prompt_id = 2;
+  bool allow = 3;
+}
+
+// Asks what the sites of a window's login set were allowed to use. Answered
+// with PermissionsPage, or "window.unknown".
+message QueryPermissions {
+  uint64 window_id = 1;
+}
+
+message PermissionsPage {
+  // In the order of their names as shown.
+  repeated SitePermissions sites = 1;
+}
+
+message SitePermissions {
+  // Scheme, host and port. What ForgetPermissions names it by.
+  string origin = 1 [(wt.redact) = true];
+  // As an address field shows it.
+  string site = 2 [(wt.redact) = true];
+  // What it was allowed.
+  repeated PermissionKind kinds = 3;
+}
+
+// Takes back what one origin was allowed in a window's login set, or what
+// every origin was. Answered with Ack; "window.unknown";
+// "permission.nothing_named". It stops nothing that is running: the page
+// asks again the next time it wants what it had.
+message ForgetPermissions {
+  uint64 window_id = 1;
+  oneof what {
+    string origin = 2 [(wt.redact) = true];
     bool everything = 3;
   }
 }

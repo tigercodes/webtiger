@@ -82,6 +82,40 @@ impl NavigationCommand {
         }
     }
 }
+/// Something of the device's that a page may ask to use (014). Since 1.10.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum PermissionKind {
+    Unspecified = 0,
+    Camera = 1,
+    Microphone = 2,
+    /// Where the device is.
+    Location = 3,
+}
+impl PermissionKind {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "PERMISSION_KIND_UNSPECIFIED",
+            Self::Camera => "PERMISSION_KIND_CAMERA",
+            Self::Microphone => "PERMISSION_KIND_MICROPHONE",
+            Self::Location => "PERMISSION_KIND_LOCATION",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "PERMISSION_KIND_UNSPECIFIED" => Some(Self::Unspecified),
+            "PERMISSION_KIND_CAMERA" => Some(Self::Camera),
+            "PERMISSION_KIND_MICROPHONE" => Some(Self::Microphone),
+            "PERMISSION_KIND_LOCATION" => Some(Self::Location),
+            _ => None,
+        }
+    }
+}
 /// Opens a window in the default Space, with one tab. Answered with
 /// WindowOpened. In fake mode the tab opens FakeOptions.start_address.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
@@ -230,6 +264,10 @@ pub struct TabView {
     /// has no page with a site.
     #[prost(message, optional, tag = "13")]
     pub zoom: ::core::option::Option<ZoomView>,
+    /// Since 1.10. What the tab asks the person (014). Not set when it asks
+    /// nothing. One at a time: what else waits is shown when this is answered.
+    #[prost(message, optional, tag = "14")]
+    pub prompt: ::core::option::Option<PromptView>,
 }
 /// What the address field shows. The core builds it so that every shell shows
 /// the same thing and none can be made to lie: a page-initiated load does not
@@ -559,6 +597,97 @@ pub mod forget_downloads {
         Everything(bool),
     }
 }
+/// What a tab asks the person, for a shell to draw in that tab: never over
+/// the window, and never answered by a key that was meant for the page. A
+/// prompt names who asks in the core's words; nothing in it is the page's.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct PromptView {
+    /// The core's own, never used twice. What the answer names it by.
+    #[prost(uint64, tag = "1")]
+    pub prompt_id: u64,
+    #[prost(oneof = "prompt_view::Kind", tags = "2")]
+    pub kind: ::core::option::Option<prompt_view::Kind>,
+}
+/// Nested message and enum types in `PromptView`.
+pub mod prompt_view {
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Kind {
+        #[prost(message, tag = "2")]
+        Permission(super::PermissionPrompt),
+    }
+}
+/// A page asks to use something of the device's (014).
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct PermissionPrompt {
+    /// Who asks, as an address field shows it: the page's own host.
+    #[prost(string, tag = "1")]
+    pub site: ::prost::alloc::string::String,
+    #[prost(enumeration = "PermissionKind", repeated, tag = "2")]
+    pub kinds: ::prost::alloc::vec::Vec<i32>,
+}
+/// The person's answer to the prompt a tab shows. Answered with Ack;
+/// "tab.unknown"; "prompt.unknown" when the tab shows no such prompt: it was
+/// answered already, or its page went away.
+///
+/// For a PermissionPrompt: `allow` lets the page use what it asked for, and
+/// is remembered for its origin in its login set until it is taken back
+/// (ForgetPermissions). Not allowing is for this page only: it is told no,
+/// and does not get to ask for the same again until another page has loaded.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct AnswerPrompt {
+    #[prost(uint64, tag = "1")]
+    pub tab_id: u64,
+    #[prost(uint64, tag = "2")]
+    pub prompt_id: u64,
+    #[prost(bool, tag = "3")]
+    pub allow: bool,
+}
+/// Asks what the sites of a window's login set were allowed to use. Answered
+/// with PermissionsPage, or "window.unknown".
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct QueryPermissions {
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct PermissionsPage {
+    /// In the order of their names as shown.
+    #[prost(message, repeated, tag = "1")]
+    pub sites: ::prost::alloc::vec::Vec<SitePermissions>,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SitePermissions {
+    /// Scheme, host and port. What ForgetPermissions names it by.
+    #[prost(string, tag = "1")]
+    pub origin: ::prost::alloc::string::String,
+    /// As an address field shows it.
+    #[prost(string, tag = "2")]
+    pub site: ::prost::alloc::string::String,
+    /// What it was allowed.
+    #[prost(enumeration = "PermissionKind", repeated, tag = "3")]
+    pub kinds: ::prost::alloc::vec::Vec<i32>,
+}
+/// Takes back what one origin was allowed in a window's login set, or what
+/// every origin was. Answered with Ack; "window.unknown";
+/// "permission.nothing_named". It stops nothing that is running: the page
+/// asks again the next time it wants what it had.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ForgetPermissions {
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
+    #[prost(oneof = "forget_permissions::What", tags = "2, 3")]
+    pub what: ::core::option::Option<forget_permissions::What>,
+}
+/// Nested message and enum types in `ForgetPermissions`.
+pub mod forget_permissions {
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum What {
+        #[prost(string, tag = "2")]
+        Origin(::prost::alloc::string::String),
+        #[prost(bool, tag = "3")]
+        Everything(bool),
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum LoadState {
@@ -785,7 +914,7 @@ pub struct EngineEvent {
     pub web_view_id: u64,
     #[prost(
         oneof = "engine_event::Kind",
-        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18"
+        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20"
     )]
     pub kind: ::core::option::Option<engine_event::Kind>,
 }
@@ -831,6 +960,11 @@ pub mod engine_event {
         DownloadFinished(super::DownloadFinished),
         #[prost(message, tag = "18")]
         DownloadFailed(super::DownloadFailed),
+        /// Since 1.10
+        #[prost(message, tag = "19")]
+        PermissionRequested(super::PermissionRequested),
+        #[prost(message, tag = "20")]
+        PermissionWithdrawn(super::PermissionWithdrawn),
     }
 }
 /// A load began. The page it asks for does not own the web view yet.
@@ -1012,9 +1146,35 @@ pub struct DownloadFailed {
     #[prost(string, tag = "2")]
     pub code: ::prost::alloc::string::String,
 }
+/// A page asks to use something of the device's (014). The page waits: the
+/// shell answers it only when the core has said how (PermissionAnswer,
+/// host.proto), and says "no" by itself to nothing but a request whose web
+/// view it destroys.
+///
+/// `request_id` is the shell's own name for the request, never used twice.
+/// `origin` is who asks: the scheme, host and port of the frame that asked,
+/// as `<https://example.com`.> The core refuses a request that is not the
+/// page's own, so a shell reports the frame's and decides nothing.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct PermissionRequested {
+    #[prost(uint64, tag = "1")]
+    pub request_id: u64,
+    #[prost(string, tag = "2")]
+    pub origin: ::prost::alloc::string::String,
+    /// What it asks for: one or more. Granted whole, or not at all.
+    #[prost(enumeration = "PermissionKind", repeated, tag = "3")]
+    pub kinds: ::prost::alloc::vec::Vec<i32>,
+}
+/// The page no longer waits for an answer to a request: it withdrew it, or
+/// the engine did. Nothing is to be answered.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct PermissionWithdrawn {
+    #[prost(uint64, tag = "1")]
+    pub request_id: u64,
+}
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct HostRequest {
-    #[prost(oneof = "host_request::Kind", tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10")]
+    #[prost(oneof = "host_request::Kind", tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11")]
     pub kind: ::core::option::Option<host_request::Kind>,
 }
 /// Nested message and enum types in `HostRequest`.
@@ -1045,6 +1205,9 @@ pub mod host_request {
         DownloadStart(super::DownloadStart),
         #[prost(message, tag = "10")]
         DownloadCancel(super::DownloadCancel),
+        /// Since 1.10
+        #[prost(message, tag = "11")]
+        PermissionAnswer(super::PermissionAnswer),
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -1188,6 +1351,20 @@ pub struct DownloadCancel {
     #[prost(uint64, tag = "1")]
     pub download_id: u64,
 }
+/// How the page that asked is answered (014): it may use what it asked for,
+/// all of it, or none of it. Answered with Ack, also for a request the shell
+/// no longer has: its page went away meanwhile.
+///
+/// "Granted" is the core's word about the site. Whether the system lets the
+/// app itself use the camera, the microphone or the location is the system's
+/// own matter, and a shell that is refused there tells the page no.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct PermissionAnswer {
+    #[prost(uint64, tag = "1")]
+    pub request_id: u64,
+    #[prost(bool, tag = "2")]
+    pub granted: bool,
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Envelope {
     /// A request's id, chosen by the shell, correlates its response; a request
@@ -1221,7 +1398,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -1275,12 +1452,19 @@ pub mod request {
         CancelDownload(super::CancelDownload),
         #[prost(message, tag = "19")]
         ForgetDownloads(super::ForgetDownloads),
+        /// browser.proto, since 1.10
+        #[prost(message, tag = "20")]
+        AnswerPrompt(super::AnswerPrompt),
+        #[prost(message, tag = "21")]
+        QueryPermissions(super::QueryPermissions),
+        #[prost(message, tag = "22")]
+        ForgetPermissions(super::ForgetPermissions),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Response {
-    #[prost(oneof = "response::Kind", tags = "1, 2, 3, 4, 5, 6, 7, 8, 9")]
+    #[prost(oneof = "response::Kind", tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10")]
     pub kind: ::core::option::Option<response::Kind>,
 }
 /// Nested message and enum types in `Response`.
@@ -1309,6 +1493,9 @@ pub mod response {
         /// Since 1.9
         #[prost(message, tag = "9")]
         DownloadsPage(super::DownloadsPage),
+        /// Since 1.10
+        #[prost(message, tag = "10")]
+        PermissionsPage(super::PermissionsPage),
     }
 }
 /// Core → shell, unasked.

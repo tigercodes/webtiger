@@ -185,6 +185,23 @@ public nonisolated struct WTEngineEvent: Sendable {
     set {kind = .downloadFailed(newValue)}
   }
 
+  /// Since 1.10
+  public var permissionRequested: WTPermissionRequested {
+    get {
+      if case .permissionRequested(let v)? = kind {return v}
+      return WTPermissionRequested()
+    }
+    set {kind = .permissionRequested(newValue)}
+  }
+
+  public var permissionWithdrawn: WTPermissionWithdrawn {
+    get {
+      if case .permissionWithdrawn(let v)? = kind {return v}
+      return WTPermissionWithdrawn()
+    }
+    set {kind = .permissionWithdrawn(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -209,6 +226,9 @@ public nonisolated struct WTEngineEvent: Sendable {
     case downloadProgress(WTDownloadProgress)
     case downloadFinished(WTDownloadFinished)
     case downloadFailed(WTDownloadFailed)
+    /// Since 1.10
+    case permissionRequested(WTPermissionRequested)
+    case permissionWithdrawn(WTPermissionWithdrawn)
 
   }
 
@@ -516,13 +536,53 @@ public nonisolated struct WTDownloadFailed: Sendable {
   public init() {}
 }
 
+/// A page asks to use something of the device's (014). The page waits: the
+/// shell answers it only when the core has said how (PermissionAnswer,
+/// host.proto), and says "no" by itself to nothing but a request whose web
+/// view it destroys.
+///
+/// `request_id` is the shell's own name for the request, never used twice.
+/// `origin` is who asks: the scheme, host and port of the frame that asked,
+/// as `https://example.com`. The core refuses a request that is not the
+/// page's own, so a shell reports the frame's and decides nothing.
+public nonisolated struct WTPermissionRequested: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var requestID: UInt64 = 0
+
+  public var origin: String = String()
+
+  /// What it asks for: one or more. Granted whole, or not at all.
+  public var kinds: [WTPermissionKind] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// The page no longer waits for an answer to a request: it withdrew it, or
+/// the engine did. Nothing is to be answered.
+public nonisolated struct WTPermissionWithdrawn: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var requestID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
 
 nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EngineEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{3}navigation_started\0\u{3}navigation_committed\0\u{3}navigation_finished\0\u{3}navigation_failed\0\u{3}address_changed\0\u{3}title_changed\0\u{3}progress_changed\0\u{3}history_changed\0\u{3}renderer_gone\0\u{3}new_window_requested\0\u{3}close_requested\0\u{3}outside_link_requested\0\u{3}find_result\0\u{3}download_requested\0\u{3}download_progress\0\u{3}download_finished\0\u{3}download_failed\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{3}navigation_started\0\u{3}navigation_committed\0\u{3}navigation_finished\0\u{3}navigation_failed\0\u{3}address_changed\0\u{3}title_changed\0\u{3}progress_changed\0\u{3}history_changed\0\u{3}renderer_gone\0\u{3}new_window_requested\0\u{3}close_requested\0\u{3}outside_link_requested\0\u{3}find_result\0\u{3}download_requested\0\u{3}download_progress\0\u{3}download_finished\0\u{3}download_failed\0\u{3}permission_requested\0\u{3}permission_withdrawn\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -752,6 +812,32 @@ nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
           self.kind = .downloadFailed(v)
         }
       }()
+      case 19: try {
+        var v: WTPermissionRequested?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .permissionRequested(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .permissionRequested(v)
+        }
+      }()
+      case 20: try {
+        var v: WTPermissionWithdrawn?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .permissionWithdrawn(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .permissionWithdrawn(v)
+        }
+      }()
       default: break
       }
     }
@@ -833,6 +919,14 @@ nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
     case .downloadFailed?: try {
       guard case .downloadFailed(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 18)
+    }()
+    case .permissionRequested?: try {
+      guard case .permissionRequested(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 19)
+    }()
+    case .permissionWithdrawn?: try {
+      guard case .permissionWithdrawn(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 20)
     }()
     case nil: break
     }
@@ -1404,6 +1498,76 @@ nonisolated extension WTDownloadFailed: SwiftProtobuf.Message, SwiftProtobuf._Me
   public static func ==(lhs: WTDownloadFailed, rhs: WTDownloadFailed) -> Bool {
     if lhs.downloadID != rhs.downloadID {return false}
     if lhs.code != rhs.code {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTPermissionRequested: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PermissionRequested"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}request_id\0\u{1}origin\0\u{1}kinds\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.requestID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.origin) }()
+      case 3: try { try decoder.decodeRepeatedEnumField(value: &self.kinds) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.requestID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.requestID, fieldNumber: 1)
+    }
+    if !self.origin.isEmpty {
+      try visitor.visitSingularStringField(value: self.origin, fieldNumber: 2)
+    }
+    if !self.kinds.isEmpty {
+      try visitor.visitPackedEnumField(value: self.kinds, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTPermissionRequested, rhs: WTPermissionRequested) -> Bool {
+    if lhs.requestID != rhs.requestID {return false}
+    if lhs.origin != rhs.origin {return false}
+    if lhs.kinds != rhs.kinds {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTPermissionWithdrawn: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PermissionWithdrawn"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}request_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.requestID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.requestID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.requestID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTPermissionWithdrawn, rhs: WTPermissionWithdrawn) -> Bool {
+    if lhs.requestID != rhs.requestID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

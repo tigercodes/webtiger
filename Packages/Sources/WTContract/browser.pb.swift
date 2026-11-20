@@ -449,6 +449,17 @@ public nonisolated struct WTTabView: @unchecked Sendable {
   /// Clears the value of `zoom`. Subsequent reads from it will return its default value.
   public mutating func clearZoom() {_uniqueStorage()._zoom = nil}
 
+  /// Since 1.10. What the tab asks the person (014). Not set when it asks
+  /// nothing. One at a time: what else waits is shown when this is answered.
+  public var prompt: WTPromptView {
+    get {_storage._prompt ?? WTPromptView()}
+    set {_uniqueStorage()._prompt = newValue}
+  }
+  /// Returns true if `prompt` has been explicitly set.
+  public var hasPrompt: Bool {_storage._prompt != nil}
+  /// Clears the value of `prompt`. Subsequent reads from it will return its default value.
+  public mutating func clearPrompt() {_uniqueStorage()._prompt = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -938,6 +949,163 @@ public nonisolated struct WTForgetDownloads: Sendable {
   public init() {}
 }
 
+/// What a tab asks the person, for a shell to draw in that tab: never over
+/// the window, and never answered by a key that was meant for the page. A
+/// prompt names who asks in the core's words; nothing in it is the page's.
+public nonisolated struct WTPromptView: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// The core's own, never used twice. What the answer names it by.
+  public var promptID: UInt64 = 0
+
+  public var kind: WTPromptView.OneOf_Kind? = nil
+
+  public var permission: WTPermissionPrompt {
+    get {
+      if case .permission(let v)? = kind {return v}
+      return WTPermissionPrompt()
+    }
+    set {kind = .permission(newValue)}
+  }
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public nonisolated enum OneOf_Kind: Equatable, Sendable {
+    case permission(WTPermissionPrompt)
+
+  }
+
+  public init() {}
+}
+
+/// A page asks to use something of the device's (014).
+public nonisolated struct WTPermissionPrompt: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Who asks, as an address field shows it: the page's own host.
+  public var site: String = String()
+
+  public var kinds: [WTPermissionKind] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// The person's answer to the prompt a tab shows. Answered with Ack;
+/// "tab.unknown"; "prompt.unknown" when the tab shows no such prompt: it was
+/// answered already, or its page went away.
+///
+/// For a PermissionPrompt: `allow` lets the page use what it asked for, and
+/// is remembered for its origin in its login set until it is taken back
+/// (ForgetPermissions). Not allowing is for this page only: it is told no,
+/// and does not get to ask for the same again until another page has loaded.
+public nonisolated struct WTAnswerPrompt: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var tabID: UInt64 = 0
+
+  public var promptID: UInt64 = 0
+
+  public var allow: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Asks what the sites of a window's login set were allowed to use. Answered
+/// with PermissionsPage, or "window.unknown".
+public nonisolated struct WTQueryPermissions: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var windowID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct WTPermissionsPage: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// In the order of their names as shown.
+  public var sites: [WTSitePermissions] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct WTSitePermissions: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Scheme, host and port. What ForgetPermissions names it by.
+  public var origin: String = String()
+
+  /// As an address field shows it.
+  public var site: String = String()
+
+  /// What it was allowed.
+  public var kinds: [WTPermissionKind] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Takes back what one origin was allowed in a window's login set, or what
+/// every origin was. Answered with Ack; "window.unknown";
+/// "permission.nothing_named". It stops nothing that is running: the page
+/// asks again the next time it wants what it had.
+public nonisolated struct WTForgetPermissions: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var windowID: UInt64 = 0
+
+  public var what: WTForgetPermissions.OneOf_What? = nil
+
+  public var origin: String {
+    get {
+      if case .origin(let v)? = what {return v}
+      return String()
+    }
+    set {what = .origin(newValue)}
+  }
+
+  public var everything: Bool {
+    get {
+      if case .everything(let v)? = what {return v}
+      return false
+    }
+    set {what = .everything(newValue)}
+  }
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public nonisolated enum OneOf_What: Equatable, Sendable {
+    case origin(String)
+    case everything(Bool)
+
+  }
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
@@ -1339,7 +1507,7 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TabView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}web_view_id\0\u{1}address\0\u{1}title\0\u{3}load_state\0\u{1}progress\0\u{3}can_go_back\0\u{3}can_go_forward\0\u{3}error_code\0\u{1}engine\0\u{3}login_set_id\0\u{1}find\0\u{1}zoom\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}web_view_id\0\u{1}address\0\u{1}title\0\u{3}load_state\0\u{1}progress\0\u{3}can_go_back\0\u{3}can_go_forward\0\u{3}error_code\0\u{1}engine\0\u{3}login_set_id\0\u{1}find\0\u{1}zoom\0\u{1}prompt\0")
 
   fileprivate class _StorageClass {
     var _tabID: UInt64 = 0
@@ -1355,6 +1523,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _loginSetID: String = String()
     var _find: WTFindView? = nil
     var _zoom: WTZoomView? = nil
+    var _prompt: WTPromptView? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1378,6 +1547,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _loginSetID = source._loginSetID
       _find = source._find
       _zoom = source._zoom
+      _prompt = source._prompt
     }
   }
 
@@ -1409,6 +1579,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 11: try { try decoder.decodeSingularStringField(value: &_storage._loginSetID) }()
         case 12: try { try decoder.decodeSingularMessageField(value: &_storage._find) }()
         case 13: try { try decoder.decodeSingularMessageField(value: &_storage._zoom) }()
+        case 14: try { try decoder.decodeSingularMessageField(value: &_storage._prompt) }()
         default: break
         }
       }
@@ -1460,6 +1631,9 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       try { if let v = _storage._zoom {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
       } }()
+      try { if let v = _storage._prompt {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1482,6 +1656,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._loginSetID != rhs_storage._loginSetID {return false}
         if _storage._find != rhs_storage._find {return false}
         if _storage._zoom != rhs_storage._zoom {return false}
+        if _storage._prompt != rhs_storage._prompt {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -2264,6 +2439,294 @@ nonisolated extension WTForgetDownloads: SwiftProtobuf.Message, SwiftProtobuf._M
   }
 
   public static func ==(lhs: WTForgetDownloads, rhs: WTForgetDownloads) -> Bool {
+    if lhs.windowID != rhs.windowID {return false}
+    if lhs.what != rhs.what {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTPromptView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PromptView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}prompt_id\0\u{1}permission\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.promptID) }()
+      case 2: try {
+        var v: WTPermissionPrompt?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .permission(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .permission(v)
+        }
+      }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if self.promptID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.promptID, fieldNumber: 1)
+    }
+    try { if case .permission(let v)? = self.kind {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTPromptView, rhs: WTPromptView) -> Bool {
+    if lhs.promptID != rhs.promptID {return false}
+    if lhs.kind != rhs.kind {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTPermissionPrompt: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PermissionPrompt"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}site\0\u{1}kinds\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.site) }()
+      case 2: try { try decoder.decodeRepeatedEnumField(value: &self.kinds) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.site.isEmpty {
+      try visitor.visitSingularStringField(value: self.site, fieldNumber: 1)
+    }
+    if !self.kinds.isEmpty {
+      try visitor.visitPackedEnumField(value: self.kinds, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTPermissionPrompt, rhs: WTPermissionPrompt) -> Bool {
+    if lhs.site != rhs.site {return false}
+    if lhs.kinds != rhs.kinds {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTAnswerPrompt: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".AnswerPrompt"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}prompt_id\0\u{1}allow\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.tabID) }()
+      case 2: try { try decoder.decodeSingularUInt64Field(value: &self.promptID) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.allow) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.tabID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.tabID, fieldNumber: 1)
+    }
+    if self.promptID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.promptID, fieldNumber: 2)
+    }
+    if self.allow != false {
+      try visitor.visitSingularBoolField(value: self.allow, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTAnswerPrompt, rhs: WTAnswerPrompt) -> Bool {
+    if lhs.tabID != rhs.tabID {return false}
+    if lhs.promptID != rhs.promptID {return false}
+    if lhs.allow != rhs.allow {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTQueryPermissions: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".QueryPermissions"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.windowID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.windowID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.windowID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTQueryPermissions, rhs: WTQueryPermissions) -> Bool {
+    if lhs.windowID != rhs.windowID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTPermissionsPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PermissionsPage"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}sites\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.sites) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.sites.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.sites, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTPermissionsPage, rhs: WTPermissionsPage) -> Bool {
+    if lhs.sites != rhs.sites {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTSitePermissions: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SitePermissions"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}origin\0\u{1}site\0\u{1}kinds\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.origin) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.site) }()
+      case 3: try { try decoder.decodeRepeatedEnumField(value: &self.kinds) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.origin.isEmpty {
+      try visitor.visitSingularStringField(value: self.origin, fieldNumber: 1)
+    }
+    if !self.site.isEmpty {
+      try visitor.visitSingularStringField(value: self.site, fieldNumber: 2)
+    }
+    if !self.kinds.isEmpty {
+      try visitor.visitPackedEnumField(value: self.kinds, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTSitePermissions, rhs: WTSitePermissions) -> Bool {
+    if lhs.origin != rhs.origin {return false}
+    if lhs.site != rhs.site {return false}
+    if lhs.kinds != rhs.kinds {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTForgetPermissions: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ForgetPermissions"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}origin\0\u{1}everything\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.windowID) }()
+      case 2: try {
+        var v: String?
+        try decoder.decodeSingularStringField(value: &v)
+        if let v = v {
+          if self.what != nil {try decoder.handleConflictingOneOf()}
+          self.what = .origin(v)
+        }
+      }()
+      case 3: try {
+        var v: Bool?
+        try decoder.decodeSingularBoolField(value: &v)
+        if let v = v {
+          if self.what != nil {try decoder.handleConflictingOneOf()}
+          self.what = .everything(v)
+        }
+      }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if self.windowID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.windowID, fieldNumber: 1)
+    }
+    switch self.what {
+    case .origin?: try {
+      guard case .origin(let v)? = self.what else { preconditionFailure() }
+      try visitor.visitSingularStringField(value: v, fieldNumber: 2)
+    }()
+    case .everything?: try {
+      guard case .everything(let v)? = self.what else { preconditionFailure() }
+      try visitor.visitSingularBoolField(value: v, fieldNumber: 3)
+    }()
+    case nil: break
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTForgetPermissions, rhs: WTForgetPermissions) -> Bool {
     if lhs.windowID != rhs.windowID {return false}
     if lhs.what != rhs.what {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}

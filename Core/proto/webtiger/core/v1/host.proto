@@ -35,6 +35,8 @@ message HostRequest {
     // Since 1.9
     DownloadStart download_start = 9;
     DownloadCancel download_cancel = 10;
+    // Since 1.10
+    PermissionAnswer permission_answer = 11;
   }
 }
 
@@ -149,4 +151,16 @@ message DownloadStart {
 // download the shell does not have.
 message DownloadCancel {
   uint64 download_id = 1;
+}
+
+// How the page that asked is answered (014): it may use what it asked for,
+// all of it, or none of it. Answered with Ack, also for a request the shell
+// no longer has: its page went away meanwhile.
+//
+// "Granted" is the core's word about the site. Whether the system lets the
+// app itself use the camera, the microphone or the location is the system's
+// own matter, and a shell that is refused there tells the page no.
+message PermissionAnswer {
+  uint64 request_id = 1;
+  bool granted = 2;
 }

@@ -17,6 +17,7 @@ syntax = "proto3";
 
 package webtiger.core.v1;
 
+import "webtiger/core/v1/common.proto";
 import "wt/options.proto";
 
 option java_multiple_files = true;
@@ -47,6 +48,9 @@ message EngineEvent {
     DownloadProgress download_progress = 16;
     DownloadFinished download_finished = 17;
     DownloadFailed download_failed = 18;
+    // Since 1.10
+    PermissionRequested permission_requested = 19;
+    PermissionWithdrawn permission_withdrawn = 20;
   }
 }
 
@@ -198,4 +202,26 @@ message DownloadFailed {
   // "download.cancelled" (it was stopped), "download.network",
   // "download.disk" (it could not be written), or "download.failed".
   string code = 2;
+}
+
+// A page asks to use something of the device's (014). The page waits: the
+// shell answers it only when the core has said how (PermissionAnswer,
+// host.proto), and says "no" by itself to nothing but a request whose web
+// view it destroys.
+//
+// `request_id` is the shell's own name for the request, never used twice.
+// `origin` is who asks: the scheme, host and port of the frame that asked,
+// as `https://example.com`. The core refuses a request that is not the
+// page's own, so a shell reports the frame's and decides nothing.
+message PermissionRequested {
+  uint64 request_id = 1;
+  string origin = 2 [(wt.redact) = true];
+  // What it asks for: one or more. Granted whole, or not at all.
+  repeated PermissionKind kinds = 3;
+}
+
+// The page no longer waits for an answer to a request: it withdrew it, or
+// the engine did. Nothing is to be answered.
+message PermissionWithdrawn {
+  uint64 request_id = 1;
 }

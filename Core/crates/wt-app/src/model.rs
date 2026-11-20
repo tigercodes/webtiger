@@ -1,15 +1,15 @@
 //! The models: windows and tabs, and what each one shows. Plain state with
 //! no I/O: [`crate::App`] changes it and asks the shell for the rest.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use wt_core::{
     ACTUAL_SIZE, Address, IdMint, LoginSetId, Security, TabId, WebViewId, WindowId, zoom_in,
     zoom_out,
 };
 use wt_proto::v1::{
-    AddressView, EngineKind, FindView, LoadState, TabSummary, TabView, WindowSnapshot, ZoomView,
-    address_view, engine_event,
+    AddressView, EngineKind, FindView, LoadState, PermissionKind, PermissionPrompt, PromptView,
+    TabSummary, TabView, WindowSnapshot, ZoomView, address_view, engine_event, prompt_view,
 };
 use wt_store::{SavedTab, Space};
 
@@ -21,6 +21,46 @@ pub(crate) enum Load {
     Idle,
     Loading,
     Failed,
+}
+
+/// The most a tab asks at once (014 §3): the prompt it shows, and three
+/// waiting behind it. A page that asks for more is told no.
+pub(crate) const MOST_PROMPTS: usize = 4;
+
+/// A page's request that waits for the person (014): the tab's prompt, or
+/// one waiting its turn.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Asking {
+    /// The core's name for the prompt.
+    prompt: u64,
+    /// The shell's name for the request.
+    pub(crate) request: u64,
+    /// Who asks: the page's origin.
+    pub(crate) origin: String,
+    /// Who asks, as the prompt names it.
+    site: String,
+    pub(crate) kinds: Vec<PermissionKind>,
+}
+
+impl Asking {
+    fn view(&self) -> PromptView {
+        PromptView {
+            prompt_id: self.prompt,
+            kind: Some(prompt_view::Kind::Permission(PermissionPrompt {
+                site: self.site.clone(),
+                kinds: self.kinds.iter().map(|kind| *kind as i32).collect(),
+            })),
+        }
+    }
+}
+
+/// Who a web view's page is to a request for permission (014): its login
+/// set, its origin, and the name the origin is shown by.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct Asker {
+    pub(crate) login_set: LoginSetId,
+    pub(crate) origin: String,
+    pub(crate) site: String,
 }
 
 /// A tab: a browsing context, with or without a web view behind it.
@@ -69,6 +109,12 @@ pub(crate) struct Tab {
     /// The zoom the tab's web view was last told, in per cent (012). A web
     /// view that was never told is at actual size.
     zoom: u32,
+    /// What the tab's page asks the person (014): the first is shown, the
+    /// rest wait their turn.
+    prompts: VecDeque<Asking>,
+    /// What the person would not let this page use: it is not asked for the
+    /// same again until another page has committed.
+    refused: Vec<PermissionKind>,
 }
 
 /// The visit a tab's page is in the store, and what has been written of it.
@@ -113,6 +159,8 @@ impl Tab {
             session_title: None,
             find: None,
             zoom: ACTUAL_SIZE,
+            prompts: VecDeque::new(),
+            refused: Vec::new(),
         }
     }
 
@@ -207,8 +255,11 @@ impl Tab {
                 // An address the engine reports but the parser refuses is
                 // shown as no address at all rather than as the old one.
                 self.committed = Address::parse(&committed.url).ok();
-                // What was found went with the page it was found in.
+                // What was found went with the page it was found in, and so
+                // did what the person would not let it use. (What it was
+                // still asking is ended by the app, which tells the shell.)
                 self.find = None;
+                self.refused.clear();
                 self.had_page = true;
                 self.pending = None;
                 self.title.clear();
@@ -258,7 +309,9 @@ impl Tab {
             | Kind::DownloadRequested(_)
             | Kind::DownloadProgress(_)
             | Kind::DownloadFinished(_)
-            | Kind::DownloadFailed(_) => {}
+            | Kind::DownloadFailed(_)
+            | Kind::PermissionRequested(_)
+            | Kind::PermissionWithdrawn(_) => {}
             // What the engine found is for the text now looked for (010).
             // With no find, it is a late word about one that has stopped.
             Kind::FindResult(result) => {
@@ -317,6 +370,7 @@ impl Tab {
             login_set_id: self.login_set.to_string(),
             find: self.find.clone(),
             zoom: self.zoom_view(),
+            prompt: self.prompts.front().map(Asking::view),
         }
     }
 
@@ -663,6 +717,173 @@ impl State {
     /// that its page asks for is. `None` for a web view no tab has.
     pub(crate) fn login_set_of(&self, web_view: WebViewId) -> Option<LoginSetId> {
         self.tab_of(web_view).map(|tab| tab.login_set)
+    }
+
+    /// Who a web view's page is to a request for permission (014 §3).
+    /// `None` when it may not ask at all: the web view is no tab's, the tab
+    /// has no page, the page has no origin of the web's, or what arrives
+    /// from it cannot be taken to be its own.
+    pub(crate) fn asker(&self, web_view: WebViewId) -> Option<Asker> {
+        let tab = self.tab_of(web_view)?;
+        let page = tab
+            .committed
+            .as_ref()
+            .filter(|page| page.is_trustworthy())?;
+        let origin = page.origin()?;
+        // The origin as an address field shows it: the host, and the scheme
+        // when it is not `https`.
+        let site = Address::parse(&origin).map_or_else(|_| origin.clone(), |named| named.display());
+        Some(Asker {
+            login_set: tab.login_set,
+            origin,
+            site,
+        })
+    }
+
+    /// Whether a request by that name of the shell's waits in some tab.
+    pub(crate) fn is_asking(&self, request: u64) -> bool {
+        self.tabs
+            .values()
+            .any(|tab| tab.prompts.iter().any(|asking| asking.request == request))
+    }
+
+    /// Whether the person would not let the web view's page use one of
+    /// these already.
+    pub(crate) fn refused_here(&self, web_view: WebViewId, kinds: &[PermissionKind]) -> bool {
+        self.tab_of(web_view)
+            .is_some_and(|tab| kinds.iter().any(|kind| tab.refused.contains(kind)))
+    }
+
+    /// Puts a request before the person: the tab's prompt, or behind the
+    /// ones it has. False when the tab has as many as it may.
+    pub(crate) fn ask(
+        &mut self,
+        web_view: WebViewId,
+        request: u64,
+        asker: Asker,
+        kinds: Vec<PermissionKind>,
+    ) -> bool {
+        let prompt = self.ids.mint();
+        let Some(tab) = self.tab_of_mut(web_view) else {
+            return false;
+        };
+        if tab.prompts.len() >= MOST_PROMPTS {
+            return false;
+        }
+        tab.prompts.push_back(Asking {
+            prompt,
+            request,
+            origin: asker.origin,
+            site: asker.site,
+            kinds,
+        });
+        let window = tab.window;
+        self.dirty.insert(window);
+        true
+    }
+
+    /// The page no longer waits for an answer to a request of its web
+    /// view's: it is asked about no more.
+    pub(crate) fn withdraw(&mut self, web_view: WebViewId, request: u64) {
+        let Some(tab) = self.tab_of_mut(web_view) else {
+            return;
+        };
+        let before = tab.prompts.len();
+        tab.prompts.retain(|asking| asking.request != request);
+        if tab.prompts.len() != before {
+            let window = tab.window;
+            self.dirty.insert(window);
+        }
+    }
+
+    /// The person answered the prompt a tab shows: it is taken away, and
+    /// given back with the tab's login set. `Err(false)` for no such tab,
+    /// `Err(true)` when the tab does not show that prompt. A refusal is
+    /// kept against the page.
+    pub(crate) fn answer_prompt(
+        &mut self,
+        tab_id: TabId,
+        prompt: u64,
+        allow: bool,
+    ) -> Result<(LoginSetId, Asking), bool> {
+        let tab = self.tabs.get_mut(&tab_id).ok_or(false)?;
+        if tab.prompts.front().map(|asking| asking.prompt) != Some(prompt) {
+            return Err(true);
+        }
+        let asking = tab.prompts.pop_front().ok_or(true)?;
+        if !allow {
+            for kind in &asking.kinds {
+                if !tab.refused.contains(kind) {
+                    tab.refused.push(*kind);
+                }
+            }
+        }
+        let window = tab.window;
+        self.dirty.insert(window);
+        Ok((tab.login_set, asking))
+    }
+
+    /// An origin may now use `allowed` in a login set: every request of
+    /// its pages that waited for no more than that is taken away, in
+    /// whatever tab. The shell's names for them.
+    pub(crate) fn settle_allowed(
+        &mut self,
+        login_set: LoginSetId,
+        origin: &str,
+        allowed: &[PermissionKind],
+    ) -> Vec<u64> {
+        let mut settled = Vec::new();
+        for tab in self.tabs.values_mut() {
+            if tab.login_set != login_set {
+                continue;
+            }
+            let before = tab.prompts.len();
+            tab.prompts.retain(|asking| {
+                let all = asking.origin == origin
+                    && asking.kinds.iter().all(|kind| allowed.contains(kind));
+                if all {
+                    settled.push(asking.request);
+                }
+                !all
+            });
+            if tab.prompts.len() != before {
+                self.dirty.insert(tab.window);
+            }
+        }
+        settled
+    }
+
+    /// What a tab's page was just refused, it is refused wherever else it
+    /// waits in that tab. The shell's names for those requests.
+    pub(crate) fn settle_refused(&mut self, tab_id: TabId) -> Vec<u64> {
+        let Some(tab) = self.tabs.get_mut(&tab_id) else {
+            return Vec::new();
+        };
+        let mut settled = Vec::new();
+        let refused = tab.refused.clone();
+        tab.prompts.retain(|asking| {
+            let any = asking.kinds.iter().any(|kind| refused.contains(kind));
+            if any {
+                settled.push(asking.request);
+            }
+            !any
+        });
+        settled
+    }
+
+    /// The page a web view showed is gone: whatever it was asking is over.
+    /// The shell's names for the requests that waited.
+    pub(crate) fn end_prompts(&mut self, web_view: WebViewId) -> Vec<u64> {
+        let Some(tab) = self.tab_of_mut(web_view) else {
+            return Vec::new();
+        };
+        if tab.prompts.is_empty() {
+            return Vec::new();
+        }
+        let ended = tab.prompts.drain(..).map(|asking| asking.request).collect();
+        let window = tab.window;
+        self.dirty.insert(window);
+        ended
     }
 
     /// So many downloads of a login set are coming now: its windows'

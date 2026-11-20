@@ -8,8 +8,9 @@ use wt_proto::v1::{
     Ack, AddressChanged, CloseRequested, DownloadFailed, DownloadFinished, DownloadProgress,
     DownloadRequested, EngineEvent, EngineKind, Error, FindResult, HistoryChanged, HostPong,
     NavigationCommand, NavigationCommitted, NavigationFailed, NavigationFinished,
-    NavigationStarted, NewWindowRequested, OutsideLinkRequested, ProgressChanged, RendererGone,
-    TitleChanged, engine_event, host_request, host_response,
+    NavigationStarted, NewWindowRequested, OutsideLinkRequested, PermissionKind,
+    PermissionRequested, PermissionWithdrawn, ProgressChanged, RendererGone, TitleChanged,
+    engine_event, host_request, host_response,
 };
 
 /// A page of the scripted web.
@@ -66,6 +67,10 @@ pub struct FakeEngine {
     /// Downloads the shell will say it does not have when asked to start
     /// them.
     pub downloads_not_started: Vec<u64>,
+    /// How this shell was told to answer the pages that asked to use
+    /// something (014), in order: its name for the request, and whether it
+    /// was granted.
+    pub permission_answers: Vec<(u64, bool)>,
 }
 
 impl FakeEngine {
@@ -82,6 +87,7 @@ impl FakeEngine {
             download_starts: Vec::new(),
             download_cancels: Vec::new(),
             downloads_not_started: Vec::new(),
+            permission_answers: Vec::new(),
         }
     }
 
@@ -287,6 +293,11 @@ impl FakeEngine {
                 self.download_cancels.push(cancel.download_id);
                 (ack, Vec::new())
             }
+            Kind::PermissionAnswer(answer) => {
+                self.permission_answers
+                    .push((answer.request_id, answer.granted));
+                (ack, Vec::new())
+            }
             Kind::OpenOutside(open) => {
                 if self.nothing_opens_outside {
                     return (error("system.no_handler"), Vec::new());
@@ -395,6 +406,36 @@ impl FakeEngine {
         )];
         events.extend(self.arrive(id, &url, title));
         events
+    }
+
+    /// A web view's page asks to use something of the device's (014): the
+    /// shell names the request `request`, and says who asks.
+    #[must_use]
+    pub fn permission_requested(
+        id: u64,
+        request: u64,
+        origin: &str,
+        kinds: &[PermissionKind],
+    ) -> EngineEvent {
+        event(
+            id,
+            engine_event::Kind::PermissionRequested(PermissionRequested {
+                request_id: request,
+                origin: origin.to_owned(),
+                kinds: kinds.iter().map(|kind| *kind as i32).collect(),
+            }),
+        )
+    }
+
+    /// A web view's page no longer waits for an answer to a request.
+    #[must_use]
+    pub fn permission_withdrawn(id: u64, request: u64) -> EngineEvent {
+        event(
+            id,
+            engine_event::Kind::PermissionWithdrawn(PermissionWithdrawn {
+                request_id: request,
+            }),
+        )
     }
 
     /// A web view's page asked for a download (013), which the shell names

@@ -25,6 +25,7 @@ import com.tigercodes.webtiger.core.v1.Ping
 import com.tigercodes.webtiger.core.v1.Platform
 import com.tigercodes.webtiger.core.v1.QueryDownloads
 import com.tigercodes.webtiger.core.v1.QueryHistory
+import com.tigercodes.webtiger.core.v1.QueryPermissions
 import com.tigercodes.webtiger.core.v1.Request
 import com.tigercodes.webtiger.core.v1.SubmitAddress
 import com.tigercodes.webtiger.core.v1.SuggestAddresses
@@ -242,6 +243,9 @@ class NativeCoreTest {
             val downloads = core.request(Request(query_downloads = QueryDownloads(window_id = opened.window_id))).downloads_page
             assertNotNull("the downloads are an answer, also when there are none", downloads)
             assertTrue(downloads!!.downloads.isEmpty())
+            val permissions = core.request(Request(query_permissions = QueryPermissions(window_id = opened.window_id))).permissions_page
+            assertNotNull("what sites were allowed is an answer, also when none was", permissions)
+            assertTrue(permissions!!.sites.isEmpty())
             assertNotNull(core.request(Request(close_tab = CloseTab(tab_id = tab.tab_id))).ack)
             assertNotNull(core.request(Request(forget_history = ForgetHistory(window_id = opened.window_id, everything = true))).ack)
         }

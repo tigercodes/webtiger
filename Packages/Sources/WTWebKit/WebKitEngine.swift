@@ -134,6 +134,10 @@ public final class WebKitEngine: HostServices {
         case let .downloadCancel(cancel):
             downloads.cancel(cancel.downloadID)
             return .ack(WTAck())
+        case .permissionAnswer:
+            // How a page that asked is answered (014). This adapter reports no page asking
+            // yet, so there is none to answer: as for a request it no longer has, done.
+            return .ack(WTAck())
         }
     }
 
