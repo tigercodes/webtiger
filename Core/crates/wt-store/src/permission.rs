@@ -329,7 +329,7 @@ mod tests {
         drop(store);
         let old = Connection::open(&path).unwrap();
         old.execute_batch(
-            "DROP TABLE setting; DROP TABLE site_permission; PRAGMA user_version = 5;",
+            "ALTER TABLE space DROP COLUMN colour; DROP TABLE setting; DROP TABLE site_permission; PRAGMA user_version = 5;",
         )
         .unwrap();
         drop(old);

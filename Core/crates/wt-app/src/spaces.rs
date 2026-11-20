@@ -131,7 +131,7 @@ impl App {
         let made = self
             .store
             .borrow_mut()
-            .create_space(&name, logins, self.clock.now())?
+            .create_space(&name, logins, "", self.clock.now())?
             .ok_or_else(|| AppError::new("space.unknown").field("share_logins_with"))?;
         let space_id = made.id.get();
         self.state.borrow_mut().space_made(made);

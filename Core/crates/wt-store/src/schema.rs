@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use crate::StoreError;
 
 /// The version this build's store is at.
-pub const SCHEMA_VERSION: u32 = 7;
+pub const SCHEMA_VERSION: u32 = 8;
 
 /// The migrations, in order: `MIGRATIONS[n]` takes version `n` to `n + 1`.
 const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
@@ -112,6 +112,9 @@ const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
          key TEXT PRIMARY KEY NOT NULL,
          value TEXT NOT NULL
      ) STRICT, WITHOUT ROWID;",
+    // 8 (W2, 025): a Space's colour, by the core's name for it. Empty: none,
+    // which is what every Space from before has.
+    "ALTER TABLE space ADD COLUMN colour TEXT NOT NULL DEFAULT '';",
 ];
 
 pub(crate) fn version(connection: &Connection) -> Result<u32, StoreError> {

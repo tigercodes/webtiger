@@ -77,6 +77,8 @@ pub struct Space {
     pub name: String,
     /// Whose logins its pages run in. Several Spaces may name the same one.
     pub login_set: LoginSetId,
+    /// Its colour, by the core's name for it (025). Empty: none.
+    pub colour: String,
 }
 
 /// The open database.
@@ -168,6 +170,7 @@ impl Store {
             id: SpaceId(u64::try_from(id).map_err(|_| StoreError::Corrupt)?),
             name: String::new(),
             login_set: LoginSetId(new_login_set),
+            colour: String::new(),
         })
     }
 
@@ -175,19 +178,20 @@ impl Store {
         let row = self
             .connection
             .query_row(
-                "SELECT id, name, login_set_id FROM space ORDER BY position, id LIMIT 1",
+                "SELECT id, name, login_set_id, colour FROM space ORDER BY position, id LIMIT 1",
                 [],
                 |row| {
                     Ok((
                         row.get::<_, i64>(0)?,
                         row.get::<_, String>(1)?,
                         row.get::<_, Vec<u8>>(2)?,
+                        row.get::<_, String>(3)?,
                     ))
                 },
             )
             .optional()
             .map_err(|_| StoreError::Query)?;
-        let Some((id, name, login_set)) = row else {
+        let Some((id, name, login_set, colour)) = row else {
             return Ok(None);
         };
         let bytes: [u8; 16] = login_set.try_into().map_err(|_| StoreError::Corrupt)?;
@@ -195,6 +199,7 @@ impl Store {
             id: SpaceId(u64::try_from(id).map_err(|_| StoreError::Corrupt)?),
             name,
             login_set: LoginSetId(Uuid::from_bytes(bytes)),
+            colour,
         }))
     }
 }
