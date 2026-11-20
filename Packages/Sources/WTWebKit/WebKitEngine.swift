@@ -53,6 +53,10 @@ public final class WebKitEngine: HostServices {
     /// The servers that asked who is there (017), while the core has not said how each is answered.
     private(set) lazy var signIns = SignIns(report: reporting)
 
+    /// A link's menu (018): the shell's words for it, and where it copies to. With none,
+    /// WebKit's own menu is shown as it is.
+    public var linkMenu: LinkMenu?
+
     /// Where each of those sends what it has to say of a web view: to the core.
     private var reporting: @MainActor (UInt64, WTEngineEvent.OneOf_Kind) -> Void {
         { [weak self] in self?.report($0, $1) }
@@ -254,7 +258,7 @@ public final class WebKitEngine: HostServices {
     }
 
     private static func webView(_ configuration: WKWebViewConfiguration) -> WKWebView {
-        let webView = WKWebView(frame: .zero, configuration: configuration)
+        let webView = MenuWebView(frame: .zero, configuration: configuration)
         #if os(macOS)
             webView.allowsMagnification = true
         #endif
@@ -329,14 +333,14 @@ public final class WebKitEngine: HostServices {
         }
     }
 
-    fileprivate func report(_ id: UInt64, _ kind: WTEngineEvent.OneOf_Kind) {
+    func report(_ id: UInt64, _ kind: WTEngineEvent.OneOf_Kind) {
         var event = WTEngineEvent()
         event.webViewID = id
         event.kind = kind
         core?.report(event)
     }
 
-    fileprivate func verdict(for url: URL?, webViewID: UInt64, mainFrame: Bool, userGesture: Bool) -> NavigationVerdict {
+    func verdict(for url: URL?, webViewID: UInt64, mainFrame: Bool, userGesture: Bool) -> NavigationVerdict {
         guard let core, let url else { return .cancel }
         return core.navigationVerdict(for: url.absoluteString, webViewID: webViewID, mainFrame: mainFrame, userGesture: userGesture)
     }
@@ -360,7 +364,7 @@ final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
     /// A navigation was refused on the core's verdict while a load had started and not yet
     /// committed. If that load now ends as interrupted, the refusal was of where it was
     /// redirected to, and the load's end is the refusal's.
-    private var refusedWhileProvisional = false
+    var refusedWhileProvisional = false
 
     init(id: UInt64, webView: WKWebView, loginSet: UUID, isPrivate: Bool, engine: WebKitEngine) {
         self.id = id
@@ -473,44 +477,6 @@ final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
 
     // MARK: WKNavigationDelegate
-
-    func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction) async -> WKNavigationActionPolicy {
-        // A navigation with no target frame opens a new window; it is decided as a top-level one.
-        let mainFrame = action.targetFrame?.isMainFrame ?? true
-        let userGesture = action.navigationType == .linkActivated || action.navigationType == .formSubmitted
-        let verdict = engine?.verdict(for: action.request.url, webViewID: id, mainFrame: mainFrame, userGesture: userGesture)
-        if verdict == .external {
-            // An address for the system, not for a browser: refused here like any other, and
-            // reported first, for a frame as for the page. Whether it is handed to the system
-            // is the core's to say (007); the adapter opens nothing.
-            var asked = WTOutsideLinkRequested()
-            asked.url = action.request.url?.absoluteString ?? ""
-            asked.userGesture = userGesture
-            engine?.report(id, .outsideLinkRequested(asked))
-        }
-        switch verdict {
-        case .allow:
-            // A link that says "download" is one (013), once the core has allowed its address.
-            return action.shouldPerformDownload ? .download : .allow
-        case .cancel, .external, nil:
-            // A refused navigation with no target frame was for a new window: nothing of this
-            // web view's own was going anywhere, and nothing is said about it.
-            if mainFrame, action.targetFrame != nil {
-                // WebKit reports nothing about a navigation refused here, so the adapter says
-                // it ended: otherwise a tab the user sent somewhere would wait for ever.
-                var failed = WTNavigationFailed()
-                failed.code = "net.cancelled"
-                failed.url = action.request.url?.absoluteString ?? ""
-                // A refusal that leaves the web view loading nothing is said to be one: a
-                // window a page opened then has nothing to show (006). With a load on its
-                // way, it is that load's end that will say.
-                refusedWhileProvisional = provisional
-                failed.refused = !provisional && !webView.isLoading
-                engine?.report(id, .navigationFailed(failed))
-            }
-            return .cancel
-        }
-    }
 
     /// What WebKit cannot show, and what says it is to be saved, is a download (013). WebKit
     /// ends the load it was ("interrupted"), which the adapter reports as a load that stopped:
