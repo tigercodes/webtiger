@@ -785,6 +785,24 @@ impl State {
         true
     }
 
+    /// A Space has a colour now, or none (025): the windows that show it say
+    /// so. Whether there is such a Space.
+    pub(crate) fn space_coloured(&mut self, id: SpaceId, colour: &str) -> bool {
+        let Some(space) = self.spaces.iter_mut().find(|space| space.id == id) else {
+            return false;
+        };
+        if space.colour != colour {
+            colour.clone_into(&mut space.colour);
+            let showing = self
+                .windows
+                .iter()
+                .filter(|(_, window)| window.space == id)
+                .map(|(window, _)| *window);
+            self.dirty.extend(showing);
+        }
+        true
+    }
+
     /// A window shows another Space (024 §3): that Space's row, as it was
     /// left, or as the session kept it, or one empty tab. The row of the
     /// Space it showed stays as it is. The Space the window shows already
@@ -1755,6 +1773,7 @@ impl State {
                 .unwrap_or(0),
             space_id: space.id.get(),
             space_name: space.name.clone(),
+            space_colour: space.colour.clone(),
         })
     }
 

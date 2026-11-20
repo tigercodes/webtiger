@@ -3,9 +3,12 @@
 
 use std::collections::BTreeMap;
 
-use wt_core::{MOST_SPACES, SpaceId, WindowId, space_name};
+use wt_core::{
+    MOST_SPACES, SPACE_COLOURS, SpaceId, WindowId, next_space_colour, space_colour, space_name,
+};
 use wt_proto::v1::{
-    Ack, CreateSpace, RenameSpace, SpaceCreated, SpaceSummary, SpacesPage, SwitchSpace, response,
+    Ack, ColourSpace, CreateSpace, RenameSpace, SpaceCreated, SpaceSummary, SpacesPage,
+    SwitchSpace, response,
 };
 use wt_store::{Logins, SavedTab, Space, Store};
 
@@ -108,19 +111,39 @@ impl App {
                     space_id: space.id.get(),
                     name: space.name.clone(),
                     logins: u32::try_from(first + 1).unwrap_or(u32::MAX),
+                    colour: space.colour.clone(),
                 }
             })
             .collect();
-        response::Kind::SpacesPage(SpacesPage { spaces: summaries })
+        response::Kind::SpacesPage(SpacesPage {
+            spaces: summaries,
+            // The colours a Space can have (025), for a shell to offer.
+            colours: SPACE_COLOURS
+                .iter()
+                .map(|colour| (*colour).to_owned())
+                .collect(),
+        })
     }
 
     /// Makes a Space, after the others (024 §3). Refused, nothing is made.
     pub(crate) fn create_space(&self, create: &CreateSpace) -> Result<response::Kind, AppError> {
         let name = space_name(&create.name)
             .ok_or_else(|| AppError::new("space.name_empty").field("name"))?;
-        if self.state.borrow().spaces().len() >= MOST_SPACES {
-            return Err(AppError::new("space.too_many"));
-        }
+        // Its colour (025 §3): the one asked for, which has to be one there
+        // is; or the first that no Space has.
+        let colour = {
+            let state = self.state.borrow();
+            let spaces = state.spaces();
+            if spaces.len() >= MOST_SPACES {
+                return Err(AppError::new("space.too_many"));
+            }
+            if create.colour.is_empty() {
+                next_space_colour(spaces.iter().map(|space| space.colour.as_str()))
+            } else {
+                space_colour(&create.colour)
+                    .ok_or_else(|| AppError::new("space.colour_unknown").field("colour"))?
+            }
+        };
         let logins = if create.share_logins_with == 0 {
             // Logins of its own: a login set nobody has had.
             Logins::Own((self.new_login_set)().ok_or_else(|| AppError::new("space.random"))?)
@@ -131,7 +154,7 @@ impl App {
         let made = self
             .store
             .borrow_mut()
-            .create_space(&name, logins, "", self.clock.now())?
+            .create_space(&name, logins, colour, self.clock.now())?
             .ok_or_else(|| AppError::new("space.unknown").field("share_logins_with"))?;
         let space_id = made.id.get();
         self.state.borrow_mut().space_made(made);
@@ -157,6 +180,33 @@ impl App {
             return Err(unknown());
         }
         self.state.borrow_mut().space_named(id, &name);
+        Ok(response::Kind::Ack(Ack {}))
+    }
+
+    /// Gives a Space a colour, or none (025 §3).
+    pub(crate) fn colour_space(&self, colour: &ColourSpace) -> Result<response::Kind, AppError> {
+        let id = SpaceId(colour.space_id);
+        let unknown = || AppError::new("space.unknown").field("space_id");
+        if !self
+            .state
+            .borrow()
+            .spaces()
+            .iter()
+            .any(|space| space.id == id)
+        {
+            return Err(unknown());
+        }
+        // No colour is none; any other has to be one there is.
+        let colour = if colour.colour.is_empty() {
+            ""
+        } else {
+            space_colour(&colour.colour)
+                .ok_or_else(|| AppError::new("space.colour_unknown").field("colour"))?
+        };
+        if !self.store.borrow_mut().colour_space(id, colour)? {
+            return Err(unknown());
+        }
+        self.state.borrow_mut().space_coloured(id, colour);
         Ok(response::Kind::Ack(Ack {}))
     }
 

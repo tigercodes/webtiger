@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Started. The store keeps a Space's colour (§5), tested. Nothing uses it yet |
+| **Status** | In progress. The store and the core are built and tested (§3 to §5): a new Space gets a colour nobody has, a colour is chosen and changed, and the list and the window's snapshot say it. No shell shows a colour yet |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "Spaces with their login sets, colours and icons". The colour; the icon is its own feature |
 | **Contract** | 1.19: `SpaceSummary.colour`, `SpacesPage.colours`, `WindowSnapshot.space_colour`, `CreateSpace.colour`, `ColourSpace` |
 | **Builds on** | [024](024-several-spaces.md): several Spaces, the chip, the list |
@@ -82,7 +82,8 @@ Written with each shell's part: a mark of the colour in the chip, beside the nam
 | Where | What |
 |---|---|
 | Store (`wt-store/src/space.rs`, 2) | A Space has the colour it was made with, or none; it is given another, the app's own Space among them, and none again; a Space that is not there has none to change; it is all there when the store is opened again, and a colour changes nothing else of a Space. A store from before colours (schema 7) gains them: its Spaces are as they were, each with none, and can be given one. The tests that put a store back to an older version take the column away with the rest |
-| Core (through `FakeShell`) | Written with it |
+| The rule (`wt-core/src/space.rs`, 2 more) | A colour is one of the list by its own name, each there once: none, one written another way and one nobody has heard of are no colour. A new Space gets the first colour nobody has, whatever order they were taken in; a Space with none and a colour this build does not know take none; when every colour is somebody's, the first again, and then the one the fewest have, the first of those |
+| Core (`wt-app/tests/space_colours.rs`, 6, through `FakeShell`) | The list says the colours there are, in their order, and the app's own Space has none, as its window says. Nine new Spaces get the nine colours in order, and the next two the first two again. A colour that is asked for is the one a Space gets, taken or not, and the next new Space skips it. A colour that is not in the list is refused, in a new Space and in a change, and nothing is made or changed; a Space that is not there is refused whatever colour is asked; no name is said before no colour. A Space is given another colour, the app's own among them, and the window that shows it says so; a window that shows another is told nothing, nor is anybody by the same colour again; none is given by the empty name, and a Space with none takes none from the next. Over a store on disk the colours are there when the app starts again, the window shows its Space in its colour, and the next new Space gets the first that nobody has. Twelve of the rules checked by breaking them: all caught |
 | The shells | Written with each |
 
 ## 8. Decisions
@@ -101,8 +102,8 @@ Written when built.
 ## 10. Done checklist
 
 - [x] The store: a Space's colour (schema 8; 2 tests).
-- [ ] Contract 1.19 and its version in every place it is written.
-- [ ] The core: the rule of §3.
+- [x] Contract 1.19 and its version in every place it is written.
+- [x] The core: the rule of §3 (6 tests, and 2 for the rule itself).
 - [ ] The paints: design tokens, light and dark, measured against the chip's fill.
 - [ ] The Apple shell.
 - [ ] The Android shell (and the client names any new answer: none here).

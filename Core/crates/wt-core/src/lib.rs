@@ -20,6 +20,8 @@ pub use search::{
     SEARCH_ENGINES, SEARCHED_LENGTH, STAND_IN_SEARCH_ENGINE, SearchEngine, search_engine,
     searched_words,
 };
-pub use space::{MOST_SPACES, SPACE_NAME_LENGTH, space_name};
+pub use space::{
+    MOST_SPACES, SPACE_COLOURS, SPACE_NAME_LENGTH, next_space_colour, space_colour, space_name,
+};
 pub use uuid::Uuid;
 pub use zoom::{ACTUAL_SIZE, ZOOM_LEVELS, zoom_in, zoom_out};

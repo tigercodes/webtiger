@@ -7,6 +7,40 @@ pub const MOST_SPACES: usize = 32;
 /// The most characters of a Space's name: what a chip can still show.
 pub const SPACE_NAME_LENGTH: usize = 60;
 
+/// The colours a Space can have (025 §3), by the names they cross the
+/// contract with, in their order. The shells have the paint and the word.
+pub const SPACE_COLOURS: [&str; 9] = [
+    "red", "orange", "yellow", "green", "teal", "blue", "purple", "pink", "grey",
+];
+
+/// The colour of that name, when it is one a Space can have.
+#[must_use]
+pub fn space_colour(name: &str) -> Option<&'static str> {
+    SPACE_COLOURS.iter().copied().find(|colour| *colour == name)
+}
+
+/// The colour a new Space is given when none is asked for (025 §3): the
+/// first that no Space has; and when every colour is somebody's, the one
+/// the fewest Spaces have, the first of those. `taken` is the colour of
+/// each Space there is; one with none, or with a colour this build does not
+/// know, takes none.
+#[must_use]
+pub fn next_space_colour<'a>(taken: impl IntoIterator<Item = &'a str>) -> &'static str {
+    let mut counts = [0usize; SPACE_COLOURS.len()];
+    for colour in taken {
+        if let Some(index) = SPACE_COLOURS.iter().position(|known| *known == colour) {
+            counts[index] += 1;
+        }
+    }
+    // `min_by_key` gives the first of the least: the first unused while
+    // there is one.
+    SPACE_COLOURS
+        .iter()
+        .zip(counts)
+        .min_by_key(|(_, count)| *count)
+        .map_or(SPACE_COLOURS[0], |(colour, _)| *colour)
+}
+
 /// A Space's name as it is kept, from what was typed: with no white space
 /// at the ends, every run of white space inside as one space (a name is one
 /// line), and no more than [`SPACE_NAME_LENGTH`] characters. `None` when
@@ -43,6 +77,43 @@ mod tests {
         );
         assert_eq!(space_name(""), None);
         assert_eq!(space_name(" \n\t\u{a0}\u{0} "), None);
+    }
+
+    #[test]
+    fn a_colour_is_one_of_the_list_by_its_own_name() {
+        assert_eq!(SPACE_COLOURS[0], "red");
+        assert_eq!(SPACE_COLOURS.len(), 9);
+        for colour in SPACE_COLOURS {
+            assert_eq!(space_colour(colour), Some(colour));
+        }
+        // Each is there once.
+        let mut sorted = SPACE_COLOURS.to_vec();
+        sorted.sort_unstable();
+        sorted.dedup();
+        assert_eq!(sorted.len(), SPACE_COLOURS.len());
+        // No colour, a colour written another way, and one nobody has heard of.
+        for other in ["", "Blue", " blue", "gray", "#0000ff", "mauve"] {
+            assert_eq!(space_colour(other), None, "{other}");
+        }
+    }
+
+    #[test]
+    fn a_new_space_gets_the_first_colour_nobody_has_and_then_the_least_used() {
+        assert_eq!(next_space_colour([]), "red");
+        // A Space with none takes none, and so does a colour nobody knows.
+        assert_eq!(next_space_colour(["", "mauve"]), "red");
+        assert_eq!(next_space_colour(["red"]), "orange");
+        // The first that is free, whatever order they were taken in.
+        assert_eq!(next_space_colour(["orange", "red", "green"]), "yellow");
+        assert_eq!(next_space_colour(["blue", "red"]), "orange");
+        // Every colour is somebody's: the first again.
+        assert_eq!(next_space_colour(SPACE_COLOURS), "red");
+        // And then the one the fewest have, the first of those.
+        let mut taken = SPACE_COLOURS.to_vec();
+        taken.extend(["red", "orange", "green"]);
+        assert_eq!(next_space_colour(taken.iter().copied()), "yellow");
+        taken.extend(["yellow", "teal", "blue", "purple", "pink"]);
+        assert_eq!(next_space_colour(taken.iter().copied()), "grey");
     }
 
     #[test]

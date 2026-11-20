@@ -94,6 +94,9 @@ message WindowSnapshot {
   // Since 1.18. That Space's name. Empty for the Space the app made itself,
   // until the person names it: the shell shows its own word.
   string space_name = 6 [(wt.redact) = true];
+  // Since 1.19. That Space's colour (025): one of SpacesPage.colours, or
+  // empty for none.
+  string space_colour = 7;
 }
 
 // A tab as a strip of tabs shows it: enough to name it, and no more.
@@ -559,6 +562,10 @@ message QuerySpaces {}
 
 message SpacesPage {
   repeated SpaceSummary spaces = 1;
+  // Since 1.19. The colours a Space can have (025), by the core's names for
+  // them, in their order. A shell has the paint and the word for each; one
+  // it has neither for is shown as no colour.
+  repeated string colours = 2;
 }
 
 message SpaceSummary {
@@ -568,6 +575,8 @@ message SpaceSummary {
   // Spaces with the same number here share their logins. It is a number of
   // the core's own for this answer, and says nothing else of the logins.
   uint32 logins = 3;
+  // Since 1.19. Its colour: one of SpacesPage.colours, or empty for none.
+  string colour = 4;
 }
 
 // Since 1.18. Makes a Space (024), after the others. Its name is what was
@@ -580,6 +589,10 @@ message CreateSpace {
   // The Space whose logins it shares; 0 for logins of its own. It is chosen
   // here, and not changed after.
   uint64 share_logins_with = 2;
+  // Since 1.19. Its colour: one of SpacesPage.colours. Empty: the core
+  // gives it the first that no Space has. One that is not in the list is
+  // refused with "space.colour_unknown", and nothing is made.
+  string colour = 3;
 }
 
 message SpaceCreated {
@@ -601,4 +614,13 @@ message RenameSpace {
 message SwitchSpace {
   uint64 window_id = 1;
   uint64 space_id = 2;
+}
+
+// Since 1.19. Gives a Space a colour (025): one of SpacesPage.colours, or
+// none (empty). Answered with Ack, "space.unknown", or
+// "space.colour_unknown" for a name that is not in the list, which changes
+// nothing.
+message ColourSpace {
+  uint64 space_id = 1;
+  string colour = 2;
 }

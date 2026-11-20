@@ -185,6 +185,7 @@ impl App {
             request::Kind::CreateSpace(create) => answer(self.create_space(&create)),
             request::Kind::RenameSpace(rename) => answer(self.rename_space(&rename)),
             request::Kind::SwitchSpace(switch) => self.switch_space(&switch),
+            request::Kind::ColourSpace(colour) => answer(self.colour_space(&colour)),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
             | request::Kind::Unsubscribe(_)

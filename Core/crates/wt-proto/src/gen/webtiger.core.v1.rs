@@ -260,6 +260,10 @@ pub struct WindowSnapshot {
     /// until the person names it: the shell shows its own word.
     #[prost(string, tag = "6")]
     pub space_name: ::prost::alloc::string::String,
+    /// Since 1.19. That Space's colour (025): one of SpacesPage.colours, or
+    /// empty for none.
+    #[prost(string, tag = "7")]
+    pub space_colour: ::prost::alloc::string::String,
 }
 /// A tab as a strip of tabs shows it: enough to name it, and no more.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -869,6 +873,11 @@ pub struct QuerySpaces {}
 pub struct SpacesPage {
     #[prost(message, repeated, tag = "1")]
     pub spaces: ::prost::alloc::vec::Vec<SpaceSummary>,
+    /// Since 1.19. The colours a Space can have (025), by the core's names for
+    /// them, in their order. A shell has the paint and the word for each; one
+    /// it has neither for is shown as no colour.
+    #[prost(string, repeated, tag = "2")]
+    pub colours: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SpaceSummary {
@@ -881,6 +890,9 @@ pub struct SpaceSummary {
     /// the core's own for this answer, and says nothing else of the logins.
     #[prost(uint32, tag = "3")]
     pub logins: u32,
+    /// Since 1.19. Its colour: one of SpacesPage.colours, or empty for none.
+    #[prost(string, tag = "4")]
+    pub colour: ::prost::alloc::string::String,
 }
 /// Since 1.18. Makes a Space (024), after the others. Its name is what was
 /// typed without the white space at its ends, cut at 60 characters. Answered
@@ -895,6 +907,11 @@ pub struct CreateSpace {
     /// here, and not changed after.
     #[prost(uint64, tag = "2")]
     pub share_logins_with: u64,
+    /// Since 1.19. Its colour: one of SpacesPage.colours. Empty: the core
+    /// gives it the first that no Space has. One that is not in the list is
+    /// refused with "space.colour_unknown", and nothing is made.
+    #[prost(string, tag = "3")]
+    pub colour: ::prost::alloc::string::String,
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SpaceCreated {
@@ -921,6 +938,17 @@ pub struct SwitchSpace {
     pub window_id: u64,
     #[prost(uint64, tag = "2")]
     pub space_id: u64,
+}
+/// Since 1.19. Gives a Space a colour (025): one of SpacesPage.colours, or
+/// none (empty). Answered with Ack, "space.unknown", or
+/// "space.colour_unknown" for a name that is not in the list, which changes
+/// nothing.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ColourSpace {
+    #[prost(uint64, tag = "1")]
+    pub space_id: u64,
+    #[prost(string, tag = "2")]
+    pub colour: ::prost::alloc::string::String,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -1784,7 +1812,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -1859,6 +1887,9 @@ pub mod request {
         RenameSpace(super::RenameSpace),
         #[prost(message, tag = "28")]
         SwitchSpace(super::SwitchSpace),
+        /// Since 1.19
+        #[prost(message, tag = "29")]
+        ColourSpace(super::ColourSpace),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.

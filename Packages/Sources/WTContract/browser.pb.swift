@@ -335,6 +335,10 @@ public nonisolated struct WTWindowSnapshot: Sendable {
   /// until the person names it: the shell shows its own word.
   public var spaceName: String = String()
 
+  /// Since 1.19. That Space's colour (025): one of SpacesPage.colours, or
+  /// empty for none.
+  public var spaceColour: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1329,6 +1333,11 @@ public nonisolated struct WTSpacesPage: Sendable {
 
   public var spaces: [WTSpaceSummary] = []
 
+  /// Since 1.19. The colours a Space can have (025), by the core's names for
+  /// them, in their order. A shell has the paint and the word for each; one
+  /// it has neither for is shown as no colour.
+  public var colours: [String] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1347,6 +1356,9 @@ public nonisolated struct WTSpaceSummary: Sendable {
   /// Spaces with the same number here share their logins. It is a number of
   /// the core's own for this answer, and says nothing else of the logins.
   public var logins: UInt32 = 0
+
+  /// Since 1.19. Its colour: one of SpacesPage.colours, or empty for none.
+  public var colour: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1368,6 +1380,11 @@ public nonisolated struct WTCreateSpace: Sendable {
   /// The Space whose logins it shares; 0 for logins of its own. It is chosen
   /// here, and not changed after.
   public var shareLoginsWith: UInt64 = 0
+
+  /// Since 1.19. Its colour: one of SpacesPage.colours. Empty: the core
+  /// gives it the first that no Space has. One that is not in the list is
+  /// refused with "space.colour_unknown", and nothing is made.
+  public var colour: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1415,6 +1432,24 @@ public nonisolated struct WTSwitchSpace: Sendable {
   public var windowID: UInt64 = 0
 
   public var spaceID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Since 1.19. Gives a Space a colour (025): one of SpacesPage.colours, or
+/// none (empty). Answered with Ack, "space.unknown", or
+/// "space.colour_unknown" for a name that is not in the list, which changes
+/// nothing.
+public nonisolated struct WTColourSpace: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var spaceID: UInt64 = 0
+
+  public var colour: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1728,7 +1763,7 @@ nonisolated extension WTActivateTab: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".WindowSnapshot"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0\u{3}downloads_active\0\u{3}space_id\0\u{3}space_name\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0\u{3}downloads_active\0\u{3}space_id\0\u{3}space_name\0\u{3}space_colour\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1742,6 +1777,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 4: try { try decoder.decodeSingularUInt32Field(value: &self.downloadsActive) }()
       case 5: try { try decoder.decodeSingularUInt64Field(value: &self.spaceID) }()
       case 6: try { try decoder.decodeSingularStringField(value: &self.spaceName) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.spaceColour) }()
       default: break
       }
     }
@@ -1770,6 +1806,9 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
     if !self.spaceName.isEmpty {
       try visitor.visitSingularStringField(value: self.spaceName, fieldNumber: 6)
     }
+    if !self.spaceColour.isEmpty {
+      try visitor.visitSingularStringField(value: self.spaceColour, fieldNumber: 7)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1780,6 +1819,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.downloadsActive != rhs.downloadsActive {return false}
     if lhs.spaceID != rhs.spaceID {return false}
     if lhs.spaceName != rhs.spaceName {return false}
+    if lhs.spaceColour != rhs.spaceColour {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3404,7 +3444,7 @@ nonisolated extension WTQuerySpaces: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 nonisolated extension WTSpacesPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SpacesPage"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}spaces\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}spaces\0\u{1}colours\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3413,6 +3453,7 @@ nonisolated extension WTSpacesPage: SwiftProtobuf.Message, SwiftProtobuf._Messag
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeRepeatedMessageField(value: &self.spaces) }()
+      case 2: try { try decoder.decodeRepeatedStringField(value: &self.colours) }()
       default: break
       }
     }
@@ -3422,11 +3463,15 @@ nonisolated extension WTSpacesPage: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if !self.spaces.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.spaces, fieldNumber: 1)
     }
+    if !self.colours.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.colours, fieldNumber: 2)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: WTSpacesPage, rhs: WTSpacesPage) -> Bool {
     if lhs.spaces != rhs.spaces {return false}
+    if lhs.colours != rhs.colours {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3434,7 +3479,7 @@ nonisolated extension WTSpacesPage: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension WTSpaceSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SpaceSummary"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}space_id\0\u{1}name\0\u{1}logins\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}space_id\0\u{1}name\0\u{1}logins\0\u{1}colour\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3445,6 +3490,7 @@ nonisolated extension WTSpaceSummary: SwiftProtobuf.Message, SwiftProtobuf._Mess
       case 1: try { try decoder.decodeSingularUInt64Field(value: &self.spaceID) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
       case 3: try { try decoder.decodeSingularUInt32Field(value: &self.logins) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.colour) }()
       default: break
       }
     }
@@ -3460,6 +3506,9 @@ nonisolated extension WTSpaceSummary: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if self.logins != 0 {
       try visitor.visitSingularUInt32Field(value: self.logins, fieldNumber: 3)
     }
+    if !self.colour.isEmpty {
+      try visitor.visitSingularStringField(value: self.colour, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3467,6 +3516,7 @@ nonisolated extension WTSpaceSummary: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if lhs.spaceID != rhs.spaceID {return false}
     if lhs.name != rhs.name {return false}
     if lhs.logins != rhs.logins {return false}
+    if lhs.colour != rhs.colour {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3474,7 +3524,7 @@ nonisolated extension WTSpaceSummary: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 nonisolated extension WTCreateSpace: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CreateSpace"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{3}share_logins_with\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{3}share_logins_with\0\u{1}colour\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3484,6 +3534,7 @@ nonisolated extension WTCreateSpace: SwiftProtobuf.Message, SwiftProtobuf._Messa
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.name) }()
       case 2: try { try decoder.decodeSingularUInt64Field(value: &self.shareLoginsWith) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.colour) }()
       default: break
       }
     }
@@ -3496,12 +3547,16 @@ nonisolated extension WTCreateSpace: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if self.shareLoginsWith != 0 {
       try visitor.visitSingularUInt64Field(value: self.shareLoginsWith, fieldNumber: 2)
     }
+    if !self.colour.isEmpty {
+      try visitor.visitSingularStringField(value: self.colour, fieldNumber: 3)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: WTCreateSpace, rhs: WTCreateSpace) -> Bool {
     if lhs.name != rhs.name {return false}
     if lhs.shareLoginsWith != rhs.shareLoginsWith {return false}
+    if lhs.colour != rhs.colour {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3602,6 +3657,41 @@ nonisolated extension WTSwitchSpace: SwiftProtobuf.Message, SwiftProtobuf._Messa
   public static func ==(lhs: WTSwitchSpace, rhs: WTSwitchSpace) -> Bool {
     if lhs.windowID != rhs.windowID {return false}
     if lhs.spaceID != rhs.spaceID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTColourSpace: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ColourSpace"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}space_id\0\u{1}colour\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.spaceID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.colour) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.spaceID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.spaceID, fieldNumber: 1)
+    }
+    if !self.colour.isEmpty {
+      try visitor.visitSingularStringField(value: self.colour, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTColourSpace, rhs: WTColourSpace) -> Bool {
+    if lhs.spaceID != rhs.spaceID {return false}
+    if lhs.colour != rhs.colour {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
