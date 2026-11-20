@@ -7,6 +7,7 @@ package com.tigercodes.webtiger.webview
 
 import com.tigercodes.webtiger.core.v1.EngineEvent
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -27,7 +28,7 @@ class PageTrackerTest {
         event.navigation_started?.let { return "started ${it.url}".trim() }
         event.navigation_committed?.let { return "committed ${it.url}" }
         event.navigation_finished?.let { return "finished" }
-        event.navigation_failed?.let { return "failed ${it.code} ${it.url}".trim() + if (it.refused) " (refused)" else "" }
+        event.navigation_failed?.let { return "failed ${it.code} ${it.url}".trim() + (if (it.refused) " (refused)" else "") + if (it.certificate_held) " (held)" else "" }
         event.address_changed?.let { return "address ${it.url}" }
         event.title_changed?.let { return "title ${it.title}" }
         event.progress_changed?.let { return "progress ${it.fraction}" }
@@ -406,6 +407,25 @@ class PageTrackerTest {
         told()
         tracker.certificateRefused(A, "net.tls.date")
         assertEquals(listOf("failed net.tls.date $A"), told())
+    }
+
+    @Test
+    fun aCertificateThatIsHeldIsSaidToBeAndOnlyForThePagesOwnLoad() {
+        tracker.willLoad(A)
+        told()
+        // The page's own load: the failure says the adapter holds what it refused (026).
+        assertTrue(tracker.certificateRefused(A, "net.tls.untrusted", held = true))
+        assertEquals(listOf("failed net.tls.untrusted $A (held)"), told())
+
+        // Something the page loads: not the page's failure, and nobody is told anything.
+        load(B)
+        assertFalse(tracker.certificateRefused("https://cdn.example.net/script.js", "net.tls.untrusted", held = true))
+        assertEquals(emptyList<String>(), told())
+        // Not held: said as before.
+        tracker.willLoad(A)
+        told()
+        assertTrue(tracker.certificateRefused(A, "net.tls.untrusted"))
+        assertEquals(listOf("failed net.tls.untrusted $A"), told())
     }
 
     @Test

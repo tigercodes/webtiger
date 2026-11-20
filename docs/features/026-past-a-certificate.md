@@ -96,6 +96,10 @@ Written with each adapter. What both must do:
 - on `WebViewTrustCertificate`, make the exception from what the web view last refused;
 - forget every exception when the process ends, by keeping none anywhere else.
 
+**The System WebView, as built** (`Certificates.kt`; `WebViewPage.onReceivedSslError`). The WebView asks the adapter about every certificate it does not trust, with the address and the certificate. The adapter tells one certificate from another by a SHA-256 of the certificate itself, and one site from another by scheme, host and port, the port written also where `https` implies it. Let through: only what a web view of that login set was told to (`handler.proceed()`); everything else is cancelled, as before. A certificate is held only for the page's own load and only for the three kinds of trouble; what a page loads from such a server is cancelled and not held. A web view that is destroyed holds nothing; what was let through stays, for its login set, until the process ends.
+
+Seen on the emulator (WebView 133), with a certificate that signs itself, made on the device: the failure says the certificate is held, and the site is not asked for its page; told to let it through, the adapter does, and the page loads; another web view of the same login set loads it without being asked again; **a web view of another login set is refused again**, so what the WebView itself remembers of a certificate that was let through is the profile's own; and **the same host and port with a certificate made anew is refused again**, held, and its page not asked for, until that one is gone on with too.
+
 ## 6. The shells
 
 Written with each shell.
@@ -105,7 +109,9 @@ Written with each shell.
 | Where | What |
 |---|---|
 | Core (`wt-app/tests/certificates.rs`, 8, through `FakeShell`) | A load that fails for a certificate the adapter holds may be gone on with, and the tab names the host: for each of the three kinds; nothing is let through by saying so. Any other failure is as it was, and going on is refused: a tab with no page, no tab, a site that is not there, a page that loaded, a connection that could not be made secure at all, a certificate the adapter does not hold, an address that is no page over `https`, another failure that claims a certificate. Going on has the shell let the certificate through and then load, in that order; the page loads, and is marked not secure; so is every page of that host however it is reached, also once the certificate has been put right; a site the system trusts is as it was; the certificate is let through once. The exception is one login set's: a Space with logins of its own is asked for itself, and is not marked by another's exception; a Space that shares logins shares it. Another certificate at the same host is refused again, and may be gone on with again. An adapter that no longer holds the certificate makes no exception: the shell's own code is the answer, and the page is as secure as any once its certificate is trusted. Another load, the page's own or the person's, and a load that is stopped, end what may be gone on with. The exception is gone when the app starts again. Thirteen of the rules checked by breaking them: all caught |
-| Adapter suites, against the real engines | Written with each |
+| The System WebView adapter's rule (`CertificatesTest`, 5; `PageTrackerTest`, 1 more; `SystemWebViewEngineTest`, 1 more) | Nothing is let through until a web view is told to: refusing and holding lets nothing through, and a web view that refused nothing holds nothing. What a web view last refused is let through in its login set and no other; not another certificate at the same host, nor the same certificate at another host or port. A web view holds the last it refused, and nothing once it is gone, while what was let through stays. Whose certificate an address presents: its host and port over `https`, however the address is written; nothing over `http`, `wss`, or no address. A certificate is told from another by a hash of itself. A held certificate is said to be with the failure, and only for the page's own load. The engine answers `webview.unknown` for no web view, `certificate.unknown` for one that holds nothing, and lets through in the web view's own login set |
+| The System WebView adapter suite, on the emulator (`SystemWebViewCertificateTest`, 2 more, and 1 changed) | With a certificate that signs itself, made on the device: the failure says it is held; a web view that refused nothing answers `certificate.unknown`; told, the certificate is let through, the page loads with the site's title, and the site was asked for its page once; another web view of the same login set loads it; one of another login set is refused, held, and the site not asked. The same host and port with a key and certificate made anew: refused again and held, its page never asked for; gone on with, it is that one that loads. Three of the rules broken on purpose and run on the emulator: each caught |
+| Apple's adapter suite | Written with it |
 | The shells | Written with each |
 
 ## 8. Decisions
@@ -127,7 +133,7 @@ Written when built.
 
 - [x] Contract 1.20 and its version in every place it is written.
 - [x] The core: the rule of §3 (8 tests).
-- [ ] Android: the adapter, against the real WebView with a certificate that signs itself.
+- [x] Android: the adapter, against the real WebView with a certificate that signs itself (on the emulator).
 - [ ] Apple: the adapter, against real WebKit with a certificate that signs itself.
 - [ ] The shells: the warning, and going on.
 - [ ] `Tools/test.sh all` green, and `android-device`.

@@ -57,6 +57,9 @@ internal fun isOfTheWeb(url: String): Boolean = url.startsWith("http://", ignore
 internal interface PageHost {
     fun report(event: EngineEvent)
 
+    /** The certificates a person went on past (026): what is let through, and what each web view holds. */
+    val certificates: Certificates
+
     fun navigationVerdict(url: String, webViewId: Long, mainFrame: Boolean, userGesture: Boolean): NavigationVerdict
 
     /** Called on the WebView's own threads. */

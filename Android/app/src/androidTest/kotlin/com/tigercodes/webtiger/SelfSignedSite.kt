@@ -8,6 +8,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import java.io.Closeable
 import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.spec.ECGenParameterSpec
@@ -19,7 +20,8 @@ import javax.net.ssl.SSLSocket
 import javax.security.auth.x500.X500Principal
 import kotlin.concurrent.thread
 
-internal class SelfSignedSite : Closeable {
+/** `port` is where it listens: 0 for any, or a port another such site has just left, for a test of a host whose certificate changes (026). */
+internal class SelfSignedSite(port: Int = 0) : Closeable {
     private val alias = "webtiger-test-site-${System.nanoTime()}"
     private val store = KeyStore.getInstance(STORE).apply { load(null) }
     private val server: SSLServerSocket
@@ -51,7 +53,10 @@ internal class SelfSignedSite : Closeable {
         }
         val keys = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm()).apply { init(store, null) }
         val tls = SSLContext.getInstance("TLS").apply { init(keys.keyManagers, null, null) }
-        server = tls.serverSocketFactory.createServerSocket(0, 50, InetAddress.getByName("127.0.0.1")) as SSLServerSocket
+        server = tls.serverSocketFactory.createServerSocket() as SSLServerSocket
+        // A port that was just left can be taken again at once.
+        server.reuseAddress = true
+        server.bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), port), 50)
         thread(isDaemon = true, name = "webtiger-self-signed-site") { serve() }
     }
 
@@ -76,10 +81,14 @@ internal class SelfSignedSite : Closeable {
                             if (count < 0) return@use
                             received.append(String(buffer, 0, count, Charsets.ISO_8859_1))
                         }
-                        served.incrementAndGet()
-                        val body = "<!doctype html><title>Trusted after all</title>".toByteArray()
+                        // The page is at "/". Whatever else a browser asks for by itself (the
+                        // site's icon) is not there, and is not counted as the page.
+                        val isPage = received.startsWith("GET / ")
+                        if (isPage) served.incrementAndGet()
+                        val body = (if (isPage) "<!doctype html><title>Trusted after all</title>" else "").toByteArray()
+                        val status = if (isPage) "200 OK" else "404 Not Found"
                         it.outputStream.apply {
-                            write("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: ${body.size}\r\nConnection: close\r\n\r\n".toByteArray())
+                            write("HTTP/1.1 $status\r\nContent-Type: text/html\r\nContent-Length: ${body.size}\r\nConnection: close\r\n\r\n".toByteArray())
                             write(body)
                             flush()
                         }

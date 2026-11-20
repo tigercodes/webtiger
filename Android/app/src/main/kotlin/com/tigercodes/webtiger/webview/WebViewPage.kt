@@ -373,10 +373,28 @@ internal class WebViewPage(
         }
 
         override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {
-            // A certificate the system does not trust is never accepted on the user's behalf.
+            // Whose certificate it is, and which: the one presented, by a hash of itself.
+            val presented =
+                certificateOrigin(error.url)?.let { origin ->
+                    error.certificate.x509Certificate?.encoded?.let { Refused(origin, certificateFingerprint(it)) }
+                }
+            // A certificate the system does not trust is let through only where a person went
+            // on past it (026): that one, at that host and port, in this web view's login set.
+            if (presented != null && host.certificates.trusts(loginSet, presented)) {
+                handler.proceed()
+                return
+            }
+            // Otherwise it is never accepted on the person's behalf.
             handler.cancel()
-            // And said to have failed for the kind of trouble the certificate was (021).
-            if (view === webView) tracker.certificateRefused(error.url, certificateErrorCode(error.primaryError))
+            if (view !== webView) return
+            // The load is said to have failed for the kind of trouble the certificate was
+            // (021). When it is the page's own, the certificate is held: the core may say to
+            // let it through.
+            val code = certificateErrorCode(error.primaryError)
+            val passable = presented != null && code != "net.tls"
+            if (tracker.certificateRefused(error.url, code, held = passable) && passable) {
+                host.certificates.refused(id, checkNotNull(presented))
+            }
         }
 
         /**

@@ -208,23 +208,29 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
         emit(EngineEvent(web_view_id = webViewId, title_changed = TitleChanged(title = title)))
     }
 
-    /** `onReceivedError` for the main frame, as one of the contract's codes. */
-    fun failed(code: String, url: String) {
+    /**
+     * `onReceivedError` for the main frame, as one of the contract's codes. With `held`, the
+     * adapter holds the certificate it refused, and can be told to let it through (026).
+     */
+    fun failed(code: String, url: String, held: Boolean = false) {
         // Said already: a certificate failure the engine then reports in its own way.
         if (url == failedUrl) return
         failedUrl = url
         loading = false
         // The error page's commit, if one comes, is a new document's.
         lateCommit = url
-        emit(EngineEvent(web_view_id = webViewId, navigation_failed = NavigationFailed(code = code, url = url)))
+        emit(EngineEvent(web_view_id = webViewId, navigation_failed = NavigationFailed(code = code, url = url, certificate_held = held)))
     }
 
     /**
-     * `onReceivedSslError`, which the adapter always answers by cancelling. Only the page's own
-     * load fails by it; a resource of the page that was refused is the page's business.
+     * `onReceivedSslError`, when the adapter answered by cancelling. Only the page's own load
+     * fails by it; a resource of the page that was refused is the page's business. Whether it
+     * was the page's own load: only then is the certificate one a person can be asked about.
      */
-    fun certificateRefused(url: String, code: String = "net.tls") {
-        if (loading && awaitingCommit && url == heading) failed(code, url)
+    fun certificateRefused(url: String, code: String = "net.tls", held: Boolean = false): Boolean {
+        val own = loading && awaitingCommit && url == heading
+        if (own) failed(code, url, held)
+        return own
     }
 
     /** `onRenderProcessGone`. The adapter replaces the web view, so its history is gone too. */

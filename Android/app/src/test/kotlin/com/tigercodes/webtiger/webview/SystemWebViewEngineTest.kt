@@ -21,6 +21,7 @@ import com.tigercodes.webtiger.core.v1.WebViewDestroy
 import com.tigercodes.webtiger.core.v1.WebViewFind
 import com.tigercodes.webtiger.core.v1.WebViewSetZoom
 import com.tigercodes.webtiger.core.v1.WebViewLoad
+import com.tigercodes.webtiger.core.v1.WebViewTrustCertificate
 import kotlinx.coroutines.test.runTest
 import okio.ByteString.Companion.encodeUtf8
 import org.junit.Assert.assertEquals
@@ -56,6 +57,39 @@ class SystemWebViewEngineTest {
         assertEquals(code, response.error?.code)
         assertNull(response.ack)
     }
+
+    private fun trust(id: Long) = HostRequest(web_view_trust_certificate = WebViewTrustCertificate(web_view_id = id))
+
+    /**
+     * Going on past a certificate (026): the engine lets through what a web view last refused,
+     * in that web view's login set, and says when it holds nothing.
+     */
+    @Test
+    fun aCertificateAWebViewRefusedIsLetThroughInItsLoginSetWhenTheCoreSays() =
+        runTest {
+            val router = Refused("https://router.example.com:443", "aa11")
+            assertRefused("webview.unknown", engine.answer(trust(4)))
+            assertDone(engine.answer(create(4)))
+            assertDone(engine.answer(create(5, LoginSet(id = OTHER_LOGIN_SET))))
+            // A web view that refused nothing holds nothing to let through.
+            assertRefused("certificate.unknown", engine.answer(trust(4)))
+            assertFalse(engine.certificates.trusts(LOGIN_SET, router))
+
+            // Its page was refused the router's certificate, as the page would record it.
+            engine.certificates.refused(4, router)
+            assertFalse("held is not let through", engine.certificates.trusts(LOGIN_SET, router))
+            assertDone(engine.answer(trust(4)))
+            assertTrue(engine.certificates.trusts(LOGIN_SET, router))
+            assertFalse("the other login set is asked for itself", engine.certificates.trusts(OTHER_LOGIN_SET, router))
+            assertRefused("certificate.unknown", engine.answer(trust(5)))
+
+            // A web view that is destroyed holds nothing; what was let through stays.
+            engine.certificates.refused(5, router)
+            assertDone(engine.answer(destroy(5)))
+            assertRefused("webview.unknown", engine.answer(trust(5)))
+            assertFalse(engine.certificates.trusts(OTHER_LOGIN_SET, router))
+            assertTrue(engine.certificates.trusts(LOGIN_SET, router))
+        }
 
     @Test
     fun thePingIsAnsweredWithItsPayload() =

@@ -124,6 +124,9 @@ class SystemWebViewEngine internal constructor(
     /** The login set each web view's pages run in. A window a page asks for is in the asking page's. */
     private val loginSets = HashMap<Long, String>()
 
+    /** The certificates a person went on past (026). Until the process ends, and kept nowhere else. */
+    internal val certificates = Certificates()
+
     /**
      * How many web views this engine has made unasked, for pages that asked for a window. Each
      * is named by the next id of the shell's own, and no id is used twice.
@@ -163,6 +166,7 @@ class SystemWebViewEngine internal constructor(
         val permission = request.permission_answer
         val dialog = request.dialog_answer
         val signIn = request.sign_in_answer
+        val trust = request.web_view_trust_certificate
         val response =
             when {
                 // The core's word on a download this adapter reported (013).
@@ -213,6 +217,16 @@ class SystemWebViewEngine internal constructor(
                         done
                     }
                 }
+                // The person went on past a certificate (026): what this web view last refused
+                // is let through from now, in its login set.
+                trust != null -> {
+                    val loginSet = loginSets[trust.web_view_id]
+                    when {
+                        loginSet == null -> failure("webview.unknown")
+                        certificates.trust(trust.web_view_id, loginSet) -> done
+                        else -> failure("certificate.unknown")
+                    }
+                }
                 ping != null -> HostResponse(pong = HostPong(payload = ping.payload))
                 create != null -> create(create)
                 load != null -> load(load)
@@ -225,6 +239,7 @@ class SystemWebViewEngine internal constructor(
                     files.dropped(destroy.web_view_id)
                     pages.remove(destroy.web_view_id)?.close()
                     loginSets.remove(destroy.web_view_id)
+                    certificates.dropped(destroy.web_view_id)
                     done
                 }
                 // A request from a core newer than this shell.
@@ -315,6 +330,8 @@ class SystemWebViewEngine internal constructor(
 
     /** What the pages are given: their reports and questions go to the core that is attached. */
     private inner class Reports : PageHost {
+        override val certificates: Certificates get() = this@SystemWebViewEngine.certificates
+
         override fun report(event: EngineEvent) {
             core?.report(event)
         }
