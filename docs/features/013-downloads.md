@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress: the name of the file (§4), the store's records (§5), the contract (1.9) and the core (§3) are built and tested. No shell reports a download yet, and each answers the core's two requests as a shell built before 1.9 does; the engines and the screens are planned (§10). The design below is to be read before it is built: §8 lists what it decides |
+| **Status** | In progress: the name of the file (§4), the store's records (§5), the contract (1.9), the core (§3) and the WebKit adapter (§6) are built and tested: on Apple a download is saved. No screen lists downloads yet, and the Android shell reports none; those are planned (§10). The design below is to be read before it is built: §8 lists what it decides |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "downloads". The `download` table of the store (000 §5.6) and the downloads half of the Library (000 §4), in their first form |
 | **Contract** | 1.9: `DownloadRequested`, `DownloadProgress`, `DownloadFinished`, `DownloadFailed`; the host requests `DownloadStart` and `DownloadCancel`; `QueryDownloads`, `CancelDownload`, `ForgetDownloads` |
 | **Last updated** | 2026-11-19 |
@@ -85,6 +85,16 @@ A download ends once: what is said of one that has ended changes nothing. Downlo
 | Where | `~/Downloads` on a Mac; the app's own Downloads folder on an iPhone, which the Files app shows | The device's Downloads |
 | Progress | `WKDownload.progress` | Asked of the `DownloadManager` |
 
+**As built on Apple** (`Downloads` in the WebKit adapter; where the app saves, in `BrowserSession`):
+
+- WebKit asks the adapter where a download's file goes; that is the moment the adapter reports it, with what the site suggests, and it waits for the core's word. Nothing is saved before it. `DownloadStart` names the file, and WebKit fetches it there; `DownloadCancel` means there is no download.
+- A response is a download when WebKit cannot show its kind, or when it says it is an attachment; a link that says "download" is one once the core has allowed its address. The load that became a download ends as one that stopped, and the page on screen stays.
+- **The name is the core's, and the adapter holds it to a name all the same**: of whatever it is given, only the last part is used, so nothing is written outside the folder. A name that is taken, by a file or by a download that is coming, gains " (2)", " (3)", and the adapter says which it used.
+- **Where**: the real app saves in the system's place for downloads (`~/Downloads` on a Mac; on an iPhone the app's own Downloads folder, which the Files app is told to show). A profile's go in the profile's own folder. In fake mode, and for every engine a test makes, the folder is one of the engine's own among the temporary files: nothing but the app itself, started for real, can name a person's Downloads.
+- How far a download has got is passed on four times a second at most.
+- **The kind is what WebKit makes of it.** For a file ending `.bin` that its site calls `application/octet-stream`, a Mac's WebKit says so and an iPhone's says `application/macbinary`.
+- **On an iPhone simulator the first download of a run takes WebKit a while to begin** (23 s measured here, then 7, then under a second); nothing is held afterwards, and dropping one and deleting its login set are quick.
+
 ## 7. Tests
 
 | Where | What |
@@ -92,7 +102,9 @@ A download ends once: what is said of one that has ended changes nothing. Downlo
 | The name (`wt-core`, 9) | What stays as it is; no folder, by either separator; nothing a file system refuses or hides; nothing that turns the name round; the names a system keeps for devices, and what only looks like one; the address names it when nothing is suggested, escapes read, and an escape that hides a folder is a folder; never empty, and not named by an address that is not the web's; a name with no ending takes its kind's; a long name is cut in the name, not in its ending, and never inside a character. Eight of the rules checked by breaking them |
 | Store (`wt-store`, 6) | The migration from version 4, which keeps what was there. A download is written as it starts and once as it ends, under the name the shell used; a failure keeps the name asked for, and a size not said is none; listed newest first, a page at a time, by login set; forgetting one, and all, of one login set's; those left `coming` are interrupted, and what had ended is as it ended |
 | Core (`wt-app/tests/downloads.rs`, 15 through `FakeShell`) | A download starts under a name the core makes, from what the site suggests or from the address, and is listed with its site, kind and size; the snapshot says one is coming. How far it has got is in the list; how it finished is kept, under the name the shell used; a word about one that has ended changes nothing. A size the site did not say is the one the shell learns. A failure by its code; words that are not a code are not kept. One a second from a web view, to the millisecond, and another tab's page is not held back; a web view the core does not have gets none; said twice, one starts. A shell that will not start it leaves a download that failed. Stopping ends it and has the shell drop it, by the shell's name for it; one that is not coming cannot be stopped. Forgetting one, and all, and stopping one that is coming first; naming nothing. No such window. A page at a time, newest first. A download outlives the tab that asked for it. Started again over the same store, what was coming is listed as interrupted and nothing is started again. Nine of the rules checked by breaking them |
-| Adapter suites | The test site gains a file served as an attachment, one of a kind no engine shows, and a link that says "download". Each is reported once, with its name and size; the file arrives whole in a folder of the test's own; cancelling removes what was saved; a name that is taken gains " (2)" |
+| WebKit adapter suite (`WebKitDownloadTests`, 7, on the Mac and the iPhone simulator) | The test site has a file served as an attachment, one of a kind no engine shows, a link that says "download", and an attachment whose suggested name is a path. An attachment is reported with its address, the name the site suggests, its kind and size, and nothing is saved until the core says; it is then whole under the name the core gave, and the page that asked is still the page. A kind nothing shows is a download. A link that says download is one, and the web view goes nowhere. A download the core drops saves nothing, and a word for it afterwards is refused. A name that is taken gains a number, twice. A name that is a path is held to its last part, and nothing is written outside the folder. A word about a download there is not |
+| Where the app saves (`ProfileTests`, 2 more) | The usual app names the system's place; a profile's downloads are in its own folder; an engine nobody gave a folder saves among the temporary files, each in its own |
+| System WebView adapter suite | As above, when built |
 | The shells' screens | The list's model against `ScriptedCore`; pictures of the list coming, finished and failed; the apps with the real core: click, see it listed, see it finish |
 
 No test writes into a person's own Downloads folder: the suites give the adapter a folder of their own.
@@ -111,7 +123,11 @@ No test writes into a person's own Downloads folder: the suites give the adapter
 
 - **Another login set, through the core.** As for zoom (012 §8): one Space and one login set until W2. That a login set's downloads are its own is the store's test.
 - **A shell that says it finished what it never started**, or names a file it was not given: the core writes down the name the shell says it used, and cannot see the folder.
-- The engines and the screens: written when built.
+- **Stopping a download that is coming.** The suite's files arrive at once; stopping was tried only before a download had started. That WebKit removes what it had saved, and that the adapter says "cancelled", is written and not seen.
+- **How far a download has got**: no test waits for a report of it, for the same reason.
+- **A person's Downloads folder.** No test writes there, on purpose: that the real app saves in `~/Downloads`, and that the Files app shows the iPhone's folder, was not looked at. A sandboxed build of the Mac app will need the entitlement for that folder, which comes with the distribution work.
+- **A tab a page opened only to download** stays, empty: the core closes such a tab when its address is refused (006), and not yet when it becomes a download.
+- The screens and the Android shell: written when built.
 
 ## 10. Done checklist
 
@@ -119,8 +135,9 @@ No test writes into a person's own Downloads folder: the suites give the adapter
 - [x] The store: migration 5; the records. 6 tests.
 - [x] Contract 1.9 and its version in every place it is written.
 - [x] The core: the rules of §3. 15 tests through `FakeShell`.
-- [ ] The test site's files.
-- [ ] Apple: the adapter and its suite; the list; pictures; a UI test.
+- [x] The test site's files.
+- [x] Apple: the adapter and its suite (7); where the app saves (2).
+- [ ] Apple: the list; pictures; a UI test.
 - [ ] Android: the adapter, on the JVM and the device; the list; pictures; a device test.
 - [ ] `Tools/test.sh all` green, and `android-device`.
 - [ ] Windows shell.

@@ -91,6 +91,10 @@ targets:
         NSAppTransportSecurity:
           NSAllowsArbitraryLoadsInWebContent: true
           NSAllowsLocalNetworking: true
+        # Downloads (013) are saved in the app's own Documents/Downloads: with these the
+        # Files app shows that folder, and the files can be opened where they are.
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.tigercodes.webtiger

@@ -187,6 +187,38 @@ enum TestSitePages {
             body: [.text("<!doctype html><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Sized</title><h1>Sized</h1>\n<p id=\"line\" style=\"font-size: 16px; line-height: 20px; margin: 0\"><span id=\"words\">A line of words.</span></p>")],
             delayMilliseconds: 0
         ),
+        TestSitePage(
+            path: "/downloads",
+            status: "200 OK",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("<!doctype html><title>Downloads</title><h1>Downloads</h1><p><a id=\"attachment\" href=\"/notes\">a file that says it is to be saved</a></p>\n<p><a id=\"kind\" href=\"/data.bin\">a file of a kind nothing shows</a></p>\n<p><a id=\"says\" href=\"/landed\" download=\"kept page.html\">a link that says download</a></p>\n<p><a id=\"sneaky\" href=\"/sneaky\">a file whose name is a path</a></p>")],
+            delayMilliseconds: 0
+        ),
+        TestSitePage(
+            path: "/notes",
+            status: "200 OK",
+            type: "text/plain",
+            headers: [[.text("Cache-Control: no-store")], [.text("Content-Disposition: attachment; filename=\"notes.txt\"")]],
+            body: [.text("Twelve notes, to be saved.")],
+            delayMilliseconds: 0
+        ),
+        TestSitePage(
+            path: "/data.bin",
+            status: "200 OK",
+            type: "application/octet-stream",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("0123456789abcdef")],
+            delayMilliseconds: 0
+        ),
+        TestSitePage(
+            path: "/sneaky",
+            status: "200 OK",
+            type: "text/plain",
+            headers: [[.text("Cache-Control: no-store")], [.text("Content-Disposition: attachment; filename=\"../../sneaky.txt\"")]],
+            body: [.text("This file's name tried to be a path.")],
+            delayMilliseconds: 0
+        ),
     ]
 
     /// What every other path is answered with.

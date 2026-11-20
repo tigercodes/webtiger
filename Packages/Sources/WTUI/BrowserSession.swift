@@ -42,7 +42,6 @@ public final class BrowserSession {
         /// emptied first. It is the real app otherwise: the store is on disk, and the tabs come
         /// back (009).
         public static func live(environment: [String: String] = ProcessInfo.processInfo.environment) throws -> BrowserSession {
-            let engine = WebKitEngine()
             var config = WTCoreConfig()
             #if os(macOS)
                 config.platform = .macos
@@ -53,10 +52,14 @@ public final class BrowserSession {
             config.appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
             config.engines = [WebKitEngine.info]
             let opener: OutsideOpener
+            // Where downloads are saved (013). In fake mode, a folder of the engine's own among
+            // the temporary files: a UI suite writes nothing into anybody's Downloads.
+            let downloads: URL?
             if environment["WEBTIGER_FAKE"] == "1" {
                 config.testMode = .fake
                 config.fake.startAddress = environment["WEBTIGER_FAKE_START"] ?? ""
                 opener = .nothing
+                downloads = nil
             } else {
                 config.testMode = .live
                 let profile = Self.profileName(environment["WEBTIGER_PROFILE"])
@@ -67,9 +70,17 @@ public final class BrowserSession {
                 }
                 config.dataDir = folder.path(percentEncoded: false)
                 opener = .system
+                downloads = Self.downloadsFolder(profile: profile, data: folder)
             }
+            let engine = WebKitEngine(downloads: downloads)
             let core = try NativeCore.start(config: config, host: ShellHost(engine: engine, opener: opener))
             return BrowserSession(core: core, engine: engine)
+        }
+
+        /// Where the app saves downloads (013): the system's place for them. A profile's go in
+        /// its own folder, with the rest of its data and apart from the person's own.
+        static func downloadsFolder(profile: String?, data: URL) -> URL? {
+            profile == nil ? WebKitEngine.systemDownloads : data.appending(path: "Downloads", directoryHint: .isDirectory)
         }
 
         /// Application Support/WebTiger, made if it is not there; a profile's data is in

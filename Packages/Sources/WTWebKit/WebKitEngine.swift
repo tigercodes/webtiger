@@ -31,7 +31,29 @@ public final class WebKitEngine: HostServices {
     /// (`NewWindowRequested`, engine.proto).
     public static let ownID: UInt64 = 1 << 63
 
-    public init() {}
+    /// Where downloads are saved (013). A folder of the engine's own, among the temporary
+    /// files, unless one is given: only the app itself, started for real, names the system's
+    /// place for downloads, so nothing else can write there.
+    public let downloadsFolder: URL
+
+    /// Downloads: what WebKit is fetching for a page, and what waits for the core's word.
+    private(set) lazy var downloads = Downloads(folder: downloadsFolder) { [weak self] webView, kind in
+        self?.report(webView, kind)
+    }
+
+    public init(downloads folder: URL? = nil) {
+        downloadsFolder = folder ?? FileManager.default.temporaryDirectory.appendingPathComponent("webtiger-downloads-\(UUID().uuidString)")
+    }
+
+    /// The system's place for downloads: the Downloads folder on a Mac; on an iPhone the app's
+    /// own Downloads folder, which the Files app shows.
+    public static var systemDownloads: URL? {
+        #if os(macOS)
+            FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+        #else
+            FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Downloads")
+        #endif
+    }
 
     /// What this engine is, for `CoreConfig.engines`.
     public static var info: WTEngineInfo {
@@ -105,10 +127,13 @@ public final class WebKitEngine: HostServices {
             // and five times, as far as the suite has tried WebKit on a Mac and an iPhone.
             page.webView.pageZoom = CGFloat(min(max(zoom.percent, 50), 500)) / 100
             return .ack(WTAck())
-        case .downloadStart, .downloadCancel:
-            // Downloads (013) are in the contract and the core; this adapter reports none yet,
-            // and answers as a shell built before 1.9 does. Nothing asks until a shell reports one.
-            return failure("host.unsupported")
+        case let .downloadStart(start):
+            // The core's word on a download this adapter reported (013): it starts, under the
+            // name the core made.
+            return downloads.start(start.downloadID, named: start.fileName) ? .ack(WTAck()) : failure("download.unknown")
+        case let .downloadCancel(cancel):
+            downloads.cancel(cancel.downloadID)
+            return .ack(WTAck())
         }
     }
 
@@ -428,7 +453,8 @@ private final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
         }
         switch verdict {
         case .allow:
-            return .allow
+            // A link that says "download" is one (013), once the core has allowed its address.
+            return action.shouldPerformDownload ? .download : .allow
         case .cancel, .external, nil:
             // A refused navigation with no target frame was for a new window: nothing of this
             // web view's own was going anywhere, and nothing is said about it.
@@ -447,6 +473,23 @@ private final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
             }
             return .cancel
         }
+    }
+
+    /// What WebKit cannot show, and what says it is to be saved, is a download (013). WebKit
+    /// ends the load it was ("interrupted"), which the adapter reports as a load that stopped:
+    /// the page on screen stays.
+    func webView(_: WKWebView, decidePolicyFor response: WKNavigationResponse) async -> WKNavigationResponsePolicy {
+        let disposition = (response.response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Disposition") ?? ""
+        let attachment = disposition.trimmingCharacters(in: .whitespaces).lowercased().hasPrefix("attachment")
+        return attachment || !response.canShowMIMEType ? .download : .allow
+    }
+
+    func webView(_: WKWebView, navigationResponse _: WKNavigationResponse, didBecome download: WKDownload) {
+        engine?.downloads.adopt(download, from: id)
+    }
+
+    func webView(_: WKWebView, navigationAction _: WKNavigationAction, didBecome download: WKDownload) {
+        engine?.downloads.adopt(download, from: id)
     }
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation _: WKNavigation?) {

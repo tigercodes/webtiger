@@ -2,6 +2,7 @@
 // digits and hyphens and nothing else. Anything else is no profile, and never a path.
 #if WEBTIGER_CORE
     @testable import WTUI
+    import WTWebKit
     import XCTest
 
     @MainActor
@@ -10,6 +11,24 @@
             for name in ["work", "ui-test-session", "A1", String(repeating: "a", count: 40)] {
                 XCTAssertEqual(BrowserSession.profileName(name), name, name)
             }
+        }
+
+        func testAProfilesDownloadsAreInItsOwnFolder() {
+            let data = URL(fileURLWithPath: "/tmp/WebTiger Profiles/work", isDirectory: true)
+            // The usual app saves where the system keeps downloads.
+            XCTAssertEqual(BrowserSession.downloadsFolder(profile: nil, data: data), WebKitEngine.systemDownloads)
+            XCTAssertNotNil(WebKitEngine.systemDownloads)
+            // A profile's are with the rest of its data, and nowhere near the person's own.
+            let profiled = BrowserSession.downloadsFolder(profile: "work", data: data)
+            XCTAssertEqual(profiled?.path, "/tmp/WebTiger Profiles/work/Downloads")
+            XCTAssertNotEqual(profiled, WebKitEngine.systemDownloads)
+        }
+
+        func testAnEngineNobodyGaveAFolderSavesAmongTheTemporaryFiles() {
+            // What every test's engine is, and fake mode's: it cannot write into anybody's Downloads.
+            let folder = WebKitEngine().downloadsFolder
+            XCTAssertTrue(folder.path.hasPrefix(FileManager.default.temporaryDirectory.path), folder.path)
+            XCTAssertNotEqual(folder, WebKitEngine().downloadsFolder, "and each engine has its own")
         }
 
         func testAnythingElseIsNoProfileAtAll() {

@@ -31,6 +31,8 @@ class AdapterTestCase: XCTestCase {
             await remove(loginSet)
         }
         loginSets = []
+        // What a test downloaded went to a folder of the engine's own (013), which goes with it.
+        try? FileManager.default.removeItem(at: engine.downloadsFolder)
     }
 
     // MARK: Helpers

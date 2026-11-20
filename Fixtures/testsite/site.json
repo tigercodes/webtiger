@@ -170,6 +170,37 @@
         "<p id=\"line\" style=\"font-size: 16px; line-height: 20px; margin: 0\"><span id=\"words\">A line of words.</span></p>"
       ],
       "note": "A page that says it is as wide as the device, as pages made for phones do, with one line of text of a known size, and its words in an element as wide as they are: for zoom."
+    },
+    {
+      "path": "/downloads",
+      "title": "Downloads",
+      "body": [
+        "<p><a id=\"attachment\" href=\"/notes\">a file that says it is to be saved</a></p>",
+        "<p><a id=\"kind\" href=\"/data.bin\">a file of a kind nothing shows</a></p>",
+        "<p><a id=\"says\" href=\"/landed\" download=\"kept page.html\">a link that says download</a></p>",
+        "<p><a id=\"sneaky\" href=\"/sneaky\">a file whose name is a path</a></p>"
+      ],
+      "note": "Links that each start a download in a different way: for downloads."
+    },
+    {
+      "path": "/notes",
+      "type": "text/plain",
+      "headers": ["Content-Disposition: attachment; filename=\"notes.txt\""],
+      "content": "Twelve notes, to be saved.",
+      "note": "Text a browser could show, sent as an attachment with a name."
+    },
+    {
+      "path": "/data.bin",
+      "type": "application/octet-stream",
+      "content": "0123456789abcdef",
+      "note": "Sixteen bytes of a kind no engine shows, with no name suggested."
+    },
+    {
+      "path": "/sneaky",
+      "type": "text/plain",
+      "headers": ["Content-Disposition: attachment; filename=\"../../sneaky.txt\""],
+      "content": "This file's name tried to be a path.",
+      "note": "An attachment whose suggested name has folders in it."
     }
   ],
   "not_found": {
