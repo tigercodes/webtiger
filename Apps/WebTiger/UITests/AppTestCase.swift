@@ -98,6 +98,11 @@ class AppTestCase: XCTestCase {
                 if issue.auditType == .contrast, let frame = element?.frame, !app.windows.firstMatch.frame.contains(frame) {
                     return true
                 }
+                // A control that cannot be pressed is drawn dimmed on purpose, to say so: it has
+                // no contrast to meet (WCAG 1.4.3 excepts components that are not active).
+                if issue.auditType == .contrast, element?.isEnabled == false {
+                    return true
+                }
                 // Contrast is measured from the screen's pixels. Where a point is one pixel,
                 // small text is drawn in greys that never reach its colour, and plain black on
                 // white is faulted: GitHub's Mac does it, and the recording in its results
