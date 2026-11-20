@@ -328,8 +328,10 @@ mod tests {
         store.set_zoom(made.login_set, "example.com", 125).unwrap();
         drop(store);
         let old = Connection::open(&path).unwrap();
-        old.execute_batch("DROP TABLE site_permission; PRAGMA user_version = 5;")
-            .unwrap();
+        old.execute_batch(
+            "DROP TABLE setting; DROP TABLE site_permission; PRAGMA user_version = 5;",
+        )
+        .unwrap();
         drop(old);
 
         let mut store = Store::open(&path).unwrap();

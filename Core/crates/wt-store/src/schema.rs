@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use crate::StoreError;
 
 /// The version this build's store is at.
-pub const SCHEMA_VERSION: u32 = 6;
+pub const SCHEMA_VERSION: u32 = 7;
 
 /// The migrations, in order: `MIGRATIONS[n]` takes version `n` to `n + 1`.
 const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
@@ -104,6 +104,13 @@ const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
          kind TEXT NOT NULL,
          verdict TEXT NOT NULL CHECK (verdict IN ('allow', 'refuse')),
          PRIMARY KEY (login_set_id, origin, kind)
+     ) STRICT, WITHOUT ROWID;",
+    // 7 (W1, 020): the app's own settings, each a name and a value. They
+    // are the whole app's: no login set and no Space has its own. Where
+    // searches go is the first.
+    "CREATE TABLE setting (
+         key TEXT PRIMARY KEY NOT NULL,
+         value TEXT NOT NULL
      ) STRICT, WITHOUT ROWID;",
 ];
 

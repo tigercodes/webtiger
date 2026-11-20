@@ -13,6 +13,7 @@ mod history;
 mod permission;
 mod schema;
 mod session;
+mod setting;
 mod site;
 mod suggest;
 
