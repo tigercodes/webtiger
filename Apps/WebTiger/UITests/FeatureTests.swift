@@ -139,4 +139,28 @@ final class FeatureTests: AppTestCase {
         press(app.buttons["downloads-done"])
         XCTAssertTrue(pageShows("Downloads", in: app), "and the page that offered the file is still the page")
     }
+
+    /// The Permissions list (014) is beside History and Downloads, behind the same button. No
+    /// site was allowed anything here, and none can be: a page cannot be made to ask on this
+    /// machine. So this is the list's place in the app, and what it says when it is empty.
+    func testThePermissionsListIsBesideHistoryAndSaysWhenNoSiteWasAllowedAnything() {
+        let app = launch(start: site.url("/"))
+        XCTAssertTrue(pageShows("Home", in: app))
+
+        press(app.buttons["history"])
+        let permissions = app.buttons["library-permissions"]
+        XCTAssertTrue(permissions.waitForExistence(timeout: 30), "the sheet opened, with its switch")
+        press(permissions)
+
+        let nothing = app.staticTexts["permissions-nothing"]
+        XCTAssertTrue(nothing.waitForExistence(timeout: 30), "the core answered: no site was allowed anything")
+        XCTAssertFalse(app.buttons["permissions-clear"].isEnabled, "with nothing to take back")
+        audit(app, "the Permissions list")
+
+        // The switch goes back to History, and the sheet closes on the page as it was.
+        press(app.buttons["library-history"])
+        XCTAssertTrue(app.buttons["history-done"].waitForExistence(timeout: 30))
+        press(app.buttons["history-done"])
+        XCTAssertTrue(pageShows("Home", in: app))
+    }
 }

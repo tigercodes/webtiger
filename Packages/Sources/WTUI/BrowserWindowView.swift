@@ -84,12 +84,13 @@ public struct BrowserWindowView: View {
         #endif
     }
 
-    /// The History list and the Downloads list (013), over the window. A visit chosen loads in
-    /// the tab in front.
+    /// The History list, the Downloads list (013) and the Permissions list (014), over the
+    /// window. A visit chosen loads in the tab in front.
     private var history: some View {
         LibraryView(
             history: HistoryModel(core: session.core, windowID: model.windowID ?? 0),
             downloads: DownloadsModel(core: session.core, windowID: model.windowID ?? 0),
+            permissions: PermissionsModel(core: session.core, windowID: model.windowID ?? 0),
             open: { entry in
                 showingHistory = false
                 model.load(entry.url)
@@ -97,7 +98,8 @@ public struct BrowserWindowView: View {
             done: { showingHistory = false }
         )
         #if os(macOS)
-        .frame(minWidth: 440, idealWidth: 520, minHeight: 420, idealHeight: 560)
+        // Wide enough for the switch's three names on one line beside the list's buttons.
+        .frame(minWidth: 480, idealWidth: 520, minHeight: 420, idealHeight: 560)
         #endif
     }
 

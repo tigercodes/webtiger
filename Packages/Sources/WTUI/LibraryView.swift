@@ -1,6 +1,6 @@
 // What the button beside the tabs opens: the History list (008) and, beside it, the Downloads
-// list (013), with a switch between the two. The Library (W3) will be the home of both; until
-// then they share a sheet, so that the row of tabs gains no button.
+// list (013) and the Permissions list (014), with a switch between them. The Library (W3) will
+// be their home; until then they share a sheet, so that the row of tabs gains no button.
 import SwiftUI
 import WTContract
 import WTDesign
@@ -9,11 +9,13 @@ struct LibraryView: View {
     enum Part {
         case history
         case downloads
+        case permissions
     }
 
     @State private var part: Part
     private let history: HistoryModel
     private let downloads: DownloadsModel
+    private let permissions: PermissionsModel
     private let open: (WTHistoryEntry) -> Void
     private let done: () -> Void
 
@@ -22,12 +24,14 @@ struct LibraryView: View {
         showing part: Part = .history,
         history: HistoryModel,
         downloads: DownloadsModel,
+        permissions: PermissionsModel,
         open: @escaping (WTHistoryEntry) -> Void,
         done: @escaping () -> Void
     ) {
         _part = State(initialValue: part)
         self.history = history
         self.downloads = downloads
+        self.permissions = permissions
         self.open = open
         self.done = done
     }
@@ -36,15 +40,17 @@ struct LibraryView: View {
         switch part {
         case .history: HistoryView(model: history, switcher: AnyView(switcher), open: open, done: done)
         case .downloads: DownloadsView(model: downloads, switcher: AnyView(switcher), done: done)
+        case .permissions: PermissionsView(model: permissions, switcher: AnyView(switcher), done: done)
         }
     }
 
-    /// Two buttons, of which the one for the list that is shown is marked: where a list's
-    /// title would be.
+    /// A button for each list, of which the one for the list that is shown is marked: where a
+    /// list's title would be.
     private var switcher: some View {
         HStack(spacing: Tokens.Space.xs) {
             choice("history.title", .history, identifier: "library-history")
             choice("downloads.title", .downloads, identifier: "library-downloads")
+            choice("permissions.title", .permissions, identifier: "library-permissions")
         }
     }
 

@@ -51,6 +51,13 @@ final class CatalogueSnapshotTests: XCTestCase {
         }
     }
 
+    func testEveryStateOfThePermissionsList() async throws {
+        try skipWithoutPictures()
+        for state in CataloguePermissions.allCases {
+            await verify(CataloguePermissionsList(state: state), size: Self.windowSize, named: "permissions-\(state.rawValue)")
+        }
+    }
+
     func testStartFailed() async throws {
         try skipWithoutPictures()
         await verify(StartFailedView(code: "store.open"), size: Self.windowSize, named: "start-failed")

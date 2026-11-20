@@ -152,6 +152,40 @@
             XCTAssertEqual(tab?.address.security, .secure)
         }
 
+        func testEveryKindOfAnswerComesBackAsWhatItIs() async throws {
+            let core = try NativeCore.start(config: fakeConfig(), host: RecordingHost())
+            defer { core.stop() }
+            guard case let .windowOpened(opened) = try await core.request(.openWindow(WTOpenWindow())) else {
+                return XCTFail("expected WindowOpened")
+            }
+
+            // Each list a window can ask for is an answer of its own kind, also when it is empty.
+            var history = WTQueryHistory()
+            history.windowID = opened.windowID
+            guard case let .historyPage(visits) = try await core.request(.queryHistory(history))
+            else { return XCTFail("expected a page of history") }
+            XCTAssertTrue(visits.entries.isEmpty)
+            var suggest = WTSuggestAddresses()
+            suggest.windowID = opened.windowID
+            suggest.text = "example"
+            guard case let .addressSuggestions(offered) = try await core.request(.suggestAddresses(suggest)) else {
+                return XCTFail("expected what is offered")
+            }
+            XCTAssertTrue(offered.suggestions.isEmpty)
+            var downloads = WTQueryDownloads()
+            downloads.windowID = opened.windowID
+            guard case let .downloadsPage(downloaded) = try await core.request(.queryDownloads(downloads)) else {
+                return XCTFail("expected the downloads")
+            }
+            XCTAssertTrue(downloaded.downloads.isEmpty)
+            var permissions = WTQueryPermissions()
+            permissions.windowID = opened.windowID
+            guard case let .permissionsPage(allowed) = try await core.request(.queryPermissions(permissions)) else {
+                return XCTFail("expected what sites were allowed")
+            }
+            XCTAssertTrue(allowed.sites.isEmpty)
+        }
+
         func testARefusalIsThrownWithItsCode() async throws {
             let core = try NativeCore.start(config: fakeConfig(), host: RecordingHost())
             defer { core.stop() }
