@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Designed; nothing is built. To be read before it is: §9 lists what it decides, and §10 what cannot be tested here and why |
+| **Status** | In progress: the store's record of what was allowed (§5) is built and tested. Nothing else is. The design is to be read before the rest is built: §9 lists what it decides, and §10 what cannot be tested here and why |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "permission prompts". Site permissions per login set (000 §5.6, `wt-permissions`) in their first form, and the first of a tab's prompts |
 | **Contract** | 1.10, to be added: `PermissionRequested`, `PermissionWithdrawn`; the host request `PermissionAnswer`; `TabView.prompt`; `AnswerPrompt`; `QueryPermissions`, `ForgetPermissions` |
 | **Last updated** | 2026-11-19 |
@@ -183,7 +183,7 @@ It is not `site_setting` (012), whose rows are one to a site: these are several 
 
 | Where | What |
 |---|---|
-| Store (`wt-store`) | The migration from version 5, which keeps what was there. What is written for an origin and a kind is read back for that login set and no other; several kinds; taking back one origin's, and all of a login set's; the sites listed in order |
+| Store (`wt-store`, 9) | The migration from version 5, which keeps what was there. What an origin was allowed is written and read back, a kind once; an origin is itself, and not its site's other names, another scheme or another port; another login set was never asked; the origins listed in order, each with what it may use; taking back one origin's, and all of a login set's; nothing is written for a login set the store does not have; a refusal in the store is not read as an allowance, and a verdict that is neither is not written; what was taken back is not left in the store's files. Three of the rules checked by breaking them, and a fourth that no test noticed until one was written for it |
 | Core (through `FakeShell`) | Each rule of §3 by a test that fails without it: an unknown web view; no committed page; another origin than the page's; a frame's origin; an origin that is neither `https` nor this device; a kind unknown. A request is asked about once, in the tab's snapshot, naming the site; "Allow" grants it and is remembered: the next request is granted unasked, also after the core starts again over the same store; "Don't Allow" refuses it and the page is not asked again, until a new page. Camera and microphone together are granted together, and asked about together when only one was allowed. A second request waits behind the first; the fifth is refused. A new page, and the tab closing, refuse what waited. A tab behind keeps its prompt. An answer to a prompt that is gone. Withdrawn. What was allowed is listed, and taken back; another login set's is not there |
 | WebKit adapter suite | On a Mac that has a camera or a microphone: a page that asks is reported with its origin and what it asks for, and waits; told no, its promise fails as refused. With no such device the engine never asks, and the test says it was skipped. What "granted" does, at the seam. Never run: a capture that starts (§10) |
 | System WebView adapter | On the JVM: requests reported and answered, the system's permission asked only when the core granted, and "no" when it says no. On the emulator: camera, microphone, both, and location, each reported with its origin and waiting; refused; granted, with the permission given to the test, and the page gets a stream from the emulated camera |
@@ -212,7 +212,7 @@ A page of the test site asks for each thing by a button, and writes what became 
 
 ## 11. Done checklist
 
-- [ ] The store: migration 6; what was allowed.
+- [x] The store: migration 6; what was allowed. 9 tests.
 - [ ] Contract 1.10 and its version in every place it is written.
 - [ ] The core: the rules of §3, the tab's prompt, what was allowed.
 - [ ] The test site's page.

@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use crate::StoreError;
 
 /// The version this build's store is at.
-pub const SCHEMA_VERSION: u32 = 5;
+pub const SCHEMA_VERSION: u32 = 6;
 
 /// The migrations, in order: `MIGRATIONS[n]` takes version `n` to `n + 1`.
 const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
@@ -94,6 +94,17 @@ const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
          ended_at INTEGER
      ) STRICT;
      CREATE INDEX download_login_set ON download (login_set_id, id);",
+    // 6 (W1, 014): what an origin was allowed to use, in a login set: a row
+    // for each kind (the camera, the microphone, the location). By origin
+    // and not by site: what one of a site's names was allowed, another was
+    // not. Only 'allow' is written so far.
+    "CREATE TABLE site_permission (
+         login_set_id BLOB NOT NULL REFERENCES login_set (id),
+         origin TEXT NOT NULL,
+         kind TEXT NOT NULL,
+         verdict TEXT NOT NULL CHECK (verdict IN ('allow', 'refuse')),
+         PRIMARY KEY (login_set_id, origin, kind)
+     ) STRICT, WITHOUT ROWID;",
 ];
 
 pub(crate) fn version(connection: &Connection) -> Result<u32, StoreError> {

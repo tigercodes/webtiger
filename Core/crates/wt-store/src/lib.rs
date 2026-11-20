@@ -10,6 +10,7 @@
 
 mod download;
 mod history;
+mod permission;
 mod schema;
 mod session;
 mod site;
@@ -22,6 +23,7 @@ use wt_core::{LoginSetId, SpaceId, Timestamp, Uuid};
 
 pub use download::{COMING, Download, DownloadPage, FINISHED, INTERRUPTED};
 pub use history::{MAX_VISITS_PER_PAGE, Visit, VisitPage};
+pub use permission::Allowed;
 pub use schema::SCHEMA_VERSION;
 pub use session::SavedTab;
 pub use suggest::{MAX_SUGGESTIONS, Suggested};
