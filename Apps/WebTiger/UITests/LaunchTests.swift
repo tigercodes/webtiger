@@ -203,9 +203,17 @@ final class LaunchTests: AppTestCase {
     /// The tabs come back (009), with the app itself: it is ended without a word, as a crash
     /// or the system ends it, and started again; its tabs are there, the one that was in front
     /// is in front and loaded, and the other loads when it is chosen.
+    ///
+    /// A fresh profile is a first run (020): the app asks where searches go before anything
+    /// else, as it asks a person, and the answer is kept with the tabs: started again, it does
+    /// not ask.
     func testTheTabsComeBackWhenTheAppStartsAgain() {
         var app = launch(onProfile: "ui-test-session", fresh: true)
+        let question = app.buttons["search-engine-ecosia"]
+        XCTAssertTrue(question.waitForExistence(timeout: 30), "a fresh profile is asked where searches go")
+        press(question)
         XCTAssertTrue(app.staticTexts["empty-tab"].waitForExistence(timeout: 30), "a fresh profile opens one empty tab")
+        XCTAssertTrue(app.staticTexts["search-goes-to"].waitForExistence(timeout: 30), "which says where searches go")
         var field = app.textFields["address-field"]
         openLocation(field, in: app)
         field.typeText("127.0.0.1:\(site.port)/landed\n")
@@ -220,6 +228,7 @@ final class LaunchTests: AppTestCase {
 
         let tabs = app.buttons.matching(identifier: "tab")
         XCTAssertTrue(pageShows("Home", in: app), "the tab that was in front is in front, and loaded")
+        XCTAssertFalse(app.buttons["search-engine-ecosia"].exists, "nobody is asked twice where searches go")
         XCTAssertEqual(tabs.count, 2, "both tabs are back")
         XCTAssertTrue(
             tabs.element(boundBy: 0).label.contains("Landed"),
@@ -233,6 +242,12 @@ final class LaunchTests: AppTestCase {
         press(tabs.element(boundBy: 0))
         XCTAssertTrue(pageShows("Landed", in: app), "the tab behind loads when it comes in front")
         expect(field, toShow: "http://127.0.0.1:\(site.port)/landed")
+
+        // And the choice came back with the tabs: a new tab says where searches go.
+        press(app.buttons["new-tab"])
+        let goesTo = app.staticTexts["search-goes-to"]
+        XCTAssertTrue(goesTo.waitForExistence(timeout: 30))
+        XCTAssertEqual(goesTo.label.isEmpty ? value(of: goesTo) : goesTo.label, "Searches go to Ecosia.")
     }
 
     /// Find on the page (010), with the real core and the real engine: text that is on the

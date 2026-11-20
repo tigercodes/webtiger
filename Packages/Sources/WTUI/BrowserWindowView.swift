@@ -22,11 +22,21 @@ public struct BrowserWindowView: View {
     }
 
     /// A window as a picture of one (004): its find bar open on `finding`, its address field
-    /// holding `typing` with places `offered` for it, or its zoom bar open.
-    init(session: BrowserSession, finding: String?, typing: String? = nil, offered: [WTAddressSuggestion] = [], zooming: Bool = false) {
+    /// holding `typing` with places `offered` for it, or its zoom bar open; and told where
+    /// searches go from the start, as `searching` says.
+    init(
+        session: BrowserSession,
+        finding: String?,
+        typing: String? = nil,
+        offered: [WTAddressSuggestion] = [],
+        zooming: Bool = false,
+        searching: WTSearchSettings? = nil
+    ) {
         self.session = session
         self.finding = finding
-        _model = State(initialValue: BrowserModel(session: session, finding: finding, typing: typing, offered: offered, zooming: zooming))
+        _model = State(initialValue: BrowserModel(
+            session: session, finding: finding, typing: typing, offered: offered, zooming: zooming, searching: searching
+        ))
     }
 
     public var body: some View {
@@ -65,6 +75,13 @@ public struct BrowserWindowView: View {
             }
         }
         .sheet(isPresented: $showingHistory) { history }
+        // Where searches go (020): over the window. At the first run it is there before the
+        // window is used, and stays until an engine is chosen.
+        .sheet(isPresented: Binding(get: { model.asksWhereSearchesGo }, set: {
+            if !$0 {
+                model.keepSearch()
+            }
+        })) { searchEngines }
         // Another tab came in front. An empty one is given the keyboard in its address field:
         // there is nothing else to do in an empty tab. One with a page keeps the keyboard out
         // of the field. (The window's first snapshot names its first tab, and is no switch.)
@@ -84,6 +101,19 @@ public struct BrowserWindowView: View {
         #if os(macOS)
         .navigationTitle(windowTitle)
         #endif
+    }
+
+    /// The list of search engines (020). At the first run there is no way out of it but to
+    /// choose: it cannot be swiped away, and it has no "Cancel".
+    @ViewBuilder private var searchEngines: some View {
+        if let settings = model.search {
+            let keep: (() -> Void)? = settings.chosen ? { model.keepSearch() } : nil
+            SearchEnginesView(settings: settings, choose: { model.chooseSearchEngine($0) }, keep: keep)
+                .interactiveDismissDisabled(!settings.chosen)
+            #if os(macOS)
+                .frame(minWidth: 480, minHeight: 420)
+            #endif
+        }
     }
 
     /// The History list, the Downloads list (013) and the Permissions list (014), over the
@@ -403,7 +433,7 @@ public struct BrowserWindowView: View {
         } else if model.hasPage {
             WebViewHost(engine: session.engine, webViewID: model.tab.webViewID, pageWaits: model.pageWaits)
         } else {
-            EmptyTabView()
+            EmptyTabView(searchesGoTo: model.searchEngineName, changeSearch: model.changeSearch)
         }
     }
 }
@@ -427,18 +457,44 @@ struct CenteredWords<Content: View>: View {
 
 /// A tab with no page yet.
 struct EmptyTabView: View {
+    /// The name of the engine searches go to (020). `nil` until the core has said: nothing is
+    /// then said of it.
+    var searchesGoTo: String?
+    var changeSearch: () -> Void = {}
+    @Environment(\.locale) private var locale
+
     var body: some View {
         CenteredWords {
-            VStack(spacing: Tokens.Space.s) {
-                Text("tab.empty.title", bundle: .module)
-                    .font(.largeTitle.weight(.semibold))
-                Text("tab.empty.hint", bundle: .module)
+            VStack(spacing: Tokens.Space.m) {
+                VStack(spacing: Tokens.Space.s) {
+                    Text("tab.empty.title", bundle: .module)
+                        .font(.largeTitle.weight(.semibold))
+                    Text("tab.empty.hint", bundle: .module)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("empty-tab")
+                // Where what is typed goes when it is not an address, said where it is about
+                // to happen, with the way to change it.
+                if let searchesGoTo {
+                    Text(Self.goesTo(searchesGoTo, locale: locale))
+                        .accessibilityIdentifier("search-goes-to")
+                    Button(action: changeSearch) {
+                        Text("search.change", bundle: .module)
+                            .frame(minHeight: BrowserWindowView.hitSize)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.primary)
+                    .accessibilityIdentifier("search-change")
+                }
             }
             .multilineTextAlignment(.center)
             .padding(Tokens.Space.xl)
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("empty-tab")
         }
+    }
+
+    /// The sentence that says where searches go.
+    static func goesTo(_ engine: String, locale: Locale = .current) -> String {
+        String(format: String(localized: "search.goes_to", bundle: .module, locale: locale), engine)
     }
 }
 

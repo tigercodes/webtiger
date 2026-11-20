@@ -44,6 +44,19 @@ final class BrowserModelTests: XCTestCase {
         return window
     }
 
+    /// What the model asked of the core, in order, but for the one question every window asks
+    /// once it has opened: where searches go (020). These tests are about the rest; that one
+    /// is in `testOpeningAsksTheCoreForAWindowAndSubscribes`, and in SearchModelTests.
+    private func asked(_ core: ScriptedCore) -> [WTRequest.OneOf_Kind] {
+        core.requests.filter {
+            if case .querySearch = $0 {
+                false
+            } else {
+                true
+            }
+        }
+    }
+
     /// Lets the session's event task and the model's request tasks run.
     private func settle(until done: () -> Bool = { false }) async {
         for _ in 0 ..< 200 where !done() {
@@ -57,11 +70,15 @@ final class BrowserModelTests: XCTestCase {
         let model = BrowserModel(session: session)
         await model.open()
         await model.open() // once only
-        XCTAssertEqual(core.requests.count, 2)
+        XCTAssertEqual(core.requests.count, 3)
         guard case .openWindow = core.requests[0], case let .subscribe(subscribe) = core.requests[1] else {
             return XCTFail("expected OpenWindow then Subscribe")
         }
         XCTAssertEqual(subscribe.window.windowID, 1)
+        // And, the window open, where searches go (020): once.
+        guard case .querySearch = core.requests[2] else {
+            return XCTFail("expected the window to ask where searches go")
+        }
     }
 
     func testSubmittingSendsWhatWasTypedAsTyped() async {
@@ -71,8 +88,8 @@ final class BrowserModelTests: XCTestCase {
         model.isEditingAddress = true
         model.addressText = "  rust borrow checker "
         model.submit()
-        await settle { core.requests.count == 3 }
-        guard case let .submitAddress(submit) = core.requests.last else { return XCTFail("expected SubmitAddress") }
+        await settle { asked(core).count == 3 }
+        guard case let .submitAddress(submit) = asked(core).last else { return XCTFail("expected SubmitAddress") }
         XCTAssertEqual(submit.tabID, 2)
         XCTAssertEqual(submit.text, "  rust borrow checker ", "the core decides what typed text is; the shell does not tidy it")
         XCTAssertFalse(model.isEditingAddress)
@@ -176,8 +193,8 @@ final class BrowserModelTests: XCTestCase {
         await model.open()
         // Before any snapshot, the tab the window opened with.
         model.perform(.stop)
-        await settle { core.requests.count == 3 }
-        guard case let .tabCommand(first) = core.requests.last else { return XCTFail("expected TabCommand") }
+        await settle { asked(core).count == 3 }
+        guard case let .tabCommand(first) = asked(core).last else { return XCTFail("expected TabCommand") }
         XCTAssertEqual(first.tabID, 2)
 
         // Another tab is in front now: the controls are its.
@@ -190,7 +207,7 @@ final class BrowserModelTests: XCTestCase {
         model.submit()
         // What was typed is also asked about on the way (011): the question of what to offer
         // stands between the two.
-        guard case let .tabCommand(command) = core.requests[3], case let .submitAddress(submit) = core.requests.last else {
+        guard case let .tabCommand(command) = asked(core)[3], case let .submitAddress(submit) = asked(core).last else {
             return XCTFail("expected a TabCommand and a SubmitAddress")
         }
         XCTAssertEqual(command.tabID, 9)
@@ -208,9 +225,9 @@ final class BrowserModelTests: XCTestCase {
         model.activate(5)
         model.closeTab(5)
         // Each has been sent by the time its call returns: nothing is waited for here.
-        XCTAssertEqual(core.requests.count, 5)
-        guard case let .openTab(open) = core.requests[2], case let .activateTab(activate) = core.requests[3],
-              case let .closeTab(close) = core.requests[4]
+        XCTAssertEqual(asked(core).count, 5)
+        guard case let .openTab(open) = asked(core)[2], case let .activateTab(activate) = asked(core)[3],
+              case let .closeTab(close) = asked(core)[4]
         else { return XCTFail("expected OpenTab, ActivateTab and CloseTab, in that order") }
         XCTAssertEqual(open.windowID, 1)
         XCTAssertEqual(open.text, "", "a new tab is empty")
@@ -221,7 +238,7 @@ final class BrowserModelTests: XCTestCase {
         // The tab in front is in front already: nothing is asked.
         model.activate(2)
         await settle()
-        XCTAssertEqual(core.requests.count, 5)
+        XCTAssertEqual(asked(core).count, 5)
     }
 
     /// What a person does first, the core hears first. (Each gesture used to start a task of
@@ -237,7 +254,7 @@ final class BrowserModelTests: XCTestCase {
             model.perform(command)
         }
 
-        let heard = core.requests.dropFirst(2).map { request -> WTNavigationCommand in
+        let heard = asked(core).dropFirst(2).map { request -> WTNavigationCommand in
             if case let .tabCommand(command) = request {
                 command.command
             } else {
@@ -260,7 +277,7 @@ final class BrowserModelTests: XCTestCase {
     }
 
     private func finds(_ core: ScriptedCore) -> [String] {
-        core.requests.compactMap { request -> String? in
+        asked(core).compactMap { request -> String? in
             if case let .findInPage(find) = request {
                 "\(find.tabID) \(find.text.isEmpty ? "(stop)" : find.text)\(find.backwards ? " back" : "")"
             } else {
@@ -416,13 +433,13 @@ final class BrowserModelTests: XCTestCase {
         let model = BrowserModel(session: session)
         await model.open()
         model.perform(.reload)
-        await settle { core.requests.count == 3 }
-        guard case let .tabCommand(command) = core.requests.last else { return XCTFail("expected TabCommand") }
+        await settle { asked(core).count == 3 }
+        guard case let .tabCommand(command) = asked(core).last else { return XCTFail("expected TabCommand") }
         XCTAssertEqual(command.command, .reload)
 
         model.close()
-        await settle { core.requests.count == 4 }
-        guard case let .closeWindow(close) = core.requests.last else { return XCTFail("expected CloseWindow") }
+        await settle { asked(core).count == 4 }
+        guard case let .closeWindow(close) = asked(core).last else { return XCTFail("expected CloseWindow") }
         XCTAssertEqual(close.windowID, 1)
     }
 

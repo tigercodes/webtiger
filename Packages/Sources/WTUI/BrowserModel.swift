@@ -47,8 +47,14 @@ public final class BrowserModel {
         hasTypedAddress ? .unspecified : tab.address.security
     }
 
-    private let session: BrowserSession
+    let session: BrowserSession
     private var window: OpenedWindow?
+
+    /// What the core says of where searches go (020): the engines, the one in use, and whether
+    /// anybody chose it. `nil` until the core has said.
+    public internal(set) var search: WTSearchSettings?
+    /// The list is open to change where searches go: an empty tab's "Change…" was pressed.
+    public internal(set) var isChangingSearch = false
 
     public init(session: BrowserSession) {
         self.session = session
@@ -57,9 +63,17 @@ public final class BrowserModel {
     /// A model whose find bar is open on `finding` from the start, before anything has been
     /// asked of the core: for a picture of the bar (004), which must not depend on when the
     /// window got round to opening it.
-    init(session: BrowserSession, finding: String?, typing: String? = nil, offered: [WTAddressSuggestion] = [], zooming: Bool = false) {
+    init(
+        session: BrowserSession,
+        finding: String?,
+        typing: String? = nil,
+        offered: [WTAddressSuggestion] = [],
+        zooming: Bool = false,
+        searching: WTSearchSettings? = nil
+    ) {
         self.session = session
         isZooming = zooming
+        search = searching
         if let finding {
             isFinding = true
             findText = finding
@@ -79,6 +93,9 @@ public final class BrowserModel {
         window = try? await session.openWindow { [weak self] snapshot in
             self?.apply(snapshot)
         }
+        // Where searches go, and whether anybody chose it (020): asked once, as the window
+        // opens.
+        askWhereSearchesGo()
     }
 
     public func close() {

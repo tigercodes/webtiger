@@ -15,11 +15,15 @@ class AppTestCase: XCTestCase {
         XCTAssertNotEqual(site.port, 0, "the loopback site is listening")
     }
 
-    func launch(start: String?) -> XCUIApplication {
+    func launch(start: String?, firstRun: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["WEBTIGER_FAKE"] = "1"
         if let start {
             app.launchEnvironment["WEBTIGER_FAKE_START"] = start
+        }
+        if firstRun {
+            // Nobody has chosen where searches go yet (020): the app asks before anything else.
+            app.launchEnvironment["WEBTIGER_FAKE_FIRST_RUN"] = "1"
         }
         app.launch()
         return app

@@ -63,6 +63,14 @@ final class CatalogueSnapshotTests: XCTestCase {
         }
     }
 
+    func testEveryStateOfTheSearchEngines() async throws {
+        try skipWithoutPictures()
+        for state in CatalogueSearch.allCases {
+            // Taller than a window's picture, so that the whole list is seen.
+            await verify(CatalogueSearchEngines(state: state), size: Self.tallWindowSize, named: "search-\(state.rawValue)")
+        }
+    }
+
     func testStartFailed() async throws {
         try skipWithoutPictures()
         await verify(StartFailedView(code: "store.open"), size: Self.windowSize, named: "start-failed")

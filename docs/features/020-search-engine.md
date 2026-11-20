@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress: the store's table, the contract (1.15) and the core's rule (§3) are built and tested. No shell asks yet (§9): searches go to the engine that stands in (001 F3) |
+| **Status** | Built and tested in the store, the core, the Android shell and the Apple shell. Both shells ask at a first run and say on an empty tab where searches go: Android on an emulator, Apple in the apps on the Mac and the iPhone simulator. Windows is not started |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "the first-run flow". Of the first run's four choices (000 §6.3) this is the one that W1 can make: importing and the style need W2's Spaces, and the default browser is the system's to set |
 | **Contract** | 1.15: `QuerySearch`, `SearchSettings`, `ChooseSearchEngine`; `FakeOptions.first_run` |
 | **Builds on** | [001](001-foundations.md): typed text is an address or a search. The store |
@@ -77,6 +77,12 @@ A table of the app's own settings, each a name and a value: `setting(key, value)
 - **The first run's question**: over the window, before it is used: "Where should your searches go?", a sentence that says what a search is and that nothing is sent until one is made, and the engines, each with its name and where it is. One press chooses. It cannot be put away unanswered: it is the one question, and takes one press.
 - **An empty tab** says where searches go, under its hint, with a button that opens the same list, where the engine in use is marked.
 
+**As built on Apple** (`SearchEnginesView` and the model's part in `SearchEngines.swift`; `EmptyTabView`): the same list, as a sheet over the window. At the first run the sheet cannot be swiped away and has no "Cancel"; opened again from an empty tab's "Change…", it has both ways out, and the engine in use says "In use". The words in the list are all in the colour of its heading, with each engine's name in a heavier weight: a quieter grey for the sentence and the addresses was too faint on an iPhone's sheet for Apple's audit. Started with `WEBTIGER_FAKE_FIRST_RUN=1` beside fake mode, the app's core says that nobody has chosen.
+
+**As built on Android** (`SearchEngines`; `BrowserModel`; `EmptyTab`): the window asks the core where searches go as it opens. While the core says that nobody has chosen, the list is over the window: its heading, the sentence, and each engine with its name and where it is. A press chooses, and the list goes when the core has taken the choice; a choice the core refuses leaves it open. At the first run no engine is marked and there is no way out but to choose: the system's Back does nothing there. Opened again from an empty tab's "Change…", the engine in use is marked "In use", and "Cancel" or Back closes the list with nothing changed. A core that says nothing of search engines (an older one) is asked nothing more: no list, and no line on the empty tab.
+
+Started with `--ez webtiger.fake.first_run true` beside fake mode, the app's core says that nobody has chosen.
+
 ## 7. Tests
 
 | Where | What |
@@ -84,7 +90,11 @@ A table of the app's own settings, each a name and a value: `setting(key, value)
 | Store (`wt-store`, 3) | A setting written is read back, and replaced, and is not another's; it is still there when the store is opened again; a store from before settings gains them and keeps what it had |
 | The list (`wt-core`, 3) | It is in the order of the names and names each engine once; every engine makes an address over `https` with the words in it, written so that they stay words; the engine that stands in is one of the list, and an engine is found by its id as written |
 | Core (`wt-app/tests/search_engine.rs`, 7 through `FakeShell`) | The engines are listed by name, with where each sends a search. Nobody has chosen at a first run, and fake mode takes the stand-in as chosen. Searches go to the stand-in until somebody chooses and then to the choice, in every tab, and another can be chosen after. A name the core does not have is refused and changes nothing. An address is loaded as before whatever was chosen. The choice is kept when the app starts again, and nobody is asked twice. A choice the list no longer has is no choice. Fourteen parts of the rule checked by breaking them |
-| The shells | Against a scripted core: the question, what it lists, what a press sends; the empty tab's line. Pictures. In the apps, started as for a first run: the question is there before anything else, an engine is chosen, and the empty tab says so. No test searches: a search goes to the internet |
+| The Android shell (`SearchEnginesTest`, 6, drawn on the JVM against `ScriptedCore`) | At a first run the question is over the window, with each engine and where it is, none marked and no way to put it off; one press answers it, and the empty tab then says where searches go. A choice the core refuses leaves the question where it is; a change it refuses leaves the list open. When somebody has chosen, nothing is asked. "Change…" opens the list with the engine in use marked, and it can be kept or changed. Until the core has said, nothing is asked and nothing is said. Pictures of the question and of the list opened to change, light and dark, and the empty tab's again; each looked at. Eleven of the rules checked by breaking them |
+| The Android app, on the emulator | With the real core, in fake mode: an empty tab says where searches go, and Android's accessibility checks pass over it and over the list; "Change…" opens the list with the engine in use marked; a press on another changes it, and every empty tab then says so. The tests share one core, which is left as it was found |
+| By hand, on the emulator | The app installed afresh and started for real: the question was there before anything else, with the seven engines; a press on one closed it, and the empty tab said so; stopped and started again, the app did not ask, and said the same. Uninstalled afterwards |
+| The Apple shell (`SearchModelTests`, 5, against `ScriptedCore`) | At a first run the question is asked and a choice answers it; a choice the core refuses leaves the list as it is, at a first run and when changing; when somebody has chosen nothing is asked until they ask to change, and the list can be kept or changed; until the core has said, nothing is asked and nothing is said; the empty tab's sentence names the engine. Pictures of the question and of the list opened to change, light and dark, on the Mac and the iPhone, and the empty tab's again; each looked at. Seven of the rules checked by breaking them |
+| The Apple apps | With the real core, started as for a first run, on the Mac and the iPhone simulator: the question is there before anything else, with no way to put it off and no engine marked, and Apple's audit passes over it; one press answers it; the empty tab then says where searches go, the audit passing again; "Change…" opens the list with that engine marked, the audit passing, and "Cancel" leaves things as they were. And with the app started for real on a profile of the suite's own (the test of the tabs coming back, [009](009-session-restore.md)): a fresh profile is asked before anything else; ended and started again, the app does not ask, and a new tab says where searches go. No test searches: a search goes to the internet |
 
 ## 8. Decisions
 
@@ -98,14 +108,18 @@ A table of the app's own settings, each a name and a value: `setting(key, value)
 ## 9. What is not verified
 
 - **The engines' addresses.** Each is the address the engine itself gives for a search. No test opens one: a test that did would send words to the internet.
-- The rest: written when built.
+- **The first run's question in the Android app, by a test.** The app's tests on a device share one core, started in fake mode; the question is tested against a scripted core, and was seen by hand with the real one.
+- **A search itself**, in an app: typing words and seeing them go to the chosen engine is the core's test (which checks the address the web view is sent to) and nobody's in a shell.
+- **Android: a phone.** It ran on an emulator.
+- **Changing the engine in an Apple app**: the app's test opens the list again and leaves it; choosing another there is the model's test.
+- **The engines beyond the one chosen**, in an app: the tests choose Ecosia; the others are the same row.
 
 ## 10. Done checklist
 
 - [x] The store's table, and its migration (7).
 - [x] Contract 1.15 and its version in every place it is written.
 - [x] The core: the rule of §3. 7 tests through `FakeShell`, 3 of the list's own.
-- [ ] Android: the question; the empty tab's line; pictures; a device test.
-- [ ] Apple: the question; the empty tab's line; pictures; UI tests.
-- [ ] `Tools/test.sh all` green, and `android-device`.
+- [x] Android: the question and the empty tab's line (6 tests); pictures; a device test of the app; the first run by hand on the emulator.
+- [x] Apple: the question and the empty tab's line (5 tests of the model); pictures; a UI test on the Mac and the iPhone simulator.
+- [x] `Tools/test.sh all` green, and `android-device` (131 on the emulator).
 - [ ] Windows shell.

@@ -54,6 +54,16 @@ public struct CatalogueView: View {
                             .overlay(RoundedRectangle(cornerRadius: Tokens.Radius.tile).strokeBorder(Tokens.Palette.hairline))
                     }
                 }
+                ForEach(CatalogueSearch.allCases) { state in
+                    VStack(alignment: .leading, spacing: Tokens.Space.s) {
+                        Text(state.title, bundle: .module)
+                            .font(.headline)
+                        CatalogueSearchEngines(state: state)
+                            .frame(height: CatalogueWindow.height)
+                            .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.tile))
+                            .overlay(RoundedRectangle(cornerRadius: Tokens.Radius.tile).strokeBorder(Tokens.Palette.hairline))
+                    }
+                }
                 heading("catalogue.start_failed")
                 StartFailedView(code: "store.open")
                     .frame(height: CatalogueWindow.height)
@@ -87,7 +97,12 @@ struct CatalogueWindow: View {
     }
 
     var body: some View {
-        BrowserWindowView(session: session, finding: state.finding, typing: state.typing, offered: state.offered, zooming: state.zooming)
+        // Every window is told where searches go (020), as a core tells it: an empty tab
+        // says so.
+        BrowserWindowView(
+            session: session, finding: state.finding, typing: state.typing, offered: state.offered, zooming: state.zooming,
+            searching: CatalogueSearch.inUse
+        )
     }
 }
 

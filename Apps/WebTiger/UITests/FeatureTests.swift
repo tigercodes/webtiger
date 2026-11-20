@@ -341,4 +341,44 @@ final class FeatureTests: AppTestCase {
             XCTAssertEqual(app.dialogs.count, 0)
         }
     #endif
+
+    /// Where searches go (020), with the real core, started as for a first run: the question
+    /// is there before anything else and cannot be put off; one press answers it; an empty tab
+    /// then says where searches go; and "Change…" opens the list again, with that engine
+    /// marked. No search is made: a search goes to the internet.
+    func testTheFirstRunAsksWhereSearchesGoAndAnEmptyTabSaysSo() {
+        let app = launch(start: nil, firstRun: true)
+        func shownWords(_ identifier: String) -> String {
+            let text = app.staticTexts[identifier]
+            return text.label.isEmpty ? value(of: text) : text.label
+        }
+
+        // The question, over the window, with no way out but to choose.
+        let ecosia = app.buttons["search-engine-ecosia"]
+        XCTAssertTrue(ecosia.waitForExistence(timeout: 30), "the first run's question")
+        XCTAssertTrue(app.staticTexts["search-question"].exists)
+        XCTAssertTrue(app.buttons["search-engine-duckduckgo"].exists)
+        XCTAssertFalse(app.buttons["search-keep"].exists, "nothing to put it off with")
+        XCTAssertFalse(ecosia.label.contains("In use"), "none is anybody's choice yet: \(ecosia.label)")
+        audit(app, "the first run's question")
+
+        press(ecosia)
+
+        // Answered, it is gone, and the empty tab says where searches go.
+        let goesTo = app.staticTexts["search-goes-to"]
+        XCTAssertTrue(goesTo.waitForExistence(timeout: 30), "the empty tab's line")
+        XCTAssertEqual(shownWords("search-goes-to"), "Searches go to Ecosia.")
+        XCTAssertFalse(app.buttons["search-engine-ecosia"].exists)
+        audit(app, "an empty tab that says where searches go")
+
+        // "Change…": the list again, with the engine in use marked, and a way to leave it.
+        press(app.buttons["search-change"])
+        XCTAssertTrue(ecosia.waitForExistence(timeout: 30))
+        XCTAssertTrue(ecosia.label.contains("In use"), ecosia.label)
+        XCTAssertTrue(app.buttons["search-keep"].exists)
+        audit(app, "the list of search engines, opened to change")
+        press(app.buttons["search-keep"])
+        XCTAssertTrue(goesTo.waitForExistence(timeout: 30))
+        XCTAssertEqual(shownWords("search-goes-to"), "Searches go to Ecosia.", "nothing changed")
+    }
 }

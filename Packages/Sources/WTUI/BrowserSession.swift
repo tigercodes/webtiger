@@ -60,6 +60,8 @@ public final class BrowserSession {
             if environment["WEBTIGER_FAKE"] == "1" {
                 config.testMode = .fake
                 config.fake.startAddress = environment["WEBTIGER_FAKE_START"] ?? ""
+                // A first run, in which nobody has chosen where searches go (020).
+                config.fake.firstRun = environment["WEBTIGER_FAKE_FIRST_RUN"] == "1"
                 opener = .nothing
                 downloads = nil
             } else {
