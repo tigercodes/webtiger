@@ -43,7 +43,16 @@ private const val TALL_LIGHT = "w411dp-h900dp-notnight-xhdpi"
 private const val TALL_DARK = "w411dp-h900dp-night-xhdpi"
 
 /** The states of the window whose bar is taller than the window's usual picture: drawn at a list's height, so that all of it is seen. */
-private val TALL_STATES = setOf(CatalogueState.PROMPT_SIGN_IN_AGAIN, CatalogueState.SEARCH_QUESTION, CatalogueState.SEARCH_CHANGE)
+private val TALL_STATES =
+    setOf(
+        CatalogueState.PROMPT_SIGN_IN_AGAIN,
+        CatalogueState.SEARCH_QUESTION,
+        CatalogueState.SEARCH_CHANGE,
+        // A menu's choices, all of them: more than a window's picture has room for.
+        CatalogueState.LINK_MENU,
+        CatalogueState.PICTURE_MENU,
+        CatalogueState.PICTURE_LINK_MENU,
+    )
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

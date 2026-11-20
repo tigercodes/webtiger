@@ -29,6 +29,7 @@ import com.tigercodes.webtiger.core.v1.WindowSnapshot
 import com.tigercodes.webtiger.core.v1.ZoomChange
 import com.tigercodes.webtiger.core.v1.ZoomPage
 import com.tigercodes.webtiger.core.v1.ZoomView
+import com.tigercodes.webtiger.webview.Pressed
 import kotlinx.coroutines.launch
 
 /**
@@ -44,7 +45,7 @@ class BrowserModel(
     typing: String? = null,
     offered: List<AddressSuggestion> = emptyList(),
     zooming: Boolean = false,
-    pressing: String? = null,
+    pressing: Pressed? = null,
     searching: SearchSettings? = null,
     changingSearch: Boolean = false,
 ) {
@@ -114,7 +115,7 @@ class BrowserModel(
         if (window != null || opening) return
         opening = true
         // From now this window is told when a link of a page is pressed and held (018).
-        session.engine.onLinkPressed = ::linkPressed
+        session.engine.onPressed = ::pressed
         try {
             window = session.openWindow(::apply)
             // Where searches go, and whether anybody chose it (020): asked once, when the
@@ -352,16 +353,48 @@ class BrowserModel(
     // A link's menu (018)
 
     /**
-     * The link whose menu is open: one the person pressed and held in the page in front. Null
-     * when no menu is. A model made with `pressing` starts with the menu of that link open:
-     * for a picture of it (004).
+     * What the open menu is of: a link or a picture the person pressed and held in the page in
+     * front (018, 022). Null when no menu is. A model made with `pressing` starts with the
+     * menu of that open: for a picture of it (004).
      */
-    internal var pressedLink by mutableStateOf(pressing?.let { PressedLink(webViewId = PICTURED, url = it) })
+    internal var pressedLink by mutableStateOf(pressing?.let { PressedLink(webViewId = PICTURED, url = it.link, picture = it.picture) })
         private set
 
-    /** The engine says a link of a page was pressed and held. Only of the page in front: a page behind is not being touched. */
-    private fun linkPressed(webViewId: Long, url: String) {
-        if (webViewId != 0L && webViewId == tab.web_view_id) pressedLink = PressedLink(webViewId, url)
+    /** The engine says a link or a picture of a page was pressed and held. Only of the page in front: a page behind is not being touched. */
+    private fun pressed(webViewId: Long, pressed: Pressed) {
+        if (webViewId != 0L && webViewId == tab.web_view_id) pressedLink = PressedLink(webViewId, pressed.link, pressed.picture)
+    }
+
+    /** What each choice in the menu does. */
+    internal val linkChoices =
+        LinkChoices(
+            open = ::openPressedLink,
+            download = ::downloadPressedLink,
+            copy = ::copyPressedLink,
+            openPicture = ::openPressedPicture,
+            downloadPicture = ::downloadPressedPicture,
+            dismiss = ::dismissLinkMenu,
+        )
+
+    /** "Download Linked File" (022): what the link leads to is offered to the core, as a download the person asked for. */
+    fun downloadPressedLink() {
+        val link = pressedLink ?: return
+        pressedLink = null
+        session.engine.saveFile(link.webViewId, link.url)
+    }
+
+    /** "Open Image in New Tab" (022): as a link is, behind this tab; whether a tab opens is the core's to say. */
+    fun openPressedPicture() {
+        val link = pressedLink ?: return
+        pressedLink = null
+        session.engine.openLink(link.webViewId, link.picture, background = true)
+    }
+
+    /** "Download Image" (022). */
+    fun downloadPressedPicture() {
+        val link = pressedLink ?: return
+        pressedLink = null
+        session.engine.saveFile(link.webViewId, link.picture)
     }
 
     /** "Open in New Tab": the core is asked, through the engine that saw the press, and opens the tab behind this one, or does not. */

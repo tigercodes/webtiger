@@ -54,6 +54,10 @@
     <!-- Design catalogue: a state of the Permissions list. -->
     <string name="catalogue_state_permissions_list">Permissions: sites that were allowed</string>
     <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_picture_link_menu">A picture that is a link was pressed and held</string>
+    <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_picture_menu">A picture was pressed and held</string>
+    <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_prompt">A page asks to use the camera and the microphone</string>
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_prompt_alert">A page says something</string>
@@ -197,9 +201,13 @@
     <string name="link_copy">Copy Link</string>
     <!-- In a link's menu: save what the link leads to as a file, with the person's downloads. -->
     <string name="link_download">Download Linked File</string>
+    <!-- In a picture's menu: save the picture as a file, with the person's downloads. -->
+    <string name="link_download_image">Download Image</string>
+    <!-- Accessibility name of the menu shown for a picture of a page that was pressed and held. -->
+    <string name="link_image_menu">Image</string>
     <!-- Accessibility name of the menu shown for a link of a page that was pressed and held. -->
     <string name="link_menu">Link</string>
-    <!-- In the menu a Mac shows for a picture of a page (right-click), beside the system's own items such as Copy Image: open the picture by itself in a new tab. -->
+    <!-- In a picture's menu (on a Mac beside the system's own items such as Copy Image): open the picture by itself in a new tab. -->
     <string name="link_open_image_new_tab">Open Image in New Tab</string>
     <!-- In the menu a Mac shows for a link (right-click), beside the system's own items such as Copy Link: open the link in a new tab. -->
     <string name="link_open_link_new_tab">Open Link in New Tab</string>

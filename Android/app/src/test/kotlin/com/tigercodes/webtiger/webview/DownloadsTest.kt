@@ -87,6 +87,7 @@ class DownloadsTest {
 
             assertEquals(listOf("asked 1 by 4: notes.txt text/plain 26"), told())
             assertEquals("https://example.com/notes", core.reports.last().download_requested?.url)
+            assertEquals("a page offered it: nobody chose it in a menu (022)", false, core.reports.last().download_requested?.user_asked)
             assertTrue("nothing is fetched on a page's word", fetcher.started.isEmpty())
 
             assertNotNull(start(1, "My notes.txt").ack)

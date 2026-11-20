@@ -313,6 +313,30 @@
         }
       }
     },
+    "catalogue.state.picture_link_menu": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A picture that is a link was pressed and held"
+          }
+        }
+      }
+    },
+    "catalogue.state.picture_menu": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A picture was pressed and held"
+          }
+        }
+      }
+    },
     "catalogue.state.prompt": {
       "comment": "Design catalogue: a state of the window.",
       "extractionState": "manual",
@@ -1177,6 +1201,30 @@
         }
       }
     },
+    "link.download_image": {
+      "comment": "In a picture's menu: save the picture as a file, with the person's downloads.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download Image"
+          }
+        }
+      }
+    },
+    "link.image_menu": {
+      "comment": "Accessibility name of the menu shown for a picture of a page that was pressed and held.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Image"
+          }
+        }
+      }
+    },
     "link.menu": {
       "comment": "Accessibility name of the menu shown for a link of a page that was pressed and held.",
       "extractionState": "manual",
@@ -1190,7 +1238,7 @@
       }
     },
     "link.open_image_new_tab": {
-      "comment": "In the menu a Mac shows for a picture of a page (right-click), beside the system's own items such as Copy Image: open the picture by itself in a new tab.",
+      "comment": "In a picture's menu (on a Mac beside the system's own items such as Copy Image): open the picture by itself in a new tab.",
       "extractionState": "manual",
       "localizations": {
         "en": {

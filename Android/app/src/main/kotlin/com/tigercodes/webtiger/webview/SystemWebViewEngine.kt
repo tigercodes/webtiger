@@ -88,11 +88,21 @@ class SystemWebViewEngine internal constructor(
     private val signIns = SignIns { event -> core?.report(event) }
 
     /**
-     * Told when the person presses and holds a link of a page (018): the web view, and where
-     * the link leads. The window shows the link's menu; with nobody to tell, nothing comes of
-     * the press.
+     * Told when the person presses and holds a link or a picture of a page (018, 022): the web
+     * view, and what was pressed. The window shows the menu; with nobody to tell, nothing
+     * comes of the press.
      */
-    var onLinkPressed: ((Long, String) -> Unit)? = null
+    var onPressed: ((Long, Pressed) -> Unit)? = null
+
+    /**
+     * The person chose, in a menu, to save a file of a web view's page (022): what a link
+     * leads to, or a picture. It is offered as a download the person asked for: whether it
+     * starts, and under what name, is the core's to say. Only an address of the web is
+     * fetched.
+     */
+    fun saveFile(webViewId: Long, url: String) {
+        if (isOfTheWeb(url)) pages[webViewId]?.save(url)
+    }
 
     /**
      * The person asked, by a link's menu, for the link in a new tab (018). The core is told:
@@ -326,9 +336,11 @@ class SystemWebViewEngine internal constructor(
 
         override fun files(webViewId: Long, asked: FilesAsked, give: (List<String>?) -> Unit) = files.choose(webViewId, asked, give)
 
-        override fun linkPressed(webViewId: Long, url: String) {
-            // A link the WebView could say nothing of leads nowhere.
-            if (url.isNotEmpty()) onLinkPressed?.invoke(webViewId, url)
+        override fun pressed(webViewId: Long, pressed: Pressed) {
+            // A picture that is not of the web can be neither opened in a tab nor fetched; and
+            // a link the WebView could say nothing of leads nowhere.
+            val told = pressed.copy(picture = pressed.picture.takeIf(::isOfTheWeb).orEmpty())
+            if (told.link.isNotEmpty() || told.picture.isNotEmpty()) onPressed?.invoke(webViewId, told)
         }
 
         override fun download(webViewId: Long, offer: DownloadOffer) {

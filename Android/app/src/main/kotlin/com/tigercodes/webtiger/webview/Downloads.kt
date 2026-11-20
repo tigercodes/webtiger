@@ -20,6 +20,8 @@ internal data class DownloadOffer(
     val mimeType: String,
     /** How big the site says the file is. Zero or less when it did not say. */
     val length: Long,
+    /** The person chose it in a menu (022): no page offered it, and the core asks nobody. */
+    val chosen: Boolean = false,
 )
 
 /** How a fetch stands. */
@@ -91,6 +93,7 @@ internal class Downloads(private val fetcher: Fetcher, private val report: (Engi
                         suggested_filename = offer.suggestedName,
                         mime_type = offer.mimeType,
                         expected_bytes = offer.length.coerceAtLeast(0),
+                        user_asked = offer.chosen,
                     ),
             ),
         )

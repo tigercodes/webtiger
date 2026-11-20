@@ -1,6 +1,6 @@
-// The adapter suite's System WebView run, for a link's menu (018): a finger pressed and held
-// on a link of the test site. Who is told, with what address, and what a long press that is
-// not on a link is left to be.
+// The adapter suite's System WebView run, for a link's menu (018) and a picture's (022): a
+// finger pressed and held on a link or a picture of the test site. Who is told, with what
+// addresses, and what a long press on anything else is left to be.
 package com.tigercodes.webtiger.webview
 
 import org.junit.Assert.assertEquals
@@ -8,15 +8,23 @@ import org.junit.Test
 import java.util.concurrent.CopyOnWriteArrayList
 
 internal class SystemWebViewLinkTest : AdapterTestCase() {
-    /** The long presses on a link that the engine told of, in order: the web view, and where the link leads. */
-    private val pressed = CopyOnWriteArrayList<Pair<Long, String>>()
+    /** The long presses that the engine told of, in order: the web view, and what was pressed. */
+    private val pressed = CopyOnWriteArrayList<Pair<Long, Pressed>>()
 
     /** A web view on the page of links, with somebody to tell of a press. */
     private fun page(id: Long = 1) {
-        onMain { engine.onLinkPressed = { webView, url -> pressed.add(webView to url) } }
+        onMain { engine.onPressed = { webView, what -> pressed.add(webView to what) } }
         create(id)
         load(id, site.url("/links"))
         await(id, "the page to load") { finished(it) && hasTitle("Links")(it) }
+    }
+
+    /** A web view on the page of pictures, with somebody to tell of a press. */
+    private fun pictures(id: Long = 1) {
+        onMain { engine.onPressed = { webView, what -> pressed.add(webView to what) } }
+        create(id)
+        load(id, site.url("/pictures"))
+        await(id, "the page to load") { finished(it) && hasTitle("Pictures")(it) }
     }
 
     private fun awaitPressed(count: Int = 1) {
@@ -30,7 +38,7 @@ internal class SystemWebViewLinkTest : AdapterTestCase() {
         longPress(1, "words")
 
         awaitPressed()
-        assertEquals(listOf(1L to site.url("/landed")), pressed.toList())
+        assertEquals(listOf(1L to Pressed(link = site.url("/landed"))), pressed.toList())
         // The press was the menu's: the page is where it was, and nothing was asked of the core.
         Thread.sleep(500)
         assertEquals(listOf(site.url("/links")), addresses(1))
@@ -38,13 +46,46 @@ internal class SystemWebViewLinkTest : AdapterTestCase() {
     }
 
     @Test
-    fun aLongPressOnAPictureThatIsALinkIsToldWithTheLinksAddressNotThePictures() {
+    fun aLongPressOnAPictureThatIsALinkIsToldWithTheLinksAddressAndThePictures() {
         page()
 
         longPress(1, "picture")
 
         awaitPressed()
-        assertEquals(listOf(1L to site.url("/landed?from=picture")), pressed.toList())
+        // Where the link leads is the link's address, not the picture's; the picture's is its own.
+        assertEquals(listOf(1L to Pressed(link = site.url("/landed?from=picture"), picture = site.url("/pixel"))), pressed.toList())
+    }
+
+    @Test
+    fun aLongPressOnAPictureIsToldWithThePicturesAddress() {
+        pictures()
+
+        longPress(1, "plain")
+
+        awaitPressed()
+        assertEquals(listOf(1L to Pressed(picture = site.url("/tiger.svg"))), pressed.toList())
+        // The press was the menu's: the page is where it was, and nothing was said to the core.
+        Thread.sleep(500)
+        assertEquals(listOf(site.url("/pictures")), addresses(1))
+        assertEquals(0, reports(1).count { it.link_open_requested != null || it.download_requested != null })
+    }
+
+    @Test
+    fun aPictureChosenToBeSavedIsOfferedToTheCoreAsThePersonsOwn() {
+        pictures()
+        longPress(1, "plain")
+        awaitPressed()
+
+        val (webView, what) = pressed.first()
+        onMain { engine.saveFile(webView, what.picture) }
+
+        val asked = reports(1).mapNotNull { it.download_requested }
+        assertEquals(1, asked.size)
+        assertEquals(site.url("/tiger.svg"), asked.first().url)
+        assertEquals("the person chose it: no page asked", true, asked.first().user_asked)
+        assertEquals("nobody has asked the site yet: it has suggested no name", "", asked.first().suggested_filename)
+        // The page is where it was: nothing of its own became a download.
+        assertEquals(listOf(site.url("/pictures")), addresses(1))
     }
 
     @Test
@@ -54,7 +95,7 @@ internal class SystemWebViewLinkTest : AdapterTestCase() {
         longPress(1, "plain")
 
         Thread.sleep(1_000)
-        assertEquals("nobody is told", emptyList<Pair<Long, String>>(), pressed.toList())
+        assertEquals("nobody is told", emptyList<Pair<Long, Pressed>>(), pressed.toList())
         assertEquals(listOf(site.url("/links")), addresses(1))
     }
 
@@ -65,7 +106,7 @@ internal class SystemWebViewLinkTest : AdapterTestCase() {
         tap(1, "words")
 
         await(1, "the link's page") { hasTitle("Landed")(it) }
-        assertEquals("a tap is no long press", emptyList<Pair<Long, String>>(), pressed.toList())
+        assertEquals("a tap is no long press", emptyList<Pair<Long, Pressed>>(), pressed.toList())
     }
 
     @Test
@@ -74,8 +115,8 @@ internal class SystemWebViewLinkTest : AdapterTestCase() {
         longPress(1, "words")
         awaitPressed()
 
-        val (webView, url) = pressed.first()
-        onMain { engine.openLink(webView, url, background = true) }
+        val (webView, what) = pressed.first()
+        onMain { engine.openLink(webView, what.link, background = true) }
 
         val asked = reports(1).mapNotNull { it.link_open_requested }
         assertEquals(1, asked.size)

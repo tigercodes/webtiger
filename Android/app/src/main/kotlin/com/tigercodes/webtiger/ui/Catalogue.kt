@@ -80,6 +80,7 @@ import com.tigercodes.webtiger.core.v1.WindowOpened
 import com.tigercodes.webtiger.core.v1.WindowSnapshot
 import com.tigercodes.webtiger.core.v1.ZoomView
 import com.tigercodes.webtiger.design.Tokens
+import com.tigercodes.webtiger.webview.Pressed
 import com.tigercodes.webtiger.webview.SystemWebViewEngine
 import java.time.ZoneOffset
 import java.util.Locale
@@ -107,6 +108,8 @@ internal enum class CatalogueState(@StringRes val title: Int) {
     SEARCH_QUESTION(R.string.catalogue_state_search_question),
     SEARCH_CHANGE(R.string.catalogue_state_search_change),
     LINK_MENU(R.string.catalogue_state_link_menu),
+    PICTURE_MENU(R.string.catalogue_state_picture_menu),
+    PICTURE_LINK_MENU(R.string.catalogue_state_picture_link_menu),
     PROMPT_SIGN_IN(R.string.catalogue_state_prompt_sign_in),
     PROMPT_SIGN_IN_AGAIN(R.string.catalogue_state_prompt_sign_in_again),
     ;
@@ -135,8 +138,18 @@ internal enum class CatalogueState(@StringRes val title: Int) {
     /** The list of engines is open in this state to change the one in use. */
     val changingSearch: Boolean get() = this == SEARCH_CHANGE
 
-    /** The link whose menu is open in this state, when one is: an address longer than the menu is wide. */
-    val pressing: String? get() = if (this == LINK_MENU) "https://example.com/articles/2026/11/a-long-read-about-links-and-where-they-lead?from=the-front-page" else null
+    /** What the open menu is of in this state, when one is open: a link whose address is longer than the menu is wide, a picture, or both. */
+    val pressing: Pressed?
+        get() {
+            val link = "https://example.com/articles/2026/11/a-long-read-about-links-and-where-they-lead?from=the-front-page"
+            val picture = "https://example.com/pictures/2026/11/a-tiger-in-the-long-grass.jpg"
+            return when (this) {
+                LINK_MENU -> Pressed(link = link)
+                PICTURE_MENU -> Pressed(picture = picture)
+                PICTURE_LINK_MENU -> Pressed(link = link, picture = picture)
+                else -> null
+            }
+        }
 
     /** What is typed in the address field in this state, when something is. */
     val typing: String? get() = if (this == SUGGESTIONS) "exa" else null
@@ -210,7 +223,7 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                     // Not the page's first: it can be stopped.
                     PROMPT_CONFIRM -> saying(DialogKind.DIALOG_KIND_CONFIRM, "Delete “Holiday photos”? This cannot be undone.", silence = true)
                     PROMPT_TEXT -> saying(DialogKind.DIALOG_KIND_PROMPT, "What should we call you?", offered = "Ada")
-                    LINK_MENU -> page("https://example.com/", "example.com")
+                    LINK_MENU, PICTURE_MENU, PICTURE_LINK_MENU -> page("https://example.com/", "example.com")
                     // The load is on its way to a server that asks first: the page before it is still there.
                     PROMPT_SIGN_IN ->
                         page("https://example.com/", "example.com").copy(

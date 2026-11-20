@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress. The contract (1.16), the core's rule and the Apple shell are built and tested: on the Mac, WebKit's own "Download Image" and "Download Linked File" now save, where they fetched the file and threw it away (§5); on the iPhone the link's menu saves what the link leads to. Android is not built yet. Windows is not started |
+| **Status** | Built and tested in the core, the Apple shell and the Android shell (on an emulator). On the Mac, WebKit's own "Download Image" and "Download Linked File" now save, where they fetched the file and threw it away (§5); on the iPhone the link's menu saves what the link leads to; on Android a picture has a menu, and a link's menu saves. Windows is not started |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "context menus". After a link's ([018](018-link-in-new-tab.md)): a picture's, and the items of either that save a file |
 | **Contract** | 1.16: `DownloadRequested.user_asked` |
 | **Builds on** | 018: a link's menu, and an address the person asks for in a new tab. [013](013-downloads.md) and [015](015-first-download.md): a download waits for the core's word, and a site's first one asks |
@@ -74,7 +74,14 @@ message DownloadRequested {
 - **In the Mac app**: a right-click on the test site's picture, and WebKit's menu has "Open Image in New Tab" and "Download Image" and, there being no link, no "Download Linked File"; "Download Image", and the picture is in the list of downloads, whole, with nobody asked whether the site may download.
 - **The iPhone's menu of a link** has "Download Linked File" between "Open in New Tab" and "Copy Link". In the app on the simulator: a finger held on the link, "Download Linked File", and what the link leads to is in the list, whole, with nobody asked.
 
-**Android**: not built yet.
+**As built on Android** (`WebViewPage`, `SystemWebViewEngine.onPressed` and `saveFile`; `LinkMenu`, `BrowserModel`), and as seen on the emulator (System WebView 133):
+
+- **A long press on a picture** is the adapter's, as one on a link is (018). The WebView names a picture's address at once; of a picture that is a link it names the picture at once and, asked, where the link leads. Seen with a finger held on the test site's pictures: a picture was told with its own address and no link; a picture that is a link with both, the link's being the link's and not the picture's. A picture a page made itself (`data:`, `blob:`) is not told of: alone, its press stays the WebView's; in a link, the menu is the link's.
+- **The menu** is the one a link has, with what was pressed deciding its choices. For a link: where it leads, "Open in New Tab", "Download Linked File", "Copy Link". For a picture: "Open Image in New Tab", "Download Image"; with no link, the address the menu shows is the picture's, and it is named "Image" to a screen reader. A picture that is a link has all five. Then "Cancel".
+- **The menu scrolls.** With five choices it is taller than a short window has room for under its toolbar, a phone held sideways among them: drawn without scrolling, its last choices and "Cancel" were cut off, which the first pictures of it showed. Each choice can now be brought into view.
+- **"Open Image in New Tab"** tells the core of the picture's address as it does of a link's (`LinkOpenRequested`), behind.
+- **"Download Image" and "Download Linked File"** have the page offer the address as a download the person chose: reported with `user_asked`, as this web view's requests say who they are, with no name suggested and its kind not known, since nobody has asked the site yet. The core names it from the address. The system's downloader fetches it, with the login set's cookies, as every download (013).
+- **In the app on the emulator**: a finger held on the test site's picture, and the menu says what picture it is and offers nothing for a link; "Download Image", and the system fetched the picture into the app's folder, the file being the picture itself, with nobody asked; a picture that is a link showed all five choices.
 
 ## 6. Tests
 
@@ -84,6 +91,10 @@ message DownloadRequested {
 | The test site | A page with a picture, a picture that is a link, and words; and the same page taking the menu's event for itself before anything else of the page can hear it, which keeps the engine's menu from opening |
 | WebKit adapter suite (`WebKitMenuTests`, 10 on the Mac, 5 on the iPhone simulator) | Against real WebKit. A file chosen is reported as the person's own, with what the site says of it, and saved under the name the core gives; the page stays where it is. A download a page starts is not said to be the person's. A file chosen is fetched as its login set. Only an address of the web is fetched, and only for a web view there is. A file that cannot be fetched is reported, and said to have failed once the core has listed it. On the Mac, with the mouse's own events given to a web view in a window that is not on the screen: a right-click tells the adapter the picture's address, on a picture that is a link the link's as well, and on words neither; said once, and only for a moment. A right-click a page's script makes up tells the adapter nothing, and the page cannot reach what the script calls. The menu that opens after a right-click on the picture saves that picture, and one that opens with nothing said saves nothing. The menu's items are given the shell's words and their work, those items and no other; an item with nothing to save is taken out and leaves no line behind. Fourteen of the rules checked by breaking them |
 | The Apple shell (`LinkMenuTests`) | A session gives its engine the words for a picture's item and for what a link's menu saves |
+| System WebView adapter, on the JVM (`LinksTest`, 3 more; `DownloadsTest`) | A long press on a picture is told with the picture's address, and the link's when it is one; a picture that is not of the web is not told of, and one that is a link is told as the link. A file a menu saves is offered to the core as the person's own, for the web view whose page has it, with no name suggested; only an address of the web is, and only for a web view there is. What a page offers is not said to be the person's |
+| System WebView adapter suite (`SystemWebViewLinkTest`, 2 more, on the emulator) | With a finger pressed and held on the test site's pages, against the real WebView: a picture is told with its address, the page stays, and nothing is said to the core; a picture that is a link is told with the link's address and the picture's; a picture chosen to be saved is offered to the core as the person's own |
+| The Android menu (`LinkMenuTest`, 6 more, drawn on the JVM against `ScriptedCore`) | A link in words is offered nothing for a picture; a picture shows its own address and its two choices, and nothing for a link; a picture that is a link has every choice of either. "Download Linked File" offers what the link leads to, not the picture, as the person's own. "Open Image in New Tab" asks the core for a tab behind, with the picture and not where the link leads. "Download Image" offers the picture. Each puts the menu away. The last of the menu's choices can be reached in a window too short for them all. Pictures of the three menus, light and dark, drawn tall so that the whole menu is seen; each looked at. Fourteen of the rules checked by breaking them |
+| The Android app, on the emulator | With the real core and WebView and the system's downloader, in fake mode: a finger held on a picture; the menu, over which Android's accessibility checks pass; "Download Image", and the picture is in the app's folder, whole, with nobody asked; a picture that is a link has both menus' choices |
 | The Apple apps (`MenuTests`) | With the real core and WebKit, in fake mode. On the Mac: the picture's menu, opened with the mouse, has the shell's words for a new tab and no item for a link there is not; "Download Image" saves the picture, which is listed, whole, with nobody asked; the page is where it was. On the iPhone simulator: the link's menu saves what the link leads to, which is listed, whole, with nobody asked |
 
 ## 7. Decisions
@@ -106,14 +117,17 @@ message DownloadRequested {
 - **A site that gives its pictures only to its own pages.** The file is asked for without saying which page it was on (D6); such a site may refuse, and what it sends instead is what is saved. Not tried.
 - **Whether the picture is fetched again** or taken from what WebKit already has: not looked at.
 - **The iPhone's own menu of a picture** (WebKit's): not opened by any test. What it offers was not looked at.
-- **Android**: not built.
+- **Android: a picture whose address does not end in its kind** (many are served so) is saved under a name with no ending. The name is made before the site is asked, from the address alone, and the system's downloader keeps it. On Apple's systems WebKit has asked the site by then, and the name has the ending the site's answer gives.
+- **Android: "Open Image in New Tab" and "Download Linked File" in the app.** The app's test on the emulator chooses "Download Image"; the other two are the menu's tests on the JVM.
+- **Android: that nobody is asked, in the app.** The app's tests on a device share one core, in which another test may have allowed the site already. That a file the person chose is never asked about is the core's own test.
+- **Android: a phone**, and one held sideways. It ran on an emulator, upright; the menu's scrolling is tested on the JVM.
 
 ## 9. Done checklist
 
 - [x] Contract 1.16 and its version in every place it is written.
 - [x] The core: the rule of §3 (4 tests).
 - [x] The Mac: the script; the menu's items; the adapter suite (10); a UI test.
-- [ ] Android: the picture's menu and "Download Linked File"; the adapter suite on the emulator; pictures; a device test of the app.
+- [x] Android: the picture's menu and "Download Linked File"; the adapter suite on the emulator (2 more); pictures; a device test of the app.
 - [x] iPhone: "Download Linked File" in the link's menu; the adapter suite on the simulator (5); a UI test.
 - [ ] `Tools/test.sh all` green, and `android-device`.
 - [ ] Windows shell.

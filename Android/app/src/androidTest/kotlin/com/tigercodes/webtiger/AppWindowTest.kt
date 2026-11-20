@@ -54,6 +54,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -822,6 +823,58 @@ internal class AppWindowTest {
         compose.waitUntil(15_000) { menus() == 0 }
         assertEquals("Links", pageTitle())
         compose.onAllNodesWithTag("tab").assertCountEquals(2)
+    }
+
+    /**
+     * A picture's menu (022), with the real core, the real WebView and the system's own
+     * fetcher: a finger pressed and held on a picture shows its address and what can be done
+     * with it; "Download Image" saves it, with nobody asked whether the site may download.
+     * It goes to the app's own folder: this is fake mode. (Whether the site was allowed
+     * before cannot be told here, where the tests share one core: that a file the person
+     * chose is never asked about is the core's own test.)
+     */
+    @Test
+    fun aPictureIsSavedFromItsMenuWithNobodyAsked() {
+        fun menus(): Int = compose.onAllNodesWithTag("link-menu").fetchSemanticsNodes().size
+        awaitPage("Home")
+        val folder = checkNotNull(ApplicationProvider.getApplicationContext<Context>().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS))
+        folder.listFiles()?.forEach { it.delete() }
+        type(site.url("/pictures"))
+        awaitPage("Pictures")
+
+        // A finger held on the picture: the menu says what picture it is, and offers nothing
+        // for a link there is not.
+        PageTouch.longPress(checkNotNull(shownWebView()), "plain")
+        compose.waitUntil(15_000) { menus() == 1 }
+        compose.onNodeWithTag("link-address").assertTextEquals(site.url("/tiger.svg"))
+        compose.onNodeWithTag("picture-open").assertTextEquals("Open Image in New Tab")
+        compose.onAllNodesWithTag("link-open").assertCountEquals(0)
+        compose.onAllNodesWithTag("link-download").assertCountEquals(0)
+        compose.onRoot().tryPerformAccessibilityChecks()
+
+        // "Download Image": the system fetches it, in its own time, and nobody is asked.
+        compose.onNodeWithTag("picture-download").performClick()
+        compose.waitUntil(15_000) { menus() == 0 }
+        val file = File(folder, "tiger.svg")
+        compose.waitUntil(60_000) { file.isFile && file.length() > 0L }
+        assertTrue("the picture itself: ${file.readText().take(40)}", file.readText().startsWith("<svg"))
+        compose.onAllNodesWithTag("prompt").assertCountEquals(0)
+        assertEquals("nothing else was written", listOf("tiger.svg"), folder.listFiles().orEmpty().map { it.name })
+        // The page is where it was, in its one tab.
+        assertEquals("Pictures", pageTitle())
+        compose.onAllNodesWithTag("failed-page").assertCountEquals(0)
+
+        // A picture that is a link has the link's choices and the picture's.
+        PageTouch.longPress(checkNotNull(shownWebView()), "linked")
+        compose.waitUntil(15_000) { menus() == 1 }
+        compose.onNodeWithTag("link-address").assertTextEquals(site.url("/landed?from=picture"))
+        for (tag in listOf("link-open", "link-download", "link-copy", "picture-open", "picture-download")) {
+            compose.onAllNodesWithTag(tag).assertCountEquals(1)
+        }
+        compose.onRoot().tryPerformAccessibilityChecks()
+        compose.onNodeWithTag("link-cancel").performClick()
+        compose.waitUntil(15_000) { menus() == 0 }
+        file.delete()
     }
 
     /**

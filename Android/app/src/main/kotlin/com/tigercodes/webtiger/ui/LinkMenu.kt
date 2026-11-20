@@ -1,7 +1,8 @@
-// A link's menu (018): what the window shows when the person presses and holds a link of the
-// page. Where the link leads, and what can be done with it: opened in a new tab, which is the
-// core's to do, or copied, which is the shell's. There is no preview: a preview loads a page
-// nobody chose to load.
+// A link's menu (018) and a picture's (022): what the window shows when the person presses and
+// holds a link or a picture of the page. Where the link leads, or the picture's address, and
+// what can be done with it: opened in a new tab or saved, which are the core's to do, or
+// copied, which is the shell's. A picture that is a link has both. There is no preview: a
+// preview loads a page nobody chose to load.
 package com.tigercodes.webtiger.ui
 
 import android.content.ClipData
@@ -17,6 +18,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -33,8 +36,22 @@ import androidx.compose.ui.text.style.TextOverflow
 import com.tigercodes.webtiger.R
 import com.tigercodes.webtiger.design.Tokens
 
-/** The link the person pressed and held: the web view whose page has it, and where it leads. */
-internal data class PressedLink(val webViewId: Long, val url: String)
+/**
+ * What the person pressed and held: the web view whose page has it, where the link leads, and
+ * the picture's address. `url` is empty for a picture that is no link, `picture` for a link in
+ * words.
+ */
+internal data class PressedLink(val webViewId: Long, val url: String, val picture: String = "")
+
+/** What a choice in the menu does. */
+internal class LinkChoices(
+    val open: () -> Unit,
+    val download: () -> Unit,
+    val copy: () -> Unit,
+    val openPicture: () -> Unit,
+    val downloadPicture: () -> Unit,
+    val dismiss: () -> Unit,
+)
 
 /**
  * Where "Copy Link" puts an address. The system's clipboard is the person's own: in fake mode,
@@ -67,13 +84,14 @@ class MemoryClipboard : LinkClipboard {
  * the page's; so does the system's Back.
  */
 @Composable
-internal fun LinkMenu(link: PressedLink, onOpen: () -> Unit, onCopy: () -> Unit, onDismiss: () -> Unit) {
+internal fun LinkMenu(link: PressedLink, choices: LinkChoices) {
+    val onDismiss = choices.dismiss
     BackHandler(onBack = onDismiss)
     Box(modifier = Modifier.fillMaxSize()) {
         // The page under it is not pressed meanwhile. This is not offered to assistive
         // services as something to press: "Cancel" is.
         Box(modifier = Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { onDismiss() } }.testTag("link-menu-beside"))
-        val title = stringResource(R.string.link_menu)
+        val title = stringResource(if (link.url.isEmpty()) R.string.link_image_menu else R.string.link_menu)
         Column(
             modifier =
                 Modifier
@@ -83,20 +101,32 @@ internal fun LinkMenu(link: PressedLink, onOpen: () -> Unit, onCopy: () -> Unit,
                     // A touch on the menu itself, between its items, is not one beside it.
                     .pointerInput(Unit) { detectTapGestures { } }
                     .semantics { paneTitle = title }
-                    .testTag("link-menu"),
+                    .testTag("link-menu")
+                    // A picture that is a link has more choices than a short window has room
+                    // for (a phone held sideways): the menu scrolls, so that the last of them,
+                    // and "Cancel", can always be reached.
+                    .verticalScroll(rememberScrollState()),
         ) {
             HorizontalDivider(color = Tokens.Palette.hairline.current)
             // Where the link leads, as the engine says it: its beginning, which names the site.
+            // For a picture that is no link, the picture's own address.
             Text(
-                text = link.url,
+                text = link.url.ifEmpty { link.picture },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.fillMaxWidth().padding(start = Tokens.Space.m, end = Tokens.Space.m, top = Tokens.Space.s).testTag("link-address"),
             )
-            Item(R.string.link_open_new_tab, "link-open", onOpen)
-            Item(R.string.link_copy, "link-copy", onCopy)
+            if (link.url.isNotEmpty()) {
+                Item(R.string.link_open_new_tab, "link-open", choices.open)
+                Item(R.string.link_download, "link-download", choices.download)
+                Item(R.string.link_copy, "link-copy", choices.copy)
+            }
+            if (link.picture.isNotEmpty()) {
+                Item(R.string.link_open_image_new_tab, "picture-open", choices.openPicture)
+                Item(R.string.link_download_image, "picture-download", choices.downloadPicture)
+            }
             Item(R.string.link_cancel, "link-cancel", onDismiss)
             Spacer(modifier = Modifier.height(Tokens.Space.xs))
         }

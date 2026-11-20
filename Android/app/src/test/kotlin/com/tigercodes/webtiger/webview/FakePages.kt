@@ -41,6 +41,15 @@ internal class FakePage(val id: Long, val loginSet: String, val host: PageHost) 
         zooms.add(percent)
     }
 
+    /** The addresses the page was asked to save, in order. */
+    val saved = ArrayList<String>()
+
+    /** As a real page does: the file is offered as a download the person chose, with no name suggested. */
+    override fun save(url: String) {
+        saved.add(url)
+        host.download(id, DownloadOffer(url = url, userAgent = "Agent/1", suggestedName = "", mimeType = "", length = 0, chosen = true))
+    }
+
     override fun close() {
         closed = true
     }

@@ -1,16 +1,19 @@
-// A link's menu (018), drawn against a scripted core: when it is shown, what it says, and what
-// each choice does.
+// A link's menu (018) and a picture's (022), drawn against a scripted core: when it is shown,
+// what it says, and what each choice does.
 package com.tigercodes.webtiger.ui
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import com.tigercodes.webtiger.core.ScriptedCore
+import com.tigercodes.webtiger.core.v1.DownloadRequested
 import com.tigercodes.webtiger.core.v1.EngineKind
 import com.tigercodes.webtiger.core.v1.HostRequest
 import com.tigercodes.webtiger.core.v1.LinkOpenRequested
@@ -20,6 +23,7 @@ import com.tigercodes.webtiger.core.v1.WindowSnapshot
 import com.tigercodes.webtiger.design.WebTigerTheme
 import com.tigercodes.webtiger.webview.FakePage
 import com.tigercodes.webtiger.webview.FakePages
+import com.tigercodes.webtiger.webview.Pressed
 import com.tigercodes.webtiger.webview.SystemWebViewEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,6 +38,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 private const val LINK = "https://example.org/articles/a-long-read?from=the-front-page"
+private const val PICTURE = "https://example.org/pictures/a-tiger.jpg"
 
 @RunWith(RobolectricTestRunner::class)
 class LinkMenuTest {
@@ -69,11 +74,17 @@ class LinkMenuTest {
         compose.waitForIdle()
     }
 
-    /** The person presses and holds a link of a web view's page, as the adapter says it. */
-    private fun press(page: FakePage, url: String = LINK) {
-        page.host.linkPressed(page.id, url)
+    /** The person presses and holds a link of a web view's page, or a picture, as the adapter says it. */
+    private fun press(page: FakePage, url: String = LINK, picture: String = "") {
+        page.host.pressed(page.id, Pressed(link = url, picture = picture))
         compose.waitForIdle()
     }
+
+    /** How many of the menu's items of that name there are: one, or none. */
+    private fun items(tag: String): Int = compose.onAllNodesWithTag(tag).fetchSemanticsNodes().size
+
+    /** The files the core was told the person chose to save. */
+    private fun saved(): List<Pair<Long, DownloadRequested>> = core.reports.mapNotNull { report -> report.download_requested?.let { report.web_view_id to it } }
 
     private fun menus(): Int = compose.onAllNodesWithTag("link-menu").fetchSemanticsNodes().size
 
@@ -90,11 +101,111 @@ class LinkMenuTest {
         assertEquals(1, menus())
         compose.onNodeWithTag("link-address").assertTextEquals(LINK)
         compose.onNodeWithTag("link-open").assertTextEquals("Open in New Tab")
+        compose.onNodeWithTag("link-download").assertTextEquals("Download Linked File")
         compose.onNodeWithTag("link-copy").assertTextEquals("Copy Link")
         compose.onNodeWithTag("link-cancel").assertTextEquals("Cancel")
+        // It is a link in words: nothing is offered for a picture there is not.
+        assertEquals(0, items("picture-open") + items("picture-download"))
         // Nothing is asked of the core, and nothing copied, until something is chosen.
         assertEquals(emptyList<Pair<Long, LinkOpenRequested>>(), asked())
+        assertEquals(emptyList<Pair<Long, DownloadRequested>>(), saved())
         assertNull(clipboard.copied)
+    }
+
+    @Test
+    fun aPicturePressedAndHeldShowsItsAddressAndWhatCanBeDoneWithIt() {
+        val page = aWindow()
+
+        press(page, url = "", picture = PICTURE)
+
+        assertEquals(1, menus())
+        compose.onNodeWithTag("link-address").assertTextEquals(PICTURE)
+        compose.onNodeWithTag("picture-open").assertTextEquals("Open Image in New Tab")
+        compose.onNodeWithTag("picture-download").assertTextEquals("Download Image")
+        compose.onNodeWithTag("link-cancel").assertTextEquals("Cancel")
+        // It is no link: nothing is offered for one.
+        assertEquals(0, items("link-open") + items("link-download") + items("link-copy"))
+        assertEquals(emptyList<Pair<Long, LinkOpenRequested>>(), asked())
+        assertEquals(emptyList<Pair<Long, DownloadRequested>>(), saved())
+    }
+
+    @Test
+    fun aPictureThatIsALinkHasTheLinksMenuAndThePictures() {
+        val page = aWindow()
+
+        press(page, url = LINK, picture = PICTURE)
+
+        // Where the link leads, as for any link; and every choice of either.
+        compose.onNodeWithTag("link-address").assertTextEquals(LINK)
+        for (tag in listOf("link-open", "link-download", "link-copy", "picture-open", "picture-download", "link-cancel")) {
+            assertEquals(tag, 1, items(tag))
+        }
+    }
+
+    @Test
+    fun theLastOfTheMenusChoicesCanBeReachedInAWindowTooShortForThemAll() {
+        val page = aWindow()
+
+        // The fullest menu there is, in whatever room this window has under its toolbar.
+        press(page, url = LINK, picture = PICTURE)
+
+        // Each choice can be brought into view, down to the last, and back to the first.
+        for (tag in listOf("link-open", "link-download", "link-copy", "picture-open", "picture-download", "link-cancel", "link-open")) {
+            compose.onNodeWithTag(tag).performScrollTo().assertIsDisplayed()
+        }
+        compose.onNodeWithTag("link-cancel").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(0, menus())
+    }
+
+    @Test
+    fun downloadLinkedFileOffersWhatTheLinkLeadsToAsThePersonsOwn() {
+        val page = aWindow()
+        press(page, url = LINK, picture = PICTURE)
+
+        compose.onNodeWithTag("link-download").performScrollTo().performClick()
+        compose.waitForIdle()
+
+        val (webView, file) = saved().single()
+        assertEquals("of the web view whose page has the link", 4L, webView)
+        assertEquals("what the link leads to, not the picture", LINK, file.url)
+        assertEquals("the person chose it: no page asked", true, file.user_asked)
+        assertEquals(0, menus())
+        assertEquals(emptyList<Pair<Long, LinkOpenRequested>>(), asked())
+        assertNull(clipboard.copied)
+    }
+
+    @Test
+    fun openImageInNewTabAsksTheCoreForATabBehindWithThePicture() {
+        val page = aWindow()
+        press(page, url = LINK, picture = PICTURE)
+
+        compose.onNodeWithTag("picture-open").performScrollTo().performClick()
+        compose.waitForIdle()
+
+        val (webView, link) = asked().single()
+        assertEquals(4L, webView)
+        assertEquals("the picture, not where the link leads", PICTURE, link.url)
+        assertEquals("behind the page being read", true, link.background)
+        assertEquals(true, link.user_gesture)
+        assertEquals(0, menus())
+        assertEquals(emptyList<Pair<Long, DownloadRequested>>(), saved())
+    }
+
+    @Test
+    fun downloadImageOffersThePictureAsThePersonsOwn() {
+        val page = aWindow()
+        press(page, url = "", picture = PICTURE)
+
+        compose.onNodeWithTag("picture-download").performScrollTo().performClick()
+        compose.waitForIdle()
+
+        val (webView, file) = saved().single()
+        assertEquals(4L, webView)
+        assertEquals(PICTURE, file.url)
+        assertEquals(true, file.user_asked)
+        assertEquals(0, menus())
+        assertEquals(emptyList<Pair<Long, LinkOpenRequested>>(), asked())
     }
 
     @Test
@@ -102,7 +213,7 @@ class LinkMenuTest {
         val page = aWindow()
         press(page)
 
-        compose.onNodeWithTag("link-open").performClick()
+        compose.onNodeWithTag("link-open").performScrollTo().performClick()
         compose.waitForIdle()
 
         val (webView, link) = asked().single()
@@ -119,7 +230,7 @@ class LinkMenuTest {
         val page = aWindow()
         press(page)
 
-        compose.onNodeWithTag("link-copy").performClick()
+        compose.onNodeWithTag("link-copy").performScrollTo().performClick()
         compose.waitForIdle()
 
         assertEquals(LINK, clipboard.copied)
@@ -132,7 +243,7 @@ class LinkMenuTest {
         val page = aWindow()
 
         press(page)
-        compose.onNodeWithTag("link-cancel").performClick()
+        compose.onNodeWithTag("link-cancel").performScrollTo().performClick()
         compose.waitForIdle()
         assertEquals(0, menus())
 

@@ -34,9 +34,24 @@ internal interface Page {
      */
     fun zoom(percent: Int)
 
+    /**
+     * Offers the file at `url` as a download the person chose in a menu (022): what a link
+     * leads to, or a picture. Nothing is fetched until the core has said.
+     */
+    fun save(url: String)
+
     /** Destroys the web view and releases what it held. */
     fun close()
 }
+
+/**
+ * What the person pressed and held in a page (018, 022): where the link leads, and the
+ * picture's address. A link, a picture, or a picture that is a link.
+ */
+data class Pressed(val link: String = "", val picture: String = "")
+
+/** An address of the web: one a tab can start from, and the system's downloader can fetch. */
+internal fun isOfTheWeb(url: String): Boolean = url.startsWith("http://", ignoreCase = true) || url.startsWith("https://", ignoreCase = true)
 
 /** What a page needs of the engine: where its reports go, and who answers its questions. */
 internal interface PageHost {
@@ -83,11 +98,11 @@ internal interface PageHost {
     fun signIn(webViewId: Long, host: String, realm: String, heading: String, again: Boolean, answer: (Typed?) -> Unit)
 
     /**
-     * The person pressed and held a link of the page of the web view `webViewId` (018): `url`
-     * is where the link leads, as the engine gives it. The press is not the page's any more;
-     * what comes of it is the link's menu.
+     * The person pressed and held a link or a picture of the page of the web view `webViewId`
+     * (018, 022): where the link leads and the picture's address, as the engine gives them.
+     * The press is not the page's any more; what comes of it is the menu.
      */
-    fun linkPressed(webViewId: Long, url: String)
+    fun pressed(webViewId: Long, pressed: Pressed)
 
     /**
      * A page of the web view `webViewId` asks for a file (019). `give` gives the engine what

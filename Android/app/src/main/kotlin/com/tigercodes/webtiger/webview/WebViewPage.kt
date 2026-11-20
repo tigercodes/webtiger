@@ -185,21 +185,44 @@ internal class WebViewPage(
     }
 
     /**
-     * A long press landed on the page. True when it was on a link, in words or in a picture:
-     * the WebView is asked where the link leads, and says so in a message of its own; the
-     * press is then nobody else's. (For a picture that is a link, what the WebView names at
-     * once is the picture's address, not the link's.)
+     * A long press landed on the page. True when it was on a link, in words or in a picture,
+     * or on a picture of the web: the press is then nobody else's, and whoever shows the menu
+     * is told what it was on (018, 022). Of a link the WebView is asked where it leads, and
+     * says so in a message of its own. A picture's address it names at once, and for a
+     * picture that is a link that is all it names at once.
      */
-    private fun linkPressed(view: WebView): Boolean {
-        val under = view.hitTestResult.type
-        if (under != WebView.HitTestResult.SRC_ANCHOR_TYPE && under != WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) return false
-        val answer =
-            Handler(Looper.getMainLooper()) { said ->
-                if (view === webView) host.linkPressed(id, said.data.getString("url").orEmpty())
+    private fun pressed(view: WebView): Boolean {
+        val under = view.hitTestResult
+        val picture = under.extra.orEmpty()
+        return when (under.type) {
+            WebView.HitTestResult.IMAGE_TYPE -> {
+                // A picture a page made itself can be neither opened in a tab nor fetched:
+                // the press stays the WebView's.
+                if (isOfTheWeb(picture)) host.pressed(id, Pressed(picture = picture))
+                isOfTheWeb(picture)
+            }
+            WebView.HitTestResult.SRC_ANCHOR_TYPE, WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE -> {
+                val shown = if (under.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) picture else ""
+                val answer =
+                    Handler(Looper.getMainLooper()) { said ->
+                        if (view === webView) host.pressed(id, Pressed(link = said.data.getString("url").orEmpty(), picture = shown))
+                        true
+                    }
+                view.requestFocusNodeHref(answer.obtainMessage())
                 true
             }
-        view.requestFocusNodeHref(answer.obtainMessage())
-        return true
+            else -> false
+        }
+    }
+
+    /**
+     * A file the person chose in a menu (022). The WebView does not fetch it: it is offered
+     * like a download a page asked for, as this web view's requests say who they are, with no
+     * name suggested and its kind not known: nobody has asked the site yet.
+     */
+    override fun save(url: String) {
+        val view = webView ?: return
+        host.download(id, DownloadOffer(url = url, userAgent = view.settings.userAgentString.orEmpty(), suggestedName = "", mimeType = "", length = 0, chosen = true))
     }
 
     private fun recreate(): WebView? =
@@ -268,9 +291,9 @@ internal class WebViewPage(
                 )
             }
         }
-        // A long press on a link is for the link's menu (018); anywhere else it is the
-        // WebView's own, which selects the words under the finger.
-        view.setOnLongClickListener { pressed -> pressed === webView && linkPressed(view) }
+        // A long press on a link or on a picture is for its menu (018, 022); anywhere else it
+        // is the WebView's own, which selects the words under the finger.
+        view.setOnLongClickListener { held -> held === webView && pressed(view) }
         // What a find found, once the WebView has finished counting (010). A web view made
         // anew has found nothing.
         finding = ""
