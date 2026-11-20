@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built and tested in the core, the Android shell (on an emulator) and the Apple shell, where it ran in the app on the iPhone simulator; **the Mac's UI test of it has not run** (§8). Windows is not started |
+| **Status** | Built and tested in the core, the Android shell (on an emulator) and the Apple shell, where it ran in the app on the Mac and the iPhone simulator. Windows is not started |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "downloads", the part [013](013-downloads.md) §2 left for the prompt that permissions needed. That prompt is [014](014-permissions.md)'s |
 | **Contract** | 1.11: `DownloadPrompt`, a second kind of `PromptView`; `PERMISSION_KIND_DOWNLOADS`, among what a site was allowed |
 | **Builds on** | 013: a download waits for the core's word in every shell. 014: a tab's prompt, what was allowed per origin, and the list where it is taken back |
@@ -89,7 +89,7 @@ The same bar (014 §7), with a sentence of its own: "*site* wants to download �
 | Core (`wt-app/tests/first_download.rs`, 14 through `FakeShell`) | A site's first download asks, naming the page's site and the file by the name the core made, and nothing is started or listed. "Allow" starts it under the core's name and lists it; the site is among what was allowed; its next download, and one from another page of it, start unasked, also after the app starts again; another site is asked about. "Don't Allow" drops it, lists nothing and writes nothing, and the page's later downloads are dropped unasked until another page has loaded. An address the person sent the tab to is downloaded without asking, also when it sends the browser on to a file; that is good for one, and is not lent to a page that arrived or to the page that is still there when the load failed. A tab with no page asks in the name of where the file comes from. A page not over `https` may ask to download, and is named with its scheme. What waited is dropped with a new page, a lost renderer and a closed tab. What else waited for the same answer has it: the site's download in a tab behind, after a yes; the page's other downloads, after a no. One a second from a web view, also while the first waits; four wait and a fifth is dropped; said twice, asked once. A download and a page's request that the shell gave the same number are not taken for each other, whichever came first, nor is the download what a page withdraws. To download is not an engine's to ask for. Taken back, the site asks again, and what is coming goes on. Fifteen parts of the rule checked by breaking them. 013's tests (15) pass as they were, each page's site allowed first as a person would allow it |
 | The shells, against a scripted core | Android (`PromptTest`, 1 more; `PermissionsListTest`): a download the site was not yet allowed is asked about by the site and the file, and the buttons send their answer by the prompt's own name; "Location and Downloads" in the list; the empty list's new sentence. Apple (`PromptModelTests`, 1 more; `PermissionsModelTests`): the same. Pictures of the bar asking about a download, light and dark, on Android, the Mac and the iPhone; the Permissions list's pictures drawn again; each looked at |
 | The Android app, on the emulator | With the real core, WebView and the system's fetcher, in fake mode: a finger on a link to a file; the bar names the site and the file while nothing is saved; Android's accessibility checks over it; "Allow", and the file is fetched and listed, as in 013 |
-| The Apple app, on the iPhone simulator | With the real core and WebKit, in fake mode: a link to a file is pressed; the bar says the site wants to download “notes.txt”; Apple's audit over the bar; "Allow", and the file is listed and finishes, as in 013. On the Mac the same test has not run (§8) |
+| The Apple app, on the Mac and the iPhone simulator | With the real core and WebKit, in fake mode: a link to a file is pressed; the bar says the site wants to download “notes.txt”; Apple's audit over the bar; "Allow", and the file is listed and finishes, as in 013 |
 
 ## 7. Decisions
 
@@ -104,7 +104,6 @@ The same bar (014 §7), with a sentence of its own: "*site* wants to download �
 
 - **Which word comes first from an engine.** When an address the person typed turns out to be a file, an adapter reports the download and that the load stopped. The core's rule does not depend on which comes first: the person's wish outlives a load that stopped. The tests give the order the System WebView adapter gives (the load stops, then the download); the other order was not tried.
 - **A page that starts a download in the moment between the person sending the tab somewhere and that page arriving** borrows the person's wish, once: the core cannot tell whose download it is. Not tried against an engine.
-- **The Mac's UI suite.** Its test of a download was changed to answer the question first, and has not run since: a dialog of the system's is on this Mac's screen, and the gate does not start the Mac's UI suite while one is ([014](014-permissions.md) §10). The same test passes on the iPhone simulator.
 - **"Don't Allow" in an app.** The apps' tests say yes; a no, and what it does to a page's later downloads, is the core's test.
 - **A phone.** Android ran on an emulator.
 
@@ -114,5 +113,5 @@ The same bar (014 §7), with a sentence of its own: "*site* wants to download �
 - [x] The core: the rule of §3. 14 tests through `FakeShell`; 013's 15 still pass, with the site allowed.
 - [x] Android: the bar's sentence, the list's word; pictures; the device test of a download answers the question (104 on the emulator).
 - [x] Apple: the bar's sentence, the list's word; pictures; the UI test of a download answers the question, passed on the iPhone simulator.
-- [ ] The Mac's UI suite, when the dialog on its screen has been answered. Every other stage of `Tools/test.sh all` passed, run one by one.
+- [x] The Mac's UI suite, once the dialog on its screen had been answered: `Tools/test.sh all` green.
 - [ ] Windows shell.

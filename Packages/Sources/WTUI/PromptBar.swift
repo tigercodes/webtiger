@@ -23,6 +23,16 @@ public extension BrowserModel {
         }
     }
 
+    /// The page waits for an answer to what it said or asked (016): its script has stopped
+    /// until the person answers, and with it everything else its process does.
+    var pageWaits: Bool {
+        if case .dialog? = prompt?.kind {
+            true
+        } else {
+            false
+        }
+    }
+
     /// The person's answer to the prompt the tab shows. What it lets the page do, what is
     /// remembered, and whether it came too soon after the prompt appeared to be the person's
     /// answer to it, are the core's: a refusal leaves the prompt where it is. For what a page

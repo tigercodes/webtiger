@@ -112,6 +112,56 @@ final class DialogModelTests: XCTestCase {
         }
     }
 
+    func testThePageIsSaidToWaitOnlyWhileWhatItSaidIsShown() async {
+        let (model, core) = await opened()
+        XCTAssertFalse(model.pageWaits, "nothing is asked")
+
+        // What a page says stops its script, and with it all its process does.
+        core.emit(saying(9, .confirm, "Delete it?"), subscription: 3)
+        await settle { model.pageWaits }
+        XCTAssertTrue(model.pageWaits)
+
+        // A page that asks to use the camera goes on running; so does one a server keeps
+        // waiting, and one that wants to download.
+        var asking = saying(10, .confirm, "")
+        asking.tab.prompt = WTPromptView()
+        asking.tab.prompt.promptID = 10
+        asking.tab.prompt.permission.site = "example.com"
+        asking.tab.prompt.permission.kinds = [.camera]
+        core.emit(asking, subscription: 3)
+        await settle { model.prompt?.promptID == 10 }
+        XCTAssertFalse(model.pageWaits)
+        asking.tab.prompt = WTPromptView()
+        asking.tab.prompt.promptID = 11
+        asking.tab.prompt.signIn.site = "example.com"
+        core.emit(asking, subscription: 3)
+        await settle { model.prompt?.promptID == 11 }
+        XCTAssertFalse(model.pageWaits)
+
+        // Answered and gone, the page is itself again.
+        asking.tab.clearPrompt()
+        core.emit(asking, subscription: 3)
+        await settle { model.prompt == nil }
+        XCTAssertFalse(model.pageWaits)
+    }
+
+    #if os(macOS)
+        func testAPageThatWaitsIsNotOfferedToAssistiveTechnologies() {
+            // The view that holds the web view: what it holds is what it offers, until its
+            // page waits for an answer to what it said.
+            let container = WebViewContainer(frame: NSRect(x: 0, y: 0, width: 200, height: 100))
+            let held = NSButton(title: "A page", target: nil, action: nil)
+            container.addSubview(held)
+            XCTAssertEqual(container.accessibilityChildren()?.count, 1)
+
+            container.pageWaits = true
+            XCTAssertEqual(container.accessibilityChildren()?.count, 0, "its process could not answer for it")
+
+            container.pageWaits = false
+            XCTAssertEqual(container.accessibilityChildren()?.count, 1, "answered, the page is there again")
+        }
+    #endif
+
     func testTheBarsFirstLineIsWhoSaysIt() {
         XCTAssertEqual(DialogBar.says("example.com", locale: Locale(identifier: "en_GB")), "example.com says:")
         XCTAssertEqual(DialogBar.says("http://127.0.0.1:8080", locale: Locale(identifier: "en_GB")), "http://127.0.0.1:8080 says:")

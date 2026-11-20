@@ -401,7 +401,7 @@ public struct BrowserWindowView: View {
         if model.hasFailed {
             FailedPageView(code: model.tab.errorCode) { model.perform(.reload) }
         } else if model.hasPage {
-            WebViewHost(engine: session.engine, webViewID: model.tab.webViewID)
+            WebViewHost(engine: session.engine, webViewID: model.tab.webViewID, pageWaits: model.pageWaits)
         } else {
             EmptyTabView()
         }
