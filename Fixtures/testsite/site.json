@@ -319,6 +319,17 @@
         "</script>"
       ],
       "note": "Shows /staff-picture from another origin (the same server by its other name, localhost), or with ?from=own from its own, and says in its title what became of it. For a server asking who is there with no load on its way: the tab's own, and one that is not."
+    },
+    {
+      "path": "/links",
+      "title": "Links",
+      "body": [
+        "<p><a id=\"words\" href=\"/landed\">a link in words</a></p>",
+        "<p><a id=\"picture\" href=\"/landed?from=picture\"><img alt=\"a link that is a picture\" width=\"160\" height=\"80\" src=\"/pixel\" style=\"background: #888\"></a></p>",
+        "<p id=\"plain\">words that are no link</p>",
+        "<p><a id=\"letter\" href=\"mailto:ada@example.com\">a letter to write</a></p>"
+      ],
+      "note": "A link in words, a link that is a picture, words that are no link, and a link for the system. For a link's menu, and a link the person asks for in a new tab."
     }
   ],
   "not_found": {

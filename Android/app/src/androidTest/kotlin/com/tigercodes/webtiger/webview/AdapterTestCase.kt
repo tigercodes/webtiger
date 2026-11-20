@@ -132,6 +132,12 @@ internal abstract class AdapterTestCase {
         PageTouch.tap(checkNotNull(webView(id)), element)
     }
 
+    /** Presses and holds an element of a web view's page with a finger, having put the web view on the screen. */
+    protected fun longPress(id: Long, element: String) {
+        show(id)
+        PageTouch.longPress(checkNotNull(webView(id)), element)
+    }
+
     /** The windows a web view's page has asked for, in order. */
     protected fun windowsAsked(by: Long): List<NewWindowRequested> = reports(by).mapNotNull { it.new_window_requested }
 

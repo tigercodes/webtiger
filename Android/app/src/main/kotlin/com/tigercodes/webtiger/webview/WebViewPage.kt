@@ -11,6 +11,8 @@ import android.graphics.Bitmap
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.http.SslError
+import android.os.Handler
+import android.os.Looper
 import android.os.Message
 import android.view.View
 import android.view.ViewGroup
@@ -180,6 +182,24 @@ internal class WebViewPage(
         view.destroy()
     }
 
+    /**
+     * A long press landed on the page. True when it was on a link, in words or in a picture:
+     * the WebView is asked where the link leads, and says so in a message of its own; the
+     * press is then nobody else's. (For a picture that is a link, what the WebView names at
+     * once is the picture's address, not the link's.)
+     */
+    private fun linkPressed(view: WebView): Boolean {
+        val under = view.hitTestResult.type
+        if (under != WebView.HitTestResult.SRC_ANCHOR_TYPE && under != WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) return false
+        val answer =
+            Handler(Looper.getMainLooper()) { said ->
+                if (view === webView) host.linkPressed(id, said.data.getString("url").orEmpty())
+                true
+            }
+        view.requestFocusNodeHref(answer.obtainMessage())
+        return true
+    }
+
     private fun recreate(): WebView? =
         try {
             create().also { webView = it }
@@ -246,6 +266,9 @@ internal class WebViewPage(
                 )
             }
         }
+        // A long press on a link is for the link's menu (018); anywhere else it is the
+        // WebView's own, which selects the words under the finger.
+        view.setOnLongClickListener { pressed -> pressed === webView && linkPressed(view) }
         // What a find found, once the WebView has finished counting (010). A web view made
         // anew has found nothing.
         finding = ""

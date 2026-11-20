@@ -6,6 +6,7 @@ package com.tigercodes.webtiger
 import android.os.SystemClock
 import android.view.InputDevice
 import android.view.MotionEvent
+import android.view.ViewConfiguration
 import android.webkit.WebView
 import androidx.test.platform.app.InstrumentationRegistry
 import java.util.concurrent.CompletableFuture
@@ -67,14 +68,30 @@ internal object PageTouch {
      * the test that turns the device.
      */
     fun tap(view: WebView, element: String) {
+        val (x, y) = atRest(view, element)
+        touch(view, x, y)
+    }
+
+    /**
+     * Presses and holds the element with the id `element`: a finger put down at its middle,
+     * left there for as long as the system takes a press to be a long one and a little more,
+     * and lifted. The wait is the test's own thread's: the WebView's must be free to notice.
+     */
+    fun longPress(view: WebView, element: String) {
+        val (x, y) = atRest(view, element)
+        val down = SystemClock.uptimeMillis()
+        InstrumentationRegistry.getInstrumentation().runOnMainSync { send(view, down, down, MotionEvent.ACTION_DOWN, x, y) }
+        Thread.sleep(ViewConfiguration.getLongPressTimeout() + 400L)
+        InstrumentationRegistry.getInstrumentation().runOnMainSync { send(view, down, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, x, y) }
+    }
+
+    /** The middle of an element, once it is where it was a moment before. */
+    private fun atRest(view: WebView, element: String): Pair<Float, Float> {
         awaitShown(view)
         var before: List<Float>? = null
         repeat(100) {
             val now = place(view, element)
-            if (now != null && now == before) {
-                touch(view, now[0], now[1])
-                return
-            }
+            if (now != null && now == before) return now[0] to now[1]
             before = now
             Thread.sleep(100)
         }
@@ -84,12 +101,16 @@ internal object PageTouch {
     private fun touch(view: WebView, x: Float, y: Float) {
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
             val down = SystemClock.uptimeMillis()
-            for ((action, time) in listOf(MotionEvent.ACTION_DOWN to down, MotionEvent.ACTION_UP to down + 40)) {
-                val event = MotionEvent.obtain(down, time, action, x, y, 0)
-                event.source = InputDevice.SOURCE_TOUCHSCREEN
-                view.dispatchTouchEvent(event)
-                event.recycle()
-            }
+            send(view, down, down, MotionEvent.ACTION_DOWN, x, y)
+            send(view, down, down + 40, MotionEvent.ACTION_UP, x, y)
         }
+    }
+
+    /** One event of a finger's, given to the WebView as the system gives it. On the main thread. */
+    private fun send(view: WebView, down: Long, time: Long, action: Int, x: Float, y: Float) {
+        val event = MotionEvent.obtain(down, time, action, x, y, 0)
+        event.source = InputDevice.SOURCE_TOUCHSCREEN
+        view.dispatchTouchEvent(event)
+        event.recycle()
     }
 }

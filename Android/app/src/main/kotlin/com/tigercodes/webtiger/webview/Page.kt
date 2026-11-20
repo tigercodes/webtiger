@@ -81,6 +81,13 @@ internal interface PageHost {
      * typed, or null for none.
      */
     fun signIn(webViewId: Long, host: String, realm: String, heading: String, again: Boolean, answer: (Typed?) -> Unit)
+
+    /**
+     * The person pressed and held a link of the page of the web view `webViewId` (018): `url`
+     * is where the link leads, as the engine gives it. The press is not the page's any more;
+     * what comes of it is the link's menu.
+     */
+    fun linkPressed(webViewId: Long, url: String)
 }
 
 /** Makes pages. [WebViewPages] makes real ones. */

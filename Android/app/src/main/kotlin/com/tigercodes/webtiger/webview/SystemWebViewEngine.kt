@@ -32,6 +32,7 @@ import com.tigercodes.webtiger.core.v1.Error
 import com.tigercodes.webtiger.core.v1.HostPong
 import com.tigercodes.webtiger.core.v1.HostRequest
 import com.tigercodes.webtiger.core.v1.HostResponse
+import com.tigercodes.webtiger.core.v1.LinkOpenRequested
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.core.v1.NewWindowRequested
 import com.tigercodes.webtiger.core.v1.PermissionKind
@@ -74,6 +75,21 @@ class SystemWebViewEngine internal constructor(
 
     /** The servers that asked who is there (017), while the core has not said how each is answered. */
     private val signIns = SignIns { event -> core?.report(event) }
+
+    /**
+     * Told when the person presses and holds a link of a page (018): the web view, and where
+     * the link leads. The window shows the link's menu; with nobody to tell, nothing comes of
+     * the press.
+     */
+    var onLinkPressed: ((Long, String) -> Unit)? = null
+
+    /**
+     * The person asked, by a link's menu, for the link in a new tab (018). The core is told:
+     * whether a tab opens is its to say.
+     */
+    fun openLink(webViewId: Long, url: String, background: Boolean) {
+        core?.report(EngineEvent(web_view_id = webViewId, link_open_requested = LinkOpenRequested(url = url, background = background, user_gesture = true)))
+    }
 
     /** A tick is on its way: asking after the downloads is not asked for twice. */
     private var ticking = false
@@ -295,6 +311,11 @@ class SystemWebViewEngine internal constructor(
 
         override fun signIn(webViewId: Long, host: String, realm: String, heading: String, again: Boolean, answer: (Typed?) -> Unit) =
             signIns.asked(webViewId, host, realm, heading, again, answer)
+
+        override fun linkPressed(webViewId: Long, url: String) {
+            // A link the WebView could say nothing of leads nowhere.
+            if (url.isNotEmpty()) onLinkPressed?.invoke(webViewId, url)
+        }
 
         override fun download(webViewId: Long, offer: DownloadOffer) {
             // A download is its login set's: its cookies are what the fetch is given.
