@@ -68,7 +68,7 @@ public final class ShellHost: HostServices {
             }
             return .ack(WTAck())
         case .ping, .webViewCreate, .webViewLoad, .webViewCommand, .webViewDestroy, .webViewFind, .webViewSetZoom, .downloadStart,
-             .downloadCancel, .permissionAnswer, .dialogAnswer, .signInAnswer:
+             .downloadCancel, .permissionAnswer, .dialogAnswer, .signInAnswer, .webViewTrustCertificate:
             return await engine.answer(request)
         }
     }

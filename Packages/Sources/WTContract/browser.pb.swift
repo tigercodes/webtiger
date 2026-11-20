@@ -471,6 +471,21 @@ public nonisolated struct WTTabView: @unchecked Sendable {
   /// Clears the value of `prompt`. Subsequent reads from it will return its default value.
   public mutating func clearPrompt() {_uniqueStorage()._prompt = nil}
 
+  /// Since 1.20 (026). With LOAD_STATE_FAILED: the load failed for its site's
+  /// certificate, and the person may go on all the same
+  /// (ProceedPastCertificate). A shell warns before it offers that.
+  public var certificatePassable: Bool {
+    get {_storage._certificatePassable}
+    set {_uniqueStorage()._certificatePassable = newValue}
+  }
+
+  /// Since 1.20. With `certificate_passable`: the host whose certificate was
+  /// not trusted, in its ASCII form, for the warning's words.
+  public var certificateHost: String {
+    get {_storage._certificateHost}
+    set {_uniqueStorage()._certificateHost = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1457,6 +1472,25 @@ public nonisolated struct WTColourSpace: Sendable {
   public init() {}
 }
 
+/// Since 1.20. The person goes on past a certificate that is not trusted
+/// (026), in a tab whose view says it may be (`certificate_passable`). The
+/// core has the shell let that certificate through, for that host and port,
+/// in the tab's login set, until the app quits; and loads the address again.
+/// Every page of that host is then marked not secure. Answered with Ack,
+/// "tab.unknown", or "certificate.not_passable" for a tab whose failed load
+/// is not one that may be gone on with, which changes nothing.
+public nonisolated struct WTProceedPastCertificate: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var tabID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
@@ -1873,7 +1907,7 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TabView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}web_view_id\0\u{1}address\0\u{1}title\0\u{3}load_state\0\u{1}progress\0\u{3}can_go_back\0\u{3}can_go_forward\0\u{3}error_code\0\u{1}engine\0\u{3}login_set_id\0\u{1}find\0\u{1}zoom\0\u{1}prompt\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}web_view_id\0\u{1}address\0\u{1}title\0\u{3}load_state\0\u{1}progress\0\u{3}can_go_back\0\u{3}can_go_forward\0\u{3}error_code\0\u{1}engine\0\u{3}login_set_id\0\u{1}find\0\u{1}zoom\0\u{1}prompt\0\u{3}certificate_passable\0\u{3}certificate_host\0")
 
   fileprivate class _StorageClass {
     var _tabID: UInt64 = 0
@@ -1890,6 +1924,8 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _find: WTFindView? = nil
     var _zoom: WTZoomView? = nil
     var _prompt: WTPromptView? = nil
+    var _certificatePassable: Bool = false
+    var _certificateHost: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1914,6 +1950,8 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _find = source._find
       _zoom = source._zoom
       _prompt = source._prompt
+      _certificatePassable = source._certificatePassable
+      _certificateHost = source._certificateHost
     }
   }
 
@@ -1946,6 +1984,8 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 12: try { try decoder.decodeSingularMessageField(value: &_storage._find) }()
         case 13: try { try decoder.decodeSingularMessageField(value: &_storage._zoom) }()
         case 14: try { try decoder.decodeSingularMessageField(value: &_storage._prompt) }()
+        case 15: try { try decoder.decodeSingularBoolField(value: &_storage._certificatePassable) }()
+        case 16: try { try decoder.decodeSingularStringField(value: &_storage._certificateHost) }()
         default: break
         }
       }
@@ -2000,6 +2040,12 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       try { if let v = _storage._prompt {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
       } }()
+      if _storage._certificatePassable != false {
+        try visitor.visitSingularBoolField(value: _storage._certificatePassable, fieldNumber: 15)
+      }
+      if !_storage._certificateHost.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._certificateHost, fieldNumber: 16)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2023,6 +2069,8 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._find != rhs_storage._find {return false}
         if _storage._zoom != rhs_storage._zoom {return false}
         if _storage._prompt != rhs_storage._prompt {return false}
+        if _storage._certificatePassable != rhs_storage._certificatePassable {return false}
+        if _storage._certificateHost != rhs_storage._certificateHost {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -3693,6 +3741,36 @@ nonisolated extension WTColourSpace: SwiftProtobuf.Message, SwiftProtobuf._Messa
   public static func ==(lhs: WTColourSpace, rhs: WTColourSpace) -> Bool {
     if lhs.spaceID != rhs.spaceID {return false}
     if lhs.colour != rhs.colour {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTProceedPastCertificate: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ProceedPastCertificate"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.tabID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.tabID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.tabID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTProceedPastCertificate, rhs: WTProceedPastCertificate) -> Bool {
+    if lhs.tabID != rhs.tabID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

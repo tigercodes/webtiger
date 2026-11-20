@@ -137,6 +137,13 @@ message TabView {
   // Since 1.10. What the tab asks the person (014). Not set when it asks
   // nothing. One at a time: what else waits is shown when this is answered.
   PromptView prompt = 14;
+  // Since 1.20 (026). With LOAD_STATE_FAILED: the load failed for its site's
+  // certificate, and the person may go on all the same
+  // (ProceedPastCertificate). A shell warns before it offers that.
+  bool certificate_passable = 15;
+  // Since 1.20. With `certificate_passable`: the host whose certificate was
+  // not trusted, in its ASCII form, for the warning's words.
+  string certificate_host = 16 [(wt.redact) = true];
 }
 
 enum LoadState {
@@ -624,4 +631,15 @@ message SwitchSpace {
 message ColourSpace {
   uint64 space_id = 1;
   string colour = 2;
+}
+
+// Since 1.20. The person goes on past a certificate that is not trusted
+// (026), in a tab whose view says it may be (`certificate_passable`). The
+// core has the shell let that certificate through, for that host and port,
+// in the tab's login set, until the app quits; and loads the address again.
+// Every page of that host is then marked not secure. Answered with Ack,
+// "tab.unknown", or "certificate.not_passable" for a tab whose failed load
+// is not one that may be gone on with, which changes nothing.
+message ProceedPastCertificate {
+  uint64 tab_id = 1;
 }

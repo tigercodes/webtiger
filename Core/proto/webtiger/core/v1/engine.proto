@@ -90,6 +90,12 @@ message NavigationFailed {
   // place it was going has nothing to show, and the core closes its tab
   // (006).
   bool refused = 3;
+  // Since 1.20 (026). With "net.tls.untrusted", "net.tls.date" or
+  // "net.tls.name", for the web view's own page: the adapter holds the
+  // certificate it refused, at the host and port of `url`, and can be told
+  // to let it through (WebViewTrustCertificate). Nothing is let through
+  // until it is told.
+  bool certificate_held = 4;
 }
 
 // The page on screen changed its own address without a load: a fragment, or

@@ -2,7 +2,7 @@
 //! produces the events a real engine reports, in the order 001 §5 asks every
 //! adapter to report them.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use wt_proto::v1::{
     Ack, AddressChanged, CloseRequested, DialogKind, DialogRequested, DownloadFailed,
@@ -22,6 +22,10 @@ pub struct FakePage {
     pub redirect: Option<String>,
     /// The load fails with this code instead.
     pub fail: Option<String>,
+    /// The server's certificate is not trusted (026): the load fails with
+    /// this code, and the engine holds the certificate, until it is told to
+    /// let it through for the web view's login set.
+    pub certificate: Option<String>,
 }
 
 /// A web view the fake shell holds.
@@ -80,6 +84,17 @@ pub struct FakeEngine {
     /// there (017), in order: its name for the question, and the name and
     /// password, or `None` for no answer.
     pub sign_in_answers: Vec<(u64, Option<(String, String)>)>,
+    /// The certificates this shell lets through (026): each a login set and
+    /// the origin whose certificate it is.
+    trusted: BTreeSet<(String, String)>,
+    /// The origin whose certificate each web view last refused.
+    refused: BTreeMap<u64, String>,
+    /// Every web view this shell was told to let a certificate through for,
+    /// in order.
+    pub trust_asked: Vec<u64>,
+    /// This shell keeps no certificate it refuses: it says so with the
+    /// failure, and is told nothing it can act on.
+    pub holds_no_certificate: bool,
 }
 
 impl FakeEngine {
@@ -99,6 +114,10 @@ impl FakeEngine {
             permission_answers: Vec::new(),
             dialog_answers: Vec::new(),
             sign_in_answers: Vec::new(),
+            trusted: BTreeSet::new(),
+            refused: BTreeMap::new(),
+            trust_asked: Vec::new(),
+            holds_no_certificate: false,
         }
     }
 
@@ -216,6 +235,35 @@ impl FakeEngine {
         );
     }
 
+    /// A page whose server's certificate is not trusted (026): it fails with
+    /// `code`, the engine holding the certificate, until the engine is told
+    /// to let it through for the login set of the web view that asks; then
+    /// it loads, with `title`.
+    pub fn untrusted(&mut self, url: &str, title: &str, code: &str) {
+        self.pages.insert(
+            url.to_owned(),
+            FakePage {
+                title: title.to_owned(),
+                certificate: Some(code.to_owned()),
+                ..FakePage::default()
+            },
+        );
+    }
+
+    /// This shell no longer holds what its web views refused: told to let a
+    /// certificate through, it says it has none ("certificate.unknown").
+    pub fn forgets_what_it_refused(&mut self) {
+        self.refused.clear();
+    }
+
+    /// The server at `url` has another certificate now: what was let through
+    /// for it is let through no more (026 §3: one certificate, and no other).
+    pub fn certificate_changes(&mut self, url: &str) {
+        if let Some(origin) = origin_of(url) {
+            self.trusted.retain(|(_, trusted)| *trusted != origin);
+        }
+    }
+
     /// Makes an address fail to load with a code.
     pub fn fail(&mut self, url: &str, code: &str) {
         self.pages.insert(
@@ -265,6 +313,19 @@ impl FakeEngine {
                     return (error("webview.unknown"), Vec::new());
                 }
                 (ack, self.load(load.web_view_id, &load.url))
+            }
+            Kind::WebViewTrustCertificate(trust) => {
+                let Some(view) = self.web_views.get(&trust.web_view_id) else {
+                    return (error("webview.unknown"), Vec::new());
+                };
+                self.trust_asked.push(trust.web_view_id);
+                // What this web view last refused, for its login set: that
+                // origin's certificate is let through from now.
+                let Some(origin) = self.refused.get(&trust.web_view_id).cloned() else {
+                    return (error("certificate.unknown"), Vec::new());
+                };
+                self.trusted.insert((view.login_set.clone(), origin));
+                (ack, Vec::new())
             }
             Kind::WebViewCommand(command) => {
                 if !self.web_views.contains_key(&command.web_view_id) {
@@ -346,6 +407,34 @@ impl FakeEngine {
             }
         }
         let page = self.pages.get(&at).cloned();
+        // A certificate that is not trusted (026): refused, and held, unless
+        // this web view's login set was told to let it through.
+        let login_set = self
+            .web_views
+            .get(&id)
+            .map(|view| view.login_set.clone())
+            .unwrap_or_default();
+        let untrusted = page
+            .as_ref()
+            .and_then(|page| page.certificate.clone())
+            .zip(origin_of(&at))
+            .filter(|(_, origin)| !self.trusted.contains(&(login_set.clone(), origin.clone())));
+        if let Some((code, origin)) = untrusted {
+            let held = !self.holds_no_certificate;
+            if held {
+                self.refused.insert(id, origin);
+            }
+            events.push(event(
+                id,
+                engine_event::Kind::NavigationFailed(NavigationFailed {
+                    code,
+                    url: at,
+                    refused: false,
+                    certificate_held: held,
+                }),
+            ));
+            return events;
+        }
         let failure = match &page {
             None => Some("net.dns".to_owned()),
             Some(page) => page.fail.clone(),
@@ -357,6 +446,7 @@ impl FakeEngine {
                     code,
                     url: at,
                     refused: false,
+                    certificate_held: false,
                 }),
             ));
             return events;
@@ -651,6 +741,7 @@ impl FakeEngine {
                 code: code.to_owned(),
                 url: url.to_owned(),
                 refused: false,
+                certificate_held: false,
             }),
         )
     }
@@ -665,6 +756,7 @@ impl FakeEngine {
                 code: "net.cancelled".to_owned(),
                 url: url.to_owned(),
                 refused: true,
+                certificate_held: false,
             }),
         )
     }
@@ -683,6 +775,14 @@ impl FakeEngine {
             engine_event::Kind::ProgressChanged(ProgressChanged { fraction }),
         )
     }
+}
+
+/// The scheme, host and port of an address, as far as its path: whose
+/// certificate a connection to it presents.
+fn origin_of(url: &str) -> Option<String> {
+    let (scheme, rest) = url.split_once("://")?;
+    let authority = rest.split(['/', '?', '#']).next()?;
+    (!authority.is_empty()).then(|| format!("{scheme}://{authority}"))
 }
 
 fn event(id: u64, kind: engine_event::Kind) -> EngineEvent {

@@ -41,6 +41,8 @@ message HostRequest {
     DialogAnswer dialog_answer = 12;
     // Since 1.13
     SignInAnswer sign_in_answer = 13;
+    // Since 1.20
+    WebViewTrustCertificate web_view_trust_certificate = 14;
   }
 }
 
@@ -191,4 +193,15 @@ message SignInAnswer {
   bool accepted = 2;
   string name = 3 [(wt.redact) = true];
   string password = 4 [(wt.redact) = true];
+}
+
+// WebViews, since 1.20 (026): lets through, for this web view's login set,
+// the certificate this web view last refused, at the host and port it was
+// refused for. That certificate and no other, at that host and port and no
+// other, until the app quits: an adapter keeps the exception in memory and
+// nowhere else. Answered with Ack; "webview.unknown", or
+// "certificate.unknown" when the adapter holds no certificate it refused
+// for this web view.
+message WebViewTrustCertificate {
+  uint64 web_view_id = 1;
 }

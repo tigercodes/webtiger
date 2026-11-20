@@ -9,8 +9,8 @@ use wt_core::{
 };
 use wt_proto::v1::{
     AddressView, DialogKind, DialogPrompt, DownloadPrompt, EngineKind, FindView, LoadState,
-    PermissionKind, PermissionPrompt, PromptView, SignInPrompt, TabSummary, TabView,
-    WindowSnapshot, ZoomView, address_view, engine_event, prompt_view,
+    NavigationFailed, PermissionKind, PermissionPrompt, PromptView, SignInPrompt, TabSummary,
+    TabView, WindowSnapshot, ZoomView, address_view, engine_event, prompt_view,
 };
 use wt_store::{SavedTab, Space};
 
@@ -262,6 +262,11 @@ pub(crate) struct Tab {
     /// download that comes of it is what they asked for (015). Good for
     /// one.
     own_load: bool,
+    /// Where the tab's failed load was going, when it failed for its site's
+    /// certificate and the adapter holds what it refused (026): the load may
+    /// be gone on with. `None` for any other failure, and once another load
+    /// begins.
+    passable: Option<Address>,
     /// The page has said something or asked (016): its next can be stopped.
     spoke: bool,
     /// The person stopped this page's messages: it says no more until
@@ -315,6 +320,7 @@ impl Tab {
             prompts: VecDeque::new(),
             refused: Vec::new(),
             own_load: false,
+            passable: None,
             spoke: false,
             silenced: false,
         }
@@ -402,6 +408,7 @@ impl Tab {
     fn fail(&mut self, code: &str) {
         self.load = Load::Failed;
         self.progress = 0.0;
+        self.passable = None;
         self.error = if is_code(code) {
             code.to_owned()
         } else {
@@ -417,6 +424,7 @@ impl Tab {
                 self.load = Load::Loading;
                 self.progress = 0.0;
                 self.error.clear();
+                self.passable = None;
             }
             Kind::NavigationCommitted(committed) => {
                 // An address the engine reports but the parser refuses is
@@ -435,6 +443,7 @@ impl Tab {
                 self.silenced = false;
                 self.had_page = true;
                 self.pending = None;
+                self.passable = None;
                 self.title.clear();
             }
             Kind::NavigationFinished(_) => {
@@ -453,11 +462,16 @@ impl Tab {
                     self.load = Load::Idle;
                     self.progress = 0.0;
                     self.pending = None;
+                    self.passable = None;
                 } else {
                     // Nothing came of what the person asked for, and the
                     // page that is still there is not it.
                     self.own_load = false;
                     self.fail(&failed.code);
+                    // It may be gone on with (026 §3) when the trouble was
+                    // the site's certificate and the adapter holds what it
+                    // refused.
+                    self.passable = passable(&failed);
                 }
             }
             Kind::AddressChanged(changed) => {
@@ -551,6 +565,13 @@ impl Tab {
             find: self.find.clone(),
             zoom: self.zoom_view(),
             prompt: self.prompts.front().map(Asking::view),
+            certificate_passable: self.passable.is_some(),
+            certificate_host: self
+                .passable
+                .as_ref()
+                .and_then(Address::host)
+                .unwrap_or_default()
+                .to_owned(),
         }
     }
 
@@ -571,6 +592,22 @@ impl Tab {
             can_zoom_out: zoom_out(self.zoom).is_some(),
         })
     }
+}
+
+/// Where a failed load may be gone on to (026 §3): the address that failed,
+/// when the trouble was its site's certificate, the adapter holds the
+/// certificate it refused, and the address is a page's over `https`.
+fn passable(failed: &NavigationFailed) -> Option<Address> {
+    let certificate = matches!(
+        failed.code.as_str(),
+        "net.tls.untrusted" | "net.tls.date" | "net.tls.name"
+    );
+    if !certificate || !failed.certificate_held {
+        return None;
+    }
+    Address::parse(&failed.url)
+        .ok()
+        .filter(|address| address.scheme() == "https" && address.origin().is_some())
 }
 
 fn address_view(address: &Address) -> AddressView {
@@ -659,6 +696,10 @@ pub(crate) struct State {
     /// How many downloads of each login set are coming (013), for the
     /// snapshots of its windows.
     downloads_active: BTreeMap<LoginSetId, u32>,
+    /// The certificates a person went on past (026): each a login set and
+    /// the origin whose certificate it was. Until the app quits, and kept
+    /// nowhere else. A page of one is never shown as secure.
+    exceptions: BTreeSet<(LoginSetId, String)>,
 }
 
 impl State {
@@ -676,6 +717,7 @@ impl State {
             saved,
             session_window: None,
             downloads_active: BTreeMap::new(),
+            exceptions: BTreeSet::new(),
             spaces,
             start: (start.id, start.login_set),
             engine,
@@ -1618,6 +1660,33 @@ impl State {
             .and_then(|tab_id| self.tabs.get_mut(tab_id))
     }
 
+    /// Where a tab's failed load may be gone on to (026 §3): its web view,
+    /// the address that failed, and the tab's login set. `Err(false)` for no
+    /// such tab; `Err(true)` for a tab whose failed load is not one that may
+    /// be gone on with.
+    pub(crate) fn passable(&self, tab: TabId) -> Result<(WebViewId, Address, LoginSetId), bool> {
+        let tab = self.tabs.get(&tab).ok_or(false)?;
+        let address = tab.passable.clone().ok_or(true)?;
+        let web_view = tab.web_view.ok_or(true)?;
+        Ok((web_view, address, tab.login_set))
+    }
+
+    /// A person went on past the certificate of `origin` in a login set
+    /// (026): its pages are marked not secure from now, in every window.
+    pub(crate) fn except(&mut self, login_set: LoginSetId, origin: String) {
+        if self.exceptions.insert((login_set, origin)) {
+            self.dirty.extend(self.windows.keys().copied());
+        }
+    }
+
+    /// There is no such exception after all: the adapter held nothing to
+    /// let through.
+    pub(crate) fn unexcept(&mut self, login_set: LoginSetId, origin: &str) {
+        if self.exceptions.remove(&(login_set, origin.to_owned())) {
+            self.dirty.extend(self.windows.keys().copied());
+        }
+    }
+
     /// The login set a window's history is: that of the Space it shows.
     pub(crate) fn history_of(&self, window: WindowId) -> Option<LoginSetId> {
         self.login_set_shown(self.windows.get(&window)?)
@@ -1758,9 +1827,19 @@ impl State {
         let space = self.space(window.space)?;
         let row = window.shown()?;
         let front = self.tabs.get(&row.front)?;
+        let mut view = front.view(row.front);
+        // A page whose certificate the person went on past is never shown as
+        // secure (026 §3), whatever its address says.
+        let excepted = front
+            .shown()
+            .and_then(Address::origin)
+            .is_some_and(|origin| self.exceptions.contains(&(front.login_set, origin)));
+        if excepted && let Some(address) = &mut view.address {
+            address.security = address_view::Security::Insecure as i32;
+        }
         Some(WindowSnapshot {
             window_id: window_id.get(),
-            tab: Some(front.view(row.front)),
+            tab: Some(view),
             tabs: row
                 .tabs
                 .iter()

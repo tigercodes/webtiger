@@ -154,6 +154,15 @@ public nonisolated struct WTHostRequest: Sendable {
     set {kind = .signInAnswer(newValue)}
   }
 
+  /// Since 1.20
+  public var webViewTrustCertificate: WTWebViewTrustCertificate {
+    get {
+      if case .webViewTrustCertificate(let v)? = kind {return v}
+      return WTWebViewTrustCertificate()
+    }
+    set {kind = .webViewTrustCertificate(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -177,6 +186,8 @@ public nonisolated struct WTHostRequest: Sendable {
     case dialogAnswer(WTDialogAnswer)
     /// Since 1.13
     case signInAnswer(WTSignInAnswer)
+    /// Since 1.20
+    case webViewTrustCertificate(WTWebViewTrustCertificate)
 
   }
 
@@ -509,13 +520,32 @@ public nonisolated struct WTSignInAnswer: Sendable {
   public init() {}
 }
 
+/// WebViews, since 1.20 (026): lets through, for this web view's login set,
+/// the certificate this web view last refused, at the host and port it was
+/// refused for. That certificate and no other, at that host and port and no
+/// other, until the app quits: an adapter keeps the exception in memory and
+/// nowhere else. Answered with Ack; "webview.unknown", or
+/// "certificate.unknown" when the adapter holds no certificate it refused
+/// for this web view.
+public nonisolated struct WTWebViewTrustCertificate: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var webViewID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
 
 nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".HostRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{3}web_view_create\0\u{3}web_view_load\0\u{3}web_view_command\0\u{3}web_view_destroy\0\u{3}open_outside\0\u{3}web_view_find\0\u{3}web_view_set_zoom\0\u{3}download_start\0\u{3}download_cancel\0\u{3}permission_answer\0\u{3}dialog_answer\0\u{3}sign_in_answer\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{3}web_view_create\0\u{3}web_view_load\0\u{3}web_view_command\0\u{3}web_view_destroy\0\u{3}open_outside\0\u{3}web_view_find\0\u{3}web_view_set_zoom\0\u{3}download_start\0\u{3}download_cancel\0\u{3}permission_answer\0\u{3}dialog_answer\0\u{3}sign_in_answer\0\u{3}web_view_trust_certificate\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -692,6 +722,19 @@ nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
           self.kind = .signInAnswer(v)
         }
       }()
+      case 14: try {
+        var v: WTWebViewTrustCertificate?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .webViewTrustCertificate(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .webViewTrustCertificate(v)
+        }
+      }()
       default: break
       }
     }
@@ -754,6 +797,10 @@ nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
     case .signInAnswer?: try {
       guard case .signInAnswer(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
+    }()
+    case .webViewTrustCertificate?: try {
+      guard case .webViewTrustCertificate(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
     }()
     case nil: break
     }
@@ -1375,6 +1422,36 @@ nonisolated extension WTSignInAnswer: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if lhs.accepted != rhs.accepted {return false}
     if lhs.name != rhs.name {return false}
     if lhs.password != rhs.password {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTWebViewTrustCertificate: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WebViewTrustCertificate"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.webViewID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.webViewID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.webViewID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTWebViewTrustCertificate, rhs: WTWebViewTrustCertificate) -> Bool {
+    if lhs.webViewID != rhs.webViewID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -14,6 +14,7 @@
 //! awaits (the workspace denies `await_holding_refcell_ref`).
 
 mod app;
+mod certificates;
 mod dialogs;
 mod dispatch;
 mod downloads;

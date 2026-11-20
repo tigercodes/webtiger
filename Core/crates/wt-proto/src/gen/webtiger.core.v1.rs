@@ -322,6 +322,15 @@ pub struct TabView {
     /// nothing. One at a time: what else waits is shown when this is answered.
     #[prost(message, optional, tag = "14")]
     pub prompt: ::core::option::Option<PromptView>,
+    /// Since 1.20 (026). With LOAD_STATE_FAILED: the load failed for its site's
+    /// certificate, and the person may go on all the same
+    /// (ProceedPastCertificate). A shell warns before it offers that.
+    #[prost(bool, tag = "15")]
+    pub certificate_passable: bool,
+    /// Since 1.20. With `certificate_passable`: the host whose certificate was
+    /// not trusted, in its ASCII form, for the warning's words.
+    #[prost(string, tag = "16")]
+    pub certificate_host: ::prost::alloc::string::String,
 }
 /// What the address field shows. The core builds it so that every shell shows
 /// the same thing and none can be made to lie: a page-initiated load does not
@@ -951,6 +960,18 @@ pub struct ColourSpace {
     #[prost(string, tag = "2")]
     pub colour: ::prost::alloc::string::String,
 }
+/// Since 1.20. The person goes on past a certificate that is not trusted
+/// (026), in a tab whose view says it may be (`certificate_passable`). The
+/// core has the shell let that certificate through, for that host and port,
+/// in the tab's login set, until the app quits; and loads the address again.
+/// Every page of that host is then marked not secure. Answered with Ack,
+/// "tab.unknown", or "certificate.not_passable" for a tab whose failed load
+/// is not one that may be gone on with, which changes nothing.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ProceedPastCertificate {
+    #[prost(uint64, tag = "1")]
+    pub tab_id: u64,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum LoadState {
@@ -1281,6 +1302,13 @@ pub struct NavigationFailed {
     /// (006).
     #[prost(bool, tag = "3")]
     pub refused: bool,
+    /// Since 1.20 (026). With "net.tls.untrusted", "net.tls.date" or
+    /// "net.tls.name", for the web view's own page: the adapter holds the
+    /// certificate it refused, at the host and port of `url`, and can be told
+    /// to let it through (WebViewTrustCertificate). Nothing is let through
+    /// until it is told.
+    #[prost(bool, tag = "4")]
+    pub certificate_held: bool,
 }
 /// The page on screen changed its own address without a load: a fragment, or
 /// the History API. Never the address a load is heading for.
@@ -1551,7 +1579,7 @@ pub struct SearchRequested {
 pub struct HostRequest {
     #[prost(
         oneof = "host_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14"
     )]
     pub kind: ::core::option::Option<host_request::Kind>,
 }
@@ -1592,6 +1620,9 @@ pub mod host_request {
         /// Since 1.13
         #[prost(message, tag = "13")]
         SignInAnswer(super::SignInAnswer),
+        /// Since 1.20
+        #[prost(message, tag = "14")]
+        WebViewTrustCertificate(super::WebViewTrustCertificate),
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -1780,6 +1811,18 @@ pub struct SignInAnswer {
     #[prost(string, tag = "4")]
     pub password: ::prost::alloc::string::String,
 }
+/// WebViews, since 1.20 (026): lets through, for this web view's login set,
+/// the certificate this web view last refused, at the host and port it was
+/// refused for. That certificate and no other, at that host and port and no
+/// other, until the app quits: an adapter keeps the exception in memory and
+/// nowhere else. Answered with Ack; "webview.unknown", or
+/// "certificate.unknown" when the adapter holds no certificate it refused
+/// for this web view.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct WebViewTrustCertificate {
+    #[prost(uint64, tag = "1")]
+    pub web_view_id: u64,
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Envelope {
     /// A request's id, chosen by the shell, correlates its response; a request
@@ -1813,7 +1856,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -1891,6 +1934,9 @@ pub mod request {
         /// Since 1.19
         #[prost(message, tag = "29")]
         ColourSpace(super::ColourSpace),
+        /// Since 1.20
+        #[prost(message, tag = "30")]
+        ProceedPastCertificate(super::ProceedPastCertificate),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.

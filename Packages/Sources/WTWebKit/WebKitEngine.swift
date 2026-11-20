@@ -171,22 +171,31 @@ public final class WebKitEngine: HostServices {
         case let .downloadCancel(cancel):
             downloads.cancel(cancel.downloadID)
             return .ack(WTAck())
-        case let .dialogAnswer(answer):
-            // The core's word on what a page said or asked (016). Done, also for one that
-            // no longer waits.
-            dialogs.answer(answer.requestID, accepted: answer.accepted, text: answer.text)
-            return .ack(WTAck())
-        case let .signInAnswer(answer):
-            // The core's word on a server that asked who is there (017). Done, also for one
-            // that no longer waits.
-            signIns.answer(answer.requestID, accepted: answer.accepted, name: answer.name, password: answer.password)
-            return .ack(WTAck())
-        case let .permissionAnswer(answer):
-            // The core's word on what a page asked to use (014). Done, also for a request
-            // that no longer waits: its page went away.
-            permissions.answer(answer.requestID, granted: answer.granted)
-            return .ack(WTAck())
+        case .dialogAnswer, .signInAnswer, .permissionAnswer:
+            return settle(request)
+        case .webViewTrustCertificate:
+            // Going on past a certificate (026) is written with this adapter's part of it:
+            // until then it holds no certificate it refused, says so with no failure, and has
+            // none to let through.
+            return failure("certificate.unknown")
         }
+    }
+
+    /// The core's word on what waited for the person: what a page said or asked (016), a
+    /// server that asked who is there (017), what a page asked to use (014). Done, also for
+    /// one that no longer waits: its page went away.
+    private func settle(_ request: WTHostRequest.OneOf_Kind) -> WTHostResponse.OneOf_Kind {
+        switch request {
+        case let .dialogAnswer(answer):
+            dialogs.answer(answer.requestID, accepted: answer.accepted, text: answer.text)
+        case let .signInAnswer(answer):
+            signIns.answer(answer.requestID, accepted: answer.accepted, name: answer.name, password: answer.password)
+        case let .permissionAnswer(answer):
+            permissions.answer(answer.requestID, granted: answer.granted)
+        default:
+            break
+        }
+        return .ack(WTAck())
     }
 
     /// Deletes a login set: everything its pages stored, and the store itself. False, and

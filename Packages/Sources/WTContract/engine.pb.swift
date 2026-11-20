@@ -338,6 +338,13 @@ public nonisolated struct WTNavigationFailed: Sendable {
   /// (006).
   public var refused: Bool = false
 
+  /// Since 1.20 (026). With "net.tls.untrusted", "net.tls.date" or
+  /// "net.tls.name", for the web view's own page: the adapter holds the
+  /// certificate it refused, at the host and port of `url`, and can be told
+  /// to let it through (WebViewTrustCertificate). Nothing is let through
+  /// until it is told.
+  public var certificateHeld: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1257,7 +1264,7 @@ nonisolated extension WTNavigationFinished: SwiftProtobuf.Message, SwiftProtobuf
 
 nonisolated extension WTNavigationFailed: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".NavigationFailed"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}code\0\u{1}url\0\u{1}refused\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}code\0\u{1}url\0\u{1}refused\0\u{3}certificate_held\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1268,6 +1275,7 @@ nonisolated extension WTNavigationFailed: SwiftProtobuf.Message, SwiftProtobuf._
       case 1: try { try decoder.decodeSingularStringField(value: &self.code) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.url) }()
       case 3: try { try decoder.decodeSingularBoolField(value: &self.refused) }()
+      case 4: try { try decoder.decodeSingularBoolField(value: &self.certificateHeld) }()
       default: break
       }
     }
@@ -1283,6 +1291,9 @@ nonisolated extension WTNavigationFailed: SwiftProtobuf.Message, SwiftProtobuf._
     if self.refused != false {
       try visitor.visitSingularBoolField(value: self.refused, fieldNumber: 3)
     }
+    if self.certificateHeld != false {
+      try visitor.visitSingularBoolField(value: self.certificateHeld, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1290,6 +1301,7 @@ nonisolated extension WTNavigationFailed: SwiftProtobuf.Message, SwiftProtobuf._
     if lhs.code != rhs.code {return false}
     if lhs.url != rhs.url {return false}
     if lhs.refused != rhs.refused {return false}
+    if lhs.certificateHeld != rhs.certificateHeld {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

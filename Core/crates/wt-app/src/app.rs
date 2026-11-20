@@ -186,6 +186,9 @@ impl App {
             request::Kind::RenameSpace(rename) => answer(self.rename_space(&rename)),
             request::Kind::SwitchSpace(switch) => self.switch_space(&switch),
             request::Kind::ColourSpace(colour) => answer(self.colour_space(&colour)),
+            request::Kind::ProceedPastCertificate(proceed) => {
+                self.proceed_past_certificate(&proceed)
+            }
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
             | request::Kind::Unsubscribe(_)
@@ -840,7 +843,7 @@ impl App {
     /// the other, so two loads asked in a row reach the shell in that order.
     /// The future is the wait for the shell's answers. `None` when there is
     /// no such tab.
-    fn begin_load(
+    pub(crate) fn begin_load(
         &self,
         tab: TabId,
         address: Address,
