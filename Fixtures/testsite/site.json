@@ -1,5 +1,5 @@
 {
-  "comment": "The test site: the pages every shell's adapter suite and UI tests load, defined once. Tools/testsite/site.py writes them into each suite's own loopback server (Swift, Kotlin) and can serve them itself. A page with a 'title' is an HTML page with that title, a heading saying the same, and 'body' after it; a page with 'content' is that text, as 'type'. 'status' is '200 OK' unless given. 'body' and 'content' may be a list of lines. In a title, a header or a body, {query:NAME|DEFAULT} is the request's query value NAME and {cookie:NAME|DEFAULT} its cookie NAME, or DEFAULT when the request has none. Every answer closes the connection and says Cache-Control: no-store, unless the page gives a Cache-Control header of its own.",
+  "comment": "The test site: the pages every shell's adapter suite and UI tests load, defined once. Tools/testsite/site.py writes them into each suite's own loopback server (Swift, Kotlin) and can serve them itself. A page with a 'title' is an HTML page with that title, a heading saying the same, and 'body' after it; a page with 'content' is that text, as 'type'. 'status' is '200 OK' unless given. 'body' and 'content' may be a list of lines. In a title, a header or a body, {query:NAME|DEFAULT} is the request's query value NAME and {cookie:NAME|DEFAULT} its cookie NAME, or DEFAULT when the request has none. Every answer closes the connection and says Cache-Control: no-store, unless the page gives a Cache-Control header of its own. A page with 'only_for' (name:password) answers only to a request that says so (HTTP Basic); every other request for it is answered with 'refused', which asks who is there.",
   "pages": [
     {
       "path": "/",
@@ -282,10 +282,55 @@
         "</script>"
       ],
       "note": "Holds /says in a frame from another origin (the same server by its other name, localhost), which asks at once: says in its title what the frame said it got. For who a page's dialog is reported to be from."
+    },
+    {
+      "path": "/staff",
+      "title": "Staff only",
+      "only_for": "ada:lovelace",
+      "body": "<p id=\"rota\">The rota.</p><img alt=\"\" src=\"/staff-picture\">",
+      "note": "Answers only to the name ada and the password lovelace (HTTP Basic, realm Staff); to anyone else, with `refused`. Its picture asks the same."
+    },
+    {
+      "path": "/staff-picture",
+      "type": "image/svg+xml",
+      "only_for": "ada:lovelace",
+      "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>",
+      "note": "A picture only for ada."
+    },
+    {
+      "path": "/to-staff",
+      "status": "302 Found",
+      "headers": [
+        "Location: http://localhost:{query:port|80}/staff"
+      ],
+      "content": "",
+      "note": "Sends a load on to /staff at the server's other name (localhost), on the port ?port= says: for where a load is heading when a server asks."
+    },
+    {
+      "path": "/shows-staff-picture",
+      "title": "Shows a picture",
+      "body": [
+        "<img id=\"theirs\" alt=\"\">",
+        "<script>",
+        "var theirs = document.getElementById('theirs');",
+        "theirs.onload = function () { document.title = 'picture shown'; };",
+        "theirs.onerror = function () { document.title = 'picture refused'; };",
+        "theirs.src = ('{query:from|another}' === 'own' ? '' : 'http://localhost:' + location.port) + '/staff-picture';",
+        "</script>"
+      ],
+      "note": "Shows /staff-picture from another origin (the same server by its other name, localhost), or with ?from=own from its own, and says in its title what became of it. For a server asking who is there with no load on its way: the tab's own, and one that is not."
     }
   ],
   "not_found": {
     "status": "404 Not Found",
     "content": "<title>Not found</title>"
+  },
+  "refused": {
+    "status": "401 Unauthorized",
+    "title": "Sign in needed",
+    "headers": [
+      "WWW-Authenticate: Basic realm=\"Staff\""
+    ],
+    "note": "What a page that is only for someone (only_for) answers to anyone else."
   }
 }

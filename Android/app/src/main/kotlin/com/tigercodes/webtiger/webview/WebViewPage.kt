@@ -15,6 +15,7 @@ import android.os.Message
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.GeolocationPermissions
+import android.webkit.HttpAuthHandler
 import android.webkit.JsPromptResult
 import android.webkit.JsResult
 import android.webkit.PermissionRequest
@@ -301,6 +302,22 @@ internal class WebViewPage(
             // The page's own load only. A resource of the page that failed is the page's business.
             if (view === webView && request.isForMainFrame) {
                 tracker.failed(netErrorCode(error.errorCode, online()), request.url.toString())
+            }
+        }
+
+        /**
+         * A server asks who is there (017). Left alone the WebView gives it no answer. It is
+         * reported, and the load waits for the core's word. The WebView names the server's host
+         * and nothing more of it; it says the stored answer is not to be used again once the
+         * server has refused one for this request.
+         */
+        override fun onReceivedHttpAuthRequest(view: WebView, handler: HttpAuthHandler, host: String?, realm: String?) {
+            if (view !== webView) {
+                handler.cancel()
+                return
+            }
+            this@WebViewPage.host.signIn(id, host.orEmpty(), realm.orEmpty(), tracker.headingFor, again = !handler.useHttpAuthUsernamePassword()) { typed ->
+                if (typed != null) handler.proceed(typed.name, typed.password) else handler.cancel()
             }
         }
 

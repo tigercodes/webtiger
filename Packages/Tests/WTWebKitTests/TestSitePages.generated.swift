@@ -9,7 +9,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Home</title><h1>Home</h1><a id=\"next\" href=\"/landed\">next</a>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/set",
@@ -17,7 +18,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")], [.text("Set-Cookie: who="), .query("v", or: "someone"), .text("; Path=/; Max-Age=3600")]],
             body: [.text("<!doctype html><title>Set</title><h1>Set</h1>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/session",
@@ -25,7 +27,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")], [.text("Set-Cookie: who="), .query("v", or: "someone"), .text("; Path=/")]],
             body: [.text("<!doctype html><title>Session</title><h1>Session</h1>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/whoami",
@@ -33,7 +36,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>who="), .cookie("who", or: "none"), .text("</title><h1>who="), .cookie("who", or: "none"), .text("</h1>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/redirect",
@@ -41,7 +45,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")], [.text("Location: /landed")]],
             body: [],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/landed",
@@ -49,7 +54,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Landed</title><h1>Landed</h1>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/push",
@@ -57,7 +63,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Push</title><h1>Push</h1><script>history.pushState({}, '', '/pushed')</script>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/worker.js",
@@ -65,7 +72,8 @@ enum TestSitePages {
             type: "text/javascript",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("self.addEventListener('install', () => self.skipWaiting());")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/tall",
@@ -73,7 +81,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Tall</title><h1>Tall</h1><input id=\"note\"><div style=\"height: 6000px\"></div><p id=\"end\">end</p>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/storage",
@@ -81,7 +90,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Storage</title><h1>Storage</h1><script>\nconst v = new URLSearchParams(location.search).get('v');\nif (v) localStorage.setItem('who', v);\ndocument.title = 'stored=' + (localStorage.getItem('who') || 'none');\n</script>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/tracked",
@@ -89,7 +99,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Tracked</title><h1>Tracked</h1><img src=\"/pixel\" alt=\"\">")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/pixel",
@@ -97,7 +108,8 @@ enum TestSitePages {
             type: "image/svg+xml",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/uses-cached",
@@ -105,7 +117,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Uses</title><h1>Uses</h1><script src=\"/cached.js\"></script>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/cached.js",
@@ -113,7 +126,8 @@ enum TestSitePages {
             type: "text/javascript",
             headers: [[.text("Cache-Control: max-age=3600")]],
             body: [.text("document.title = 'Cached';")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/slow",
@@ -121,7 +135,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Slow</title><h1>Slow</h1>")],
-            delayMilliseconds: 3000
+            delayMilliseconds: 3000,
+            authorization: ""
         ),
         TestSitePage(
             path: "/opener",
@@ -129,7 +144,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Opener</title><h1>Opener</h1><p><a id=\"blank\" href=\"/opened\" target=\"_blank\">new window</a></p>\n<p><button id=\"open\" onclick=\"window.open('/opened')\">open</button></p>\n<p><a id=\"letter\" href=\"mailto:ada@example.com\" target=\"_blank\">write a letter</a></p>\n<p><button id=\"ring\" onclick=\"window.open('tel:+15550100')\">ring</button></p>\n<script>addEventListener('message', (said) => { document.title = 'heard=' + said.data; });</script>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/opened",
@@ -137,7 +153,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Opened</title><h1>Opened</h1><p><button id=\"close\" onclick=\"window.close()\">close</button></p>\n<script>\nif (window.opener) {\n  document.title = 'Opened by a page';\n  window.opener.postMessage('hello', '*');\n}\n</script>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/pops",
@@ -145,7 +162,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Pops</title><h1>Pops</h1><script>document.title = window.open('/opened') ? 'popped' : 'blocked';</script>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/clicks",
@@ -153,7 +171,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Clicks</title><h1>Clicks</h1><p><a id=\"blank\" href=\"/opened\" target=\"_blank\">new window</a></p>\n<script>document.getElementById('blank').click(); document.title = 'clicked';</script>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/contact",
@@ -161,7 +180,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Contact</title><h1>Contact</h1><p><a id=\"letter\" href=\"mailto:ada@example.com\">write a letter</a></p>\n<p><button id=\"script\" onclick=\"location.href = 'tel:+15550100'\">ring</button></p>\n<iframe id=\"frame\" srcdoc=\"<a id='framed' href='sms:+15550100' style='position: fixed; inset: 0'>send a message</a>\"></iframe>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/find",
@@ -169,7 +189,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Find</title><h1>Find</h1><p id=\"one\">A needle in a haystack.</p>\n<p id=\"two\">Another Needle here.</p>\n<p id=\"three\">And a third needle.</p>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/rings",
@@ -177,7 +198,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Rings</title><h1>Rings</h1><script>location.href = 'tel:+15550100'; document.title = 'rang';</script>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/sized",
@@ -185,7 +207,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Sized</title><h1>Sized</h1>\n<p id=\"line\" style=\"font-size: 16px; line-height: 20px; margin: 0\"><span id=\"words\">A line of words.</span></p>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/downloads",
@@ -193,7 +216,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Downloads</title><h1>Downloads</h1><p><a id=\"attachment\" href=\"/notes\">a file that says it is to be saved</a></p>\n<p><a id=\"kind\" href=\"/data.bin\">a file of a kind nothing shows</a></p>\n<p><a id=\"says\" href=\"/landed\" download=\"kept page.html\">a link that says download</a></p>\n<p><a id=\"sneaky\" href=\"/sneaky\">a file whose name is a path</a></p>\n<p><a id=\"whose\" href=\"/whose-file\">a file that says who is signed in</a></p>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/notes",
@@ -201,7 +225,8 @@ enum TestSitePages {
             type: "text/plain",
             headers: [[.text("Cache-Control: no-store")], [.text("Content-Disposition: attachment; filename=\"notes.txt\"")]],
             body: [.text("Twelve notes, to be saved.")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/data.bin",
@@ -209,7 +234,8 @@ enum TestSitePages {
             type: "application/octet-stream",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("0123456789abcdef")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/sneaky",
@@ -217,7 +243,8 @@ enum TestSitePages {
             type: "text/plain",
             headers: [[.text("Cache-Control: no-store")], [.text("Content-Disposition: attachment; filename=\"../../sneaky.txt\"")]],
             body: [.text("This file's name tried to be a path.")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/whose-file",
@@ -225,7 +252,8 @@ enum TestSitePages {
             type: "text/plain",
             headers: [[.text("Cache-Control: no-store")], [.text("Content-Disposition: attachment; filename=\"who.txt\"")]],
             body: [.text("who="), .cookie("who", or: "none")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/asks",
@@ -233,7 +261,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Asks</title><h1>Asks</h1><p><button id=\"camera\" onclick=\"ask('camera')\">the camera</button></p>\n<p><button id=\"microphone\" onclick=\"ask('microphone')\">the microphone</button></p>\n<p><button id=\"both\" onclick=\"ask('both')\">the camera and the microphone</button></p>\n<p><button id=\"location\" onclick=\"ask('location')\">where the device is</button></p>\n<p id=\"said\">nothing asked</p>\n<script>\nfunction say(what) { document.getElementById('said').textContent = what; document.title = what; if (parent !== window) parent.postMessage(what, '*'); }\nfunction ask(what) {\n  say('asking ' + what);\n  if (what === 'location') {\n    navigator.geolocation.getCurrentPosition(function () { say('granted location'); }, function (failed) { say(failed.code === 1 ? 'refused location' : 'granted location, no place ' + failed.code); }, { timeout: 4000 });\n    return;\n  }\n  navigator.mediaDevices.getUserMedia({ video: what !== 'microphone', audio: what !== 'camera' }).then(function (stream) {\n    var tracks = stream.getTracks(); tracks.forEach(function (track) { track.stop(); });\n    say('granted ' + what + ' ' + tracks.length);\n  }, function (failed) { say('refused ' + what + ' ' + failed.name); });\n}\nvar now = '"), .query("now", or: "nothing"), .text("'; if (now !== 'nothing') ask(now);\n</script>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/asks-in-a-frame",
@@ -241,7 +270,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Asks in a frame</title><h1>Asks in a frame</h1><iframe id=\"frame\" allow=\"camera; microphone; geolocation\" width=\"320\" height=\"240\"></iframe>\n<script>\naddEventListener('message', function (said) { document.title = 'frame: ' + said.data; });\ndocument.getElementById('frame').src = 'http://localhost:' + location.port + '/asks?now="), .query("now", or: "camera"), .text("';\n</script>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/says",
@@ -249,7 +279,8 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Says</title><h1>Says</h1><p><button id=\"alert\" onclick=\"say('alert')\">says something</button></p>\n<p><button id=\"confirm\" onclick=\"say('confirm')\">asks yes or no</button></p>\n<p><button id=\"prompt\" onclick=\"say('prompt')\">asks for a word</button></p>\n<p><a id=\"away\" href=\"/landed\">somewhere else</a></p>\n<p id=\"said\">nothing said</p>\n<script>\nfunction tell(what) { document.getElementById('said').textContent = what; document.title = what; if (parent !== window) parent.postMessage(what, '*'); }\nfunction say(what) {\n  if (what === 'alert') { alert('Your basket is empty.'); tell('alert returned'); }\n  else if (what === 'confirm') { tell('confirm ' + confirm('Delete it?')); }\n  else { var got = prompt('Your name?', 'Ada'); tell(got === null ? 'prompt nothing' : 'prompt ' + got); }\n}\nif ('"), .query("hold", or: "no"), .text("' === 'yes') addEventListener('beforeunload', function (leaving) { leaving.preventDefault(); leaving.returnValue = 'stay'; });\nvar now = '"), .query("now", or: "nothing"), .text("'; if (now !== 'nothing') say(now);\n</script>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
         ),
         TestSitePage(
             path: "/says-in-a-frame",
@@ -257,7 +288,44 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>Says in a frame</title><h1>Says in a frame</h1><iframe id=\"frame\" width=\"320\" height=\"240\"></iframe>\n<script>\naddEventListener('message', function (said) { document.title = 'frame: ' + said.data; });\ndocument.getElementById('frame').src = 'http://localhost:' + location.port + '/says?now="), .query("now", or: "confirm"), .text("';\n</script>")],
-            delayMilliseconds: 0
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
+        TestSitePage(
+            path: "/staff",
+            status: "200 OK",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("<!doctype html><title>Staff only</title><h1>Staff only</h1><p id=\"rota\">The rota.</p><img alt=\"\" src=\"/staff-picture\">")],
+            delayMilliseconds: 0,
+            authorization: "Basic YWRhOmxvdmVsYWNl"
+        ),
+        TestSitePage(
+            path: "/staff-picture",
+            status: "200 OK",
+            type: "image/svg+xml",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>")],
+            delayMilliseconds: 0,
+            authorization: "Basic YWRhOmxvdmVsYWNl"
+        ),
+        TestSitePage(
+            path: "/to-staff",
+            status: "302 Found",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")], [.text("Location: http://localhost:"), .query("port", or: "80"), .text("/staff")]],
+            body: [],
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
+        TestSitePage(
+            path: "/shows-staff-picture",
+            status: "200 OK",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("<!doctype html><title>Shows a picture</title><h1>Shows a picture</h1><img id=\"theirs\" alt=\"\">\n<script>\nvar theirs = document.getElementById('theirs');\ntheirs.onload = function () { document.title = 'picture shown'; };\ntheirs.onerror = function () { document.title = 'picture refused'; };\ntheirs.src = ('"), .query("from", or: "another"), .text("' === 'own' ? '' : 'http://localhost:' + location.port) + '/staff-picture';\n</script>")],
+            delayMilliseconds: 0,
+            authorization: ""
         ),
     ]
 
@@ -268,6 +336,18 @@ enum TestSitePages {
         type: "text/html",
         headers: [[.text("Cache-Control: no-store")]],
         body: [.text("<title>Not found</title>")],
-        delayMilliseconds: 0
+        delayMilliseconds: 0,
+        authorization: ""
+    )
+
+    /// What a page that is only for someone answers to anyone else.
+    static let refused = TestSitePage(
+        path: "",
+        status: "401 Unauthorized",
+        type: "text/html",
+        headers: [[.text("Cache-Control: no-store")], [.text("WWW-Authenticate: Basic realm=\"Staff\"")]],
+        body: [.text("<!doctype html><title>Sign in needed</title><h1>Sign in needed</h1>")],
+        delayMilliseconds: 0,
+        authorization: ""
     )
 }

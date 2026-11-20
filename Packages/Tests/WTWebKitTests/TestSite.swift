@@ -22,6 +22,8 @@ struct TestSitePage: Sendable {
     let headers: [[TestSitePiece]]
     let body: [TestSitePiece]
     let delayMilliseconds: Int
+    /// The `Authorization` header the page answers to; empty for a page that is anyone's.
+    let authorization: String
 }
 
 final class TestSite: @unchecked Sendable {
@@ -118,7 +120,12 @@ final class TestSite: @unchecked Sendable {
         asked.add(path)
 
         let request = (query: pairs(query, separator: "&"), cookies: pairs(String(cookies), separator: ";"))
-        let page = TestSitePages.all.first { $0.path == path } ?? TestSitePages.notFound
+        var page = TestSitePages.all.first { $0.path == path } ?? TestSitePages.notFound
+        // A page that is only for someone answers to the header that says who, and to nothing else.
+        let said = lines.dropFirst().first { $0.lowercased().hasPrefix("authorization:") }?.dropFirst("authorization:".count) ?? ""
+        if !page.authorization.isEmpty, said.trimmingCharacters(in: .whitespaces) != page.authorization {
+            page = TestSitePages.refused
+        }
         let body = Data(filled(page.body, from: request).utf8)
         let head = [
             "HTTP/1.1 \(page.status)",

@@ -12,6 +12,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Home</title><h1>Home</h1><a id=\"next\" href=\"/landed\">next</a>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/set",
@@ -20,6 +21,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store")), listOf(TestSitePiece.Text("Set-Cookie: who="), TestSitePiece.Query("v", or = "someone"), TestSitePiece.Text("; Path=/; Max-Age=3600"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Set</title><h1>Set</h1>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/session",
@@ -28,6 +30,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store")), listOf(TestSitePiece.Text("Set-Cookie: who="), TestSitePiece.Query("v", or = "someone"), TestSitePiece.Text("; Path=/"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Session</title><h1>Session</h1>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/whoami",
@@ -36,6 +39,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>who="), TestSitePiece.Cookie("who", or = "none"), TestSitePiece.Text("</title><h1>who="), TestSitePiece.Cookie("who", or = "none"), TestSitePiece.Text("</h1>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/redirect",
@@ -44,6 +48,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store")), listOf(TestSitePiece.Text("Location: /landed"))),
                 body = listOf(),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/landed",
@@ -52,6 +57,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Landed</title><h1>Landed</h1>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/push",
@@ -60,6 +66,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Push</title><h1>Push</h1><script>history.pushState({}, '', '/pushed')</script>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/worker.js",
@@ -68,6 +75,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("self.addEventListener('install', () => self.skipWaiting());")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/tall",
@@ -76,6 +84,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Tall</title><h1>Tall</h1><input id=\"note\"><div style=\"height: 6000px\"></div><p id=\"end\">end</p>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/storage",
@@ -84,6 +93,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Storage</title><h1>Storage</h1><script>\nconst v = new URLSearchParams(location.search).get('v');\nif (v) localStorage.setItem('who', v);\ndocument.title = 'stored=' + (localStorage.getItem('who') || 'none');\n</script>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/tracked",
@@ -92,6 +102,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Tracked</title><h1>Tracked</h1><img src=\"/pixel\" alt=\"\">")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/pixel",
@@ -100,6 +111,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/uses-cached",
@@ -108,6 +120,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Uses</title><h1>Uses</h1><script src=\"/cached.js\"></script>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/cached.js",
@@ -116,6 +129,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: max-age=3600"))),
                 body = listOf(TestSitePiece.Text("document.title = 'Cached';")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/slow",
@@ -124,6 +138,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Slow</title><h1>Slow</h1>")),
                 delayMilliseconds = 3000,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/opener",
@@ -132,6 +147,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Opener</title><h1>Opener</h1><p><a id=\"blank\" href=\"/opened\" target=\"_blank\">new window</a></p>\n<p><button id=\"open\" onclick=\"window.open('/opened')\">open</button></p>\n<p><a id=\"letter\" href=\"mailto:ada@example.com\" target=\"_blank\">write a letter</a></p>\n<p><button id=\"ring\" onclick=\"window.open('tel:+15550100')\">ring</button></p>\n<script>addEventListener('message', (said) => { document.title = 'heard=' + said.data; });</script>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/opened",
@@ -140,6 +156,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Opened</title><h1>Opened</h1><p><button id=\"close\" onclick=\"window.close()\">close</button></p>\n<script>\nif (window.opener) {\n  document.title = 'Opened by a page';\n  window.opener.postMessage('hello', '*');\n}\n</script>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/pops",
@@ -148,6 +165,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Pops</title><h1>Pops</h1><script>document.title = window.open('/opened') ? 'popped' : 'blocked';</script>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/clicks",
@@ -156,6 +174,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Clicks</title><h1>Clicks</h1><p><a id=\"blank\" href=\"/opened\" target=\"_blank\">new window</a></p>\n<script>document.getElementById('blank').click(); document.title = 'clicked';</script>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/contact",
@@ -164,6 +183,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Contact</title><h1>Contact</h1><p><a id=\"letter\" href=\"mailto:ada@example.com\">write a letter</a></p>\n<p><button id=\"script\" onclick=\"location.href = 'tel:+15550100'\">ring</button></p>\n<iframe id=\"frame\" srcdoc=\"<a id='framed' href='sms:+15550100' style='position: fixed; inset: 0'>send a message</a>\"></iframe>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/find",
@@ -172,6 +192,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Find</title><h1>Find</h1><p id=\"one\">A needle in a haystack.</p>\n<p id=\"two\">Another Needle here.</p>\n<p id=\"three\">And a third needle.</p>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/rings",
@@ -180,6 +201,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Rings</title><h1>Rings</h1><script>location.href = 'tel:+15550100'; document.title = 'rang';</script>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/sized",
@@ -188,6 +210,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Sized</title><h1>Sized</h1>\n<p id=\"line\" style=\"font-size: 16px; line-height: 20px; margin: 0\"><span id=\"words\">A line of words.</span></p>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/downloads",
@@ -196,6 +219,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Downloads</title><h1>Downloads</h1><p><a id=\"attachment\" href=\"/notes\">a file that says it is to be saved</a></p>\n<p><a id=\"kind\" href=\"/data.bin\">a file of a kind nothing shows</a></p>\n<p><a id=\"says\" href=\"/landed\" download=\"kept page.html\">a link that says download</a></p>\n<p><a id=\"sneaky\" href=\"/sneaky\">a file whose name is a path</a></p>\n<p><a id=\"whose\" href=\"/whose-file\">a file that says who is signed in</a></p>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/notes",
@@ -204,6 +228,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store")), listOf(TestSitePiece.Text("Content-Disposition: attachment; filename=\"notes.txt\""))),
                 body = listOf(TestSitePiece.Text("Twelve notes, to be saved.")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/data.bin",
@@ -212,6 +237,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("0123456789abcdef")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/sneaky",
@@ -220,6 +246,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store")), listOf(TestSitePiece.Text("Content-Disposition: attachment; filename=\"../../sneaky.txt\""))),
                 body = listOf(TestSitePiece.Text("This file's name tried to be a path.")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/whose-file",
@@ -228,6 +255,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store")), listOf(TestSitePiece.Text("Content-Disposition: attachment; filename=\"who.txt\""))),
                 body = listOf(TestSitePiece.Text("who="), TestSitePiece.Cookie("who", or = "none")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/asks",
@@ -236,6 +264,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Asks</title><h1>Asks</h1><p><button id=\"camera\" onclick=\"ask('camera')\">the camera</button></p>\n<p><button id=\"microphone\" onclick=\"ask('microphone')\">the microphone</button></p>\n<p><button id=\"both\" onclick=\"ask('both')\">the camera and the microphone</button></p>\n<p><button id=\"location\" onclick=\"ask('location')\">where the device is</button></p>\n<p id=\"said\">nothing asked</p>\n<script>\nfunction say(what) { document.getElementById('said').textContent = what; document.title = what; if (parent !== window) parent.postMessage(what, '*'); }\nfunction ask(what) {\n  say('asking ' + what);\n  if (what === 'location') {\n    navigator.geolocation.getCurrentPosition(function () { say('granted location'); }, function (failed) { say(failed.code === 1 ? 'refused location' : 'granted location, no place ' + failed.code); }, { timeout: 4000 });\n    return;\n  }\n  navigator.mediaDevices.getUserMedia({ video: what !== 'microphone', audio: what !== 'camera' }).then(function (stream) {\n    var tracks = stream.getTracks(); tracks.forEach(function (track) { track.stop(); });\n    say('granted ' + what + ' ' + tracks.length);\n  }, function (failed) { say('refused ' + what + ' ' + failed.name); });\n}\nvar now = '"), TestSitePiece.Query("now", or = "nothing"), TestSitePiece.Text("'; if (now !== 'nothing') ask(now);\n</script>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/asks-in-a-frame",
@@ -244,6 +273,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Asks in a frame</title><h1>Asks in a frame</h1><iframe id=\"frame\" allow=\"camera; microphone; geolocation\" width=\"320\" height=\"240\"></iframe>\n<script>\naddEventListener('message', function (said) { document.title = 'frame: ' + said.data; });\ndocument.getElementById('frame').src = 'http://localhost:' + location.port + '/asks?now="), TestSitePiece.Query("now", or = "camera"), TestSitePiece.Text("';\n</script>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/says",
@@ -252,6 +282,7 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Says</title><h1>Says</h1><p><button id=\"alert\" onclick=\"say('alert')\">says something</button></p>\n<p><button id=\"confirm\" onclick=\"say('confirm')\">asks yes or no</button></p>\n<p><button id=\"prompt\" onclick=\"say('prompt')\">asks for a word</button></p>\n<p><a id=\"away\" href=\"/landed\">somewhere else</a></p>\n<p id=\"said\">nothing said</p>\n<script>\nfunction tell(what) { document.getElementById('said').textContent = what; document.title = what; if (parent !== window) parent.postMessage(what, '*'); }\nfunction say(what) {\n  if (what === 'alert') { alert('Your basket is empty.'); tell('alert returned'); }\n  else if (what === 'confirm') { tell('confirm ' + confirm('Delete it?')); }\n  else { var got = prompt('Your name?', 'Ada'); tell(got === null ? 'prompt nothing' : 'prompt ' + got); }\n}\nif ('"), TestSitePiece.Query("hold", or = "no"), TestSitePiece.Text("' === 'yes') addEventListener('beforeunload', function (leaving) { leaving.preventDefault(); leaving.returnValue = 'stay'; });\nvar now = '"), TestSitePiece.Query("now", or = "nothing"), TestSitePiece.Text("'; if (now !== 'nothing') say(now);\n</script>")),
                 delayMilliseconds = 0,
+                authorization = "",
             ),
             TestSitePage(
                 path = "/says-in-a-frame",
@@ -260,6 +291,43 @@ internal object TestSitePages {
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
                 body = listOf(TestSitePiece.Text("<!doctype html><title>Says in a frame</title><h1>Says in a frame</h1><iframe id=\"frame\" width=\"320\" height=\"240\"></iframe>\n<script>\naddEventListener('message', function (said) { document.title = 'frame: ' + said.data; });\ndocument.getElementById('frame').src = 'http://localhost:' + location.port + '/says?now="), TestSitePiece.Query("now", or = "confirm"), TestSitePiece.Text("';\n</script>")),
                 delayMilliseconds = 0,
+                authorization = "",
+            ),
+            TestSitePage(
+                path = "/staff",
+                status = "200 OK",
+                type = "text/html",
+                headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
+                body = listOf(TestSitePiece.Text("<!doctype html><title>Staff only</title><h1>Staff only</h1><p id=\"rota\">The rota.</p><img alt=\"\" src=\"/staff-picture\">")),
+                delayMilliseconds = 0,
+                authorization = "Basic YWRhOmxvdmVsYWNl",
+            ),
+            TestSitePage(
+                path = "/staff-picture",
+                status = "200 OK",
+                type = "image/svg+xml",
+                headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
+                body = listOf(TestSitePiece.Text("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>")),
+                delayMilliseconds = 0,
+                authorization = "Basic YWRhOmxvdmVsYWNl",
+            ),
+            TestSitePage(
+                path = "/to-staff",
+                status = "302 Found",
+                type = "text/html",
+                headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store")), listOf(TestSitePiece.Text("Location: http://localhost:"), TestSitePiece.Query("port", or = "80"), TestSitePiece.Text("/staff"))),
+                body = listOf(),
+                delayMilliseconds = 0,
+                authorization = "",
+            ),
+            TestSitePage(
+                path = "/shows-staff-picture",
+                status = "200 OK",
+                type = "text/html",
+                headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
+                body = listOf(TestSitePiece.Text("<!doctype html><title>Shows a picture</title><h1>Shows a picture</h1><img id=\"theirs\" alt=\"\">\n<script>\nvar theirs = document.getElementById('theirs');\ntheirs.onload = function () { document.title = 'picture shown'; };\ntheirs.onerror = function () { document.title = 'picture refused'; };\ntheirs.src = ('"), TestSitePiece.Query("from", or = "another"), TestSitePiece.Text("' === 'own' ? '' : 'http://localhost:' + location.port) + '/staff-picture';\n</script>")),
+                delayMilliseconds = 0,
+                authorization = "",
             ),
         )
 
@@ -272,5 +340,18 @@ internal object TestSitePages {
             headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
             body = listOf(TestSitePiece.Text("<title>Not found</title>")),
             delayMilliseconds = 0,
+            authorization = "",
+        )
+
+    /** What a page that is only for someone answers to anyone else. */
+    val refused =
+        TestSitePage(
+            path = "",
+            status = "401 Unauthorized",
+            type = "text/html",
+            headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store")), listOf(TestSitePiece.Text("WWW-Authenticate: Basic realm=\"Staff\""))),
+            body = listOf(TestSitePiece.Text("<!doctype html><title>Sign in needed</title><h1>Sign in needed</h1>")),
+            delayMilliseconds = 0,
+            authorization = "",
         )
 }

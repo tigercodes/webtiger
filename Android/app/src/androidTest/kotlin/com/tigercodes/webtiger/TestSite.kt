@@ -35,6 +35,8 @@ internal data class TestSitePage(
     val headers: List<List<TestSitePiece>>,
     val body: List<TestSitePiece>,
     val delayMilliseconds: Int,
+    /** The `Authorization` header the page answers to; empty for a page that is anyone's. */
+    val authorization: String,
 )
 
 internal class TestSite : Closeable {
@@ -114,7 +116,10 @@ internal class TestSite : Closeable {
         val query = pairs(target.substringAfter("?", ""), '&')
         val cookies = pairs(lines.drop(1).firstOrNull { it.lowercase().startsWith("cookie:") }?.substring("cookie:".length).orEmpty(), ';')
 
-        val page = TestSitePages.all.firstOrNull { it.path == path } ?: TestSitePages.notFound
+        val found = TestSitePages.all.firstOrNull { it.path == path } ?: TestSitePages.notFound
+        // A page that is only for someone answers to the header that says who, and to nothing else.
+        val said = lines.drop(1).firstOrNull { it.lowercase().startsWith("authorization:") }?.substring("authorization:".length).orEmpty().trim()
+        val page = if (found.authorization.isNotEmpty() && said != found.authorization) TestSitePages.refused else found
         if (page.delayMilliseconds > 0) Thread.sleep(page.delayMilliseconds.toLong())
         val body = filled(page.body, query, cookies).toByteArray(Charsets.UTF_8)
         val answer =

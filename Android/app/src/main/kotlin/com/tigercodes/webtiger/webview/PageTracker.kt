@@ -74,6 +74,12 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
     /** What a reload should load, when the engine itself has nothing to reload: the address that failed, or the page a dead renderer was showing. */
     val reloadTarget: String? get() = failedUrl ?: pageUrl.takeIf { gone }
 
+    /**
+     * Where the load in flight is heading, redirects followed, for a server that asks who is
+     * there (017): empty when no new page is on its way, or nobody said where it is going.
+     */
+    val headingFor: String get() = heading.orEmpty()
+
     /** The adapter is about to load an address. */
     fun willLoad(url: String) = begin(url)
 

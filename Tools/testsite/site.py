@@ -14,6 +14,7 @@ secure context. What they serve is this one definition, generated and checked in
 Tools/test.sh lint runs --check and self-test. `serve` is for a run by hand: an app started in
 fake mode with one of these pages as its start address.
 """
+import base64
 import http.client
 import json
 import pathlib
@@ -28,7 +29,7 @@ SOURCE = ROOT / "Fixtures" / "testsite" / "site.json"
 SWIFT = ROOT / "Packages" / "Tests" / "WTWebKitTests" / "TestSitePages.generated.swift"
 KOTLIN = ROOT / "Android" / "app" / "src" / "androidTest" / "kotlin" / "com" / "tigercodes" / "webtiger" / "TestSitePages.kt"
 
-KEYS = {"path", "title", "body", "content", "type", "status", "headers", "delay_ms", "note"}
+KEYS = {"path", "title", "body", "content", "type", "status", "headers", "delay_ms", "note", "only_for"}
 PLACEHOLDER = re.compile(r"\{(query|cookie):([A-Za-z_]+)\|([^}]*)\}")
 
 
@@ -78,7 +79,17 @@ def page(entry: dict) -> dict:
         "headers": [pieces(header) for header in headers],
         "body": pieces(body),
         "delay_ms": int(entry.get("delay_ms", 0)),
+        "authorization": authorization(entry.get("only_for", "")),
     }
+
+
+def authorization(only_for: str) -> str:
+    """The `Authorization` header a page that is only for "name:password" answers to (HTTP Basic); "" for anyone's page."""
+    if not only_for:
+        return ""
+    if ":" not in only_for:
+        raise SystemExit(f"only_for is name:password, not {only_for!r}")
+    return "Basic " + base64.b64encode(only_for.encode("utf-8")).decode("ascii")
 
 
 def load() -> dict:
@@ -92,7 +103,9 @@ def load() -> dict:
         raise SystemExit("two pages have one path")
     if "path" in data["not_found"]:
         raise SystemExit("not_found has no path: it answers every path no page has")
-    return {"pages": pages, "not_found": page(data["not_found"])}
+    if "path" in data["refused"] or "only_for" in data["refused"] or "only_for" in data["not_found"]:
+        raise SystemExit("refused has no path, and it and not_found are for anyone")
+    return {"pages": pages, "not_found": page(data["not_found"]), "refused": page(data["refused"])}
 
 
 # The generated files
@@ -123,7 +136,8 @@ def swift_page(entry: dict, indent: str) -> list:
         f"{indent}    type: {quoted(entry['type'], False)},",
         f"{indent}    headers: [{headers}],",
         f"{indent}    body: {swift_pieces(entry['body'])},",
-        f"{indent}    delayMilliseconds: {entry['delay_ms']}",
+        f"{indent}    delayMilliseconds: {entry['delay_ms']},",
+        f"{indent}    authorization: {quoted(entry['authorization'], False)}",
         f"{indent})",
     ]
 
@@ -143,6 +157,10 @@ def swift(site: dict) -> str:
     out += ["    ]", "", "    /// What every other path is answered with."]
     lines = swift_page(site["not_found"], "    ")
     lines[0] = "    static let notFound = " + lines[0].lstrip()
+    out += lines
+    out += ["", "    /// What a page that is only for someone answers to anyone else."]
+    lines = swift_page(site["refused"], "    ")
+    lines[0] = "    static let refused = " + lines[0].lstrip()
     out += lines
     out += ["}", ""]
     return "\n".join(out)
@@ -167,6 +185,7 @@ def kotlin_page(entry: dict, indent: str) -> list:
         f"{indent}    headers = listOf({headers}),",
         f"{indent}    body = {kotlin_pieces(entry['body'])},",
         f"{indent}    delayMilliseconds = {entry['delay_ms']},",
+        f"{indent}    authorization = {quoted(entry['authorization'], True)},",
         f"{indent})",
     ]
 
@@ -187,6 +206,8 @@ def kotlin(site: dict) -> str:
         out += lines
     out += ["        )", "", "    /** What every other path is answered with. */", "    val notFound ="]
     out += kotlin_page(site["not_found"], "        ")
+    out += ["", "    /** What a page that is only for someone answers to anyone else. */", "    val refused ="]
+    out += kotlin_page(site["refused"], "        ")
     out += ["}", ""]
     return "\n".join(out)
 
@@ -244,6 +265,10 @@ def respond(site: dict, head: str) -> tuple:
     query = pairs(query_text, "&")
     cookies = pairs(cookie_line[len("cookie:") :], ";")
     entry = next((candidate for candidate in site["pages"] if candidate["path"] == path), site["not_found"])
+    # A page that is only for someone answers to the header that says who, and to nothing else.
+    said = next((line for line in lines[1:] if line.lower().startswith("authorization:")), "")
+    if entry["authorization"] and said[len("authorization:") :].strip() != entry["authorization"]:
+        entry = site["refused"]
     body = filled(entry["body"], query, cookies).encode("utf-8")
     headers = [
         f"HTTP/1.1 {entry['status']}",
@@ -296,9 +321,12 @@ def self_test() -> int:
     port = running.server_address[1]
     failures = []
 
-    def get(target: str, cookie: str = ""):
+    def get(target: str, cookie: str = "", authorization: str = ""):
         connection = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
-        connection.request("GET", target, headers={"Cookie": cookie} if cookie else {})
+        headers = {"Cookie": cookie} if cookie else {}
+        if authorization:
+            headers["Authorization"] = authorization
+        connection.request("GET", target, headers=headers)
         answer = connection.getresponse()
         body = answer.read().decode("utf-8")
         connection.close()
@@ -342,6 +370,17 @@ def self_test() -> int:
     answer, body = get("/storage?v=ada")
     expect("/storage keeps its lines", body.count("\n"), 4)
     expect("/storage is a page", body.startswith("<!doctype html><title>Storage</title>"), True)
+
+    answer, body = get("/staff")
+    expect("/staff to nobody", answer.status, 401)
+    expect("/staff asks who is there", answer.getheader("WWW-Authenticate"), 'Basic realm="Staff"')
+    expect("/staff says nothing of the page", body, "<!doctype html><title>Sign in needed</title><h1>Sign in needed</h1>")
+    answer, body = get("/staff", authorization="Basic YWRhOndyb25n")
+    expect("/staff to the wrong password", answer.status, 401)
+    answer, body = get("/staff", authorization="Basic YWRhOmxvdmVsYWNl")
+    expect("/staff to ada", answer.status, 200)
+    expect("/staff is a page", body.startswith("<!doctype html><title>Staff only</title>"), True)
+    expect("/staff asks nothing more", answer.getheader("WWW-Authenticate"), None)
 
     answer, body = get("/nowhere")
     expect("a path no page has", answer.status, 404)

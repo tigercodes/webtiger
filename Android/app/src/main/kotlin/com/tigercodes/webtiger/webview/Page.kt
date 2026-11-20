@@ -73,6 +73,14 @@ internal interface PageHost {
      * for a prompt the text.
      */
     fun dialog(webViewId: Long, url: String, kind: DialogKind, message: String, defaultText: String, answer: (Boolean, String) -> Unit)
+
+    /**
+     * A server asks who is there in the web view `webViewId` (017): its `host` and `realm`,
+     * where the web view's load was `heading`, and whether the server refused an answer
+     * already. `answer` gives the engine the server's answer, once the core has said: what was
+     * typed, or null for none.
+     */
+    fun signIn(webViewId: Long, host: String, realm: String, heading: String, again: Boolean, answer: (Typed?) -> Unit)
 }
 
 /** Makes pages. [WebViewPages] makes real ones. */
