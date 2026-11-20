@@ -6,6 +6,7 @@ import com.tigercodes.webtiger.core.v1.Ack
 import com.tigercodes.webtiger.core.v1.AddressView
 import com.tigercodes.webtiger.core.v1.CloseTab
 import com.tigercodes.webtiger.core.v1.CoreConfig
+import com.tigercodes.webtiger.core.v1.CreateSpace
 import com.tigercodes.webtiger.core.v1.CoreStatus
 import com.tigercodes.webtiger.core.v1.EngineEvent
 import com.tigercodes.webtiger.core.v1.EngineInfo
@@ -27,15 +28,19 @@ import com.tigercodes.webtiger.core.v1.QueryDownloads
 import com.tigercodes.webtiger.core.v1.QueryHistory
 import com.tigercodes.webtiger.core.v1.QueryPermissions
 import com.tigercodes.webtiger.core.v1.QuerySearch
+import com.tigercodes.webtiger.core.v1.QuerySpaces
 import com.tigercodes.webtiger.core.v1.Request
+import com.tigercodes.webtiger.core.v1.Response
 import com.tigercodes.webtiger.core.v1.SubmitAddress
 import com.tigercodes.webtiger.core.v1.SuggestAddresses
+import com.tigercodes.webtiger.core.v1.SwitchSpace
 import com.tigercodes.webtiger.core.v1.Subscribe
 import com.tigercodes.webtiger.core.v1.TabView
 import com.tigercodes.webtiger.core.v1.TestMode
 import com.tigercodes.webtiger.core.v1.TitleChanged
 import com.tigercodes.webtiger.core.v1.WindowOpened
 import com.tigercodes.webtiger.core.v1.WindowTopic
+import com.squareup.wire.WireField
 import java.io.File
 import java.nio.file.Files
 import java.util.UUID
@@ -251,9 +256,43 @@ class NativeCoreTest {
             assertNotNull("where searches go is an answer", search)
             assertTrue(search!!.engines.isNotEmpty())
             assertTrue("fake mode has nobody to ask", search.chosen)
+            val spaces = core.request(Request(query_spaces = QuerySpaces())).spaces_page
+            assertNotNull("the list of Spaces is an answer", spaces)
+            assertEquals("the app's own Space is always there", 1, spaces!!.spaces.size)
+            val made = core.request(Request(create_space = CreateSpace(name = "Work"))).space_created
+            assertNotNull("a Space that is made is named in the answer", made)
+            assertTrue(made!!.space_id != 0L && made.space_id != spaces.spaces[0].space_id)
+            assertNotNull(core.request(Request(switch_space = SwitchSpace(window_id = opened.window_id, space_id = made.space_id))).ack)
             assertNotNull(core.request(Request(close_tab = CloseTab(tab_id = tab.tab_id))).ack)
             assertNotNull(core.request(Request(forget_history = ForgetHistory(window_id = opened.window_id, everything = true))).ack)
         }
+
+    /**
+     * Every kind of answer the contract has is one this client knows. The contract's own list
+     * is read from the generated type, so a kind that is added and not named in the client
+     * fails here, on the JVM, and not on a device where its answer would be dropped.
+     */
+    @Test
+    fun everyKindOfAnswerTheContractHasIsOneTheClientKnows() {
+        val kinds =
+            Response::class.java.declaredFields.mapNotNull { field ->
+                field.getAnnotation(WireField::class.java)?.takeIf { it.oneofName == "kind" }?.let { field.name to it.tag }
+            }
+        assertTrue("the contract's kinds of answer were read: $kinds", kinds.size >= 13)
+        for ((name, tag) in kinds) {
+            // An answer of this kind and nothing else: its field, holding an empty message.
+            val key = (tag shl 3) or 2
+            val bytes = if (key < 0x80) byteArrayOf(key.toByte(), 0) else byteArrayOf(((key and 0x7f) or 0x80).toByte(), (key shr 7).toByte(), 0)
+            val answer = Response.ADAPTER.decode(bytes)
+            // An error is no kind of answer: it is thrown.
+            if (name == "error") {
+                assertNotNull(answer.error)
+                assertTrue("an error is not taken for an answer", !answer.hasKind())
+            } else {
+                assertTrue("the client does not know the answer <$name>: name it in Response.hasKind()", answer.hasKind())
+            }
+        }
+    }
 
     /** History through the contract (008): a page that committed is a visit, found by a word. */
     @Test

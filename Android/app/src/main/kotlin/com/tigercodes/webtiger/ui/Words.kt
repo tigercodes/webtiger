@@ -24,3 +24,17 @@ internal fun errorWords(resources: Resources, packageName: String, errorCode: St
     }
     return resources.getString(R.string.error_net_failed)
 }
+
+/**
+ * The words for why a Space was not made (024): the code's own (`error.space.too_many`), or
+ * what is said when no more is known. Never the code's own text, and never what is said of a
+ * page that did not load.
+ */
+@SuppressLint("DiscouragedApi") // As above: the codes are the core's.
+internal fun spaceRefusalWords(resources: Resources, packageName: String, errorCode: String): String {
+    if (code.matches(errorCode)) {
+        val id = resources.getIdentifier("error_" + errorCode.replace('.', '_'), "string", packageName)
+        if (id != 0) return resources.getString(id)
+    }
+    return resources.getString(R.string.error_space_failed)
+}

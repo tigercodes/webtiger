@@ -128,7 +128,7 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
         // The window draws edge to edge; its content keeps clear of the system's bars, the
         // cutout and the keyboard.
         Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-            TabStrip(model, onFind = model::openFind, onZoom = model::openZoom, onHistory = { showingHistory = true })
+            TabStrip(model, onFind = model::openFind, onZoom = model::openZoom, onHistory = { showingHistory = true }, onSpaces = model::openSpaces)
             Toolbar(model, addressField, onSubmitted = { page.requestFocus() })
             // What the tab asks the person (014): in the tab, under the toolbar, and not over
             // the window. It takes the keyboard from nothing by appearing.
@@ -157,6 +157,18 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
                 settings = settings,
                 onChoose = model::chooseSearchEngine,
                 onKeep = (model::keepSearch).takeIf { settings.chosen },
+                modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing),
+            )
+        }
+        // The list of Spaces (024): over the window, which stays as it is underneath.
+        if (model.showingSpaces) {
+            Spaces(
+                spaces = model.spaces,
+                shownId = model.spaceId,
+                refusal = model.spaceRefusal,
+                onShow = model::showSpace,
+                onMake = model::makeSpace,
+                onDone = model::closeSpaces,
                 modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing),
             )
         }
@@ -189,9 +201,13 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
  * and one to open another (005 §5).
  */
 @Composable
-private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit, onHistory: () -> Unit) {
+private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit, onHistory: () -> Unit, onSpaces: () -> Unit) {
     val list = stringResource(R.string.tabs_list)
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        // The Space the window shows (024): before the tabs, where it stays when they scroll.
+        // In a window as narrow as a phone's it is the Space's initial.
+        val compact = LocalConfiguration.current.screenWidthDp < COMPACT_WIDTH_DP
+        SpaceChip(name = model.spaceName, compact = compact, onClick = onSpaces, modifier = Modifier.padding(start = Tokens.Space.xs))
         Row(
             modifier =
                 Modifier

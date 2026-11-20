@@ -110,6 +110,15 @@ class CatalogueSnapshotTest {
         }
     }
 
+    private fun spacesLists(theme: String) {
+        var state by mutableStateOf(CatalogueSpaces.LIST)
+        show { key(state) { CatalogueSpacesList(state, Modifier.fillMaxSize()) } }
+        for (next in CatalogueSpaces.entries) {
+            state = next
+            verify("spaces-${next.name.lowercase().replace('_', '-')}-$theme")
+        }
+    }
+
     private fun startFailed(theme: String) {
         show { StartFailed("store.open") }
         verify("start-failed-$theme")
@@ -150,6 +159,24 @@ class CatalogueSnapshotTest {
 
     @Test @Config(qualifiers = DARK)
     fun everyStateOfThePermissionsListInTheDarkTheme() = permissionsLists("dark")
+
+    /** A window as wide as a tablet's: the chip has room for the Space's name (024). */
+    private fun wideWindow(theme: String) {
+        show { CatalogueWindow(CatalogueState.TABS, Modifier.fillMaxSize()) }
+        verify("window-tabs-wide-$theme")
+    }
+
+    @Test @Config(qualifiers = "w720dp-h320dp-notnight-xhdpi")
+    fun aWideWindowInTheLightTheme() = wideWindow("light")
+
+    @Test @Config(qualifiers = "w720dp-h320dp-night-xhdpi")
+    fun aWideWindowInTheDarkTheme() = wideWindow("dark")
+
+    @Test @Config(qualifiers = LIST_LIGHT)
+    fun everyStateOfTheSpacesInTheLightTheme() = spacesLists("light")
+
+    @Test @Config(qualifiers = LIST_DARK)
+    fun everyStateOfTheSpacesInTheDarkTheme() = spacesLists("dark")
 
     @Test @Config(qualifiers = LIGHT)
     fun startFailedInTheLightTheme() = startFailed("light")

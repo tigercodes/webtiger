@@ -273,11 +273,14 @@ private class Receiver : EnvelopeListener {
     }
 }
 
-/** Whether a response says anything: a response of a kind this build does not know says nothing. */
 /**
  * Whether an answer is one of the kinds this shell knows. Each kind the contract gains is named
- * here: one that is not was taken for no answer at all, which is how a new tab's answer, and
- * then a page of history, came back as "response.empty" (found by the History list, on a
- * device).
+ * here: one that is not was taken for no answer at all, which is how a new tab's answer, then a
+ * page of history, and then the list of Spaces came back as "response.empty" (each found on a
+ * device). A test now reads the contract's own list of kinds and fails for one that is missing.
  */
-private fun Response.hasKind(): Boolean = listOf(ack, pong, subscribed, window_opened, tab_opened, history_page, address_suggestions, downloads_page, permissions_page, search_settings).any { it != null }
+internal fun Response.hasKind(): Boolean =
+    listOf(
+        ack, pong, subscribed, window_opened, tab_opened, history_page, address_suggestions, downloads_page, permissions_page,
+        search_settings, spaces_page, space_created,
+    ).any { it != null }

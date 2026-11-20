@@ -71,6 +71,7 @@ import com.tigercodes.webtiger.core.v1.PromptView
 import com.tigercodes.webtiger.core.v1.SearchEngine
 import com.tigercodes.webtiger.core.v1.SearchSettings
 import com.tigercodes.webtiger.core.v1.SignInPrompt
+import com.tigercodes.webtiger.core.v1.SpaceSummary
 import com.tigercodes.webtiger.core.v1.Response
 import com.tigercodes.webtiger.core.v1.SitePermissions
 import com.tigercodes.webtiger.core.v1.Subscribed
@@ -488,6 +489,12 @@ fun CatalogueScreen() {
                     CataloguePermissionsList(state, Modifier.fillMaxWidth().height(CatalogueWindowHeight).framed())
                 }
             }
+            for (state in CatalogueSpaces.entries) {
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.Space.s)) {
+                    Text(text = stringResource(state.title), style = MaterialTheme.typography.titleMedium)
+                    CatalogueSpacesList(state, Modifier.fillMaxWidth().height(CatalogueWindowHeight).framed())
+                }
+            }
             CatalogueHeading(R.string.catalogue_start_failed)
             Box(modifier = Modifier.fillMaxWidth().height(CatalogueWindowHeight).framed()) { StartFailed("store.open") }
         }
@@ -565,6 +572,51 @@ internal fun CataloguePermissionsList(state: CataloguePermissions, modifier: Mod
     val model = remember(state) { state.model(context, scope) }
     Box(modifier = modifier) {
         PermissionsList(model, onDone = {}, switcher = { LibrarySwitch(LibraryPart.PERMISSIONS) {} })
+    }
+}
+
+/** One state of the list of Spaces (024): the list, the page that makes one, and a Space the core would not make. */
+internal enum class CatalogueSpaces(@StringRes val title: Int) {
+    LIST(R.string.catalogue_state_spaces),
+    NEW(R.string.catalogue_state_spaces_new),
+    NEW_SHARED(R.string.catalogue_state_spaces_new_shared),
+    REFUSED(R.string.catalogue_state_spaces_refused),
+    ;
+
+    companion object {
+        /**
+         * What a core would list: the app's own Space, which nobody has named; "Work", with
+         * logins of its own; one that shares Work's; and one with a name as long as a name can be.
+         */
+        val spaces =
+            listOf(
+                SpaceSummary(space_id = 1, name = "", logins = 1),
+                SpaceSummary(space_id = 2, name = "Work", logins = 2),
+                SpaceSummary(space_id = 3, name = "Project Tiger", logins = 2),
+                SpaceSummary(space_id = 4, name = "A Space with a name that is as long as a name is let be", logins = 4),
+            )
+    }
+}
+
+/** The list of Spaces in one state. The system's Back is not its to take: it is a picture. */
+@Composable
+internal fun CatalogueSpacesList(state: CatalogueSpaces, modifier: Modifier = Modifier) {
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val nobody = remember(lifecycle) { DetachedBack(lifecycle) }
+    Box(modifier = modifier) {
+        CompositionLocalProvider(LocalOnBackPressedDispatcherOwner provides nobody) {
+            Spaces(
+                spaces = CatalogueSpaces.spaces,
+                shownId = 2,
+                refusal = "space.too_many".takeIf { state == CatalogueSpaces.REFUSED },
+                onShow = {},
+                onMake = { _, _ -> },
+                onDone = {},
+                making = state != CatalogueSpaces.LIST,
+                name = if (state == CatalogueSpaces.LIST) "" else "Travel",
+                sharingWith = 2L.takeIf { state == CatalogueSpaces.NEW_SHARED },
+            )
+        }
     }
 }
 

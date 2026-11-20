@@ -11,6 +11,7 @@ import com.tigercodes.webtiger.core.v1.AddressView
 import com.tigercodes.webtiger.core.v1.AnswerPrompt
 import com.tigercodes.webtiger.core.v1.ChooseSearchEngine
 import com.tigercodes.webtiger.core.v1.CloseTab
+import com.tigercodes.webtiger.core.v1.CreateSpace
 import com.tigercodes.webtiger.core.v1.DialogKind
 import com.tigercodes.webtiger.core.v1.FindInPage
 import com.tigercodes.webtiger.core.v1.LoadState
@@ -18,10 +19,13 @@ import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.core.v1.OpenTab
 import com.tigercodes.webtiger.core.v1.PromptView
 import com.tigercodes.webtiger.core.v1.QuerySearch
+import com.tigercodes.webtiger.core.v1.QuerySpaces
 import com.tigercodes.webtiger.core.v1.Request
 import com.tigercodes.webtiger.core.v1.SearchSettings
+import com.tigercodes.webtiger.core.v1.SpaceSummary
 import com.tigercodes.webtiger.core.v1.SubmitAddress
 import com.tigercodes.webtiger.core.v1.SuggestAddresses
+import com.tigercodes.webtiger.core.v1.SwitchSpace
 import com.tigercodes.webtiger.core.v1.TabCommand
 import com.tigercodes.webtiger.core.v1.TabSummary
 import com.tigercodes.webtiger.core.v1.TabView
@@ -350,6 +354,80 @@ class BrowserModel(
         isChangingSearch = false
     }
 
+    // Several Spaces (024 §6.2)
+
+    /** The Space the window shows, by the core's name for it. 0 until the core has said. */
+    var spaceId by mutableStateOf(0L)
+        private set
+
+    /** That Space's name. Empty for the Space the app made, until somebody names it. */
+    var spaceName by mutableStateOf("")
+        private set
+
+    /** The Spaces as the core last listed them: asked for when the list is opened. Null until it has answered. */
+    var spaces by mutableStateOf<List<SpaceSummary>?>(null)
+        private set
+
+    /** The list of Spaces is open over the window. */
+    var showingSpaces by mutableStateOf(false)
+        private set
+
+    /** Why the core would not make a Space, by its code: said on the page that asked. */
+    var spaceRefusal by mutableStateOf<String?>(null)
+        private set
+
+    /** Opens the list of Spaces: asked for anew, with nothing said of an earlier refusal. */
+    fun openSpaces() {
+        spaceRefusal = null
+        showingSpaces = true
+        session.scope.launch {
+            val answer =
+                try {
+                    session.core.request(Request(query_spaces = QuerySpaces())).spaces_page
+                } catch (_: CoreError) {
+                    null
+                }
+            if (answer != null) spaces = answer.spaces
+        }
+    }
+
+    /** The list is closed with nothing changed. */
+    fun closeSpaces() {
+        showingSpaces = false
+    }
+
+    /** The window is to show another Space, and the list is closed. The core's snapshot says when it shows it. */
+    fun showSpace(id: Long) {
+        val window = windowId ?: return
+        session.send(Request(switch_space = SwitchSpace(window_id = window, space_id = id)))
+        showingSpaces = false
+    }
+
+    /**
+     * Makes a Space, with logins of its own or those of the Space `sharing`, and shows it in the
+     * window. The name goes as it was typed: tidying it is the core's. A Space the core will not
+     * make leaves the list open, with the core's code in [spaceRefusal].
+     */
+    fun makeSpace(name: String, sharing: Long?) {
+        spaceRefusal = null
+        session.scope.launch {
+            val made =
+                try {
+                    session.core.request(Request(create_space = CreateSpace(name = name, share_logins_with = sharing ?: 0))).space_created
+                } catch (refused: CoreError.Refused) {
+                    spaceRefusal = refused.code
+                    return@launch
+                } catch (_: CoreError) {
+                    null
+                }
+            if (made == null) {
+                spaceRefusal = "space.failed"
+                return@launch
+            }
+            showSpace(made.space_id)
+        }
+    }
+
     // A link's menu (018)
 
     /**
@@ -518,6 +596,8 @@ class BrowserModel(
         tab = front
         tabs = snapshot.tabs
         downloadsActive = snapshot.downloads_active
+        spaceId = snapshot.space_id
+        spaceName = snapshot.space_name
         // The zoom bar is the window's, and says the level of the page in front: with no page
         // there that can be zoomed, it has nothing to say.
         if (isZooming && front.zoom == null) isZooming = false
