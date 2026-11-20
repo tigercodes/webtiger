@@ -15,6 +15,7 @@
 
 mod app;
 mod dispatch;
+mod downloads;
 mod error;
 mod fence;
 mod host;
@@ -25,5 +26,6 @@ pub use app::{
     SUGGESTIONS,
 };
 pub use dispatch::{CORE_VERSION, Dispatcher, MAX_PING_PAYLOAD, Outbox, StartError};
+pub use downloads::{DOWNLOAD_INTERVAL, DOWNLOADS_PAGE};
 pub use error::{AppError, HostError, is_code};
 pub use host::{HOST_TIMEOUT, Host, HostBridge, HostFuture};

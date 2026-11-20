@@ -1,0 +1,342 @@
+//! Downloads (013): the core decides whether one starts, names its file,
+//! and keeps its record. The engine, or the system for it, moves the bytes.
+
+use std::time::Duration;
+
+use tokio::time::Instant;
+use wt_core::{Address, LoginSetId, WebViewId, WindowId, download_file_name};
+use wt_proto::v1::{
+    Ack, CancelDownload, DownloadCancel, DownloadEntry, DownloadProgress, DownloadRequested,
+    DownloadStart, DownloadState, DownloadsPage, ForgetDownloads, QueryDownloads, engine_event,
+    forget_downloads, host_request, response,
+};
+use wt_store::{COMING, Download, FINISHED};
+
+use crate::app::App;
+use crate::error::{AppError, is_code};
+
+/// A web view starts no more than one download in this long (013 §2): until
+/// a site's first download is asked about, a page cannot fill a folder
+/// faster than a person can see it doing so.
+pub const DOWNLOAD_INTERVAL: Duration = Duration::from_secs(1);
+
+/// How many downloads a page of the list holds when the shell does not say.
+pub const DOWNLOADS_PAGE: u32 = 100;
+
+/// A download ended because somebody stopped it.
+const CANCELLED: &str = "download.cancelled";
+/// A download ended, and the shell did not say why in a code.
+const FAILED: &str = "download.failed";
+
+/// A download that is coming. The shell's name for it is what it is kept
+/// by; the store's is what a list shows.
+#[derive(Clone, Debug)]
+pub(crate) struct Downloading {
+    record: i64,
+    login_set: LoginSetId,
+    received: u64,
+    /// 0 while the size is not known.
+    expected: u64,
+}
+
+impl App {
+    /// A shell's word about a download. False when the event was not one.
+    pub(crate) fn download_event(&self, web_view: WebViewId, kind: &engine_event::Kind) -> bool {
+        match kind {
+            engine_event::Kind::DownloadRequested(asked) => {
+                self.download_requested(web_view, asked);
+            }
+            engine_event::Kind::DownloadProgress(progress) => self.download_progress(progress),
+            engine_event::Kind::DownloadFinished(finished) => {
+                // A name of the shell's is the name it used; one it left out
+                // is the name it was given.
+                let name = Some(finished.file_name.as_str()).filter(|name| !name.is_empty());
+                self.download_ended(finished.download_id, FINISHED, name);
+            }
+            engine_event::Kind::DownloadFailed(failed) => {
+                // The core speaks codes: what a shell says that is not one
+                // is not passed on.
+                let code = if is_code(&failed.code) {
+                    failed.code.as_str()
+                } else {
+                    FAILED
+                };
+                self.download_ended(failed.download_id, code, None);
+            }
+            _ => return false,
+        }
+        true
+    }
+
+    /// A page asked for a download: it starts, under a name the core makes,
+    /// or the shell is told to drop it.
+    fn download_requested(&self, web_view: WebViewId, asked: &DownloadRequested) {
+        let shell_id = asked.download_id;
+        // Said twice: the download it names is the one that is coming.
+        if self.downloads.borrow().contains_key(&shell_id) {
+            return;
+        }
+        let Some(login_set) = self.may_download(web_view) else {
+            self.drop_download(shell_id);
+            return;
+        };
+        let name = download_file_name(&asked.suggested_filename, &asked.url, &asked.mime_type);
+        let total = (asked.expected_bytes > 0).then_some(asked.expected_bytes);
+        let written = self.store.borrow_mut().add_download(
+            login_set,
+            &asked.url,
+            &name,
+            &asked.mime_type,
+            total,
+            self.clock.now(),
+        );
+        let Ok(record) = written else {
+            // Nothing is saved that the list cannot say.
+            self.drop_download(shell_id);
+            return;
+        };
+        self.downloads.borrow_mut().insert(
+            shell_id,
+            Downloading {
+                record,
+                login_set,
+                received: 0,
+                expected: asked.expected_bytes,
+            },
+        );
+        self.publish_downloads(login_set);
+        let starting = self
+            .host
+            .request(host_request::Kind::DownloadStart(DownloadStart {
+                download_id: shell_id,
+                file_name: name,
+            }));
+        // Asked already. A shell that will not start it has no download:
+        // it ended, and the list says so.
+        let app = self.clone();
+        tokio::task::spawn_local(async move {
+            if starting.await.is_err() {
+                app.download_ended(shell_id, FAILED, None);
+            }
+        });
+    }
+
+    /// Whether a web view's page may start a download now: it must be a
+    /// tab's, and not have started one within [`DOWNLOAD_INTERVAL`]. The
+    /// login set the download is then of.
+    fn may_download(&self, web_view: WebViewId) -> Option<LoginSetId> {
+        let login_set = self.state.borrow().login_set_of(web_view)?;
+        let now = Instant::now();
+        let mut started = self.downloaded.borrow_mut();
+        started.retain(|_, at| now.duration_since(*at) < DOWNLOAD_INTERVAL);
+        if started.contains_key(&web_view) {
+            return None;
+        }
+        started.insert(web_view, now);
+        Some(login_set)
+    }
+
+    /// How far a download has got: kept for the list, and written nowhere.
+    fn download_progress(&self, progress: &DownloadProgress) {
+        if let Some(coming) = self.downloads.borrow_mut().get_mut(&progress.download_id) {
+            coming.received = progress.received_bytes;
+            if progress.expected_bytes > 0 {
+                coming.expected = progress.expected_bytes;
+            }
+        }
+    }
+
+    /// A download ended: as finished, under the name the shell used, or
+    /// with a code. One the core does not have as coming (it was stopped,
+    /// or never started) has ended already.
+    fn download_ended(&self, shell_id: u64, state: &str, file_name: Option<&str>) {
+        let Some(ended) = self.downloads.borrow_mut().remove(&shell_id) else {
+            return;
+        };
+        // A store that refuses leaves the record coming until the next
+        // start, when it is interrupted: there is nobody to tell.
+        let _ =
+            self.store
+                .borrow_mut()
+                .end_download(ended.record, state, file_name, self.clock.now());
+        self.publish_downloads(ended.login_set);
+    }
+
+    /// Tells the shell to drop a download: one that is not to start, or one
+    /// that is to stop.
+    fn drop_download(&self, shell_id: u64) {
+        let dropping = self
+            .host
+            .request(host_request::Kind::DownloadCancel(DownloadCancel {
+                download_id: shell_id,
+            }));
+        // Asked already; this only waits for the answer, so that a shell
+        // that never gives one is given up on like any other.
+        tokio::task::spawn_local(async move {
+            let _ = dropping.await;
+        });
+    }
+
+    /// A login set's windows are told how many of its downloads are coming.
+    fn publish_downloads(&self, login_set: LoginSetId) {
+        let coming = self
+            .downloads
+            .borrow()
+            .values()
+            .filter(|download| download.login_set == login_set)
+            .count();
+        self.state
+            .borrow_mut()
+            .set_downloads_active(login_set, u32::try_from(coming).unwrap_or(u32::MAX));
+    }
+
+    /// The shell's name for a download that is coming, by its record's id.
+    fn coming(&self, record: i64) -> Option<u64> {
+        self.downloads
+            .borrow()
+            .iter()
+            .find(|(_, download)| download.record == record)
+            .map(|(shell_id, _)| *shell_id)
+    }
+
+    /// Stops a download that is coming, and has the shell drop it.
+    fn stop(&self, shell_id: u64) {
+        self.download_ended(shell_id, CANCELLED, None);
+        self.drop_download(shell_id);
+    }
+
+    /// A page of a window's downloads: its Space's login set's, newest
+    /// first, those that are coming with how far they have got.
+    pub(crate) fn query_downloads(
+        &self,
+        query: &QueryDownloads,
+    ) -> Result<response::Kind, AppError> {
+        let login_set = self.downloads_of(query.window_id)?;
+        let limit = if query.limit == 0 {
+            DOWNLOADS_PAGE
+        } else {
+            query.limit
+        };
+        // An id beyond any the store could have given is "from the newest".
+        let before = i64::try_from(query.before_id)
+            .ok()
+            .filter(|before| *before > 0);
+        let page = self
+            .store
+            .borrow()
+            .downloads(login_set, before, limit)
+            .map_err(|error| AppError::new(error.code()))?;
+        let coming = self.downloads.borrow();
+        let downloads = page
+            .downloads
+            .into_iter()
+            .map(|download| {
+                let progress = coming.values().find(|one| one.record == download.id);
+                entry(download, progress)
+            })
+            .collect();
+        Ok(response::Kind::DownloadsPage(DownloadsPage {
+            downloads,
+            more: page.more,
+        }))
+    }
+
+    /// Stops a download that is coming.
+    pub(crate) fn cancel_download(
+        &self,
+        cancel: &CancelDownload,
+    ) -> Result<response::Kind, AppError> {
+        let shell_id = i64::try_from(cancel.download_id)
+            .ok()
+            .and_then(|record| self.coming(record))
+            .ok_or_else(|| AppError::new("download.unknown").field("download_id"))?;
+        self.stop(shell_id);
+        Ok(response::Kind::Ack(Ack {}))
+    }
+
+    /// Takes downloads off a window's list: one, or all of its login set's.
+    /// One that is coming is stopped first. No file is touched.
+    pub(crate) fn forget_downloads(
+        &self,
+        forget: &ForgetDownloads,
+    ) -> Result<response::Kind, AppError> {
+        let login_set = self.downloads_of(forget.window_id)?;
+        let forgotten = match forget.what {
+            Some(forget_downloads::What::DownloadId(id)) => match i64::try_from(id) {
+                Ok(record) => {
+                    let mine = self
+                        .downloads
+                        .borrow()
+                        .iter()
+                        .find(|(_, one)| one.record == record && one.login_set == login_set)
+                        .map(|(shell_id, _)| *shell_id);
+                    if let Some(shell_id) = mine {
+                        self.stop(shell_id);
+                    }
+                    self.store
+                        .borrow_mut()
+                        .forget_download(login_set, record)
+                        .map(|_| ())
+                }
+                // No download has such an id: there is nothing to forget.
+                Err(_) => Ok(()),
+            },
+            Some(forget_downloads::What::Everything(true)) => {
+                let mine: Vec<u64> = self
+                    .downloads
+                    .borrow()
+                    .iter()
+                    .filter(|(_, one)| one.login_set == login_set)
+                    .map(|(shell_id, _)| *shell_id)
+                    .collect();
+                for shell_id in mine {
+                    self.stop(shell_id);
+                }
+                self.store.borrow_mut().forget_all_downloads(login_set)
+            }
+            Some(forget_downloads::What::Everything(false)) | None => {
+                return Err(AppError::new("download.nothing_named").field("what"));
+            }
+        };
+        forgotten.map_err(|error| AppError::new(error.code()))?;
+        Ok(response::Kind::Ack(Ack {}))
+    }
+
+    /// The login set whose downloads a window lists.
+    fn downloads_of(&self, window_id: u64) -> Result<LoginSetId, AppError> {
+        self.state
+            .borrow()
+            .history_of(WindowId(window_id))
+            .ok_or_else(|| AppError::new("window.unknown").field("window_id"))
+    }
+}
+
+/// A download as a list shows it: the record, and how far it has got when
+/// it is coming.
+fn entry(download: Download, progress: Option<&Downloading>) -> DownloadEntry {
+    let (state, error_code) = match download.state.as_str() {
+        COMING => (DownloadState::Coming, String::new()),
+        FINISHED => (DownloadState::Finished, String::new()),
+        code => (DownloadState::Failed, code.to_owned()),
+    };
+    // The size the shell has learned since, when the site did not say.
+    let total = download
+        .total_bytes
+        .or_else(|| progress.map(|coming| coming.expected))
+        .unwrap_or(0);
+    DownloadEntry {
+        id: u64::try_from(download.id).unwrap_or_default(),
+        host: Address::parse(&download.url)
+            .ok()
+            .and_then(|address| address.host().map(str::to_owned))
+            .unwrap_or_default(),
+        url: download.url,
+        file_name: download.file_name,
+        mime_type: download.mime_type,
+        total_bytes: total,
+        received_bytes: progress.map_or(0, |coming| coming.received),
+        state: state as i32,
+        error_code,
+        started_ms: download.started_at.unix_millis(),
+    }
+}

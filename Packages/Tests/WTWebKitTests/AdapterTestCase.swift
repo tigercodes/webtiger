@@ -201,7 +201,11 @@ class AdapterTestCase: XCTestCase {
             case .closeRequested: "close"
             case .outsideLinkRequested: "outside"
             case .findResult: "find"
-            case .progressChanged: nil
+            case .downloadRequested: "download"
+            case .downloadFinished: "downloaded"
+            case let .downloadFailed(failed): "download failed(\(failed.code))"
+            // At the engine's own pace, like a page's progress.
+            case .progressChanged, .downloadProgress: nil
             }
         }
     }

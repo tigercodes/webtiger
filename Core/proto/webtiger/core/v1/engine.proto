@@ -42,6 +42,11 @@ message EngineEvent {
     OutsideLinkRequested outside_link_requested = 13;
     // Since 1.6
     FindResult find_result = 14;
+    // Since 1.9
+    DownloadRequested download_requested = 15;
+    DownloadProgress download_progress = 16;
+    DownloadFinished download_finished = 17;
+    DownloadFailed download_failed = 18;
   }
 }
 
@@ -145,4 +150,52 @@ message FindResult {
   uint32 matches = 3;
   // Which match is shown, counted from 1. 0 when none is.
   uint32 current = 4;
+}
+
+// Downloads (013). Since 1.9.
+
+// A web view's page asked for a download: a response the engine cannot show,
+// one that says it is an attachment, or a link that says "download". Nothing
+// has been saved yet. The core answers with the host request DownloadStart,
+// which names the file, or DownloadCancel.
+//
+// `download_id` is the shell's own name for the download, as a web view a
+// page asked for has an id of the shell's own (006): every later word about
+// the download, from either side, names it so. What the event says of a web
+// view matters only here; the reports that follow are about the download,
+// whatever has become of the web view.
+message DownloadRequested {
+  uint64 download_id = 1;
+  string url = 2 [(wt.redact) = true];
+  // What the site suggests the file is called. Never a name to save under:
+  // the core makes that (013 §4).
+  string suggested_filename = 3 [(wt.redact) = true];
+  string mime_type = 4;
+  // How big the site says the file is. 0 when it did not say.
+  uint64 expected_bytes = 5;
+}
+
+// How far a download has got. An engine reports it as often as it likes; a
+// shell passes on a few times a second at most.
+message DownloadProgress {
+  uint64 download_id = 1;
+  uint64 received_bytes = 2;
+  // 0 while it is still not known.
+  uint64 expected_bytes = 3;
+}
+
+// A download's file is whole, in the system's place for downloads.
+message DownloadFinished {
+  uint64 download_id = 1;
+  // The name it was saved under: the one DownloadStart gave, or that name
+  // with " (2)" and so on when it was taken.
+  string file_name = 2 [(wt.redact) = true];
+}
+
+// A download ended without its file. What was saved of it is gone.
+message DownloadFailed {
+  uint64 download_id = 1;
+  // "download.cancelled" (it was stopped), "download.network",
+  // "download.disk" (it could not be written), or "download.failed".
+  string code = 2;
 }

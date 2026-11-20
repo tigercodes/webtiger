@@ -172,6 +172,10 @@ pub struct WindowSnapshot {
     /// are shown.
     #[prost(message, repeated, tag = "3")]
     pub tabs: ::prost::alloc::vec::Vec<TabSummary>,
+    /// Since 1.9. How many downloads of the window's login set are coming
+    /// (013): enough to show that something is, without asking.
+    #[prost(uint32, tag = "4")]
+    pub downloads_active: u32,
 }
 /// A tab as a strip of tabs shows it: enough to name it, and no more.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -472,6 +476,89 @@ pub struct ZoomView {
     #[prost(bool, tag = "3")]
     pub can_zoom_out: bool,
 }
+/// Asks for a window's downloads: those of its Space's login set, newest
+/// first. Answered with DownloadsPage, or "window.unknown".
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct QueryDownloads {
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
+    /// Only downloads older than this one. 0 starts at the newest.
+    #[prost(uint64, tag = "2")]
+    pub before_id: u64,
+    /// At most this many. 0 asks for the core's own number (100).
+    #[prost(uint32, tag = "3")]
+    pub limit: u32,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DownloadsPage {
+    #[prost(message, repeated, tag = "1")]
+    pub downloads: ::prost::alloc::vec::Vec<DownloadEntry>,
+    /// There are older downloads than these.
+    #[prost(bool, tag = "2")]
+    pub more: bool,
+}
+/// A download, as a list shows it.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct DownloadEntry {
+    /// The core's own, never used twice. What CancelDownload and
+    /// ForgetDownloads name it by.
+    #[prost(uint64, tag = "1")]
+    pub id: u64,
+    #[prost(string, tag = "2")]
+    pub url: ::prost::alloc::string::String,
+    /// The site it came from, as an address field shows a host. Empty when its
+    /// address has none.
+    #[prost(string, tag = "3")]
+    pub host: ::prost::alloc::string::String,
+    /// The name its file is saved under: the one asked for while it is coming,
+    /// the one the shell used once it has finished.
+    #[prost(string, tag = "4")]
+    pub file_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "5")]
+    pub mime_type: ::prost::alloc::string::String,
+    /// How big the file is. 0 when the site did not say.
+    #[prost(uint64, tag = "6")]
+    pub total_bytes: u64,
+    /// How much of it has arrived, while it is coming.
+    #[prost(uint64, tag = "7")]
+    pub received_bytes: u64,
+    #[prost(enumeration = "DownloadState", tag = "8")]
+    pub state: i32,
+    /// With DOWNLOAD_STATE_FAILED: why.
+    #[prost(string, tag = "9")]
+    pub error_code: ::prost::alloc::string::String,
+    /// When it started, in milliseconds since 1970.
+    #[prost(int64, tag = "10")]
+    pub started_ms: i64,
+}
+/// Stops a download that is coming. It ends as "download.cancelled", and the
+/// shell removes what was saved of it. Answered with Ack, or
+/// "download.unknown" for one that is not coming.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CancelDownload {
+    #[prost(uint64, tag = "1")]
+    pub download_id: u64,
+}
+/// Takes downloads off a window's list: one, or all of them. One that is
+/// still coming is stopped first. The files are not touched. Answered with
+/// Ack; "window.unknown"; "download.nothing_named" when it says neither.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ForgetDownloads {
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
+    #[prost(oneof = "forget_downloads::What", tags = "2, 3")]
+    pub what: ::core::option::Option<forget_downloads::What>,
+}
+/// Nested message and enum types in `ForgetDownloads`.
+pub mod forget_downloads {
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum What {
+        #[prost(uint64, tag = "2")]
+        DownloadId(u64),
+        #[prost(bool, tag = "3")]
+        Everything(bool),
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum LoadState {
@@ -536,6 +623,38 @@ impl ZoomChange {
             "ZOOM_CHANGE_IN" => Some(Self::In),
             "ZOOM_CHANGE_OUT" => Some(Self::Out),
             "ZOOM_CHANGE_RESET" => Some(Self::Reset),
+            _ => None,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum DownloadState {
+    Unspecified = 0,
+    Coming = 1,
+    Finished = 2,
+    Failed = 3,
+}
+impl DownloadState {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "DOWNLOAD_STATE_UNSPECIFIED",
+            Self::Coming => "DOWNLOAD_STATE_COMING",
+            Self::Finished => "DOWNLOAD_STATE_FINISHED",
+            Self::Failed => "DOWNLOAD_STATE_FAILED",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "DOWNLOAD_STATE_UNSPECIFIED" => Some(Self::Unspecified),
+            "DOWNLOAD_STATE_COMING" => Some(Self::Coming),
+            "DOWNLOAD_STATE_FINISHED" => Some(Self::Finished),
+            "DOWNLOAD_STATE_FAILED" => Some(Self::Failed),
             _ => None,
         }
     }
@@ -666,7 +785,7 @@ pub struct EngineEvent {
     pub web_view_id: u64,
     #[prost(
         oneof = "engine_event::Kind",
-        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14"
+        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18"
     )]
     pub kind: ::core::option::Option<engine_event::Kind>,
 }
@@ -703,6 +822,15 @@ pub mod engine_event {
         /// Since 1.6
         #[prost(message, tag = "14")]
         FindResult(super::FindResult),
+        /// Since 1.9
+        #[prost(message, tag = "15")]
+        DownloadRequested(super::DownloadRequested),
+        #[prost(message, tag = "16")]
+        DownloadProgress(super::DownloadProgress),
+        #[prost(message, tag = "17")]
+        DownloadFinished(super::DownloadFinished),
+        #[prost(message, tag = "18")]
+        DownloadFailed(super::DownloadFailed),
     }
 }
 /// A load began. The page it asks for does not own the web view yet.
@@ -826,9 +954,67 @@ pub struct FindResult {
     #[prost(uint32, tag = "4")]
     pub current: u32,
 }
+/// A web view's page asked for a download: a response the engine cannot show,
+/// one that says it is an attachment, or a link that says "download". Nothing
+/// has been saved yet. The core answers with the host request DownloadStart,
+/// which names the file, or DownloadCancel.
+///
+/// `download_id` is the shell's own name for the download, as a web view a
+/// page asked for has an id of the shell's own (006): every later word about
+/// the download, from either side, names it so. What the event says of a web
+/// view matters only here; the reports that follow are about the download,
+/// whatever has become of the web view.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct DownloadRequested {
+    #[prost(uint64, tag = "1")]
+    pub download_id: u64,
+    #[prost(string, tag = "2")]
+    pub url: ::prost::alloc::string::String,
+    /// What the site suggests the file is called. Never a name to save under:
+    /// the core makes that (013 §4).
+    #[prost(string, tag = "3")]
+    pub suggested_filename: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub mime_type: ::prost::alloc::string::String,
+    /// How big the site says the file is. 0 when it did not say.
+    #[prost(uint64, tag = "5")]
+    pub expected_bytes: u64,
+}
+/// How far a download has got. An engine reports it as often as it likes; a
+/// shell passes on a few times a second at most.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct DownloadProgress {
+    #[prost(uint64, tag = "1")]
+    pub download_id: u64,
+    #[prost(uint64, tag = "2")]
+    pub received_bytes: u64,
+    /// 0 while it is still not known.
+    #[prost(uint64, tag = "3")]
+    pub expected_bytes: u64,
+}
+/// A download's file is whole, in the system's place for downloads.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct DownloadFinished {
+    #[prost(uint64, tag = "1")]
+    pub download_id: u64,
+    /// The name it was saved under: the one DownloadStart gave, or that name
+    /// with " (2)" and so on when it was taken.
+    #[prost(string, tag = "2")]
+    pub file_name: ::prost::alloc::string::String,
+}
+/// A download ended without its file. What was saved of it is gone.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct DownloadFailed {
+    #[prost(uint64, tag = "1")]
+    pub download_id: u64,
+    /// "download.cancelled" (it was stopped), "download.network",
+    /// "download.disk" (it could not be written), or "download.failed".
+    #[prost(string, tag = "2")]
+    pub code: ::prost::alloc::string::String,
+}
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct HostRequest {
-    #[prost(oneof = "host_request::Kind", tags = "1, 2, 3, 4, 5, 6, 7, 8")]
+    #[prost(oneof = "host_request::Kind", tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10")]
     pub kind: ::core::option::Option<host_request::Kind>,
 }
 /// Nested message and enum types in `HostRequest`.
@@ -854,6 +1040,11 @@ pub mod host_request {
         /// Since 1.8
         #[prost(message, tag = "8")]
         WebViewSetZoom(super::WebViewSetZoom),
+        /// Since 1.9
+        #[prost(message, tag = "9")]
+        DownloadStart(super::DownloadStart),
+        #[prost(message, tag = "10")]
+        DownloadCancel(super::DownloadCancel),
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -976,6 +1167,27 @@ pub struct WebViewSetZoom {
     #[prost(uint32, tag = "2")]
     pub percent: u32,
 }
+/// Starts a download the shell reported (DownloadRequested), saving its file
+/// under `file_name` in the system's place for downloads. The name is the
+/// core's and is safe to write as it is; when it is taken the shell adds
+/// " (2)", and says in DownloadFinished what it used. Answered with Ack once
+/// the download has begun, or "download.unknown" for one the shell does not
+/// have (it was given up on meanwhile).
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct DownloadStart {
+    #[prost(uint64, tag = "1")]
+    pub download_id: u64,
+    #[prost(string, tag = "2")]
+    pub file_name: ::prost::alloc::string::String,
+}
+/// Drops a download: one that was reported and never started, or one that is
+/// coming, of which nothing is left saved. Answered with Ack, also for a
+/// download the shell does not have.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct DownloadCancel {
+    #[prost(uint64, tag = "1")]
+    pub download_id: u64,
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Envelope {
     /// A request's id, chosen by the shell, correlates its response; a request
@@ -1009,7 +1221,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -1056,12 +1268,19 @@ pub mod request {
         /// browser.proto, since 1.8
         #[prost(message, tag = "16")]
         ZoomPage(super::ZoomPage),
+        /// browser.proto, since 1.9
+        #[prost(message, tag = "17")]
+        QueryDownloads(super::QueryDownloads),
+        #[prost(message, tag = "18")]
+        CancelDownload(super::CancelDownload),
+        #[prost(message, tag = "19")]
+        ForgetDownloads(super::ForgetDownloads),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Response {
-    #[prost(oneof = "response::Kind", tags = "1, 2, 3, 4, 5, 6, 7, 8")]
+    #[prost(oneof = "response::Kind", tags = "1, 2, 3, 4, 5, 6, 7, 8, 9")]
     pub kind: ::core::option::Option<response::Kind>,
 }
 /// Nested message and enum types in `Response`.
@@ -1087,6 +1306,9 @@ pub mod response {
         /// Since 1.7
         #[prost(message, tag = "8")]
         AddressSuggestions(super::AddressSuggestions),
+        /// Since 1.9
+        #[prost(message, tag = "9")]
+        DownloadsPage(super::DownloadsPage),
     }
 }
 /// Core → shell, unasked.

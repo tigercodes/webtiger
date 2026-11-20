@@ -118,6 +118,48 @@ public nonisolated enum WTZoomChange: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
+public nonisolated enum WTDownloadState: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case coming // = 1
+  case finished // = 2
+  case failed // = 3
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .coming
+    case 2: self = .finished
+    case 3: self = .failed
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .coming: return 1
+    case .finished: return 2
+    case .failed: return 3
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [WTDownloadState] = [
+    .unspecified,
+    .coming,
+    .finished,
+    .failed,
+  ]
+
+}
+
 /// Opens a window in the default Space, with one tab. Answered with
 /// WindowOpened. In fake mode the tab opens FakeOptions.start_address.
 public nonisolated struct WTOpenWindow: Sendable {
@@ -281,6 +323,10 @@ public nonisolated struct WTWindowSnapshot: Sendable {
   /// Every tab of the window, the one in front among them, in the order they
   /// are shown.
   public var tabs: [WTTabSummary] = []
+
+  /// Since 1.9. How many downloads of the window's login set are coming
+  /// (013): enough to show that something is, without asking.
+  public var downloadsActive: UInt32 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -762,6 +808,136 @@ public nonisolated struct WTZoomView: Sendable {
   public init() {}
 }
 
+/// Asks for a window's downloads: those of its Space's login set, newest
+/// first. Answered with DownloadsPage, or "window.unknown".
+public nonisolated struct WTQueryDownloads: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var windowID: UInt64 = 0
+
+  /// Only downloads older than this one. 0 starts at the newest.
+  public var beforeID: UInt64 = 0
+
+  /// At most this many. 0 asks for the core's own number (100).
+  public var limit: UInt32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct WTDownloadsPage: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var downloads: [WTDownloadEntry] = []
+
+  /// There are older downloads than these.
+  public var more: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// A download, as a list shows it.
+public nonisolated struct WTDownloadEntry: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// The core's own, never used twice. What CancelDownload and
+  /// ForgetDownloads name it by.
+  public var id: UInt64 = 0
+
+  public var url: String = String()
+
+  /// The site it came from, as an address field shows a host. Empty when its
+  /// address has none.
+  public var host: String = String()
+
+  /// The name its file is saved under: the one asked for while it is coming,
+  /// the one the shell used once it has finished.
+  public var fileName: String = String()
+
+  public var mimeType: String = String()
+
+  /// How big the file is. 0 when the site did not say.
+  public var totalBytes: UInt64 = 0
+
+  /// How much of it has arrived, while it is coming.
+  public var receivedBytes: UInt64 = 0
+
+  public var state: WTDownloadState = .unspecified
+
+  /// With DOWNLOAD_STATE_FAILED: why.
+  public var errorCode: String = String()
+
+  /// When it started, in milliseconds since 1970.
+  public var startedMs: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Stops a download that is coming. It ends as "download.cancelled", and the
+/// shell removes what was saved of it. Answered with Ack, or
+/// "download.unknown" for one that is not coming.
+public nonisolated struct WTCancelDownload: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var downloadID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Takes downloads off a window's list: one, or all of them. One that is
+/// still coming is stopped first. The files are not touched. Answered with
+/// Ack; "window.unknown"; "download.nothing_named" when it says neither.
+public nonisolated struct WTForgetDownloads: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var windowID: UInt64 = 0
+
+  public var what: WTForgetDownloads.OneOf_What? = nil
+
+  public var downloadID: UInt64 {
+    get {
+      if case .downloadID(let v)? = what {return v}
+      return 0
+    }
+    set {what = .downloadID(newValue)}
+  }
+
+  public var everything: Bool {
+    get {
+      if case .everything(let v)? = what {return v}
+      return false
+    }
+    set {what = .everything(newValue)}
+  }
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public nonisolated enum OneOf_What: Equatable, Sendable {
+    case downloadID(UInt64)
+    case everything(Bool)
+
+  }
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
@@ -772,6 +948,10 @@ nonisolated extension WTLoadState: SwiftProtobuf._ProtoNameProviding {
 
 nonisolated extension WTZoomChange: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0ZOOM_CHANGE_UNSPECIFIED\0\u{1}ZOOM_CHANGE_IN\0\u{1}ZOOM_CHANGE_OUT\0\u{1}ZOOM_CHANGE_RESET\0")
+}
+
+nonisolated extension WTDownloadState: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0DOWNLOAD_STATE_UNSPECIFIED\0\u{1}DOWNLOAD_STATE_COMING\0\u{1}DOWNLOAD_STATE_FINISHED\0\u{1}DOWNLOAD_STATE_FAILED\0")
 }
 
 nonisolated extension WTOpenWindow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
@@ -1065,7 +1245,7 @@ nonisolated extension WTActivateTab: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".WindowSnapshot"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0\u{3}downloads_active\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1076,6 +1256,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 1: try { try decoder.decodeSingularUInt64Field(value: &self.windowID) }()
       case 2: try { try decoder.decodeSingularMessageField(value: &self._tab) }()
       case 3: try { try decoder.decodeRepeatedMessageField(value: &self.tabs) }()
+      case 4: try { try decoder.decodeSingularUInt32Field(value: &self.downloadsActive) }()
       default: break
       }
     }
@@ -1095,6 +1276,9 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
     if !self.tabs.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.tabs, fieldNumber: 3)
     }
+    if self.downloadsActive != 0 {
+      try visitor.visitSingularUInt32Field(value: self.downloadsActive, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1102,6 +1286,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.windowID != rhs.windowID {return false}
     if lhs._tab != rhs._tab {return false}
     if lhs.tabs != rhs.tabs {return false}
+    if lhs.downloadsActive != rhs.downloadsActive {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1839,6 +2024,248 @@ nonisolated extension WTZoomView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     if lhs.percent != rhs.percent {return false}
     if lhs.canZoomIn != rhs.canZoomIn {return false}
     if lhs.canZoomOut != rhs.canZoomOut {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTQueryDownloads: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".QueryDownloads"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{3}before_id\0\u{1}limit\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.windowID) }()
+      case 2: try { try decoder.decodeSingularUInt64Field(value: &self.beforeID) }()
+      case 3: try { try decoder.decodeSingularUInt32Field(value: &self.limit) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.windowID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.windowID, fieldNumber: 1)
+    }
+    if self.beforeID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.beforeID, fieldNumber: 2)
+    }
+    if self.limit != 0 {
+      try visitor.visitSingularUInt32Field(value: self.limit, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTQueryDownloads, rhs: WTQueryDownloads) -> Bool {
+    if lhs.windowID != rhs.windowID {return false}
+    if lhs.beforeID != rhs.beforeID {return false}
+    if lhs.limit != rhs.limit {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTDownloadsPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DownloadsPage"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}downloads\0\u{1}more\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.downloads) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.more) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.downloads.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.downloads, fieldNumber: 1)
+    }
+    if self.more != false {
+      try visitor.visitSingularBoolField(value: self.more, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTDownloadsPage, rhs: WTDownloadsPage) -> Bool {
+    if lhs.downloads != rhs.downloads {return false}
+    if lhs.more != rhs.more {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTDownloadEntry: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DownloadEntry"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}url\0\u{1}host\0\u{3}file_name\0\u{3}mime_type\0\u{3}total_bytes\0\u{3}received_bytes\0\u{1}state\0\u{3}error_code\0\u{3}started_ms\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.id) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.host) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.fileName) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.mimeType) }()
+      case 6: try { try decoder.decodeSingularUInt64Field(value: &self.totalBytes) }()
+      case 7: try { try decoder.decodeSingularUInt64Field(value: &self.receivedBytes) }()
+      case 8: try { try decoder.decodeSingularEnumField(value: &self.state) }()
+      case 9: try { try decoder.decodeSingularStringField(value: &self.errorCode) }()
+      case 10: try { try decoder.decodeSingularInt64Field(value: &self.startedMs) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.id != 0 {
+      try visitor.visitSingularUInt64Field(value: self.id, fieldNumber: 1)
+    }
+    if !self.url.isEmpty {
+      try visitor.visitSingularStringField(value: self.url, fieldNumber: 2)
+    }
+    if !self.host.isEmpty {
+      try visitor.visitSingularStringField(value: self.host, fieldNumber: 3)
+    }
+    if !self.fileName.isEmpty {
+      try visitor.visitSingularStringField(value: self.fileName, fieldNumber: 4)
+    }
+    if !self.mimeType.isEmpty {
+      try visitor.visitSingularStringField(value: self.mimeType, fieldNumber: 5)
+    }
+    if self.totalBytes != 0 {
+      try visitor.visitSingularUInt64Field(value: self.totalBytes, fieldNumber: 6)
+    }
+    if self.receivedBytes != 0 {
+      try visitor.visitSingularUInt64Field(value: self.receivedBytes, fieldNumber: 7)
+    }
+    if self.state != .unspecified {
+      try visitor.visitSingularEnumField(value: self.state, fieldNumber: 8)
+    }
+    if !self.errorCode.isEmpty {
+      try visitor.visitSingularStringField(value: self.errorCode, fieldNumber: 9)
+    }
+    if self.startedMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.startedMs, fieldNumber: 10)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTDownloadEntry, rhs: WTDownloadEntry) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.url != rhs.url {return false}
+    if lhs.host != rhs.host {return false}
+    if lhs.fileName != rhs.fileName {return false}
+    if lhs.mimeType != rhs.mimeType {return false}
+    if lhs.totalBytes != rhs.totalBytes {return false}
+    if lhs.receivedBytes != rhs.receivedBytes {return false}
+    if lhs.state != rhs.state {return false}
+    if lhs.errorCode != rhs.errorCode {return false}
+    if lhs.startedMs != rhs.startedMs {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTCancelDownload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CancelDownload"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}download_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.downloadID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.downloadID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.downloadID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTCancelDownload, rhs: WTCancelDownload) -> Bool {
+    if lhs.downloadID != rhs.downloadID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTForgetDownloads: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ForgetDownloads"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{3}download_id\0\u{1}everything\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.windowID) }()
+      case 2: try {
+        var v: UInt64?
+        try decoder.decodeSingularUInt64Field(value: &v)
+        if let v = v {
+          if self.what != nil {try decoder.handleConflictingOneOf()}
+          self.what = .downloadID(v)
+        }
+      }()
+      case 3: try {
+        var v: Bool?
+        try decoder.decodeSingularBoolField(value: &v)
+        if let v = v {
+          if self.what != nil {try decoder.handleConflictingOneOf()}
+          self.what = .everything(v)
+        }
+      }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if self.windowID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.windowID, fieldNumber: 1)
+    }
+    switch self.what {
+    case .downloadID?: try {
+      guard case .downloadID(let v)? = self.what else { preconditionFailure() }
+      try visitor.visitSingularUInt64Field(value: v, fieldNumber: 2)
+    }()
+    case .everything?: try {
+      guard case .everything(let v)? = self.what else { preconditionFailure() }
+      try visitor.visitSingularBoolField(value: v, fieldNumber: 3)
+    }()
+    case nil: break
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTForgetDownloads, rhs: WTForgetDownloads) -> Bool {
+    if lhs.windowID != rhs.windowID {return false}
+    if lhs.what != rhs.what {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

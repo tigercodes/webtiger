@@ -5,10 +5,11 @@
 use std::collections::BTreeMap;
 
 use wt_proto::v1::{
-    Ack, AddressChanged, CloseRequested, EngineEvent, EngineKind, Error, FindResult,
-    HistoryChanged, HostPong, NavigationCommand, NavigationCommitted, NavigationFailed,
-    NavigationFinished, NavigationStarted, NewWindowRequested, OutsideLinkRequested,
-    ProgressChanged, RendererGone, TitleChanged, engine_event, host_request, host_response,
+    Ack, AddressChanged, CloseRequested, DownloadFailed, DownloadFinished, DownloadProgress,
+    DownloadRequested, EngineEvent, EngineKind, Error, FindResult, HistoryChanged, HostPong,
+    NavigationCommand, NavigationCommitted, NavigationFailed, NavigationFinished,
+    NavigationStarted, NewWindowRequested, OutsideLinkRequested, ProgressChanged, RendererGone,
+    TitleChanged, engine_event, host_request, host_response,
 };
 
 /// A page of the scripted web.
@@ -57,6 +58,14 @@ pub struct FakeEngine {
     /// Every zoom a web view was asked for, in order (012): the web view and
     /// the per cent.
     pub zooms: Vec<(u64, u32)>,
+    /// Every download the shell was asked to start, in order (013): the
+    /// shell's name for it and the name to save it under.
+    pub download_starts: Vec<(u64, String)>,
+    /// Every download the shell was asked to drop, in order.
+    pub download_cancels: Vec<u64>,
+    /// Downloads the shell will say it does not have when asked to start
+    /// them.
+    pub downloads_not_started: Vec<u64>,
 }
 
 impl FakeEngine {
@@ -70,6 +79,9 @@ impl FakeEngine {
             nothing_opens_outside: false,
             finds: Vec::new(),
             zooms: Vec::new(),
+            download_starts: Vec::new(),
+            download_cancels: Vec::new(),
+            downloads_not_started: Vec::new(),
         }
     }
 
@@ -263,6 +275,18 @@ impl FakeEngine {
                 self.zooms.push((zoom.web_view_id, zoom.percent));
                 (ack, Vec::new())
             }
+            Kind::DownloadStart(start) => {
+                if self.downloads_not_started.contains(&start.download_id) {
+                    return (error("download.unknown"), Vec::new());
+                }
+                self.download_starts
+                    .push((start.download_id, start.file_name));
+                (ack, Vec::new())
+            }
+            Kind::DownloadCancel(cancel) => {
+                self.download_cancels.push(cancel.download_id);
+                (ack, Vec::new())
+            }
             Kind::OpenOutside(open) => {
                 if self.nothing_opens_outside {
                     return (error("system.no_handler"), Vec::new());
@@ -371,6 +395,67 @@ impl FakeEngine {
         )];
         events.extend(self.arrive(id, &url, title));
         events
+    }
+
+    /// A web view's page asked for a download (013), which the shell names
+    /// `download`.
+    #[must_use]
+    pub fn download_requested(
+        id: u64,
+        download: u64,
+        url: &str,
+        suggested: &str,
+        mime_type: &str,
+        bytes: u64,
+    ) -> EngineEvent {
+        event(
+            id,
+            engine_event::Kind::DownloadRequested(DownloadRequested {
+                download_id: download,
+                url: url.to_owned(),
+                suggested_filename: suggested.to_owned(),
+                mime_type: mime_type.to_owned(),
+                expected_bytes: bytes,
+            }),
+        )
+    }
+
+    /// A download has got so far.
+    #[must_use]
+    pub fn download_progress(download: u64, received: u64, expected: u64) -> EngineEvent {
+        // A download's later reports are about the download: no web view.
+        event(
+            0,
+            engine_event::Kind::DownloadProgress(DownloadProgress {
+                download_id: download,
+                received_bytes: received,
+                expected_bytes: expected,
+            }),
+        )
+    }
+
+    /// A download's file is whole, under `name`.
+    #[must_use]
+    pub fn download_finished(download: u64, name: &str) -> EngineEvent {
+        event(
+            0,
+            engine_event::Kind::DownloadFinished(DownloadFinished {
+                download_id: download,
+                file_name: name.to_owned(),
+            }),
+        )
+    }
+
+    /// A download ended without its file.
+    #[must_use]
+    pub fn download_failed(download: u64, code: &str) -> EngineEvent {
+        event(
+            0,
+            engine_event::Kind::DownloadFailed(DownloadFailed {
+                download_id: download,
+                code: code.to_owned(),
+            }),
+        )
     }
 
     /// The report of a page changing its address without a load.

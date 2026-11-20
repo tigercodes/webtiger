@@ -105,6 +105,10 @@ public final class WebKitEngine: HostServices {
             // and five times, as far as the suite has tried WebKit on a Mac and an iPhone.
             page.webView.pageZoom = CGFloat(min(max(zoom.percent, 50), 500)) / 100
             return .ack(WTAck())
+        case .downloadStart, .downloadCancel:
+            // Downloads (013) are in the contract and the core; this adapter reports none yet,
+            // and answers as a shell built before 1.9 does. Nothing asks until a shell reports one.
+            return failure("host.unsupported")
         }
     }
 

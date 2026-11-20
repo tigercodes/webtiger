@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress: the name of the file (§4) and the store's records (§5) are built and tested; the rest is planned (§10). The design below is to be read before it is built: §8 lists what it decides |
+| **Status** | In progress: the name of the file (§4), the store's records (§5), the contract (1.9) and the core (§3) are built and tested. No shell reports a download yet, and each answers the core's two requests as a shell built before 1.9 does; the engines and the screens are planned (§10). The design below is to be read before it is built: §8 lists what it decides |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "downloads". The `download` table of the store (000 §5.6) and the downloads half of the Library (000 §4), in their first form |
 | **Contract** | 1.9: `DownloadRequested`, `DownloadProgress`, `DownloadFinished`, `DownloadFailed`; the host requests `DownloadStart` and `DownloadCancel`; `QueryDownloads`, `CancelDownload`, `ForgetDownloads` |
 | **Last updated** | 2026-11-19 |
@@ -31,10 +31,10 @@ The engine notices a download and says so. The core decides whether it starts, n
 
 | What the shell reports | What the core does |
 |---|---|
-| `DownloadRequested`: a web view's page asked for a download, with an id of the shell's own, the address, the name the site suggests, the kind and the size if known | Checks the web view is one it has, and that this is not the second in a second from it. Makes the name safe (§4). Writes the record. Asks the shell to start it under that name (`DownloadStart`), or to drop it (`DownloadCancel`) |
+| `DownloadRequested`: a web view's page asked for a download, with an id of the shell's own, the address, the name the site suggests, the kind and the size if known | Checks the web view is one it has, and that this is not the second in a second from it. Makes the name safe (§4). Writes the record. Asks the shell to start it under that name (`DownloadStart`), or to drop it (`DownloadCancel`). A shell that will not start it leaves a download that failed |
 | `DownloadProgress`: so many bytes of so many | Keeps the numbers for the list. Not written to the store: a download that does not finish is "failed" there |
 | `DownloadFinished`: the name the file was saved under (the shell adds " (2)" when the name is taken) | Writes how it ended, and the name |
-| `DownloadFailed`: with a code (`download.cancelled`, `download.network`, `download.disk`, `download.refused`) | Writes how it ended |
+| `DownloadFailed`: with a code (`download.cancelled`, `download.network`, `download.disk`, `download.failed`) | Writes how it ended. What a shell says that is not a code is written as `download.failed` |
 
 | Request from a shell's screen | What the core does | Answer |
 |---|---|---|
@@ -91,7 +91,7 @@ A download ends once: what is said of one that has ended changes nothing. Downlo
 |---|---|
 | The name (`wt-core`, 9) | What stays as it is; no folder, by either separator; nothing a file system refuses or hides; nothing that turns the name round; the names a system keeps for devices, and what only looks like one; the address names it when nothing is suggested, escapes read, and an escape that hides a folder is a folder; never empty, and not named by an address that is not the web's; a name with no ending takes its kind's; a long name is cut in the name, not in its ending, and never inside a character. Eight of the rules checked by breaking them |
 | Store (`wt-store`, 6) | The migration from version 4, which keeps what was there. A download is written as it starts and once as it ends, under the name the shell used; a failure keeps the name asked for, and a size not said is none; listed newest first, a page at a time, by login set; forgetting one, and all, of one login set's; those left `coming` are interrupted, and what had ended is as it ended |
-| Core (through `FakeShell`) | Each row of §3's tables. An unknown web view; a second in a second. The name asked of the shell is the safe one. Progress in the list and the snapshot's count. Cancelling; forgetting one that is coming. Another login set's are not listed |
+| Core (`wt-app/tests/downloads.rs`, 15 through `FakeShell`) | A download starts under a name the core makes, from what the site suggests or from the address, and is listed with its site, kind and size; the snapshot says one is coming. How far it has got is in the list; how it finished is kept, under the name the shell used; a word about one that has ended changes nothing. A size the site did not say is the one the shell learns. A failure by its code; words that are not a code are not kept. One a second from a web view, to the millisecond, and another tab's page is not held back; a web view the core does not have gets none; said twice, one starts. A shell that will not start it leaves a download that failed. Stopping ends it and has the shell drop it, by the shell's name for it; one that is not coming cannot be stopped. Forgetting one, and all, and stopping one that is coming first; naming nothing. No such window. A page at a time, newest first. A download outlives the tab that asked for it. Started again over the same store, what was coming is listed as interrupted and nothing is started again. Nine of the rules checked by breaking them |
 | Adapter suites | The test site gains a file served as an attachment, one of a kind no engine shows, and a link that says "download". Each is reported once, with its name and size; the file arrives whole in a folder of the test's own; cancelling removes what was saved; a name that is taken gains " (2)" |
 | The shells' screens | The list's model against `ScriptedCore`; pictures of the list coming, finished and failed; the apps with the real core: click, see it listed, see it finish |
 
@@ -109,14 +109,16 @@ No test writes into a person's own Downloads folder: the suites give the adapter
 
 ## 9. What is not verified
 
-- Written when built.
+- **Another login set, through the core.** As for zoom (012 §8): one Space and one login set until W2. That a login set's downloads are its own is the store's test.
+- **A shell that says it finished what it never started**, or names a file it was not given: the core writes down the name the shell says it used, and cannot see the folder.
+- The engines and the screens: written when built.
 
 ## 10. Done checklist
 
 - [x] The name's rules, in `wt-core`. 9 tests.
 - [x] The store: migration 5; the records. 6 tests.
-- [ ] Contract 1.9 and its version in every place it is written.
-- [ ] The core: the rules of §3. Tests through `FakeShell`.
+- [x] Contract 1.9 and its version in every place it is written.
+- [x] The core: the rules of §3. 15 tests through `FakeShell`.
 - [ ] The test site's files.
 - [ ] Apple: the adapter and its suite; the list; pictures; a UI test.
 - [ ] Android: the adapter, on the JVM and the device; the list; pictures; a device test.

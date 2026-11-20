@@ -110,6 +110,23 @@ public nonisolated struct WTHostRequest: Sendable {
     set {kind = .webViewSetZoom(newValue)}
   }
 
+  /// Since 1.9
+  public var downloadStart: WTDownloadStart {
+    get {
+      if case .downloadStart(let v)? = kind {return v}
+      return WTDownloadStart()
+    }
+    set {kind = .downloadStart(newValue)}
+  }
+
+  public var downloadCancel: WTDownloadCancel {
+    get {
+      if case .downloadCancel(let v)? = kind {return v}
+      return WTDownloadCancel()
+    }
+    set {kind = .downloadCancel(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -124,6 +141,9 @@ public nonisolated struct WTHostRequest: Sendable {
     case webViewFind(WTWebViewFind)
     /// Since 1.8
     case webViewSetZoom(WTWebViewSetZoom)
+    /// Since 1.9
+    case downloadStart(WTDownloadStart)
+    case downloadCancel(WTDownloadCancel)
 
   }
 
@@ -355,13 +375,48 @@ public nonisolated struct WTWebViewSetZoom: Sendable {
   public init() {}
 }
 
+/// Starts a download the shell reported (DownloadRequested), saving its file
+/// under `file_name` in the system's place for downloads. The name is the
+/// core's and is safe to write as it is; when it is taken the shell adds
+/// " (2)", and says in DownloadFinished what it used. Answered with Ack once
+/// the download has begun, or "download.unknown" for one the shell does not
+/// have (it was given up on meanwhile).
+public nonisolated struct WTDownloadStart: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var downloadID: UInt64 = 0
+
+  public var fileName: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Drops a download: one that was reported and never started, or one that is
+/// coming, of which nothing is left saved. Answered with Ack, also for a
+/// download the shell does not have.
+public nonisolated struct WTDownloadCancel: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var downloadID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
 
 nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".HostRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{3}web_view_create\0\u{3}web_view_load\0\u{3}web_view_command\0\u{3}web_view_destroy\0\u{3}open_outside\0\u{3}web_view_find\0\u{3}web_view_set_zoom\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{3}web_view_create\0\u{3}web_view_load\0\u{3}web_view_command\0\u{3}web_view_destroy\0\u{3}open_outside\0\u{3}web_view_find\0\u{3}web_view_set_zoom\0\u{3}download_start\0\u{3}download_cancel\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -473,6 +528,32 @@ nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
           self.kind = .webViewSetZoom(v)
         }
       }()
+      case 9: try {
+        var v: WTDownloadStart?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .downloadStart(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .downloadStart(v)
+        }
+      }()
+      case 10: try {
+        var v: WTDownloadCancel?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .downloadCancel(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .downloadCancel(v)
+        }
+      }()
       default: break
       }
     }
@@ -515,6 +596,14 @@ nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
     case .webViewSetZoom?: try {
       guard case .webViewSetZoom(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
+    }()
+    case .downloadStart?: try {
+      guard case .downloadStart(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 9)
+    }()
+    case .downloadCancel?: try {
+      guard case .downloadCancel(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
     }()
     case nil: break
     }
@@ -951,6 +1040,71 @@ nonisolated extension WTWebViewSetZoom: SwiftProtobuf.Message, SwiftProtobuf._Me
   public static func ==(lhs: WTWebViewSetZoom, rhs: WTWebViewSetZoom) -> Bool {
     if lhs.webViewID != rhs.webViewID {return false}
     if lhs.percent != rhs.percent {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTDownloadStart: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DownloadStart"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}download_id\0\u{3}file_name\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.downloadID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.fileName) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.downloadID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.downloadID, fieldNumber: 1)
+    }
+    if !self.fileName.isEmpty {
+      try visitor.visitSingularStringField(value: self.fileName, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTDownloadStart, rhs: WTDownloadStart) -> Bool {
+    if lhs.downloadID != rhs.downloadID {return false}
+    if lhs.fileName != rhs.fileName {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTDownloadCancel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DownloadCancel"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}download_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.downloadID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.downloadID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.downloadID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTDownloadCancel, rhs: WTDownloadCancel) -> Bool {
+    if lhs.downloadID != rhs.downloadID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

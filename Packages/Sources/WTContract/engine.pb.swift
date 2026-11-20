@@ -152,6 +152,39 @@ public nonisolated struct WTEngineEvent: Sendable {
     set {kind = .findResult(newValue)}
   }
 
+  /// Since 1.9
+  public var downloadRequested: WTDownloadRequested {
+    get {
+      if case .downloadRequested(let v)? = kind {return v}
+      return WTDownloadRequested()
+    }
+    set {kind = .downloadRequested(newValue)}
+  }
+
+  public var downloadProgress: WTDownloadProgress {
+    get {
+      if case .downloadProgress(let v)? = kind {return v}
+      return WTDownloadProgress()
+    }
+    set {kind = .downloadProgress(newValue)}
+  }
+
+  public var downloadFinished: WTDownloadFinished {
+    get {
+      if case .downloadFinished(let v)? = kind {return v}
+      return WTDownloadFinished()
+    }
+    set {kind = .downloadFinished(newValue)}
+  }
+
+  public var downloadFailed: WTDownloadFailed {
+    get {
+      if case .downloadFailed(let v)? = kind {return v}
+      return WTDownloadFailed()
+    }
+    set {kind = .downloadFailed(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -171,6 +204,11 @@ public nonisolated struct WTEngineEvent: Sendable {
     case outsideLinkRequested(WTOutsideLinkRequested)
     /// Since 1.6
     case findResult(WTFindResult)
+    /// Since 1.9
+    case downloadRequested(WTDownloadRequested)
+    case downloadProgress(WTDownloadProgress)
+    case downloadFinished(WTDownloadFinished)
+    case downloadFailed(WTDownloadFailed)
 
   }
 
@@ -392,13 +430,99 @@ public nonisolated struct WTFindResult: Sendable {
   public init() {}
 }
 
+/// A web view's page asked for a download: a response the engine cannot show,
+/// one that says it is an attachment, or a link that says "download". Nothing
+/// has been saved yet. The core answers with the host request DownloadStart,
+/// which names the file, or DownloadCancel.
+///
+/// `download_id` is the shell's own name for the download, as a web view a
+/// page asked for has an id of the shell's own (006): every later word about
+/// the download, from either side, names it so. What the event says of a web
+/// view matters only here; the reports that follow are about the download,
+/// whatever has become of the web view.
+public nonisolated struct WTDownloadRequested: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var downloadID: UInt64 = 0
+
+  public var url: String = String()
+
+  /// What the site suggests the file is called. Never a name to save under:
+  /// the core makes that (013 §4).
+  public var suggestedFilename: String = String()
+
+  public var mimeType: String = String()
+
+  /// How big the site says the file is. 0 when it did not say.
+  public var expectedBytes: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// How far a download has got. An engine reports it as often as it likes; a
+/// shell passes on a few times a second at most.
+public nonisolated struct WTDownloadProgress: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var downloadID: UInt64 = 0
+
+  public var receivedBytes: UInt64 = 0
+
+  /// 0 while it is still not known.
+  public var expectedBytes: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// A download's file is whole, in the system's place for downloads.
+public nonisolated struct WTDownloadFinished: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var downloadID: UInt64 = 0
+
+  /// The name it was saved under: the one DownloadStart gave, or that name
+  /// with " (2)" and so on when it was taken.
+  public var fileName: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// A download ended without its file. What was saved of it is gone.
+public nonisolated struct WTDownloadFailed: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var downloadID: UInt64 = 0
+
+  /// "download.cancelled" (it was stopped), "download.network",
+  /// "download.disk" (it could not be written), or "download.failed".
+  public var code: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
 
 nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EngineEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{3}navigation_started\0\u{3}navigation_committed\0\u{3}navigation_finished\0\u{3}navigation_failed\0\u{3}address_changed\0\u{3}title_changed\0\u{3}progress_changed\0\u{3}history_changed\0\u{3}renderer_gone\0\u{3}new_window_requested\0\u{3}close_requested\0\u{3}outside_link_requested\0\u{3}find_result\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{3}navigation_started\0\u{3}navigation_committed\0\u{3}navigation_finished\0\u{3}navigation_failed\0\u{3}address_changed\0\u{3}title_changed\0\u{3}progress_changed\0\u{3}history_changed\0\u{3}renderer_gone\0\u{3}new_window_requested\0\u{3}close_requested\0\u{3}outside_link_requested\0\u{3}find_result\0\u{3}download_requested\0\u{3}download_progress\0\u{3}download_finished\0\u{3}download_failed\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -576,6 +700,58 @@ nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
           self.kind = .findResult(v)
         }
       }()
+      case 15: try {
+        var v: WTDownloadRequested?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .downloadRequested(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .downloadRequested(v)
+        }
+      }()
+      case 16: try {
+        var v: WTDownloadProgress?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .downloadProgress(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .downloadProgress(v)
+        }
+      }()
+      case 17: try {
+        var v: WTDownloadFinished?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .downloadFinished(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .downloadFinished(v)
+        }
+      }()
+      case 18: try {
+        var v: WTDownloadFailed?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .downloadFailed(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .downloadFailed(v)
+        }
+      }()
       default: break
       }
     }
@@ -641,6 +817,22 @@ nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
     case .findResult?: try {
       guard case .findResult(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
+    }()
+    case .downloadRequested?: try {
+      guard case .downloadRequested(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 15)
+    }()
+    case .downloadProgress?: try {
+      guard case .downloadProgress(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 16)
+    }()
+    case .downloadFinished?: try {
+      guard case .downloadFinished(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
+    }()
+    case .downloadFailed?: try {
+      guard case .downloadFailed(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 18)
     }()
     case nil: break
     }
@@ -1052,6 +1244,166 @@ nonisolated extension WTFindResult: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs.counted != rhs.counted {return false}
     if lhs.matches != rhs.matches {return false}
     if lhs.current != rhs.current {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTDownloadRequested: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DownloadRequested"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}download_id\0\u{1}url\0\u{3}suggested_filename\0\u{3}mime_type\0\u{3}expected_bytes\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.downloadID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.suggestedFilename) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.mimeType) }()
+      case 5: try { try decoder.decodeSingularUInt64Field(value: &self.expectedBytes) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.downloadID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.downloadID, fieldNumber: 1)
+    }
+    if !self.url.isEmpty {
+      try visitor.visitSingularStringField(value: self.url, fieldNumber: 2)
+    }
+    if !self.suggestedFilename.isEmpty {
+      try visitor.visitSingularStringField(value: self.suggestedFilename, fieldNumber: 3)
+    }
+    if !self.mimeType.isEmpty {
+      try visitor.visitSingularStringField(value: self.mimeType, fieldNumber: 4)
+    }
+    if self.expectedBytes != 0 {
+      try visitor.visitSingularUInt64Field(value: self.expectedBytes, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTDownloadRequested, rhs: WTDownloadRequested) -> Bool {
+    if lhs.downloadID != rhs.downloadID {return false}
+    if lhs.url != rhs.url {return false}
+    if lhs.suggestedFilename != rhs.suggestedFilename {return false}
+    if lhs.mimeType != rhs.mimeType {return false}
+    if lhs.expectedBytes != rhs.expectedBytes {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTDownloadProgress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DownloadProgress"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}download_id\0\u{3}received_bytes\0\u{3}expected_bytes\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.downloadID) }()
+      case 2: try { try decoder.decodeSingularUInt64Field(value: &self.receivedBytes) }()
+      case 3: try { try decoder.decodeSingularUInt64Field(value: &self.expectedBytes) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.downloadID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.downloadID, fieldNumber: 1)
+    }
+    if self.receivedBytes != 0 {
+      try visitor.visitSingularUInt64Field(value: self.receivedBytes, fieldNumber: 2)
+    }
+    if self.expectedBytes != 0 {
+      try visitor.visitSingularUInt64Field(value: self.expectedBytes, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTDownloadProgress, rhs: WTDownloadProgress) -> Bool {
+    if lhs.downloadID != rhs.downloadID {return false}
+    if lhs.receivedBytes != rhs.receivedBytes {return false}
+    if lhs.expectedBytes != rhs.expectedBytes {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTDownloadFinished: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DownloadFinished"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}download_id\0\u{3}file_name\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.downloadID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.fileName) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.downloadID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.downloadID, fieldNumber: 1)
+    }
+    if !self.fileName.isEmpty {
+      try visitor.visitSingularStringField(value: self.fileName, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTDownloadFinished, rhs: WTDownloadFinished) -> Bool {
+    if lhs.downloadID != rhs.downloadID {return false}
+    if lhs.fileName != rhs.fileName {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTDownloadFailed: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DownloadFailed"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}download_id\0\u{1}code\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.downloadID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.code) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.downloadID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.downloadID, fieldNumber: 1)
+    }
+    if !self.code.isEmpty {
+      try visitor.visitSingularStringField(value: self.code, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTDownloadFailed, rhs: WTDownloadFailed) -> Bool {
+    if lhs.downloadID != rhs.downloadID {return false}
+    if lhs.code != rhs.code {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

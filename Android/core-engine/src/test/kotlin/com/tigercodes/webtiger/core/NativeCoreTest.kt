@@ -23,6 +23,7 @@ import com.tigercodes.webtiger.core.v1.OpenTab
 import com.tigercodes.webtiger.core.v1.OpenWindow
 import com.tigercodes.webtiger.core.v1.Ping
 import com.tigercodes.webtiger.core.v1.Platform
+import com.tigercodes.webtiger.core.v1.QueryDownloads
 import com.tigercodes.webtiger.core.v1.QueryHistory
 import com.tigercodes.webtiger.core.v1.Request
 import com.tigercodes.webtiger.core.v1.SubmitAddress
@@ -238,6 +239,9 @@ class NativeCoreTest {
             val offered = core.request(Request(suggest_addresses = SuggestAddresses(window_id = opened.window_id, text = "example"))).address_suggestions
             assertNotNull("what is offered is an answer, also when nothing is", offered)
             assertTrue(offered!!.suggestions.isEmpty())
+            val downloads = core.request(Request(query_downloads = QueryDownloads(window_id = opened.window_id))).downloads_page
+            assertNotNull("the downloads are an answer, also when there are none", downloads)
+            assertTrue(downloads!!.downloads.isEmpty())
             assertNotNull(core.request(Request(close_tab = CloseTab(tab_id = tab.tab_id))).ack)
             assertNotNull(core.request(Request(forget_history = ForgetHistory(window_id = opened.window_id, everything = true))).ack)
         }

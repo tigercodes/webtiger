@@ -108,6 +108,20 @@ impl Store {
             .map_err(|_| StoreError::Query)
     }
 
+    /// Whether any download, of any login set, is still coming.
+    ///
+    /// # Errors
+    /// `Query` when the database refuses.
+    pub fn any_download_coming(&self) -> Result<bool, StoreError> {
+        self.connection
+            .query_row(
+                "SELECT EXISTS (SELECT 1 FROM download WHERE state = ?1)",
+                params![COMING],
+                |row| row.get(0),
+            )
+            .map_err(|_| StoreError::Query)
+    }
+
     /// Ends every download that is still coming, as [`INTERRUPTED`]: the app
     /// that was fetching them is gone. How many there were.
     ///
@@ -422,7 +436,9 @@ mod tests {
         let coming = add(&mut store, MINE, "coming.pdf", 3);
         let also = add(&mut store, THEIRS, "also.pdf", 4);
 
+        assert!(store.any_download_coming().unwrap());
         assert_eq!(store.interrupt_downloads(Timestamp(9)).unwrap(), 2);
+        assert!(!store.any_download_coming().unwrap());
 
         let interrupted = store.download(mine, coming).unwrap().unwrap();
         assert_eq!(interrupted.state, INTERRUPTED);

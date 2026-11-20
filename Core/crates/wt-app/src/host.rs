@@ -110,7 +110,9 @@ impl Expected {
             | host_request::Kind::WebViewDestroy(_)
             | host_request::Kind::OpenOutside(_)
             | host_request::Kind::WebViewFind(_)
-            | host_request::Kind::WebViewSetZoom(_) => Expected::Ack,
+            | host_request::Kind::WebViewSetZoom(_)
+            | host_request::Kind::DownloadStart(_)
+            | host_request::Kind::DownloadCancel(_) => Expected::Ack,
         }
     }
 

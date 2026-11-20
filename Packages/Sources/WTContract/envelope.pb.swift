@@ -10,7 +10,7 @@
 
 /// WebTiger Core ↔ shell contract (docs/features/000-master-plan.md §5.5,
 /// docs/features/001-foundations.md §4).
-/// Contract version: 1.8 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
+/// Contract version: 1.9 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
 ///   1.1  Tabs: OpenTab, CloseTab, ActivateTab, TabOpened; WindowSnapshot.tabs.
 ///   1.2  A page that asks for a new window: NewWindowRequested, CloseRequested;
 ///        web view ids with their top bit set are the shell's.
@@ -25,6 +25,10 @@
 ///        AddressSuggestions, AddressSuggestion.
 ///   1.8  Zoom: ZoomPage, ZoomView (TabView.zoom); the host request
 ///        WebViewSetZoom.
+///   1.9  Downloads: DownloadRequested, DownloadProgress, DownloadFinished,
+///        DownloadFailed; the host requests DownloadStart and DownloadCancel;
+///        QueryDownloads, DownloadsPage, DownloadEntry, CancelDownload,
+///        ForgetDownloads; WindowSnapshot.downloads_active.
 ///
 /// Every message crosses the C ABI as protobuf bytes:
 ///   wt_core_start(CoreConfig)   config.proto
@@ -280,6 +284,31 @@ public nonisolated struct WTRequest: Sendable {
     set {kind = .zoomPage(newValue)}
   }
 
+  /// browser.proto, since 1.9
+  public var queryDownloads: WTQueryDownloads {
+    get {
+      if case .queryDownloads(let v)? = kind {return v}
+      return WTQueryDownloads()
+    }
+    set {kind = .queryDownloads(newValue)}
+  }
+
+  public var cancelDownload: WTCancelDownload {
+    get {
+      if case .cancelDownload(let v)? = kind {return v}
+      return WTCancelDownload()
+    }
+    set {kind = .cancelDownload(newValue)}
+  }
+
+  public var forgetDownloads: WTForgetDownloads {
+    get {
+      if case .forgetDownloads(let v)? = kind {return v}
+      return WTForgetDownloads()
+    }
+    set {kind = .forgetDownloads(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -306,6 +335,10 @@ public nonisolated struct WTRequest: Sendable {
     case suggestAddresses(WTSuggestAddresses)
     /// browser.proto, since 1.8
     case zoomPage(WTZoomPage)
+    /// browser.proto, since 1.9
+    case queryDownloads(WTQueryDownloads)
+    case cancelDownload(WTCancelDownload)
+    case forgetDownloads(WTForgetDownloads)
 
   }
 
@@ -387,6 +420,15 @@ public nonisolated struct WTResponse: Sendable {
     set {kind = .addressSuggestions(newValue)}
   }
 
+  /// Since 1.9
+  public var downloadsPage: WTDownloadsPage {
+    get {
+      if case .downloadsPage(let v)? = kind {return v}
+      return WTDownloadsPage()
+    }
+    set {kind = .downloadsPage(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -401,6 +443,8 @@ public nonisolated struct WTResponse: Sendable {
     case historyPage(WTHistoryPage)
     /// Since 1.7
     case addressSuggestions(WTAddressSuggestions)
+    /// Since 1.9
+    case downloadsPage(WTDownloadsPage)
 
   }
 
@@ -761,7 +805,7 @@ nonisolated extension WTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Request"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0\u{3}open_tab\0\u{3}close_tab\0\u{3}activate_tab\0\u{3}query_history\0\u{3}forget_history\0\u{3}find_in_page\0\u{3}suggest_addresses\0\u{3}zoom_page\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0\u{3}open_tab\0\u{3}close_tab\0\u{3}activate_tab\0\u{3}query_history\0\u{3}forget_history\0\u{3}find_in_page\0\u{3}suggest_addresses\0\u{3}zoom_page\0\u{3}query_downloads\0\u{3}cancel_download\0\u{3}forget_downloads\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -977,6 +1021,45 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
           self.kind = .zoomPage(v)
         }
       }()
+      case 17: try {
+        var v: WTQueryDownloads?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .queryDownloads(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .queryDownloads(v)
+        }
+      }()
+      case 18: try {
+        var v: WTCancelDownload?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .cancelDownload(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .cancelDownload(v)
+        }
+      }()
+      case 19: try {
+        var v: WTForgetDownloads?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .forgetDownloads(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .forgetDownloads(v)
+        }
+      }()
       default: break
       }
     }
@@ -1052,6 +1135,18 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       guard case .zoomPage(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 16)
     }()
+    case .queryDownloads?: try {
+      guard case .queryDownloads(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
+    }()
+    case .cancelDownload?: try {
+      guard case .cancelDownload(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 18)
+    }()
+    case .forgetDownloads?: try {
+      guard case .forgetDownloads(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 19)
+    }()
     case nil: break
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -1066,7 +1161,7 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 nonisolated extension WTResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Response"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}error\0\u{1}ack\0\u{1}pong\0\u{1}subscribed\0\u{3}window_opened\0\u{3}tab_opened\0\u{3}history_page\0\u{3}address_suggestions\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}error\0\u{1}ack\0\u{1}pong\0\u{1}subscribed\0\u{3}window_opened\0\u{3}tab_opened\0\u{3}history_page\0\u{3}address_suggestions\0\u{3}downloads_page\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1178,6 +1273,19 @@ nonisolated extension WTResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
           self.kind = .addressSuggestions(v)
         }
       }()
+      case 9: try {
+        var v: WTDownloadsPage?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .downloadsPage(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .downloadsPage(v)
+        }
+      }()
       default: break
       }
     }
@@ -1220,6 +1328,10 @@ nonisolated extension WTResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     case .addressSuggestions?: try {
       guard case .addressSuggestions(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
+    }()
+    case .downloadsPage?: try {
+      guard case .downloadsPage(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 9)
     }()
     case nil: break
     }

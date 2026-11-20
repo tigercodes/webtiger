@@ -22,6 +22,7 @@ use wt_proto::v1::{
 };
 use wt_store::{SavedTab, Space, Store};
 
+use crate::downloads::Downloading;
 use crate::error::AppError;
 use crate::host::{Host, HostFuture};
 use crate::model::{LoadTarget, State};
@@ -69,8 +70,8 @@ pub struct AppOptions {
 /// The models and what changes them.
 #[derive(Clone)]
 pub struct App {
-    state: Rc<RefCell<State>>,
-    host: Rc<dyn Host>,
+    pub(crate) state: Rc<RefCell<State>>,
+    pub(crate) host: Rc<dyn Host>,
     search_template: Rc<str>,
     fake_start: Option<Rc<str>>,
     /// When each web view last had an address handed to the system, for
@@ -78,11 +79,16 @@ pub struct App {
     outside: Rc<RefCell<BTreeMap<WebViewId, Instant>>>,
     /// The store, for what browsing writes: history (008) and the session
     /// (009).
-    store: Rc<RefCell<Store>>,
-    clock: Rc<dyn Clock>,
+    pub(crate) store: Rc<RefCell<Store>>,
+    pub(crate) clock: Rc<dyn Clock>,
     space: wt_core::SpaceId,
     /// The session as the store has it: written again only when it differs.
     written: Rc<RefCell<Vec<SavedTab>>>,
+    /// The downloads that are coming (013), by the shell's name for each.
+    pub(crate) downloads: Rc<RefCell<BTreeMap<u64, Downloading>>>,
+    /// When each web view last had a download started, for those that had
+    /// one within [`DOWNLOAD_INTERVAL`].
+    pub(crate) downloaded: Rc<RefCell<BTreeMap<WebViewId, Instant>>>,
 }
 
 impl App {
@@ -100,6 +106,13 @@ impl App {
         let kept = options
             .session
             .then(|| store.borrow().saved_tabs(space.id).unwrap_or_default());
+        // Whatever was fetching the downloads the store still calls coming
+        // is gone (013 §5). A store that refuses leaves them as they are.
+        // The clock is read only when there is one to end: nothing else in
+        // a start takes a time.
+        if store.borrow().any_download_coming().unwrap_or(false) {
+            let _ = store.borrow_mut().interrupt_downloads(options.clock.now());
+        }
         App {
             space: space.id,
             written: Rc::new(RefCell::new(kept.clone().unwrap_or_default())),
@@ -110,14 +123,17 @@ impl App {
             outside: Rc::new(RefCell::new(BTreeMap::new())),
             store,
             clock: options.clock,
+            downloads: Rc::new(RefCell::new(BTreeMap::new())),
+            downloaded: Rc::new(RefCell::new(BTreeMap::new())),
         }
     }
 
     /// Handles one of the app's requests: a window's (`OpenWindow`,
     /// `CloseWindow`), a tab's (`OpenTab`, `CloseTab`, `ActivateTab`,
     /// `SubmitAddress`, `TabCommand`, `FindInPage`) or history's
-    /// (`QueryHistory`, `ForgetHistory`, `SuggestAddresses`). The dispatcher
-    /// answers the rest.
+    /// (`QueryHistory`, `ForgetHistory`, `SuggestAddresses`), a page's zoom
+    /// (`ZoomPage`) or the downloads' (`QueryDownloads`, `CancelDownload`,
+    /// `ForgetDownloads`). The dispatcher answers the rest.
     pub fn request(&self, kind: request::Kind) -> AppFuture {
         match kind {
             request::Kind::OpenWindow(_) => self.open_window(),
@@ -131,6 +147,9 @@ impl App {
             request::Kind::QueryHistory(query) => answer(self.query_history(&query)),
             request::Kind::SuggestAddresses(suggest) => answer(self.suggest_addresses(&suggest)),
             request::Kind::ZoomPage(zoom) => self.zoom_page(&zoom),
+            request::Kind::QueryDownloads(query) => answer(self.query_downloads(&query)),
+            request::Kind::CancelDownload(cancel) => answer(self.cancel_download(&cancel)),
+            request::Kind::ForgetDownloads(forget) => answer(self.forget_downloads(&forget)),
             request::Kind::ForgetHistory(forget) => answer(self.forget_history(&forget)),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
@@ -148,6 +167,11 @@ impl App {
         let web_view = WebViewId(event.web_view_id);
         if let engine_event::Kind::OutsideLinkRequested(asked) = kind {
             self.outside_link(web_view, &asked);
+            return;
+        }
+        // A download's reports are about the download (013), whatever has
+        // become of the web view that asked for it.
+        if self.download_event(web_view, &kind) {
             return;
         }
         // History (008): a page that commits, or changes its own address, is

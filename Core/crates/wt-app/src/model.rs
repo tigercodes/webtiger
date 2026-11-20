@@ -254,7 +254,11 @@ impl Tab {
             // of the page that asked for it: the app has dealt with that.
             Kind::NewWindowRequested(_)
             | Kind::CloseRequested(_)
-            | Kind::OutsideLinkRequested(_) => {}
+            | Kind::OutsideLinkRequested(_)
+            | Kind::DownloadRequested(_)
+            | Kind::DownloadProgress(_)
+            | Kind::DownloadFinished(_)
+            | Kind::DownloadFailed(_) => {}
             // What the engine found is for the text now looked for (010).
             // With no find, it is a late word about one that has stopped.
             Kind::FindResult(result) => {
@@ -389,6 +393,9 @@ pub(crate) struct State {
     /// The window whose tabs are the session: the first opened, and the
     /// next one opened once that is closed.
     session_window: Option<WindowId>,
+    /// How many downloads of each login set are coming (013), for the
+    /// snapshots of its windows.
+    downloads_active: BTreeMap<LoginSetId, u32>,
 }
 
 impl State {
@@ -398,6 +405,7 @@ impl State {
         State {
             saved,
             session_window: None,
+            downloads_active: BTreeMap::new(),
             space,
             engine,
             ids: IdMint::new(),
@@ -649,6 +657,21 @@ impl State {
             self.dirty.insert(tab.window);
         }
         Ok(web_view)
+    }
+
+    /// The login set of the tab a web view is in (013): whose download one
+    /// that its page asks for is. `None` for a web view no tab has.
+    pub(crate) fn login_set_of(&self, web_view: WebViewId) -> Option<LoginSetId> {
+        self.tab_of(web_view).map(|tab| tab.login_set)
+    }
+
+    /// So many downloads of a login set are coming now: its windows'
+    /// snapshots say so.
+    pub(crate) fn set_downloads_active(&mut self, login_set: LoginSetId, coming: u32) {
+        let before = self.downloads_active.insert(login_set, coming).unwrap_or(0);
+        if before != coming && login_set == self.space.login_set {
+            self.dirty.extend(self.windows.keys().copied());
+        }
     }
 
     /// The site of a tab's page, in its login set, and the zoom its web
@@ -936,6 +959,11 @@ impl State {
                 .iter()
                 .filter_map(|id| self.tabs.get(id).map(|tab| tab.summary(*id)))
                 .collect(),
+            downloads_active: self
+                .downloads_active
+                .get(&self.space.login_set)
+                .copied()
+                .unwrap_or(0),
         })
     }
 

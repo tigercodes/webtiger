@@ -32,6 +32,9 @@ message HostRequest {
     WebViewFind web_view_find = 7;
     // Since 1.8
     WebViewSetZoom web_view_set_zoom = 8;
+    // Since 1.9
+    DownloadStart download_start = 9;
+    DownloadCancel download_cancel = 10;
   }
 }
 
@@ -126,4 +129,24 @@ message WebViewFind {
 message WebViewSetZoom {
   uint64 web_view_id = 1;
   uint32 percent = 2;
+}
+
+// Downloads (013). Since 1.9.
+
+// Starts a download the shell reported (DownloadRequested), saving its file
+// under `file_name` in the system's place for downloads. The name is the
+// core's and is safe to write as it is; when it is taken the shell adds
+// " (2)", and says in DownloadFinished what it used. Answered with Ack once
+// the download has begun, or "download.unknown" for one the shell does not
+// have (it was given up on meanwhile).
+message DownloadStart {
+  uint64 download_id = 1;
+  string file_name = 2 [(wt.redact) = true];
+}
+
+// Drops a download: one that was reported and never started, or one that is
+// coming, of which nothing is left saved. Answered with Ack, also for a
+// download the shell does not have.
+message DownloadCancel {
+  uint64 download_id = 1;
 }

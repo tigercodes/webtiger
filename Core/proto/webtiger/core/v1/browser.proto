@@ -86,6 +86,9 @@ message WindowSnapshot {
   // Every tab of the window, the one in front among them, in the order they
   // are shown.
   repeated TabSummary tabs = 3;
+  // Since 1.9. How many downloads of the window's login set are coming
+  // (013): enough to show that something is, without asking.
+  uint32 downloads_active = 4;
 }
 
 // A tab as a strip of tabs shows it: enough to name it, and no more.
@@ -309,4 +312,71 @@ message ZoomView {
   uint32 percent = 1;
   bool can_zoom_in = 2;
   bool can_zoom_out = 3;
+}
+
+// Downloads (013). Since 1.9.
+
+// Asks for a window's downloads: those of its Space's login set, newest
+// first. Answered with DownloadsPage, or "window.unknown".
+message QueryDownloads {
+  uint64 window_id = 1;
+  // Only downloads older than this one. 0 starts at the newest.
+  uint64 before_id = 2;
+  // At most this many. 0 asks for the core's own number (100).
+  uint32 limit = 3;
+}
+
+message DownloadsPage {
+  repeated DownloadEntry downloads = 1;
+  // There are older downloads than these.
+  bool more = 2;
+}
+
+// A download, as a list shows it.
+message DownloadEntry {
+  // The core's own, never used twice. What CancelDownload and
+  // ForgetDownloads name it by.
+  uint64 id = 1;
+  string url = 2 [(wt.redact) = true];
+  // The site it came from, as an address field shows a host. Empty when its
+  // address has none.
+  string host = 3 [(wt.redact) = true];
+  // The name its file is saved under: the one asked for while it is coming,
+  // the one the shell used once it has finished.
+  string file_name = 4 [(wt.redact) = true];
+  string mime_type = 5;
+  // How big the file is. 0 when the site did not say.
+  uint64 total_bytes = 6;
+  // How much of it has arrived, while it is coming.
+  uint64 received_bytes = 7;
+  DownloadState state = 8;
+  // With DOWNLOAD_STATE_FAILED: why.
+  string error_code = 9;
+  // When it started, in milliseconds since 1970.
+  int64 started_ms = 10;
+}
+
+enum DownloadState {
+  DOWNLOAD_STATE_UNSPECIFIED = 0;
+  DOWNLOAD_STATE_COMING = 1;
+  DOWNLOAD_STATE_FINISHED = 2;
+  DOWNLOAD_STATE_FAILED = 3;
+}
+
+// Stops a download that is coming. It ends as "download.cancelled", and the
+// shell removes what was saved of it. Answered with Ack, or
+// "download.unknown" for one that is not coming.
+message CancelDownload {
+  uint64 download_id = 1;
+}
+
+// Takes downloads off a window's list: one, or all of them. One that is
+// still coming is stopped first. The files are not touched. Answered with
+// Ack; "window.unknown"; "download.nothing_named" when it says neither.
+message ForgetDownloads {
+  uint64 window_id = 1;
+  oneof what {
+    uint64 download_id = 2;
+    bool everything = 3;
+  }
 }
