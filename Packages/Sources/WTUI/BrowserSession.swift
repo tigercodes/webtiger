@@ -75,6 +75,13 @@ public final class BrowserSession {
                 downloads = Self.downloadsFolder(profile: profile, data: folder)
             }
             let engine = WebKitEngine(downloads: downloads, deviceAccess: deviceAccess(fake: config.testMode == .fake))
+            #if os(macOS)
+                // A page's file input opens the system's picker (019). Not in fake mode: its
+                // engine picks nothing, and shows nothing of the system's.
+                if config.testMode != .fake {
+                    engine.filePicker = .system
+                }
+            #endif
             let core = try NativeCore.start(config: config, host: ShellHost(engine: engine, opener: opener))
             // In fake mode nothing of the person's is touched: not their clipboard either.
             return BrowserSession(core: core, engine: engine, clipboard: config.testMode == .fake ? .ownOfTheApp : .system)

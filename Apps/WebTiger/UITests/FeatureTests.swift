@@ -323,4 +323,22 @@ final class FeatureTests: AppTestCase {
             XCTAssertTrue(pageShows("Landed", in: app))
         #endif
     }
+
+    #if os(macOS)
+        /// A page's file input (019), in fake mode: the engine has no picker of the system's,
+        /// so nothing of the system's is shown, and the page is told that nothing was chosen.
+        /// (The system's own picker is shown by the app started for real, and by no test.)
+        func testAFileInputShowsNothingOfTheSystemsInFakeMode() {
+            let app = launch(start: site.url("/upload"))
+            XCTAssertTrue(pageShows("Upload", in: app), "the page of file inputs loaded")
+            let input = app.webViews.buttons.firstMatch
+            XCTAssertTrue(input.waitForExistence(timeout: 30), "the page's file input is there to press")
+
+            press(input)
+
+            XCTAssertTrue(pageShows("cancelled one", in: app), "the page is told nothing was chosen")
+            XCTAssertEqual(app.sheets.count, 0, "no panel of the system's")
+            XCTAssertEqual(app.dialogs.count, 0)
+        }
+    #endif
 }
