@@ -11,8 +11,12 @@ public extension BrowserModel {
     /// this build has no words for, which is not put before a person as two buttons and no
     /// question: its page waits.
     var prompt: WTPromptView? {
-        guard tab.hasPrompt, case let .permission(permission)? = tab.prompt.kind, !PromptBar.wanted(permission).isEmpty else { return nil }
-        return tab.prompt
+        guard tab.hasPrompt else { return nil }
+        switch tab.prompt.kind {
+        case .download: return tab.prompt
+        case let .permission(permission): return PromptBar.wanted(permission).isEmpty ? nil : tab.prompt
+        default: return nil
+        }
     }
 
     /// The person's answer to the prompt the tab shows. What it lets the page do, what is
@@ -76,6 +80,9 @@ struct PromptBar: View {
             answer(false)
         } label: {
             Text("prompt.refuse", bundle: .module)
+                // On more lines where one is not enough, and never cut short.
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(minHeight: BrowserWindowView.hitSize)
         }
         .buttonStyle(.bordered)
         .tint(.primary)
@@ -84,6 +91,8 @@ struct PromptBar: View {
             answer(true)
         } label: {
             Text("prompt.allow", bundle: .module)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(minHeight: BrowserWindowView.hitSize)
         }
         .buttonStyle(.bordered)
         .tint(.primary)
@@ -114,6 +123,12 @@ struct PromptBar: View {
     /// A prompt's sentence: who asks, as the core names it, and what for, joined as the
     /// person's language joins a list.
     static func words(_ prompt: WTPromptView, locale: Locale = .current) -> String {
+        // A download a site was not yet allowed (015): the site and the file, both in the
+        // core's words. The name is in quotation marks, so that where it begins and ends
+        // can be seen.
+        if case let .download(download)? = prompt.kind {
+            return String(format: String(localized: "prompt.download", bundle: .module, locale: locale), download.site, download.fileName)
+        }
         guard case let .permission(permission)? = prompt.kind else { return "" }
         let names = wanted(permission).map { String(localized: $0, bundle: .module, locale: locale) }
         let list = ListFormatter()

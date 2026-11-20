@@ -1,6 +1,6 @@
 // The Permissions list (014 §7): the sites that were allowed to use the camera, the microphone
-// or the location, each with what it may use, and a button to take that back. Taking it back
-// stops nothing that is running: the site asks again the next time.
+// or the location, or to download (015), each with what it may do, and a button to take that
+// back. Taking it back stops nothing that is running: the site asks again the next time.
 public import SwiftUI
 import WTContract
 import WTDesign
@@ -128,6 +128,7 @@ public struct PermissionsView: View {
                 case .camera: "permissions.kind.camera"
                 case .microphone: "permissions.kind.microphone"
                 case .location: "permissions.kind.location"
+                case .downloads: "permissions.kind.downloads"
                 default: nil
                 }
             return key.map { String(localized: $0, bundle: .module, locale: locale) }

@@ -21,6 +21,7 @@ enum CatalogueState: String, CaseIterable, Identifiable {
     case suggestions
     case zoom
     case prompt
+    case promptDownload = "prompt-download"
 
     var id: String {
         rawValue
@@ -42,6 +43,7 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         case .suggestions: "catalogue.state.suggestions"
         case .zoom: "catalogue.state.zoom"
         case .prompt: "catalogue.state.prompt"
+        case .promptDownload: "catalogue.state.prompt_download"
         }
     }
 
@@ -140,6 +142,11 @@ enum CatalogueState: String, CaseIterable, Identifiable {
             window.tab.prompt.promptID = 9
             window.tab.prompt.permission.site = "meet.example.com"
             window.tab.prompt.permission.kinds = [.camera, .microphone]
+        case .promptDownload:
+            page(&window, url: "https://example.com/", display: "example.com", security: .secure)
+            window.tab.prompt.promptID = 9
+            window.tab.prompt.download.site = "example.com"
+            window.tab.prompt.download.fileName = "Annual report 2026.pdf"
         }
         // The strip names every tab: the one in front, and for "several tabs" its neighbours,
         // one with a title, one still loading and known only by its site, one with no page.

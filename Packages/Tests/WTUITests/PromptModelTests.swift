@@ -98,6 +98,27 @@ final class PromptModelTests: XCTestCase {
         XCTAssertEqual(answers(core), ["tab 2 prompt 9 refuse", "tab 2 prompt 12 allow"])
     }
 
+    func testADownloadTheSiteWasNotYetAllowedIsAskedAboutByTheSiteAndTheFile() async {
+        let (model, core) = await opened()
+        var asking = window()
+        asking.tab.prompt.promptID = 21
+        asking.tab.prompt.download.site = "example.com"
+        asking.tab.prompt.download.fileName = "Annual report 2026.pdf"
+
+        core.emit(asking, subscription: 3)
+        await settle { model.prompt != nil }
+
+        XCTAssertEqual(model.prompt?.promptID, 21)
+        XCTAssertEqual(
+            PromptBar.words(asking.tab.prompt, locale: Locale(identifier: "en_GB")),
+            "example.com wants to download “Annual report 2026.pdf”."
+        )
+        // The same two answers, by the prompt's own name.
+        model.answerPrompt(allow: true)
+        await settle { !self.answers(core).isEmpty }
+        XCTAssertEqual(answers(core), ["tab 2 prompt 21 allow"])
+    }
+
     func testAPromptThisBuildHasNoWordsForIsNotPutBeforeAPerson() async {
         let (model, core) = await opened()
 

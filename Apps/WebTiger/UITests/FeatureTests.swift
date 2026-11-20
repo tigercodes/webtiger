@@ -108,6 +108,18 @@ final class FeatureTests: AppTestCase {
         XCTAssertTrue(link.waitForExistence(timeout: 30))
         press(link)
 
+        // It is the site's first download: the person is asked, in the tab, by the site's
+        // name and the file's (015), and says yes. Not at once: a prompt is not answered in
+        // the moment it appears.
+        let allow = app.buttons["prompt-allow"]
+        XCTAssertTrue(allow.waitForExistence(timeout: 300), "the tab asks whether the site may download")
+        let sentence = app.staticTexts["prompt-words"]
+        let asked = sentence.label.isEmpty ? value(of: sentence) : sentence.label
+        XCTAssertTrue(asked.hasSuffix("wants to download “notes.txt”."), "the bar says \(asked)")
+        audit(app, "the prompt for a download")
+        usleep(700_000)
+        press(allow)
+
         // The list is beside History, behind the same button.
         press(app.buttons["history"])
         let downloads = app.buttons["library-downloads"]

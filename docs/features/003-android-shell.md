@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built, and **run on an emulator** (Android 16, System WebView 133): the app starts, a page loads through the core, and 104 tests pass on the device, among them the adapter suite against the real WebView and isolation between login sets. 237 more pass on the JVM, 28 of them driving the real core through JNI. **Not yet run on a physical device, on any other WebView version, or folded** (§8) |
+| **Status** | Built, and **run on an emulator** (Android 16, System WebView 133): the app starts, a page loads through the core, and 104 tests pass on the device, among them the adapter suite against the real WebView and isolation between login sets. 238 more pass on the JVM, 28 of them driving the real core through JNI. **Not yet run on a physical device, on any other WebView version, or folded** (§8) |
 | **Phase** | W0 of [000](000-master-plan.md) §9; item 1 of [001](001-foundations.md) §12 |
 | **Stack** | 000 §5.1: Kotlin, Jetpack Compose, Material 3, `androidx.webkit`, Wire, JNI through `wt-ffi` |
 | **Last updated** | 2026-11-18 (run on an emulator; the device suite) |
@@ -284,7 +284,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | `cd Core && cargo test --workspace --locked` | 139 passed |
 | `Tools/test.sh android`, from nothing | OK, 48 s |
 | … `:core-engine:testDebugUnitTest` | 31 passed |
-| … `:app:testDebugUnitTest` | 206 passed |
+| … `:app:testDebugUnitTest` | 207 passed |
 | … `:app:assembleDebug` | `app-debug.apk`, with `libwebtiger_core.so` for `arm64-v8a` and `x86_64` |
 | `Tools/strings/strings.py --check`, `Tools/design/tokens.py --check` | up to date; the Apple outputs' checksums unchanged |
 | `./gradlew :app:lintDebug` | no errors. Apart from notices that newer versions exist, two warnings are left on purpose: no launcher icon (the brand is not settled, 001 F10), and `toolbar_open_location` unused (it is the Mac's ⌘L) |
@@ -304,7 +304,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | `HistoryModelTest`, `HistoryListTest` | 5, 7 | The History list's model, and the list drawn: what it shows and what a person's choices send (008) |
 | `SuggestionModelTest`, `SuggestionListTest` | 8, 3 | The places offered as the address field is typed in: what the model asks and shows, and the list drawn (011) |
 | `ZoomModelTest`, `ZoomBarTest` | 5, 3 | Zoom: what the model asks and when its bar is open, and the bar drawn (012) |
-| `PromptTest` | 5 | What a tab asks the person: the bar drawn, its words, and what its buttons send (014) |
+| `PromptTest` | 6 | What a tab asks the person: the bar drawn, its words for a permission (014) and for a download (015), and what its buttons send |
 | `PermissionsModelTest`, `PermissionsListTest` | 3, 4 | What sites were allowed: the list's model, and the list drawn, with the third part of the sheet's switch (014) |
 | `PermissionsTest`, `AppPermissionsTest` | 9, 4 | What a page asks to use: reported, answered on the core's word, and what the system's own permission has to do with it (014) |
 | `DownloadsModelTest`, `DownloadsListTest` | 5, 8 | The Downloads list's model, and the list drawn: what it shows, what a person's choices send, the switch beside History and the dot on its button (013) |

@@ -95,6 +95,7 @@ final class PermissionsModelTests: XCTestCase {
         XCTAssertEqual(words([.location]), "Location")
         XCTAssertEqual(words([.camera, .microphone]), "Camera and Microphone")
         XCTAssertEqual(words([.camera, .microphone, .location]), "Camera, Microphone and Location")
+        XCTAssertEqual(words([.location, .downloads]), "Location and Downloads")
         // A kind this build has no words for is left out.
         XCTAssertEqual(words([.microphone, .UNRECOGNIZED(99)]), "Microphone")
     }

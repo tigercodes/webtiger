@@ -28,7 +28,7 @@ enum CataloguePermissions: String, CaseIterable, Identifiable {
         guard self == .list else { return page }
         page.sites = [
             Self.site("a-site-whose-name-is-longer-than-the-list-is-wide-and-then-goes-on.example.com", scheme: "https", [.camera]),
-            Self.site("127.0.0.1:8080", scheme: "http", [.location]),
+            Self.site("127.0.0.1:8080", scheme: "http", [.location, .downloads]),
             Self.site("meet.example.com", scheme: "https", [.camera, .microphone]),
         ]
         return page
