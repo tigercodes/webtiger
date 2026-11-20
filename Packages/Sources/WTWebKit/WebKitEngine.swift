@@ -53,6 +53,9 @@ public final class WebKitEngine: HostServices {
     /// The servers that asked who is there (017), while the core has not said how each is answered.
     private(set) lazy var signIns = SignIns(report: reporting)
 
+    /// The certificates a person went on past (026): until the process ends, and kept nowhere else.
+    let certificates = Certificates()
+
     /// A link's menu (018): the shell's words for it, and where it copies to. With none,
     /// WebKit's own menu is shown as it is.
     public var linkMenu: LinkMenu?
@@ -139,6 +142,7 @@ public final class WebKitEngine: HostServices {
             dialogs.drop(webViewID: destroy.webViewID)
             signIns.drop(webViewID: destroy.webViewID)
             files.drop(webViewID: destroy.webViewID)
+            certificates.dropped(destroy.webViewID)
             if let page = pages.removeValue(forKey: destroy.webViewID) {
                 page.close()
                 if page.isPrivate, !pages.values.contains(where: { $0.isPrivate && $0.loginSet == page.loginSet }) {
@@ -173,29 +177,13 @@ public final class WebKitEngine: HostServices {
             return .ack(WTAck())
         case .dialogAnswer, .signInAnswer, .permissionAnswer:
             return settle(request)
-        case .webViewTrustCertificate:
-            // Going on past a certificate (026) is written with this adapter's part of it:
-            // until then it holds no certificate it refused, says so with no failure, and has
-            // none to let through.
-            return failure("certificate.unknown")
+        case let .webViewTrustCertificate(trust):
+            // The person went on past a certificate (026): what this web view last refused is
+            // let through from now, in its login set.
+            guard let page = pages[trust.webViewID] else { return failure("webview.unknown") }
+            let trusted = certificates.trust(heldBy: page.id, loginSet: page.loginSet, isPrivate: page.isPrivate)
+            return trusted ? .ack(WTAck()) : failure("certificate.unknown")
         }
-    }
-
-    /// The core's word on what waited for the person: what a page said or asked (016), a
-    /// server that asked who is there (017), what a page asked to use (014). Done, also for
-    /// one that no longer waits: its page went away.
-    private func settle(_ request: WTHostRequest.OneOf_Kind) -> WTHostResponse.OneOf_Kind {
-        switch request {
-        case let .dialogAnswer(answer):
-            dialogs.answer(answer.requestID, accepted: answer.accepted, text: answer.text)
-        case let .signInAnswer(answer):
-            signIns.answer(answer.requestID, accepted: answer.accepted, name: answer.name, password: answer.password)
-        case let .permissionAnswer(answer):
-            permissions.answer(answer.requestID, granted: answer.granted)
-        default:
-            break
-        }
-        return .ack(WTAck())
     }
 
     /// Deletes a login set: everything its pages stored, and the store itself. False, and
@@ -523,6 +511,7 @@ final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation _: WKNavigation?) {
         provisional = true
+        engine?.certificates.loadBegan(in: id)
         var started = WTNavigationStarted()
         started.url = webView.url?.absoluteString ?? ""
         engine?.report(id, .navigationStarted(started))
@@ -531,6 +520,7 @@ final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
     func webView(_ webView: WKWebView, didCommit _: WKNavigation?) {
         provisional = false
         refusedWhileProvisional = false
+        engine?.certificates.loadBegan(in: id)
         reportedURL = webView.url
         var committed = WTNavigationCommitted()
         committed.url = webView.url?.absoluteString ?? ""
@@ -548,7 +538,7 @@ final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
         // "Frame load interrupted" after a refusal: the load was redirected to the address
         // that was refused, and ends with it.
         let interrupted = (error as NSError).domain == "WebKitErrorDomain" && (error as NSError).code == 102
-        failed(error, refused: refusedWhileProvisional && interrupted)
+        failed(error, refused: refusedWhileProvisional && interrupted, ownLoad: true)
         refusedWhileProvisional = false
     }
 
@@ -561,12 +551,16 @@ final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
         engine?.report(id, .rendererGone(WTRendererGone()))
     }
 
-    private func failed(_ error: any Error, refused: Bool = false) {
+    /// `ownLoad`: the page's own load, which never committed. Only then can the certificate it
+    /// failed for be one a person is asked about (026).
+    private func failed(_ error: any Error, refused: Bool = false, ownLoad: Bool = false) {
         let error = error as NSError
+        let url = error.userInfo[NSURLErrorFailingURLErrorKey] as? URL
         var failed = WTNavigationFailed()
         failed.code = WebKitEngine.code(for: error)
-        failed.url = (error.userInfo[NSURLErrorFailingURLErrorKey] as? URL)?.absoluteString ?? ""
+        failed.url = url?.absoluteString ?? ""
         failed.refused = refused
+        failed.certificateHeld = ownLoad && holdsCertificate(refusedWith: failed.code, at: url)
         engine?.report(id, .navigationFailed(failed))
     }
 

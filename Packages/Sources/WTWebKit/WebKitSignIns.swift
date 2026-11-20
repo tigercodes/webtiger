@@ -99,6 +99,11 @@ extension Page {
         respondTo challenge: URLAuthenticationChallenge
     ) async -> (URLSession.AuthChallengeDisposition, URLCredential?) {
         let server = challenge.protectionSpace
+        // The server's certificate (026): let through where a person went on past it, and
+        // WebKit's own judgement otherwise.
+        if server.authenticationMethod == NSURLAuthenticationMethodServerTrust {
+            return answerToACertificate(server)
+        }
         // A proxy's question, and one that a name and a password do not answer, are WebKit's,
         // as they were.
         guard let engine, !server.isProxy(), SignIns.isForAPassword(server) else {
@@ -112,5 +117,24 @@ extension Page {
         }
         // Kept by WebKit for this server until the app quits, in the web view's login set.
         return (.useCredential, URLCredential(user: typed.name, password: typed.password, persistence: .forSession))
+    }
+}
+
+extension WebKitEngine {
+    /// The core's word on what waited for the person: what a page said or asked (016), a
+    /// server that asked who is there (017), what a page asked to use (014). Done, also for
+    /// one that no longer waits: its page went away.
+    func settle(_ request: WTHostRequest.OneOf_Kind) -> WTHostResponse.OneOf_Kind {
+        switch request {
+        case let .dialogAnswer(answer):
+            dialogs.answer(answer.requestID, accepted: answer.accepted, text: answer.text)
+        case let .signInAnswer(answer):
+            signIns.answer(answer.requestID, accepted: answer.accepted, name: answer.name, password: answer.password)
+        case let .permissionAnswer(answer):
+            permissions.answer(answer.requestID, granted: answer.granted)
+        default:
+            break
+        }
+        return .ack(WTAck())
     }
 }

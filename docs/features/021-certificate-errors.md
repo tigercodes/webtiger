@@ -73,7 +73,7 @@ Nothing is accepted on a person's behalf, by any adapter, for any of these: the 
 
 ## 7. What is not verified
 
-- **A certificate presented to WebKit.** No test on Apple's systems serves one: a test that makes a server's identity on a Mac does it through the system's keychain, which is the person's own and can raise the system's dialogs. WebKit's kinds of error are tested as the adapter's own rule, by their numbers.
+- ~~**A certificate presented to WebKit.**~~ Verified since, with [026](026-past-a-certificate.md): a test now serves a certificate that signs itself to real WebKit, from an identity the system makes in memory (no keychain), and WebKit's refusal is `net.tls.untrusted` as the adapter's rule has it. The other kinds (dates, another site's) are still the adapter's own rule, by their numbers.
 - **A certificate whose dates do not hold, or that is another site's, against a real engine.** A certificate a test can make signs itself, and an engine that sees one says "untrusted" first, whatever else is wrong with it.
 - **Another site's certificate, on WebKit**: WebKit calls it untrusted, and the words then say less than they could. Telling it apart needs the adapter to look at the certificate itself, which it does not.
 - **That the failed page shows the new words in an app.** The words are tested by their codes; no app's test fails a load over a certificate.
