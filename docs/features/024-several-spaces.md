@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Designed. Nothing is built yet: there is one Space, which the app makes itself |
+| **Status** | In progress. The store lists, makes and renames Spaces (§5), tested. Nothing uses it yet: the core still has one Space, which the app makes itself, and no shell shows another |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "Spaces with their login sets … shared logins". The first of W2: the model has several Spaces, and a window shows one of them. Colours and icons, the tree of Groups and Sites, Favourites, both layouts, several windows and private windows are W2's later features |
 | **Contract** | 1.18: `QuerySpaces`, `SpacesPage`, `SpaceSummary`, `CreateSpace`, `SpaceCreated`, `RenameSpace`, `SwitchSpace`; `WindowSnapshot.space_id` |
 | **Builds on** | [001](001-foundations.md): the store's `space` and `login_set`, many Spaces to one login set from the first schema (000 WT-D9). [005](005-tabs.md): a window's tabs. [009](009-session-restore.md): the tabs come back |
@@ -118,7 +118,7 @@ Their designs are written with each shell's part.
 
 | Where | What |
 |---|---|
-| Store | Spaces are listed in their order; one is made after the others, with logins of its own or another's; it is renamed; all of it is still there when the store is opened again |
+| Store (`wt-store/src/space.rs`, 5) | Spaces are listed in the order they were made; one is made after the others, with logins of its own and nobody else's, or with those of a Space there is, of the app's own Space, or of one that shares already; the logins of a Space that is not there make nothing; a Space is renamed, the app's own among them, and keeps its logins and its place, and one that is not there is not; all of it is still there when the store is opened again, and the first Space is still the app's own. Four of the rules checked by breaking them |
 | Core (through `FakeShell`) | A Space is made, and listed, with the name as tidied; one too many, an empty name and logins of a Space that is not there are refused, and nothing is made. A window is switched: the other Space's tabs are shown, and back again the tabs that were left are as they were, with the same one in front; nothing was asked of their web views meanwhile. A tab opened in a Space is in it and in no other, and its web view is made in that Space's login set: of its own, or the one it shares. A link's tab, a page's window and a search open in the asking tab's Space. The Library is the shown Space's login set's. The tabs of each Space come back, and the window shows the Space it showed |
 | The shells | Written with each |
 
@@ -138,7 +138,8 @@ Written when built.
 
 ## 10. Done checklist
 
-- [ ] The store: listing, making, renaming; the window's Space with the session.
+- [x] The store: listing, making, renaming (5 tests).
+- [ ] The store: the window's Space with the session.
 - [ ] Contract 1.18 and its version in every place it is written.
 - [ ] The core: the rule of §3.
 - [ ] The Mac.

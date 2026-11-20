@@ -15,6 +15,7 @@ mod schema;
 mod session;
 mod setting;
 mod site;
+mod space;
 mod suggest;
 
 use std::path::Path;
@@ -27,6 +28,7 @@ pub use history::{MAX_VISITS_PER_PAGE, Visit, VisitPage};
 pub use permission::Allowed;
 pub use schema::SCHEMA_VERSION;
 pub use session::SavedTab;
+pub use space::Logins;
 pub use suggest::{MAX_SUGGESTIONS, Suggested};
 
 /// Why the store could not do what was asked, as the code a shell is told
