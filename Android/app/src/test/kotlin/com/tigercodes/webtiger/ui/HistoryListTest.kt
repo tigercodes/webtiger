@@ -159,7 +159,8 @@ class HistoryListTest {
         compose.waitForIdle()
         compose.onAllNodesWithTag("history-entry").assertCountEquals(0)
 
-        compose.onNodeWithContentDescription("History").performClick()
+        // The button is the way to both lists since 013, and is named for both.
+        compose.onNodeWithContentDescription("History and Downloads").performClick()
         compose.waitForIdle()
         assertEquals("the window's own history is asked for", 1L, core.requests.last().query_history?.window_id)
         compose.onAllNodesWithTag("history-entry")[0].performClick()

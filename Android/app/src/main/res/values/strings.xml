@@ -21,6 +21,10 @@
     <string name="catalogue_space">Space</string>
     <!-- Design catalogue: heading of what is shown instead of a window when the core refuses to start. -->
     <string name="catalogue_start_failed">The core would not start</string>
+    <!-- Design catalogue: a state of the Downloads list. -->
+    <string name="catalogue_state_downloads_empty">Downloads: none</string>
+    <!-- Design catalogue: a state of the Downloads list. -->
+    <string name="catalogue_state_downloads_list">Downloads: coming, finished and failed</string>
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_empty">An empty tab</string>
     <!-- Design catalogue: a state of the window. -->
@@ -55,6 +59,36 @@
     <string name="catalogue_states">The Window</string>
     <!-- Title of the design catalogue: a screen for designers that shows every design token and every state of the window. -->
     <string name="catalogue_title">Design Catalogue</string>
+    <!-- Accessibility value of the History and Downloads button while a download is coming. -->
+    <string name="downloads_active">Downloading</string>
+    <!-- Button in the Downloads list that takes every download off the list. The files stay where they are. -->
+    <string name="downloads_clear">Clear List</string>
+    <!-- Under a download that is still coming, when its size is known: how much has arrived, and how much there is. Both are sizes with their units, such as “1.2 MB”. -->
+    <string name="downloads_coming">%1$s of %2$s</string>
+    <!-- Under a download that is still coming, when its size is not known: how much has arrived, as a size with its unit. -->
+    <string name="downloads_coming_so_far">%s so far</string>
+    <!-- Button that closes the Downloads list. -->
+    <string name="downloads_done">Done</string>
+    <!-- Shown in the Downloads list when nothing has been downloaded. -->
+    <string name="downloads_empty">Files you download will be listed here.</string>
+    <!-- Accessibility label of the button beside a download that has ended, which takes it off the list. The file stays. -->
+    <string name="downloads_forget">Remove from List</string>
+    <!-- Button at the end of the Downloads list that shows the next, older page of downloads. -->
+    <string name="downloads_older">Show Older Downloads</string>
+    <!-- Accessibility label of the button beside a download that is still coming, which stops it. -->
+    <string name="downloads_stop">Stop Download</string>
+    <!-- Title of the list of downloads, and the name of its half of the switch beside History. -->
+    <string name="downloads_title">Downloads</string>
+    <!-- Under a download that was stopped. -->
+    <string name="error_download_cancelled">Stopped</string>
+    <!-- Under a download that failed because its file could not be written. -->
+    <string name="error_download_disk">The file couldn’t be saved.</string>
+    <!-- Under a download that failed for a reason this build has no words for. -->
+    <string name="error_download_failed">The download failed.</string>
+    <!-- Under a download that was still coming when the app ended. -->
+    <string name="error_download_interrupted">WebTiger was closed before it finished.</string>
+    <!-- Under a download that failed because of the network. -->
+    <string name="error_download_network">The connection was lost.</string>
     <!-- The engine cannot make a login set that is kept in memory only. -->
     <string name="error_engine_no_private">Private windows aren’t available on this device yet.</string>
     <!-- Android: the System WebView is too old to give each login set a profile of its own. -->
@@ -121,8 +155,8 @@
     <string name="history_none_found">No visits match.</string>
     <!-- Button at the end of the History list that shows the next, older page of visits. -->
     <string name="history_older">Show Older Visits</string>
-    <!-- Label of the button, beside the tabs, that opens the list of pages visited. -->
-    <string name="history_open">History</string>
+    <!-- Label of the button, beside the tabs, that opens the lists of pages visited and of files downloaded. -->
+    <string name="history_open">History and Downloads</string>
     <!-- Placeholder and accessibility label of the field for finding a visit by words of its title or address. -->
     <string name="history_search">Search history</string>
     <!-- Title of the list of pages visited. -->

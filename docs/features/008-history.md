@@ -102,7 +102,7 @@ History is asked for, not subscribed to: a list that is being read does not move
 
 ## 6. The shells
 
-A button at the end of the row of tabs, beside them and not among them, opens the History list over the window (⌘Y on a Mac). The list:
+A button at the end of the row of tabs, beside them and not among them, opens the History list over the window (⌘Y on a Mac). Since [013](013-downloads.md) the same sheet has the Downloads list beside it, with a switch between the two where the title was. The list:
 
 - The visits, newest first: the title, the address as the address field would show it, and when, in the person's own language and time zone. A page with no title is named by its address.
 - A field for words. Each letter typed asks the core again; only the answer to what is now in the field is shown.

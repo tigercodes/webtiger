@@ -44,6 +44,13 @@ final class CatalogueSnapshotTests: XCTestCase {
         }
     }
 
+    func testEveryStateOfTheDownloadsList() async throws {
+        try skipWithoutPictures()
+        for state in CatalogueDownloads.allCases {
+            await verify(CatalogueDownloadsList(state: state), size: Self.windowSize, named: "downloads-\(state.rawValue)")
+        }
+    }
+
     func testStartFailed() async throws {
         try skipWithoutPictures()
         await verify(StartFailedView(code: "store.open"), size: Self.windowSize, named: "start-failed")

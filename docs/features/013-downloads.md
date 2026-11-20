@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress: the name of the file (§4), the store's records (§5), the contract (1.9), the core (§3) and the WebKit adapter (§6) are built and tested: on Apple a download is saved. No screen lists downloads yet, and the Android shell reports none; those are planned (§10). The design below is to be read before it is built: §8 lists what it decides |
+| **Status** | In progress: the name of the file (§4), the store's records (§5), the contract (1.9), the core (§3) and the WebKit adapter (§6) are built and tested, and the Apple shell lists what was downloaded: on Apple a download is saved, shown and can be stopped. The Android shell reports none yet (§10). The design below is to be read before it is built: §8 lists what it decides |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "downloads". The `download` table of the store (000 §5.6) and the downloads half of the Library (000 §4), in their first form |
 | **Contract** | 1.9: `DownloadRequested`, `DownloadProgress`, `DownloadFinished`, `DownloadFailed`; the host requests `DownloadStart` and `DownloadCancel`; `QueryDownloads`, `CancelDownload`, `ForgetDownloads` |
 | **Last updated** | 2026-11-19 |
@@ -95,6 +95,15 @@ A download ends once: what is said of one that has ended changes nothing. Downlo
 - **The kind is what WebKit makes of it.** For a file ending `.bin` that its site calls `application/octet-stream`, a Mac's WebKit says so and an iPhone's says `application/macbinary`.
 - **On an iPhone simulator the first download of a run takes WebKit a while to begin** (23 s measured here, then 7, then under a second); nothing is held afterwards, and dropping one and deleting its login set are quick.
 
+**The list, on Apple** (`DownloadsView`, `DownloadsModel`, `LibraryView`):
+
+- **Behind the History button, beside History.** The sheet that button opens has two lists and a switch between them, where a list's title was; the button's name is now "History and Downloads". The row of tabs gains no button: it has four already, and is W2's to lay out again. The Library (W3) will be the home of both lists.
+- A dot on that button says a download is coming, and assistive technologies are told "Downloading".
+- Each download by its file's name, the site it came from, and how it stands: so much of so much, with a bar, while it is coming and its size is known; so much "so far" when it is not; its size when it has finished; a sentence when it failed. The core speaks codes (`download.network`); the words are the shell's, and a code this build has no words for still says "The download failed."
+- One that is coming has a button to stop it; one that has ended, a button to take it off the list. "Clear List" takes them all off. No file is touched by either.
+- The list asks the core again every second while it is shown: how far a download has got is not pushed, and one that starts while the list is open belongs in it.
+- On an iPhone Apple's audit said the switch's words could be cut short at larger text sizes: a switch and two buttons are too many for one row there. A row that broke in two only when it had to did no better (the audit then said of every control in it that its text size could not be changed), so on an iPhone the switch has a row of its own and the buttons the next; on a Mac, whose sheet is wider, they share one.
+
 ## 7. Tests
 
 | Where | What |
@@ -105,7 +114,9 @@ A download ends once: what is said of one that has ended changes nothing. Downlo
 | WebKit adapter suite (`WebKitDownloadTests`, 7, on the Mac and the iPhone simulator) | The test site has a file served as an attachment, one of a kind no engine shows, a link that says "download", and an attachment whose suggested name is a path. An attachment is reported with its address, the name the site suggests, its kind and size, and nothing is saved until the core says; it is then whole under the name the core gave, and the page that asked is still the page. A kind nothing shows is a download. A link that says download is one, and the web view goes nowhere. A download the core drops saves nothing, and a word for it afterwards is refused. A name that is taken gains a number, twice. A name that is a path is held to its last part, and nothing is written outside the folder. A word about a download there is not |
 | Where the app saves (`ProfileTests`, 2 more) | The usual app names the system's place; a profile's downloads are in its own folder; an engine nobody gave a folder saves among the temporary files, each in its own |
 | System WebView adapter suite | As above, when built |
-| The shells' screens | The list's model against `ScriptedCore`; pictures of the list coming, finished and failed; the apps with the real core: click, see it listed, see it finish |
+| The Apple list | `DownloadsModelTests` (5): the list is what the core says, newest first, and older when asked for; stopping asks the core and the list is asked for again; forgetting one leaves the list at once, and forgetting all asks again; while the list is shown it is asked for about every second, and no more once it is gone; how a download stands, in words, for each state and each code, and never a code's own text. Pictures of the list (coming with a bar, failed, finished) and of the empty list, light and dark, on the Mac and the iPhone |
+| The Apple apps, with the real core and engine | On the Mac and the iPhone simulator, in fake mode: a link to a file that says it is to be saved is clicked; behind the History button, under Downloads, the file is listed by its name and finishes, with its size; Apple's audit over the list; taken off the list, the list is empty; the page that offered the file is still the page |
+| The Android list | As above, when built |
 
 No test writes into a person's own Downloads folder: the suites give the adapter a folder of their own.
 
@@ -127,7 +138,9 @@ No test writes into a person's own Downloads folder: the suites give the adapter
 - **How far a download has got**: no test waits for a report of it, for the same reason.
 - **A person's Downloads folder.** No test writes there, on purpose: that the real app saves in `~/Downloads`, and that the Files app shows the iPhone's folder, was not looked at. A sandboxed build of the Mac app will need the entitlement for that folder, which comes with the distribution work.
 - **A tab a page opened only to download** stays, empty: the core closes such a tab when its address is refused (006), and not yet when it becomes a download.
-- The screens and the Android shell: written when built.
+- **The list while a download is coming**, in the app: the test's file arrives before the list is opened. The bar, the count "so far" and the stop button are drawn in the catalogue's pictures and tested in the model; nobody pressed Stop on a download in the app.
+- **The dot on the button**: drawn from the snapshot's count, which the core's tests cover; no picture has it, and no test looked for it.
+- The Android shell: written when built.
 
 ## 10. Done checklist
 
@@ -137,7 +150,7 @@ No test writes into a person's own Downloads folder: the suites give the adapter
 - [x] The core: the rules of §3. 15 tests through `FakeShell`.
 - [x] The test site's files.
 - [x] Apple: the adapter and its suite (7); where the app saves (2).
-- [ ] Apple: the list; pictures; a UI test.
+- [x] Apple: the list and its model's tests (5); pictures; a UI test on the Mac and the iPhone simulator.
 - [ ] Android: the adapter, on the JVM and the device; the list; pictures; a device test.
 - [ ] `Tools/test.sh all` green, and `android-device`.
 - [ ] Windows shell.

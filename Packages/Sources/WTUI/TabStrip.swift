@@ -44,8 +44,19 @@ struct TabStrip: View {
                     .labelStyle(.iconOnly)
                     .frame(minWidth: BrowserWindowView.hitSize, minHeight: BrowserWindowView.hitSize)
                     .contentShape(Rectangle())
+                    // A download is coming (013): a dot says so, where the list of them opens.
+                    .overlay(alignment: .topTrailing) {
+                        if model.downloadsActive > 0 {
+                            Circle()
+                                .fill(Tokens.Palette.accent)
+                                .frame(width: Tokens.Space.s, height: Tokens.Space.s)
+                                .padding(Tokens.Space.xs)
+                                .accessibilityHidden(true)
+                        }
+                    }
             }
             .buttonStyle(.borderless)
+            .accessibilityValue(model.downloadsActive > 0 ? Text("downloads.active", bundle: .module) : Text(verbatim: ""))
             .accessibilityIdentifier("history")
             .padding(.trailing, Tokens.Space.m)
         }

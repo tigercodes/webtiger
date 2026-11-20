@@ -10,6 +10,8 @@ public final class BrowserModel {
     public private(set) var tab = WTTabView()
     /// Every tab of the window, in the order they are shown.
     public private(set) var tabs: [WTTabSummary] = []
+    /// How many downloads of the window's Space are coming (013): the core's count.
+    public private(set) var downloadsActive: UInt32 = 0
     /// What is in the address field. It follows the core until the user types in it. Each
     /// change while it is typed in asks what to offer for it (011).
     public var addressText = "" {
@@ -338,6 +340,7 @@ public final class BrowserModel {
         }
         tab = snapshot.tab
         tabs = snapshot.tabs
+        downloadsActive = snapshot.downloadsActive
         // The zoom bar is the window's, and says the level of the page in front: with no page
         // there that can be zoomed, it has nothing to say.
         if isZooming, !tab.hasZoom {

@@ -6,6 +6,7 @@ import WTDesign
 
 public struct HistoryView: View {
     @State private var model: HistoryModel
+    private let switcher: AnyView?
     private let open: (WTHistoryEntry) -> Void
     private let done: () -> Void
     /// The question of which visits to forget is up.
@@ -14,9 +15,12 @@ public struct HistoryView: View {
     @Environment(\.timeZone) private var timeZone
     @Environment(\.calendar) private var calendar
 
-    /// `open` is called with the visit a person chose; `done` when they are finished.
-    public init(model: HistoryModel, open: @escaping (WTHistoryEntry) -> Void, done: @escaping () -> Void) {
+    /// `open` is called with the visit a person chose; `done` when they are finished. With a
+    /// `switcher`, it stands where the title would: the list is then one of two a person can
+    /// choose between (013).
+    public init(model: HistoryModel, switcher: AnyView? = nil, open: @escaping (WTHistoryEntry) -> Void, done: @escaping () -> Void) {
         _model = State(initialValue: model)
+        self.switcher = switcher
         self.open = open
         self.done = done
     }
@@ -59,11 +63,15 @@ public struct HistoryView: View {
     }
 
     private var header: some View {
-        HStack(spacing: Tokens.Space.m) {
-            Text("history.title", bundle: .module)
-                .font(.headline)
-                .accessibilityAddTraits(.isHeader)
-            Spacer(minLength: Tokens.Space.s)
+        ListHeader(stacked: switcher != nil && ListHeader<AnyView, AnyView>.stacksASwitch) {
+            if let switcher {
+                switcher
+            } else {
+                Text("history.title", bundle: .module)
+                    .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
+            }
+        } buttons: {
             // A button that asks, and not a menu: forgetting is chosen in two steps, and a
             // menu's button has no action of its own for the Mac's assistive technologies.
             Button {

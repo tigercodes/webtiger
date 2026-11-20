@@ -121,6 +121,30 @@
         }
       }
     },
+    "catalogue.state.downloads_empty": {
+      "comment": "Design catalogue: a state of the Downloads list.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloads: none"
+          }
+        }
+      }
+    },
+    "catalogue.state.downloads_list": {
+      "comment": "Design catalogue: a state of the Downloads list.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloads: coming, finished and failed"
+          }
+        }
+      }
+    },
     "catalogue.state.empty": {
       "comment": "Design catalogue: a state of the window.",
       "extractionState": "manual",
@@ -321,6 +345,186 @@
           "stringUnit": {
             "state": "translated",
             "value": "Design Catalogue"
+          }
+        }
+      }
+    },
+    "downloads.active": {
+      "comment": "Accessibility value of the History and Downloads button while a download is coming.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloading"
+          }
+        }
+      }
+    },
+    "downloads.clear": {
+      "comment": "Button in the Downloads list that takes every download off the list. The files stay where they are.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear List"
+          }
+        }
+      }
+    },
+    "downloads.coming": {
+      "comment": "Under a download that is still coming, when its size is known: how much has arrived, and how much there is. Both are sizes with their units, such as “1.2 MB”.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ of %2$@"
+          }
+        }
+      }
+    },
+    "downloads.coming_so_far": {
+      "comment": "Under a download that is still coming, when its size is not known: how much has arrived, as a size with its unit.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ so far"
+          }
+        }
+      }
+    },
+    "downloads.done": {
+      "comment": "Button that closes the Downloads list.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        }
+      }
+    },
+    "downloads.empty": {
+      "comment": "Shown in the Downloads list when nothing has been downloaded.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Files you download will be listed here."
+          }
+        }
+      }
+    },
+    "downloads.forget": {
+      "comment": "Accessibility label of the button beside a download that has ended, which takes it off the list. The file stays.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove from List"
+          }
+        }
+      }
+    },
+    "downloads.older": {
+      "comment": "Button at the end of the Downloads list that shows the next, older page of downloads.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Older Downloads"
+          }
+        }
+      }
+    },
+    "downloads.stop": {
+      "comment": "Accessibility label of the button beside a download that is still coming, which stops it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop Download"
+          }
+        }
+      }
+    },
+    "downloads.title": {
+      "comment": "Title of the list of downloads, and the name of its half of the switch beside History.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloads"
+          }
+        }
+      }
+    },
+    "error.download.cancelled": {
+      "comment": "Under a download that was stopped.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stopped"
+          }
+        }
+      }
+    },
+    "error.download.disk": {
+      "comment": "Under a download that failed because its file could not be written.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file couldn’t be saved."
+          }
+        }
+      }
+    },
+    "error.download.failed": {
+      "comment": "Under a download that failed for a reason this build has no words for.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The download failed."
+          }
+        }
+      }
+    },
+    "error.download.interrupted": {
+      "comment": "Under a download that was still coming when the app ended.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebTiger was closed before it finished."
+          }
+        }
+      }
+    },
+    "error.download.network": {
+      "comment": "Under a download that failed because of the network.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The connection was lost."
           }
         }
       }
@@ -722,13 +926,13 @@
       }
     },
     "history.open": {
-      "comment": "Label of the button, beside the tabs, that opens the list of pages visited.",
+      "comment": "Label of the button, beside the tabs, that opens the lists of pages visited and of files downloaded.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "History"
+            "value": "History and Downloads"
           }
         }
       }

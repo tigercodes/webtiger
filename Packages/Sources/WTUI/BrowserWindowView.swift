@@ -79,10 +79,12 @@ public struct BrowserWindowView: View {
         #endif
     }
 
-    /// The History list, over the window. A visit chosen from it loads in the tab in front.
+    /// The History list and the Downloads list (013), over the window. A visit chosen loads in
+    /// the tab in front.
     private var history: some View {
-        HistoryView(
-            model: HistoryModel(core: session.core, windowID: model.windowID ?? 0),
+        LibraryView(
+            history: HistoryModel(core: session.core, windowID: model.windowID ?? 0),
+            downloads: DownloadsModel(core: session.core, windowID: model.windowID ?? 0),
             open: { entry in
                 showingHistory = false
                 model.load(entry.url)
