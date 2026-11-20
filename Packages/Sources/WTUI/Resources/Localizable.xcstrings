@@ -457,6 +457,54 @@
         }
       }
     },
+    "catalogue.state.spaces": {
+      "comment": "Design catalogue: a state of the list of Spaces.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The list of Spaces"
+          }
+        }
+      }
+    },
+    "catalogue.state.spaces_new": {
+      "comment": "Design catalogue: a state of the list of Spaces.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Making a Space"
+          }
+        }
+      }
+    },
+    "catalogue.state.spaces_new_shared": {
+      "comment": "Design catalogue: a state of the list of Spaces.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Making a Space that shares logins"
+          }
+        }
+      }
+    },
+    "catalogue.state.spaces_refused": {
+      "comment": "Design catalogue: a state of the list of Spaces.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A Space the core would not make"
+          }
+        }
+      }
+    },
     "catalogue.state.suggestions": {
       "comment": "Design catalogue: a state of the window.",
       "extractionState": "manual",
@@ -861,6 +909,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "Try Again"
+          }
+        }
+      }
+    },
+    "error.space.failed": {
+      "comment": "Said on the page that makes a Space when it could not be made and no more is known.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Space couldn’t be made."
+          }
+        }
+      }
+    },
+    "error.space.name_empty": {
+      "comment": "Said on the page that makes a Space when the name is empty.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A Space needs a name."
+          }
+        }
+      }
+    },
+    "error.space.too_many": {
+      "comment": "Said on the page that makes a Space when the app will not make another: it has its limit of them.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There are as many Spaces as there can be."
+          }
+        }
+      }
+    },
+    "error.space.unknown": {
+      "comment": "Said on the page that makes a Space when the Space whose logins it was to share is gone.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That Space isn’t there any more."
           }
         }
       }
@@ -1677,6 +1773,222 @@
           "stringUnit": {
             "state": "translated",
             "value": "Search with %@"
+          }
+        }
+      }
+    },
+    "space.chip": {
+      "comment": "Accessibility name of the button at the start of the strip of tabs that says which Space the window shows, and opens the list of Spaces. %@ is the Space's name.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Space: %@"
+          }
+        }
+      }
+    },
+    "space.home": {
+      "comment": "Name shown for the Space the app made itself, until the person gives it a name. A Space is a set of tabs kept apart from the others, such as home and work.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Home"
+          }
+        }
+      }
+    },
+    "space.new.back": {
+      "comment": "Button on the page that makes a Space: back to the list of Spaces, with nothing made.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back"
+          }
+        }
+      }
+    },
+    "space.new.logins": {
+      "comment": "Heading over the choice of whose logins a new Space has: its own, or another Space's.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Logins"
+          }
+        }
+      }
+    },
+    "space.new.make": {
+      "comment": "Button that makes the new Space and shows it in the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Make Space"
+          }
+        }
+      }
+    },
+    "space.new.name": {
+      "comment": "Label of the field for a new Space's name.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        }
+      }
+    },
+    "space.new.own": {
+      "comment": "Choice for a new Space: it is signed in to nothing, apart from every other Space.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Its own"
+          }
+        }
+      }
+    },
+    "space.new.own.detail": {
+      "comment": "Under the choice 'Its own'.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signed out everywhere to begin with. What you sign in to in this Space stays in it."
+          }
+        }
+      }
+    },
+    "space.new.share_with": {
+      "comment": "Label of the choice of which Space a new Space shares its logins with.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share with"
+          }
+        }
+      }
+    },
+    "space.new.shared": {
+      "comment": "Choice for a new Space: it is signed in to sites as another Space is.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The same as another Space"
+          }
+        }
+      }
+    },
+    "space.new.shared.detail": {
+      "comment": "Under the choice 'The same as another Space'. %@ is the name of the Space whose logins are shared.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signed in wherever %@ is. The two share history and downloads."
+          }
+        }
+      }
+    },
+    "space.new.title": {
+      "comment": "Heading of the page that makes a Space.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Space"
+          }
+        }
+      }
+    },
+    "spaces.detail": {
+      "comment": "Under the heading of the list of Spaces.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A Space keeps its tabs apart from the others. Choose one to show it in this window."
+          }
+        }
+      }
+    },
+    "spaces.done": {
+      "comment": "Button that closes the list of Spaces without changing which is shown.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        }
+      }
+    },
+    "spaces.new": {
+      "comment": "Button at the end of the list of Spaces: opens the page that makes one.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Space…"
+          }
+        }
+      }
+    },
+    "spaces.shares": {
+      "comment": "Under a Space's name in the list of Spaces, when it is signed in to sites as another Space is. %@ is that other Space's name.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shares logins with %@"
+          }
+        }
+      }
+    },
+    "spaces.shown": {
+      "comment": "Said of the Space the window shows now, in the list of Spaces.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shown"
+          }
+        }
+      }
+    },
+    "spaces.title": {
+      "comment": "Heading of the list of Spaces.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spaces"
           }
         }
       }

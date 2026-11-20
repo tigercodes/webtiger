@@ -12,6 +12,8 @@ public struct BrowserWindowView: View {
     @State private var addressSelection: TextSelection?
     /// The History list is open over the window (008).
     @State private var showingHistory = false
+    /// The list of Spaces is open over the window (024).
+    @State private var showingSpaces = false
     @FocusState private var findFocused: Bool
     /// What the find bar is open on from the start: for a picture of the bar.
     private let finding: String?
@@ -41,7 +43,10 @@ public struct BrowserWindowView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            TabStrip(model: model, onFind: { model.openFind() }, onZoom: { model.openZoom() }, onHistory: { showingHistory = true })
+            TabStrip(
+                model: model, onFind: { model.openFind() }, onZoom: { model.openZoom() }, onHistory: { showingHistory = true },
+                onSpaces: { showingSpaces = true }
+            )
             toolbar
             // What the tab asks the person (014): in the tab, under the toolbar, and not
             // over the window. It takes the keyboard from nothing by appearing.
@@ -75,6 +80,7 @@ public struct BrowserWindowView: View {
             }
         }
         .sheet(isPresented: $showingHistory) { history }
+        .modifier(SpacesSheet(model: model, isShown: $showingSpaces))
         // Where searches go (020): over the window. At the first run it is there before the
         // window is used, and stays until an engine is chosen.
         .sheet(isPresented: Binding(get: { model.asksWhereSearchesGo }, set: {

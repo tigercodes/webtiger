@@ -1,0 +1,59 @@
+// The list of Spaces (024) in the design catalogue: the list, the page that makes one with
+// logins of its own or another Space's, and a Space the core would not make.
+import SwiftUI
+import WTContract
+
+enum CatalogueSpaces: String, CaseIterable, Identifiable {
+    case list
+    case new
+    case newShared = "new-shared"
+    case refused
+
+    var id: String {
+        rawValue
+    }
+
+    /// The state's name in the catalogue.
+    var title: LocalizedStringKey {
+        switch self {
+        case .list: "catalogue.state.spaces"
+        case .new: "catalogue.state.spaces_new"
+        case .newShared: "catalogue.state.spaces_new_shared"
+        case .refused: "catalogue.state.spaces_refused"
+        }
+    }
+
+    /// What a core would list: the app's own Space, which nobody has named; "Work", with logins
+    /// of its own; and two that share Work's, one with a name as long as a name can be.
+    static let spaces: [WTSpaceSummary] = [
+        space(1, "", logins: 1),
+        space(2, "Work", logins: 2),
+        space(3, "Project Tiger", logins: 2),
+        space(4, "A Space with a name that is as long as a name is let be", logins: 4),
+    ]
+
+    private static func space(_ id: UInt64, _ name: String, logins: UInt32) -> WTSpaceSummary {
+        var space = WTSpaceSummary()
+        space.spaceID = id
+        space.name = name
+        space.logins = logins
+        return space
+    }
+}
+
+/// The list of Spaces in one state.
+struct CatalogueSpacesList: View {
+    let state: CatalogueSpaces
+
+    var body: some View {
+        SpacesView(
+            spaces: CatalogueSpaces.spaces,
+            shownID: 2,
+            refusal: state == .refused ? "space.too_many" : nil,
+            making: state != .list,
+            name: state == .list ? "" : "Travel",
+            sharingWith: state == .newShared ? 2 : nil,
+            show: { _ in }, make: { _, _ in }, done: {}
+        )
+    }
+}

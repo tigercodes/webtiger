@@ -12,6 +12,15 @@ public final class BrowserModel {
     public private(set) var tabs: [WTTabSummary] = []
     /// How many downloads of the window's Space are coming (013): the core's count.
     public private(set) var downloadsActive: UInt32 = 0
+    /// The Space the window shows (024), by the core's name for it; and its own name, which
+    /// is empty for the Space the app made until somebody names it.
+    public private(set) var spaceID: UInt64 = 0
+    public private(set) var spaceName = ""
+    /// The Spaces as the core last listed them: asked for when the list is opened. `nil`
+    /// until it has answered.
+    public internal(set) var spaces: [WTSpaceSummary]?
+    /// Why the core would not make a Space, by its code: said on the page that asked.
+    public internal(set) var spaceRefusal: String?
     /// What is in the address field. It follows the core until the user types in it. Each
     /// change while it is typed in asks what to offer for it (011).
     public var addressText = "" {
@@ -366,6 +375,8 @@ public final class BrowserModel {
         tab = snapshot.tab
         tabs = snapshot.tabs
         downloadsActive = snapshot.downloadsActive
+        spaceID = snapshot.spaceID
+        spaceName = snapshot.spaceName
         // The zoom bar is the window's, and says the level of the page in front: with no page
         // there that can be zoomed, it has nothing to say.
         if isZooming, !tab.hasZoom {

@@ -12,12 +12,17 @@ struct TabStrip: View {
     var onFind: () -> Void = {}
     var onZoom: () -> Void = {}
     var onHistory: () -> Void = {}
+    /// Opens the list of Spaces (024): the chip that names the one shown stands before the
+    /// tabs, and stays there when they scroll.
+    var onSpaces: () -> Void = {}
     /// How wide a tab's name may be. It grows with the text's size, so that at the largest
     /// sizes a short name is still whole; a long title is cut to one line at any size.
     @ScaledMetric private var widestName: CGFloat = 180
 
     var body: some View {
         HStack(spacing: 0) {
+            SpaceChip(name: model.spaceName, action: onSpaces)
+                .padding(.leading, Tokens.Space.m)
             tabs
             Button(action: onFind) {
                 Label { Text("find.open", bundle: .module) } icon: { Image(systemName: "magnifyingglass") }

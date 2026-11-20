@@ -71,6 +71,14 @@ final class CatalogueSnapshotTests: XCTestCase {
         }
     }
 
+    func testEveryStateOfTheSpaces() async throws {
+        try skipWithoutPictures()
+        for state in CatalogueSpaces.allCases {
+            // Taller than a window's picture, so that the whole list, or page, is seen.
+            await verify(CatalogueSpacesList(state: state), size: Self.tallWindowSize, named: "spaces-\(state.rawValue)")
+        }
+    }
+
     func testStartFailed() async throws {
         try skipWithoutPictures()
         await verify(StartFailedView(code: "store.open"), size: Self.windowSize, named: "start-failed")
