@@ -12,6 +12,15 @@ object Tokens {
         val insecure = TokenColor(light = Color(0xFFC92A2A), dark = Color(0xFFFF8787))
         val fieldFill = TokenColor(light = Color(0x0F000000), dark = Color(0x1AFFFFFF))
         val hairline = TokenColor(light = Color(0x1F000000), dark = Color(0x29FFFFFF))
+        val spaceRed = TokenColor(light = Color(0xFFE03131), dark = Color(0xFFFF6B6B))
+        val spaceOrange = TokenColor(light = Color(0xFFD9480F), dark = Color(0xFFFFA94D))
+        val spaceYellow = TokenColor(light = Color(0xFFA66F00), dark = Color(0xFFFFD43B))
+        val spaceGreen = TokenColor(light = Color(0xFF2B8A3E), dark = Color(0xFF69DB7C))
+        val spaceTeal = TokenColor(light = Color(0xFF0C8599), dark = Color(0xFF3BC9DB))
+        val spaceBlue = TokenColor(light = Color(0xFF1C7ED6), dark = Color(0xFF4DABF7))
+        val spacePurple = TokenColor(light = Color(0xFF845EF7), dark = Color(0xFFB197FC))
+        val spacePink = TokenColor(light = Color(0xFFD6336C), dark = Color(0xFFF783AC))
+        val spaceGrey = TokenColor(light = Color(0xFF495057), dark = Color(0xFFADB5BD))
     }
 
     object Space {
@@ -35,6 +44,25 @@ object Tokens {
         val pointerHit = 28.dp
     }
 
+    /** The paint of each colour a Space can have, by the core's name for it (025). */
+    object SpaceColour {
+        val named =
+            listOf(
+                "red" to Palette.spaceRed,
+                "orange" to Palette.spaceOrange,
+                "yellow" to Palette.spaceYellow,
+                "green" to Palette.spaceGreen,
+                "teal" to Palette.spaceTeal,
+                "blue" to Palette.spaceBlue,
+                "purple" to Palette.spacePurple,
+                "pink" to Palette.spacePink,
+                "grey" to Palette.spaceGrey,
+            )
+
+        /** The paint of that colour. Null for a name this build has no paint for. */
+        fun paint(name: String): TokenColor? = named.firstOrNull { it.first == name }?.second
+    }
+
     /** Every token by name, for the design catalogue. */
     object Catalogue {
         val colors =
@@ -44,6 +72,15 @@ object Tokens {
                 "insecure" to Palette.insecure,
                 "fieldFill" to Palette.fieldFill,
                 "hairline" to Palette.hairline,
+                "spaceRed" to Palette.spaceRed,
+                "spaceOrange" to Palette.spaceOrange,
+                "spaceYellow" to Palette.spaceYellow,
+                "spaceGreen" to Palette.spaceGreen,
+                "spaceTeal" to Palette.spaceTeal,
+                "spaceBlue" to Palette.spaceBlue,
+                "spacePurple" to Palette.spacePurple,
+                "spacePink" to Palette.spacePink,
+                "spaceGrey" to Palette.spaceGrey,
             )
 
         val space =

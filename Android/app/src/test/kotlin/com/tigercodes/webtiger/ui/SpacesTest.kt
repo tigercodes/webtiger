@@ -27,6 +27,7 @@ import com.tigercodes.webtiger.core.v1.Response
 import com.tigercodes.webtiger.core.v1.SpaceCreated
 import com.tigercodes.webtiger.core.v1.SpaceSummary
 import com.tigercodes.webtiger.core.v1.SpacesPage
+import com.tigercodes.webtiger.design.Tokens
 import com.tigercodes.webtiger.design.WebTigerTheme
 import com.tigercodes.webtiger.webview.FakePages
 import com.tigercodes.webtiger.webview.SystemWebViewEngine
@@ -51,16 +52,26 @@ class SpacesTest {
     private var listed =
         listOf(
             SpaceSummary(space_id = 1, name = "", logins = 1),
-            SpaceSummary(space_id = 2, name = "Work", logins = 2),
+            SpaceSummary(space_id = 2, name = "Work", logins = 2, colour = "blue"),
             SpaceSummary(space_id = 3, name = "Project", logins = 2),
         )
+
+    /** The colours the scripted core lists: three this shell has paints for, and one it has not. */
+    private var colours = listOf("red", "orange", "blue", "mauve")
+    private var colourRefusal: String? = null
     private var refusal: String? = null
     private var renameRefusal: String? = null
     private val core = ScriptedCore(::script)
 
     private fun script(request: Request): Response =
         when {
-            request.query_spaces != null -> Response(spaces_page = SpacesPage(spaces = listed))
+            request.query_spaces != null -> Response(spaces_page = SpacesPage(spaces = listed, colours = colours))
+            request.colour_space != null ->
+                colourRefusal?.let { Response(error = Error(code = it)) } ?: run {
+                    val coloured = request.colour_space!!
+                    listed = listed.map { if (it.space_id == coloured.space_id) it.copy(colour = coloured.colour) else it }
+                    Response(ack = Ack())
+                }
             request.create_space != null ->
                 refusal?.let { Response(error = Error(code = it)) } ?: run {
                     val id = listed.size + 1L
@@ -97,8 +108,9 @@ class SpacesTest {
         core.requests.mapNotNull { request ->
             request.query_spaces?.let { "list" }
                 ?: request.switch_space?.let { "show ${it.space_id} in ${it.window_id}" }
-                ?: request.create_space?.let { "make '${it.name}' sharing ${it.share_logins_with}" }
+                ?: request.create_space?.let { "make '${it.name}' sharing ${it.share_logins_with}" + if (it.colour.isEmpty()) "" else " in ${it.colour}" }
                 ?: request.rename_space?.let { "name ${it.space_id} '${it.name}'" }
+                ?: request.colour_space?.let { "colour ${it.space_id} '${it.colour}'" }
         }
 
     /** What the field for a Space's name holds. */
@@ -188,7 +200,7 @@ class SpacesTest {
         compose.onNodeWithTag("space-make").assertIsNotEnabled()
 
         compose.onNodeWithTag("space-name").performTextInput("Travel ")
-        compose.onNodeWithTag("space-make").assertIsEnabled().performClick()
+        compose.onNodeWithTag("space-make").assertIsEnabled().performScrollTo().performClick()
         compose.waitForIdle()
 
         // As typed: tidying a name is the core's.
@@ -238,7 +250,7 @@ class SpacesTest {
         compose.onNodeWithTag("space-name").performTextInput("One more")
         compose.onAllNodesWithTag("space-refusal").assertCountEquals(0)
 
-        compose.onNodeWithTag("space-make").performClick()
+        compose.onNodeWithTag("space-make").performScrollTo().performClick()
         compose.waitForIdle()
 
         assertEquals(listOf("list", "make 'One more' sharing 0"), asked())
@@ -246,7 +258,7 @@ class SpacesTest {
         compose.onNodeWithTag("space-refusal").assertTextEquals("There are as many Spaces as there can be.")
 
         // Back to the list, and the list opened anew, say nothing of it.
-        compose.onNodeWithTag("space-back").performClick()
+        compose.onNodeWithTag("space-back").performScrollTo().performClick()
         compose.onNodeWithTag("spaces-done").performClick()
         compose.onNodeWithTag("space-chip").performClick()
         compose.onNodeWithTag("spaces-new").performClick()
@@ -266,7 +278,7 @@ class SpacesTest {
         assertEquals("Work", typed())
         compose.onNodeWithTag("space-save").assertIsEnabled()
         compose.onNodeWithTag("space-name").performTextReplacement("  The office ")
-        compose.onNodeWithTag("space-save").performClick()
+        compose.onNodeWithTag("space-save").performScrollTo().performClick()
         compose.waitForIdle()
 
         // The Space the window shows, and the name as typed: tidying it is the core's.
@@ -277,25 +289,37 @@ class SpacesTest {
     }
 
     @Test
-    fun theSpaceNobodyNamedStartsWithAnEmptyFieldAndNoNameIsNotSaved() {
+    fun theSpaceNobodyNamedStartsWithAnEmptyFieldAndASpaceWithANameIsNotGivenNone() {
         aWindow()
         compose.onNodeWithTag("space-chip").performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("spaces-rename").performClick()
         compose.waitForIdle()
 
-        // "Home" is the shell's word for it, not a name it was given: the field is empty.
+        // "Home" is the shell's word for it, not a name it was given: the field is empty. It
+        // may keep no name, and white space is no name: saved so, nothing is asked.
         assertEquals("", typed())
-        compose.onNodeWithTag("space-save").assertIsNotEnabled()
         compose.onNodeWithTag("space-name").performTextInput("   ")
+        compose.onNodeWithTag("space-save").assertIsEnabled().performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("list"), asked())
+        assertEquals(0, lists())
+
+        // A Space that has a name is not given none.
+        core.emit(snapshot().copy(space_id = 2, space_name = "Work"), subscription = 3)
+        compose.waitForIdle()
+        compose.onNodeWithTag("space-chip").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("spaces-rename").performClick()
+        compose.onNodeWithTag("space-name").performTextReplacement("  ")
         compose.onNodeWithTag("space-save").assertIsNotEnabled()
         compose.onNodeWithTag("space-name").performTextReplacement("Home base")
         compose.onNodeWithTag("space-save").assertIsEnabled()
 
         // Back: nothing was asked for, and the list is there again.
-        compose.onNodeWithTag("space-back").performClick()
+        compose.onNodeWithTag("space-back").performScrollTo().performClick()
         compose.waitForIdle()
-        assertEquals(listOf("list"), asked())
+        assertEquals(listOf("list", "list"), asked())
         compose.onAllNodesWithTag("spaces-rename").assertCountEquals(1)
     }
 
@@ -307,7 +331,7 @@ class SpacesTest {
         compose.waitForIdle()
         compose.onNodeWithTag("spaces-rename").performClick()
         compose.onNodeWithTag("space-name").performTextReplacement("Office")
-        compose.onNodeWithTag("space-save").performClick()
+        compose.onNodeWithTag("space-save").performScrollTo().performClick()
         compose.waitForIdle()
 
         assertEquals(listOf("list", "name 2 'Office'"), asked())
@@ -316,9 +340,9 @@ class SpacesTest {
 
         // A code with no words of its own is said as "it could not be renamed", not "made".
         renameRefusal = "store.query"
-        compose.onNodeWithTag("space-save").performClick()
+        compose.onNodeWithTag("space-save").performScrollTo().performClick()
         compose.waitForIdle()
-        compose.onNodeWithTag("space-refusal").assertTextEquals("The Space couldn’t be renamed.")
+        compose.onNodeWithTag("space-refusal").assertTextEquals("The Space couldn’t be changed.")
     }
 
     @Test
@@ -328,6 +352,159 @@ class SpacesTest {
         compose.onNodeWithTag("space-chip").performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("spaces-rename").assertIsNotEnabled()
+    }
+
+    // A Space's colour (025)
+
+    private fun marks(tag: String): Int = compose.onAllNodesWithTag(tag, useUnmergedTree = true).fetchSemanticsNodes().size
+
+    @Test
+    fun theChipAndTheListHaveTheMarkOfASpacesColourAndASpaceWithNoneHasNone() {
+        aWindow()
+        assertEquals("the app's own Space has no colour", 0, marks("space-mark-blue"))
+
+        core.emit(snapshot().copy(space_id = 2, space_name = "Work", space_colour = "blue"), subscription = 3)
+        compose.waitForIdle()
+        assertEquals("the chip", 1, marks("space-mark-blue"))
+        // Told by its name all the same: the mark is no part of what a screen reader says.
+        assertEquals("Space: Work", description("space-chip"))
+
+        compose.onNodeWithTag("space-chip").performClick()
+        compose.waitForIdle()
+        assertEquals("the chip, and Work's row", 2, marks("space-mark-blue"))
+        // A colour this shell has no paint for is shown as none, and is no error.
+        core.emit(snapshot().copy(space_id = 2, space_name = "Work", space_colour = "mauve"), subscription = 3)
+        compose.waitForIdle()
+        assertEquals("only the row's now", 1, marks("space-mark-blue"))
+        assertEquals(0, marks("space-mark-mauve"))
+    }
+
+    @Test
+    fun aNewSpaceIsMadeWithTheColourChosenOrWithNoneForTheCoreToChoose() {
+        aWindow()
+        compose.onNodeWithTag("space-chip").performClick()
+        compose.onNodeWithTag("spaces-new").performClick()
+        compose.waitForIdle()
+
+        // The colours the core lists that this shell can paint, each by its word; none chosen.
+        compose.onNodeWithTag("space-colour").assertTextEquals("Colour")
+        for (colour in listOf("red", "orange", "blue")) compose.onNodeWithTag("space-colour-$colour").assertIsNotSelected()
+        compose.onAllNodesWithTag("space-colour-mauve").assertCountEquals(0)
+        compose.onAllNodesWithTag("space-colour-none").assertCountEquals(0)
+        assertEquals("Orange", description("space-colour-orange"))
+
+        compose.onNodeWithTag("space-name").performTextInput("Travel")
+        compose.onNodeWithTag("space-colour-orange").performScrollTo().performClick()
+        compose.onNodeWithTag("space-colour-orange").assertIsSelected()
+        // Said in words too: not by the colour alone.
+        compose.onNodeWithTag("space-colour").assertTextEquals("Colour: Orange")
+        compose.onNodeWithTag("space-make").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("list", "make 'Travel' sharing 0 in orange", "show 4 in 1"), asked())
+
+        // None chosen: the core chooses.
+        compose.onNodeWithTag("space-chip").performClick()
+        compose.onNodeWithTag("spaces-new").performClick()
+        compose.onNodeWithTag("space-name").performTextInput("Plain")
+        compose.onNodeWithTag("space-make").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals("make 'Plain' sharing 0", asked().dropLast(1).last())
+    }
+
+    @Test
+    fun editingASpaceAsksForWhatChangedTheNameAndTheColour() {
+        aWindow(shown = 2, name = "Work")
+        compose.onNodeWithTag("space-chip").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("spaces-rename").performClick()
+        compose.waitForIdle()
+
+        // The colour it has is the one chosen, and no colour is a choice too.
+        compose.onNodeWithTag("space-colour-blue").assertIsSelected()
+        compose.onNodeWithTag("space-colour").assertTextEquals("Colour: Blue")
+        compose.onNodeWithTag("space-colour-none").assertIsNotSelected()
+        assertEquals("None", description("space-colour-none"))
+
+        // Another colour, and the name as it was: only the colour is asked for.
+        compose.onNodeWithTag("space-colour-red").performClick()
+        compose.onNodeWithTag("space-save").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("list", "colour 2 'red'"), asked())
+        assertEquals("saved, and the list is gone", 0, lists())
+
+        // Both, the name first; and none.
+        compose.onNodeWithTag("space-chip").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("spaces-rename").performClick()
+        compose.onNodeWithTag("space-name").performTextReplacement("Office")
+        compose.onNodeWithTag("space-colour-none").performClick()
+        compose.onNodeWithTag("space-colour").assertTextEquals("Colour")
+        compose.onNodeWithTag("space-save").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("name 2 'Office'", "colour 2 ''"), asked().takeLast(2))
+
+        // Nothing changed: nothing is asked, and the list goes.
+        compose.onNodeWithTag("space-chip").performClick()
+        compose.waitForIdle()
+        val before = asked().size
+        compose.onNodeWithTag("spaces-rename").performClick()
+        compose.onNodeWithTag("space-save").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals("only the list was asked for", before, asked().size)
+        assertEquals(0, lists())
+    }
+
+    @Test
+    fun theSpaceNobodyNamedIsGivenAColourWithoutAName() {
+        aWindow()
+        compose.onNodeWithTag("space-chip").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("spaces-rename").performClick()
+        compose.waitForIdle()
+
+        // It has no name, and may keep none: the colour alone is saved.
+        assertEquals("", typed())
+        compose.onNodeWithTag("space-colour-none").assertIsSelected()
+        compose.onNodeWithTag("space-colour-orange").performClick()
+        compose.onNodeWithTag("space-save").assertIsEnabled().performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("list", "colour 1 'orange'"), asked())
+    }
+
+    @Test
+    fun aNameTheCoreWillNotTakeLeavesTheColourUnaskedAndAColourItWillNotTakeSaysWhy() {
+        renameRefusal = "space.name_empty"
+        aWindow(shown = 2, name = "Work")
+        compose.onNodeWithTag("space-chip").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("spaces-rename").performClick()
+        compose.onNodeWithTag("space-name").performTextReplacement("Office")
+        compose.onNodeWithTag("space-colour-red").performClick()
+        compose.onNodeWithTag("space-save").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals("the colour was not asked for", listOf("list", "name 2 'Office'"), asked())
+        assertEquals(1, lists())
+
+        renameRefusal = null
+        colourRefusal = "space.colour_unknown"
+        compose.onNodeWithTag("space-save").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("space-refusal").assertTextEquals("That colour isn’t one a Space can have.")
+        assertEquals(1, lists())
+    }
+
+    @Test
+    fun everyColourHasAWordAndAPaintAndAnotherNameHasNeither() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val word = { name: String -> spaceColourWord(context.resources, context.packageName, name) }
+        val names = Tokens.SpaceColour.named.map { it.first }
+        assertEquals(listOf("red", "orange", "yellow", "green", "teal", "blue", "purple", "pink", "grey"), names)
+        assertEquals(listOf("Red", "Orange", "Yellow", "Green", "Teal", "Blue", "Purple", "Pink", "Grey"), names.map(word))
+        // None, and a colour a newer core might say: no paint, and never its own text.
+        for (other in listOf("", "mauve", "Blue", "none", "chosen", "automatic", "space.colour")) {
+            assertEquals(other, null, Tokens.SpaceColour.paint(other))
+            assertEquals(other, "", word(other))
+        }
     }
 
     @Test

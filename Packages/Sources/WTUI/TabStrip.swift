@@ -21,7 +21,7 @@ struct TabStrip: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            SpaceChip(name: model.spaceName, action: onSpaces)
+            SpaceChip(name: model.spaceName, colour: model.spaceColour, action: onSpaces)
                 .padding(.leading, Tokens.Space.m)
             tabs
             Button(action: onFind) {

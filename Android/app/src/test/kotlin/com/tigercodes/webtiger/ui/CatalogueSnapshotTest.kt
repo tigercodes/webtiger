@@ -39,8 +39,9 @@ private const val DARK = "w411dp-h320dp-night-xhdpi"
 // Tall enough for the Downloads list's five downloads, each in a different state, and what follows them.
 private const val LIST_LIGHT = "w411dp-h560dp-notnight-xhdpi"
 private const val LIST_DARK = "w411dp-h560dp-night-xhdpi"
-private const val TALL_LIGHT = "w411dp-h900dp-notnight-xhdpi"
-private const val TALL_DARK = "w411dp-h900dp-night-xhdpi"
+// Tall enough for every token: the colours a Space can have are nine of them (025).
+private const val TALL_LIGHT = "w411dp-h1300dp-notnight-xhdpi"
+private const val TALL_DARK = "w411dp-h1300dp-night-xhdpi"
 
 /** The states of the window whose bar is taller than the window's usual picture: drawn at a list's height, so that all of it is seen. */
 private val TALL_STATES =
@@ -172,10 +173,12 @@ class CatalogueSnapshotTest {
     @Test @Config(qualifiers = "w720dp-h320dp-night-xhdpi")
     fun aWideWindowInTheDarkTheme() = wideWindow("dark")
 
-    @Test @Config(qualifiers = LIST_LIGHT)
+    // Taller than a list's picture: the page that makes a Space has its name, its logins, the
+    // Spaces to share them with, its colour and what was refused.
+    @Test @Config(qualifiers = "w411dp-h820dp-notnight-xhdpi")
     fun everyStateOfTheSpacesInTheLightTheme() = spacesLists("light")
 
-    @Test @Config(qualifiers = LIST_DARK)
+    @Test @Config(qualifiers = "w411dp-h820dp-night-xhdpi")
     fun everyStateOfTheSpacesInTheDarkTheme() = spacesLists("dark")
 
     @Test @Config(qualifiers = LIGHT)

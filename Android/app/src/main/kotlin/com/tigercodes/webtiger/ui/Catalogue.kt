@@ -271,7 +271,13 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                 } else {
                     listOf(front)
                 }
-            return WindowSnapshot(window_id = 1, tab = tab, tabs = tabs)
+            // A Space with a name and a colour (024, 025) in the state with several tabs: every
+            // other state is the Space the app made, which has neither.
+            return if (this == TABS) {
+                WindowSnapshot(window_id = 1, tab = tab, tabs = tabs, space_id = 2, space_name = "Work", space_colour = "blue")
+            } else {
+                WindowSnapshot(window_id = 1, tab = tab, tabs = tabs)
+            }
         }
 
     private fun page(url: String, display: String, security: AddressView.Security = AddressView.Security.SECURITY_SECURE): TabView =
@@ -592,10 +598,13 @@ internal enum class CatalogueSpaces(@StringRes val title: Int) {
         val spaces =
             listOf(
                 SpaceSummary(space_id = 1, name = "", logins = 1),
-                SpaceSummary(space_id = 2, name = "Work", logins = 2),
-                SpaceSummary(space_id = 3, name = "Project Tiger", logins = 2),
-                SpaceSummary(space_id = 4, name = "A Space with a name that is as long as a name is let be", logins = 4),
+                SpaceSummary(space_id = 2, name = "Work", logins = 2, colour = "blue"),
+                SpaceSummary(space_id = 3, name = "Project Tiger", logins = 2, colour = "green"),
+                SpaceSummary(space_id = 4, name = "A Space with a name that is as long as a name is let be", logins = 4, colour = "pink"),
             )
+
+        /** The colours a core lists (025), in its order. */
+        val colours = listOf("red", "orange", "yellow", "green", "teal", "blue", "purple", "pink", "grey")
     }
 }
 
@@ -611,9 +620,10 @@ internal fun CatalogueSpacesList(state: CatalogueSpaces, modifier: Modifier = Mo
                 shownId = 2,
                 refusal = "space.too_many".takeIf { state == CatalogueSpaces.REFUSED },
                 onShow = {},
-                onMake = { _, _ -> },
-                onRename = {},
+                onMake = { _, _, _ -> },
+                onEdit = { _, _ -> },
                 onDone = {},
+                colours = CatalogueSpaces.colours,
                 making = state in setOf(CatalogueSpaces.NEW, CatalogueSpaces.NEW_SHARED, CatalogueSpaces.REFUSED),
                 name = "Travel",
                 sharingWith = 2L.takeIf { state == CatalogueSpaces.NEW_SHARED },

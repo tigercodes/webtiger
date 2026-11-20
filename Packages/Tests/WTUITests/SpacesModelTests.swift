@@ -2,6 +2,7 @@
 // shows, what the list is, and what a press and a new Space ask of the core.
 import WTContract
 import WTCoreClient
+import WTDesign
 @testable import WTUI
 import WTWebKit
 import XCTest
@@ -14,6 +15,7 @@ final class SpacesModelTests: XCTestCase {
         private var listed = [Told.space(1, "", logins: 1), Told.space(2, "Work", logins: 2)]
         private var refusal: String?
         private var renameRefusal: String?
+        private var colourRefusal: String?
 
         private static func space(_ id: UInt64, _ name: String, logins: UInt32) -> WTSpaceSummary {
             var space = WTSpaceSummary()
@@ -31,13 +33,23 @@ final class SpacesModelTests: XCTestCase {
             lock.withLock { renameRefusal = code }
         }
 
+        func refuseColours(with code: String?) {
+            lock.withLock { colourRefusal = code }
+        }
+
         func answer(_ request: WTRequest.OneOf_Kind) -> WTResponse.OneOf_Kind? {
             lock.withLock {
                 switch request {
                 case .querySpaces:
                     var page = WTSpacesPage()
                     page.spaces = listed
+                    page.colours = ["red", "orange", "blue"]
                     return .spacesPage(page)
+                case .colourSpace:
+                    guard let colourRefusal else { return .ack(WTAck()) }
+                    var refused = WTError()
+                    refused.code = colourRefusal
+                    return .error(refused)
                 case let .createSpace(create):
                     if let refusal {
                         var refused = WTError()
@@ -103,8 +115,10 @@ final class SpacesModelTests: XCTestCase {
             switch $0 {
             case .querySpaces: "list"
             case let .switchSpace(ask): "show \(ask.spaceID) in \(ask.windowID)"
-            case let .createSpace(ask): "make '\(ask.name)' sharing \(ask.shareLoginsWith)"
+            case let .createSpace(ask): "make '\(ask.name)' sharing \(ask.shareLoginsWith)" +
+                (ask.colour.isEmpty ? "" : " in \(ask.colour)")
             case let .renameSpace(ask): "name \(ask.spaceID) '\(ask.name)'"
+            case let .colourSpace(ask): "colour \(ask.spaceID) '\(ask.colour)'"
             default: nil
             }
         }
@@ -237,6 +251,101 @@ final class SpacesModelTests: XCTestCase {
         XCTAssertNil(model.spaceRefusal)
     }
 
+    // A Space's colour (025)
+
+    func testTheWindowSaysItsSpacesColourAndTheListSaysTheColoursThereAre() async {
+        let (model, core) = await showing(2, named: "Work")
+        XCTAssertEqual(model.spaceColour, "", "none until the core says one")
+        XCTAssertEqual(model.spaceColours, [], "and none to choose among until the list is asked for")
+
+        var window = WTWindowSnapshot()
+        window.windowID = 1
+        window.tab.tabID = 2
+        window.spaceID = 2
+        window.spaceName = "Work"
+        window.spaceColour = "blue"
+        core.emit(window, subscription: 3)
+        await settle { model.spaceColour == "blue" }
+        XCTAssertEqual(model.spaceColour, "blue")
+
+        model.openSpaces()
+        await settle { !model.spaceColours.isEmpty }
+        XCTAssertEqual(model.spaceColours, ["red", "orange", "blue"], "the core's, in its order")
+    }
+
+    func testASpaceIsMadeWithTheColourChosenOrWithNoneForTheCoreToChoose() async {
+        let (model, core) = await opened()
+        _ = await model.makeSpace(named: "Work", sharingLoginsWith: nil, colour: "blue")
+        _ = await model.makeSpace(named: "Play", sharingLoginsWith: 2, colour: "")
+        XCTAssertEqual(asked(core), ["make 'Work' sharing 0 in blue", "show 3 in 1", "make 'Play' sharing 2", "show 4 in 1"])
+    }
+
+    func testEditingASpaceAsksForWhatChangedTheNameFirst() async {
+        let (model, core) = await showing(2, named: "Work")
+
+        let named = await model.editSpace(SpaceEdit(name: "Office"))
+        let coloured = await model.editSpace(SpaceEdit(colour: "green"))
+        let none = await model.editSpace(SpaceEdit(colour: ""))
+        let both = await model.editSpace(SpaceEdit(name: "Desk", colour: "red"))
+        let nothing = await model.editSpace(SpaceEdit())
+
+        XCTAssertTrue(named && coloured && none && both && nothing)
+        XCTAssertEqual(asked(core), ["name 2 'Office'", "colour 2 'green'", "colour 2 ''", "name 2 'Desk'", "colour 2 'red'"])
+        // The model colours nothing by itself: what it shows is the core's word.
+        XCTAssertEqual(model.spaceColour, "")
+    }
+
+    func testANameTheCoreWillNotTakeLeavesTheColourUnaskedAndAColourItWillNotTakeSaysWhy() async {
+        let (model, core) = await showing(2, named: "Work")
+        told.refuseNames(with: "space.name_empty")
+        let refused = await model.editSpace(SpaceEdit(name: " ", colour: "red"))
+        XCTAssertFalse(refused)
+        XCTAssertEqual(asked(core), ["name 2 ' '"], "the colour was not asked for")
+        XCTAssertEqual(model.spaceRefusal, "space.name_empty")
+
+        told.refuseNames(with: nil)
+        told.refuseColours(with: "space.colour_unknown")
+        let faint = await model.editSpace(SpaceEdit(colour: "mauve"))
+        XCTAssertFalse(faint)
+        XCTAssertEqual(model.spaceRefusal, "space.colour_unknown")
+        told.refuseColours(with: nil)
+        let taken = await model.editSpace(SpaceEdit(colour: "blue"))
+        XCTAssertTrue(taken)
+        XCTAssertNil(model.spaceRefusal)
+    }
+
+    func testEveryColourHasAWordAndAPaintAndAnotherNameHasNeither() {
+        let names = Tokens.SpaceColour.named.map(\.name)
+        XCTAssertEqual(names, ["red", "orange", "yellow", "green", "teal", "blue", "purple", "pink", "grey"])
+        XCTAssertEqual(names.map { SpaceColour.word($0) }, ["Red", "Orange", "Yellow", "Green", "Teal", "Blue", "Purple", "Pink", "Grey"])
+        for name in names {
+            XCTAssertNotNil(Tokens.SpaceColour.paint(name), name)
+        }
+        // None, and a colour a newer core might say: no paint, and never its own text.
+        for other in ["", "mauve", "Blue", "none", "chosen", "automatic"] {
+            XCTAssertNil(Tokens.SpaceColour.paint(other), other)
+            XCTAssertEqual(SpaceColour.word(other), "", other)
+        }
+    }
+
+    #if WEBTIGER_CORE
+        /// The colours the real core lists are the ones this shell has a paint and a word for:
+        /// each of them, by the same names.
+        func testTheShellHasAPaintAndAWordForEveryColourTheCoreLists() async throws {
+            let session = try BrowserSession.live(environment: ["WEBTIGER_FAKE": "1"])
+            defer { session.core.stop() }
+            guard case let .spacesPage(page) = try await session.core.send(.querySpaces(WTQuerySpaces())).value else {
+                return XCTFail("the core lists the Spaces")
+            }
+            XCTAssertEqual(page.colours, Tokens.SpaceColour.named.map(\.name))
+            XCTAssertFalse(page.colours.isEmpty)
+            for colour in page.colours {
+                XCTAssertNotNil(Tokens.SpaceColour.paint(colour), colour)
+                XCTAssertFalse(SpaceColour.word(colour).isEmpty, colour)
+            }
+        }
+    #endif
+
     func testWhereThereIsNoRoomForANameASpaceIsItsInitial() {
         XCTAssertEqual(SpaceName.initial(of: "Home"), "H")
         XCTAssertEqual(SpaceName.initial(of: "work"), "W", "as a capital")
@@ -254,10 +363,11 @@ final class SpacesModelTests: XCTestCase {
         for code in ["space.random", "store.query", "space.failed", ""] {
             XCTAssertEqual(SpacesView.words(for: code), "The Space couldn’t be made.", code)
         }
-        // On the page that names a Space, it is said of naming.
+        // On the page that edits a Space, it is said of changing it.
         for code in ["space.random", "store.query", "space.rename_failed", ""] {
-            XCTAssertEqual(SpacesView.words(for: code, unknown: "error.space.rename_failed"), "The Space couldn’t be renamed.", code)
+            XCTAssertEqual(SpacesView.words(for: code, unknown: "error.space.rename_failed"), "The Space couldn’t be changed.", code)
         }
+        XCTAssertEqual(SpacesView.words(for: "space.colour_unknown"), "That colour isn’t one a Space can have.")
         XCTAssertEqual(SpacesView.words(for: "space.unknown", unknown: "error.space.rename_failed"), "That Space isn’t there any more.")
     }
 }

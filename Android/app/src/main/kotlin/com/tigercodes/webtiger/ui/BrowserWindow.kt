@@ -168,8 +168,9 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
                 refusal = model.spaceRefusal,
                 onShow = model::showSpace,
                 onMake = model::makeSpace,
-                onRename = model::renameSpace,
+                onEdit = model::editSpace,
                 onDone = model::closeSpaces,
+                colours = model.spaceColours,
                 modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing),
             )
         }
@@ -208,7 +209,7 @@ private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit
         // The Space the window shows (024): before the tabs, where it stays when they scroll.
         // In a window as narrow as a phone's it is the Space's initial.
         val compact = LocalConfiguration.current.screenWidthDp < COMPACT_WIDTH_DP
-        SpaceChip(name = model.spaceName, compact = compact, onClick = onSpaces, modifier = Modifier.padding(start = Tokens.Space.xs))
+        SpaceChip(name = model.spaceName, compact = compact, onClick = onSpaces, modifier = Modifier.padding(start = Tokens.Space.xs), colour = model.spaceColour)
         Row(
             modifier =
                 Modifier

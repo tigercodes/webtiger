@@ -136,7 +136,7 @@ The same chip, list and page, in Compose. The chip is the Space's initial in a w
 
 ### 6.3 Naming a Space
 
-In the list, beside "New Space…": "Rename…". It names **the Space the window shows**: to name another, show it first. It opens a page like the one that makes a Space: a field that holds the name the Space has (empty, for the Space the app made while nobody has named it: the shell's word for it is not a name it was given), "Back", and "Save", which is not to be pressed while the field is empty. Saved, the list closes, and the chip says the new name: the core's snapshot does. What the core refuses is said in words, and the page stays. The name goes to the core as typed.
+In the list, beside "New Space…": "Rename…" (since [025](025-space-colours.md) "Edit…", where the same page gives the Space its colour too). It names **the Space the window shows**: to name another, show it first. It opens a page like the one that makes a Space: a field that holds the name the Space has (empty, for the Space the app made while nobody has named it: the shell's word for it is not a name it was given), "Back", and "Save", which is not to be pressed while the field is empty. Saved, the list closes, and the chip says the new name: the core's snapshot does. What the core refuses is said in words, and the page stays. The name goes to the core as typed.
 
 ## 7. Tests
 

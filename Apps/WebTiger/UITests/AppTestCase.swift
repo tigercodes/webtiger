@@ -123,6 +123,12 @@ class AppTestCase: XCTestCase {
                     }
                 #endif
                 #if !os(macOS)
+                    // What is under the keyboard is not drawn, and has no contrast to measure: a
+                    // page that scrolls has its foot there while a field of it has the keyboard.
+                    if issue.auditType == .contrast, let frame = element?.frame, app.keyboards.firstMatch.exists,
+                       app.keyboards.firstMatch.frame.intersects(frame) {
+                        return true
+                    }
                     // A one-line text field scrolls what does not fit: that is not clipped text.
                     if issue.auditType == .textClipped, element?.elementType == .textField {
                         return true

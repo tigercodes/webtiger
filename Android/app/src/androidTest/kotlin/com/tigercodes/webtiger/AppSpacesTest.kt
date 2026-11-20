@@ -13,6 +13,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.accessibility.disableAccessibilityChecks
 import androidx.compose.ui.test.junit4.accessibility.enableAccessibilityChecks
@@ -214,15 +215,23 @@ internal class AppSpacesTest {
             compose.onNodeWithTag("spaces-rename").performClick()
             awaitTag("space-save")
             compose.onNodeWithTag("space-name").assert(androidx.compose.ui.test.hasText("Work"))
+            // It was given a colour nobody had when it was made (025): the first there is.
+            compose.onNodeWithTag("space-colour").assertTextEquals("Colour: Red")
             compose.onRoot().tryPerformAccessibilityChecks()
             compose.onNodeWithTag("space-name").performTextReplacement("Office")
-            compose.onNodeWithTag("space-save").performClick()
+            compose.onNodeWithTag("space-colour-green").performScrollTo().performClick()
+            compose.onNodeWithTag("space-colour").assertTextEquals("Colour: Green")
+            compose.onNodeWithTag("space-save").performScrollTo().performClick()
             awaitSpace("Office")
             compose.onAllNodesWithTag("spaces").assertCountEquals(0)
             awaitPage("who=none")
             openSpaces()
             compose.onNodeWithTag("space-2").assertTextEquals("Office", "Shown")
-            compose.onNodeWithTag("spaces-done").performClick()
+            // And the colour it was given is the one it has.
+            compose.onNodeWithTag("spaces-rename").performClick()
+            awaitTag("space-save")
+            compose.onNodeWithTag("space-colour").assertTextEquals("Colour: Green")
+            compose.onNodeWithTag("space-colour-green").assertIsSelected()
         } finally {
             compose.disableAccessibilityChecks()
         }

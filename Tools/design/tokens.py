@@ -9,6 +9,7 @@ when a checked-in file is stale (Tools/test.sh lint runs it).
 """
 import json
 import pathlib
+import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -25,6 +26,55 @@ def rgba(text: str) -> str:
     if len(digits) != 8 or any(c not in "0123456789abcdefABCDEF" for c in digits):
         raise SystemExit(f"{text!r} is not #RRGGBB or #RRGGBBAA")
     return "0x" + digits.upper()
+
+
+def space_colours(tokens: dict) -> list:
+    """The paints of the colours a Space can have (025): (the core's name, the token's)."""
+    return [(name[5].lower() + name[6:], name) for name in tokens["color"] if re.fullmatch(r"space[A-Z][a-z]+", name)]
+
+
+def luminance(red: int, green: int, blue: int) -> float:
+    def channel(value: int) -> float:
+        part = value / 255
+        return part / 12.92 if part <= 0.03928 else ((part + 0.055) / 1.055) ** 2.4
+
+    return 0.2126 * channel(red) + 0.7152 * channel(green) + 0.0722 * channel(blue)
+
+
+def over(paint: str, ground: str) -> tuple:
+    """A colour that may be see-through, drawn on an opaque one: red, green, blue."""
+    digits = rgba(paint)[2:]
+    red, green, blue, alpha = (int(digits[i : i + 2], 16) for i in (0, 2, 4, 6))
+    under = [int(rgba(ground)[2:][i : i + 2], 16) for i in (0, 2, 4)]
+    share = alpha / 255
+    return tuple(round(top * share + below * (1 - share)) for top, below in zip((red, green, blue), under))
+
+
+def contrast(one: tuple, other: tuple) -> float:
+    lighter, darker = sorted((luminance(*one), luminance(*other)), reverse=True)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+# What a Space's mark is seen against (025 §6): the windows' own backgrounds, which are the
+# systems' and no token, as the pictures have them; and the chip's fill drawn on each.
+GROUNDS = {"light": ["#FFFFFF", "#FEF7FF"], "dark": ["#1E1E1E", "#000000", "#141218"]}
+# A mark that is not text has to stand out from what is beside it by this much (WCAG 1.4.11).
+MARK_CONTRAST = 3.0
+
+
+def check_marks(tokens: dict) -> None:
+    """Every Space's paint is seen against a window and against the chip's fill, light and dark."""
+    fill = tokens["color"]["fieldFill"]
+    for name, token in space_colours(tokens):
+        for appearance, grounds in GROUNDS.items():
+            paint = over(tokens["color"][token][appearance], grounds[0])
+            for ground in grounds:
+                for behind in (over("#00000000", ground), over(fill[appearance], ground)):
+                    if contrast(paint, behind) < MARK_CONTRAST:
+                        raise SystemExit(
+                            f"{token} ({appearance}) is too faint a mark: {contrast(paint, behind):.2f} to 1 "
+                            f"against #{behind[0]:02X}{behind[1]:02X}{behind[2]:02X}; it has to be {MARK_CONTRAST} to 1"
+                        )
 
 
 def swift(tokens: dict) -> str:
@@ -46,6 +96,14 @@ def swift(tokens: dict) -> str:
         for name, value in tokens[group].items():
             out.append(f"        public static let {name}: CGFloat = {value}")
         out.append("    }")
+    # The paint of each colour a Space can have, by the core's name for it (025).
+    out += ["", "    /// The paint of each colour a Space can have, by the core's name for it (025)."]
+    out += ["    public enum SpaceColour {", "        public static let named: [(name: String, color: Color)] = ["]
+    for name, token in space_colours(tokens):
+        out.append(f'            ("{name}", Palette.{token}),')
+    out += ["        ]", ""]
+    out += ["        /// The paint of that colour. `nil` for a name this build has no paint for."]
+    out += ["        public static func paint(_ name: String) -> Color? {", "            named.first { $0.name == name }?.color", "        }", "    }"]
     # Every token again, by name: what the design catalogue draws (004). A token added to
     # tokens.json is in the catalogue without anyone remembering to put it there.
     out += ["", "    /// Every token by name, for the design catalogue.", "    public enum Catalogue {"]
@@ -91,6 +149,13 @@ def kotlin(tokens: dict) -> str:
         for name, value in tokens[group].items():
             out.append(f"        val {name} = {value}.dp")
         out.append("    }")
+    out += ["", "    /** The paint of each colour a Space can have, by the core's name for it (025). */"]
+    out += ["    object SpaceColour {", "        val named =", "            listOf("]
+    for name, token in space_colours(tokens):
+        out.append(f'                "{name}" to Palette.{token},')
+    out += ["            )", ""]
+    out += ["        /** The paint of that colour. Null for a name this build has no paint for. */"]
+    out += ["        fun paint(name: String): TokenColor? = named.firstOrNull { it.first == name }?.second", "    }"]
     # Every token again, by name: what the design catalogue draws (004).
     out += ["", "    /** Every token by name, for the design catalogue. */", "    object Catalogue {"]
     out.append("        val colors =")
@@ -110,6 +175,7 @@ def kotlin(tokens: dict) -> str:
 
 def main() -> int:
     tokens = json.loads(SOURCE.read_text(encoding="utf-8"))
+    check_marks(tokens)
     wanted = {SWIFT: swift(tokens), KOTLIN: kotlin(tokens)}
     if "--check" in sys.argv[1:]:
         stale = [path for path, text in wanted.items() if not path.exists() or path.read_text(encoding="utf-8") != text]

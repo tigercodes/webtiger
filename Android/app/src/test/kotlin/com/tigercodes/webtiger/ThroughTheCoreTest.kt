@@ -14,6 +14,9 @@ import com.tigercodes.webtiger.core.v1.FakeOptions
 import com.tigercodes.webtiger.core.v1.LoadState
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.core.v1.Platform
+import com.tigercodes.webtiger.core.v1.QuerySpaces
+import com.tigercodes.webtiger.core.v1.Request
+import com.tigercodes.webtiger.design.Tokens
 import com.tigercodes.webtiger.core.v1.TestMode
 import com.tigercodes.webtiger.ui.BrowserModel
 import com.tigercodes.webtiger.ui.BrowserSession
@@ -115,6 +118,18 @@ class ThroughTheCoreTest {
         assertEquals(DownloadPlace.DEVICE, BrowserSession.downloadPlace(LaunchOptions()))
         assertEquals("fake mode saves in the app's own folder", DownloadPlace.APP, BrowserSession.downloadPlace(LaunchOptions(fake = true)))
     }
+
+    /**
+     * The colours the real core lists (025) are the ones this shell has a paint for, by the same
+     * names and in the same order. (Their words are the strings': `SpacesTest`.)
+     */
+    @Test
+    fun theShellHasAPaintForEveryColourTheCoreLists() =
+        runBlocking {
+            val listed = session().core.request(Request(query_spaces = QuerySpaces())).spaces_page
+            assertEquals(Tokens.SpaceColour.named.map { it.first }, listed?.colours)
+            assertTrue(listed!!.colours.isNotEmpty())
+        }
 
     @Test
     fun aPageLoadsThroughTheCoreInTheSpacesLoginSet() =

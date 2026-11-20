@@ -16,6 +16,10 @@ public final class BrowserModel {
     /// is empty for the Space the app made until somebody names it.
     public private(set) var spaceID: UInt64 = 0
     public private(set) var spaceName = ""
+    /// That Space's colour, by the core's name for it (025); empty for none.
+    public private(set) var spaceColour = ""
+    /// The colours a Space can have, as the core lists them with the Spaces.
+    public internal(set) var spaceColours: [String] = []
     /// The Spaces as the core last listed them: asked for when the list is opened. `nil`
     /// until it has answered.
     public internal(set) var spaces: [WTSpaceSummary]?
@@ -377,6 +381,7 @@ public final class BrowserModel {
         downloadsActive = snapshot.downloadsActive
         spaceID = snapshot.spaceID
         spaceName = snapshot.spaceName
+        spaceColour = snapshot.spaceColour
         // The zoom bar is the window's, and says the level of the page in front: with no page
         // there that can be zoomed, it has nothing to say.
         if isZooming, !tab.hasZoom {

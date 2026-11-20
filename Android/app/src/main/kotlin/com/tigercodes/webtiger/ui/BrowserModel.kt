@@ -11,6 +11,7 @@ import com.tigercodes.webtiger.core.v1.AddressView
 import com.tigercodes.webtiger.core.v1.AnswerPrompt
 import com.tigercodes.webtiger.core.v1.ChooseSearchEngine
 import com.tigercodes.webtiger.core.v1.CloseTab
+import com.tigercodes.webtiger.core.v1.ColourSpace
 import com.tigercodes.webtiger.core.v1.CreateSpace
 import com.tigercodes.webtiger.core.v1.DialogKind
 import com.tigercodes.webtiger.core.v1.FindInPage
@@ -365,6 +366,14 @@ class BrowserModel(
     var spaceName by mutableStateOf("")
         private set
 
+    /** That Space's colour, by the core's name for it (025). Empty: none. */
+    var spaceColour by mutableStateOf("")
+        private set
+
+    /** The colours a Space can have, as the core lists them with the Spaces. */
+    var spaceColours by mutableStateOf<List<String>>(emptyList())
+        private set
+
     /** The Spaces as the core last listed them: asked for when the list is opened. Null until it has answered. */
     var spaces by mutableStateOf<List<SpaceSummary>?>(null)
         private set
@@ -378,16 +387,19 @@ class BrowserModel(
         private set
 
     /**
-     * Names the Space the window shows (024 §6.3), and closes the list. The name goes as it was
-     * typed. A name the core will not take leaves the list open, with the core's code in
-     * [spaceRefusal]; the chip says the new name when the core's snapshot does.
+     * Gives the Space the window shows another name, another colour, or both (024 §6.3, 025),
+     * and closes the list: what is null stays as it is. The name goes as it was typed. What the
+     * core will not take leaves the list open, with the core's code in [spaceRefusal]; the chip
+     * says what is new when the core's snapshot does.
      */
-    fun renameSpace(name: String) {
+    fun editSpace(name: String?, colour: String?) {
         val shown = spaceId.takeIf { it != 0L } ?: return
         spaceRefusal = null
         session.scope.launch {
             try {
-                session.core.request(Request(rename_space = RenameSpace(space_id = shown, name = name)))
+                // The name first: a name the core will not take leaves the colour as it was.
+                if (name != null) session.core.request(Request(rename_space = RenameSpace(space_id = shown, name = name)))
+                if (colour != null) session.core.request(Request(colour_space = ColourSpace(space_id = shown, colour = colour)))
             } catch (refused: CoreError.Refused) {
                 spaceRefusal = refused.code
                 return@launch
@@ -410,7 +422,10 @@ class BrowserModel(
                 } catch (_: CoreError) {
                     null
                 }
-            if (answer != null) spaces = answer.spaces
+            if (answer != null) {
+                spaces = answer.spaces
+                spaceColours = answer.colours
+            }
         }
     }
 
@@ -431,12 +446,12 @@ class BrowserModel(
      * window. The name goes as it was typed: tidying it is the core's. A Space the core will not
      * make leaves the list open, with the core's code in [spaceRefusal].
      */
-    fun makeSpace(name: String, sharing: Long?) {
+    fun makeSpace(name: String, sharing: Long?, colour: String = "") {
         spaceRefusal = null
         session.scope.launch {
             val made =
                 try {
-                    session.core.request(Request(create_space = CreateSpace(name = name, share_logins_with = sharing ?: 0))).space_created
+                    session.core.request(Request(create_space = CreateSpace(name = name, share_logins_with = sharing ?: 0, colour = colour))).space_created
                 } catch (refused: CoreError.Refused) {
                     spaceRefusal = refused.code
                     return@launch
@@ -621,6 +636,7 @@ class BrowserModel(
         downloadsActive = snapshot.downloads_active
         spaceId = snapshot.space_id
         spaceName = snapshot.space_name
+        spaceColour = snapshot.space_colour
         // The zoom bar is the window's, and says the level of the page in front: with no page
         // there that can be zoomed, it has nothing to say.
         if (isZooming && front.zoom == null) isZooming = false

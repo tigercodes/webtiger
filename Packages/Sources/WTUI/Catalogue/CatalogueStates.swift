@@ -127,6 +127,11 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         case .tabs:
             page(&window, url: "https://example.com/", display: "example.com", security: .secure)
             window.tab.title = "Example Domain"
+            // A Space with a name and a colour (024, 025): every other state is the Space the
+            // app made, which has neither.
+            window.spaceID = 2
+            window.spaceName = "Work"
+            window.spaceColour = "blue"
         case .find:
             // An engine that counts: the third of twelve.
             page(&window, url: "https://example.com/", display: "example.com", security: .secure)

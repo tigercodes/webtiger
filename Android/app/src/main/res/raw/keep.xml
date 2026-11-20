@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- The words for a core error code are found by name (ui/Words.kt: "net.dns" is error_net_dns),
-     which resource shrinking cannot see. -->
+     and so are the words for a colour a Space can have (ui/SpaceColours.kt: "blue" is
+     space_colour_blue), which resource shrinking cannot see. -->
 <resources xmlns:tools="http://schemas.android.com/tools"
-    tools:keep="@string/error_*" />
+    tools:keep="@string/error_*,@string/space_colour_*" />

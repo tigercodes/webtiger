@@ -123,9 +123,14 @@ final class SpaceTests: AppTestCase {
         let name = app.textFields["space-name"]
         XCTAssertTrue(name.waitForExistence(timeout: 30), "the page that names a Space")
         XCTAssertEqual(value(of: name), "Work")
-        audit(app, "naming a Space")
+        // It was given a colour nobody had when it was made (025): the first there is.
+        let colour = app.staticTexts["space-colour"]
+        XCTAssertEqual(said(by: colour), "Colour: Red")
+        audit(app, "editing a Space")
         clear(name, in: app)
         name.typeText("Office")
+        press(app.buttons["space-colour-green"])
+        XCTAssertEqual(said(by: colour), "Colour: Green", "said in words, not by the colour alone")
         press(app.buttons["space-save"])
 
         XCTAssertTrue(chipSays("Office", in: app), "the window says the new name")
@@ -137,6 +142,16 @@ final class SpaceTests: AppTestCase {
         XCTAssertTrue(named.label.contains("Office"), named.label)
         XCTAssertFalse(named.label.contains("Work"), named.label)
         XCTAssertTrue(app.buttons["space-1"].label.contains("Home"), "the other Space is called what it was")
+
+        // And the colour it was given is the one it has.
+        press(app.buttons["spaces-rename"])
+        XCTAssertTrue(colour.waitForExistence(timeout: 30))
+        XCTAssertEqual(said(by: colour), "Colour: Green")
+    }
+
+    /// The words of a text: its label, or on a Mac sometimes its value.
+    private func said(by text: XCUIElement) -> String {
+        text.label.isEmpty ? value(of: text) : text.label
     }
 
     /// Empties a field that has the keyboard: every character it holds is deleted from its end.

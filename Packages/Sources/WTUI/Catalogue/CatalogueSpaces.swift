@@ -28,17 +28,21 @@ enum CatalogueSpaces: String, CaseIterable, Identifiable {
     /// What a core would list: the app's own Space, which nobody has named; "Work", with logins
     /// of its own; and two that share Work's, one with a name as long as a name can be.
     static let spaces: [WTSpaceSummary] = [
-        space(1, "", logins: 1),
-        space(2, "Work", logins: 2),
-        space(3, "Project Tiger", logins: 2),
-        space(4, "A Space with a name that is as long as a name is let be", logins: 4),
+        space(1, "", logins: 1, colour: ""),
+        space(2, "Work", logins: 2, colour: "blue"),
+        space(3, "Project Tiger", logins: 2, colour: "green"),
+        space(4, "A Space with a name that is as long as a name is let be", logins: 4, colour: "pink"),
     ]
 
-    private static func space(_ id: UInt64, _ name: String, logins: UInt32) -> WTSpaceSummary {
+    /// The colours a core lists (025), in its order.
+    static let colours = ["red", "orange", "yellow", "green", "teal", "blue", "purple", "pink", "grey"]
+
+    private static func space(_ id: UInt64, _ name: String, logins: UInt32, colour: String) -> WTSpaceSummary {
         var space = WTSpaceSummary()
         space.spaceID = id
         space.name = name
         space.logins = logins
+        space.colour = colour
         return space
     }
 }
@@ -51,12 +55,13 @@ struct CatalogueSpacesList: View {
         SpacesView(
             spaces: CatalogueSpaces.spaces,
             shownID: 2,
+            colours: CatalogueSpaces.colours,
             refusal: state == .refused ? "space.too_many" : nil,
             making: [.new, .newShared, .refused].contains(state),
             name: "Travel",
             sharingWith: state == .newShared ? 2 : nil,
             renaming: state == .rename,
-            show: { _ in }, make: { _, _ in }, rename: { _ in }, done: {}
+            show: { _ in }, make: { _, _, _ in }, edit: { _ in }, done: {}
         )
     }
 }

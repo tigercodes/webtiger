@@ -7,12 +7,15 @@ import XCTest
 
 @MainActor
 final class CatalogueSnapshotTests: XCTestCase {
-    private static let tokensSize = CGSize(width: 480, height: 820)
+    /// Tall enough for every token: the colours a Space can have are nine of them (025).
+    private static let tokensSize = CGSize(width: 480, height: 1180)
     private static let windowSize = CGSize(width: 480, height: CatalogueWindow.height)
     /// For the states of the window whose bar is taller than the window's usual picture, so
     /// that all of it is seen.
     private static let tallWindowSize = CGSize(width: 480, height: CatalogueWindow.height + 160)
     private static let tallStates: Set<CatalogueState> = [.promptSignInAgain]
+    /// For a page over the window that is longer than any window's picture.
+    private static let pageSize = CGSize(width: 480, height: 700)
 
     private func verify(_ view: some View, size: CGSize, named name: String, file: StaticString = #filePath, line: UInt = #line) async {
         for dark in [false, true] {
@@ -74,8 +77,9 @@ final class CatalogueSnapshotTests: XCTestCase {
     func testEveryStateOfTheSpaces() async throws {
         try skipWithoutPictures()
         for state in CatalogueSpaces.allCases {
-            // Taller than a window's picture, so that the whole list, or page, is seen.
-            await verify(CatalogueSpacesList(state: state), size: Self.tallWindowSize, named: "spaces-\(state.rawValue)")
+            // Taller than a window's picture, so that the whole list, or page, is seen: the
+            // page that makes a Space has its name, its logins, its colour and what was refused.
+            await verify(CatalogueSpacesList(state: state), size: Self.pageSize, named: "spaces-\(state.rawValue)")
         }
     }
 

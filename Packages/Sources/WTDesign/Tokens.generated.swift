@@ -9,6 +9,15 @@ public enum Tokens {
         public static let insecure = Color(light: 0xC92A2AFF, dark: 0xFF8787FF)
         public static let fieldFill = Color(light: 0x0000000F, dark: 0xFFFFFF1A)
         public static let hairline = Color(light: 0x0000001F, dark: 0xFFFFFF29)
+        public static let spaceRed = Color(light: 0xE03131FF, dark: 0xFF6B6BFF)
+        public static let spaceOrange = Color(light: 0xD9480FFF, dark: 0xFFA94DFF)
+        public static let spaceYellow = Color(light: 0xA66F00FF, dark: 0xFFD43BFF)
+        public static let spaceGreen = Color(light: 0x2B8A3EFF, dark: 0x69DB7CFF)
+        public static let spaceTeal = Color(light: 0x0C8599FF, dark: 0x3BC9DBFF)
+        public static let spaceBlue = Color(light: 0x1C7ED6FF, dark: 0x4DABF7FF)
+        public static let spacePurple = Color(light: 0x845EF7FF, dark: 0xB197FCFF)
+        public static let spacePink = Color(light: 0xD6336CFF, dark: 0xF783ACFF)
+        public static let spaceGrey = Color(light: 0x495057FF, dark: 0xADB5BDFF)
     }
 
     public enum Space {
@@ -32,6 +41,26 @@ public enum Tokens {
         public static let pointerHit: CGFloat = 28
     }
 
+    /// The paint of each colour a Space can have, by the core's name for it (025).
+    public enum SpaceColour {
+        public static let named: [(name: String, color: Color)] = [
+            ("red", Palette.spaceRed),
+            ("orange", Palette.spaceOrange),
+            ("yellow", Palette.spaceYellow),
+            ("green", Palette.spaceGreen),
+            ("teal", Palette.spaceTeal),
+            ("blue", Palette.spaceBlue),
+            ("purple", Palette.spacePurple),
+            ("pink", Palette.spacePink),
+            ("grey", Palette.spaceGrey),
+        ]
+
+        /// The paint of that colour. `nil` for a name this build has no paint for.
+        public static func paint(_ name: String) -> Color? {
+            named.first { $0.name == name }?.color
+        }
+    }
+
     /// Every token by name, for the design catalogue.
     public enum Catalogue {
         public static let colors: [(name: String, color: Color)] = [
@@ -40,6 +69,15 @@ public enum Tokens {
             ("insecure", Palette.insecure),
             ("fieldFill", Palette.fieldFill),
             ("hairline", Palette.hairline),
+            ("spaceRed", Palette.spaceRed),
+            ("spaceOrange", Palette.spaceOrange),
+            ("spaceYellow", Palette.spaceYellow),
+            ("spaceGreen", Palette.spaceGreen),
+            ("spaceTeal", Palette.spaceTeal),
+            ("spaceBlue", Palette.spaceBlue),
+            ("spacePurple", Palette.spacePurple),
+            ("spacePink", Palette.spacePink),
+            ("spaceGrey", Palette.spaceGrey),
         ]
 
         public static let space: [(name: String, value: CGFloat)] = [

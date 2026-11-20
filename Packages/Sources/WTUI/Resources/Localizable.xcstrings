@@ -512,7 +512,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Renaming a Space"
+            "value": "Editing a Space"
           }
         }
       }
@@ -925,6 +925,18 @@
         }
       }
     },
+    "error.space.colour_unknown": {
+      "comment": "Said where a Space is made or edited when the app does not know the colour that was chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That colour isn’t one a Space can have."
+          }
+        }
+      }
+    },
     "error.space.failed": {
       "comment": "Said on the page that makes a Space when it could not be made and no more is known.",
       "extractionState": "manual",
@@ -950,13 +962,13 @@
       }
     },
     "error.space.rename_failed": {
-      "comment": "Said on the page that renames a Space when it could not be renamed and no more is known.",
+      "comment": "Said on the page that edits a Space when it could not be changed and no more is known.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The Space couldn’t be renamed."
+            "value": "The Space couldn’t be changed."
           }
         }
       }
@@ -1801,6 +1813,18 @@
         }
       }
     },
+    "space.automatic_colour": {
+      "comment": "Under the colours on the page that makes a Space.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If you choose none, it gets one that no other Space has."
+          }
+        }
+      }
+    },
     "space.chip": {
       "comment": "Accessibility name of the button at the start of the strip of tabs that says which Space the window shows, and opens the list of Spaces. %@ is the Space's name.",
       "extractionState": "manual",
@@ -1809,6 +1833,138 @@
           "stringUnit": {
             "state": "translated",
             "value": "Space: %@"
+          }
+        }
+      }
+    },
+    "space.chosen_colour": {
+      "comment": "The same heading when a colour is chosen: it names the colour in words, so that it is not told by the colour alone. %@ is the colour's name, such as Blue.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Colour: %@"
+          }
+        }
+      }
+    },
+    "space.colour": {
+      "comment": "Heading over the colours to choose among for a Space, where one is made and where one is edited.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Colour"
+          }
+        }
+      }
+    },
+    "space.colour.blue": {
+      "comment": "Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blue"
+          }
+        }
+      }
+    },
+    "space.colour.green": {
+      "comment": "Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Green"
+          }
+        }
+      }
+    },
+    "space.colour.grey": {
+      "comment": "Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grey"
+          }
+        }
+      }
+    },
+    "space.colour.orange": {
+      "comment": "Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orange"
+          }
+        }
+      }
+    },
+    "space.colour.pink": {
+      "comment": "Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pink"
+          }
+        }
+      }
+    },
+    "space.colour.purple": {
+      "comment": "Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Purple"
+          }
+        }
+      }
+    },
+    "space.colour.red": {
+      "comment": "Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Red"
+          }
+        }
+      }
+    },
+    "space.colour.teal": {
+      "comment": "Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Teal"
+          }
+        }
+      }
+    },
+    "space.colour.yellow": {
+      "comment": "Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yellow"
           }
         }
       }
@@ -1945,6 +2101,18 @@
         }
       }
     },
+    "space.no_colour": {
+      "comment": "The choice of no colour for a Space, beside the colours.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "None"
+          }
+        }
+      }
+    },
     "space.rename.save": {
       "comment": "Button that gives the Space the name in the field.",
       "extractionState": "manual",
@@ -1958,13 +2126,13 @@
       }
     },
     "space.rename.title": {
-      "comment": "Heading of the page that gives a Space another name.",
+      "comment": "Heading of the page that gives a Space another name or colour.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rename Space"
+            "value": "Edit Space"
           }
         }
       }
@@ -2006,13 +2174,13 @@
       }
     },
     "spaces.rename": {
-      "comment": "Button in the list of Spaces, beside 'New Space…': opens the page that gives the Space the window shows another name.",
+      "comment": "Button in the list of Spaces, beside 'New Space…': opens the page that gives the Space the window shows another name or colour.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rename…"
+            "value": "Edit…"
           }
         }
       }
