@@ -997,8 +997,12 @@ public nonisolated struct WTPermissionPrompt: Sendable {
 }
 
 /// The person's answer to the prompt a tab shows. Answered with Ack;
-/// "tab.unknown"; "prompt.unknown" when the tab shows no such prompt: it was
-/// answered already, or its page went away.
+/// "tab.unknown"; "prompt.unknown" when the tab's window shows no such prompt:
+/// it was answered already, its page went away, or its tab is not in front;
+/// "prompt.too_soon" when the prompt has been in a snapshot for less than
+/// half a second. A press that was on its way to the page when the prompt
+/// appeared under it must not answer for the person: a shell that is told so
+/// leaves the prompt where it is, and the person presses again.
 ///
 /// For a PermissionPrompt: `allow` lets the page use what it asked for, and
 /// is remembered for its origin in its login set until it is taken back

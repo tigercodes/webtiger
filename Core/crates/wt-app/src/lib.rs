@@ -30,3 +30,4 @@ pub use dispatch::{CORE_VERSION, Dispatcher, MAX_PING_PAYLOAD, Outbox, StartErro
 pub use downloads::{DOWNLOAD_INTERVAL, DOWNLOADS_PAGE};
 pub use error::{AppError, HostError, is_code};
 pub use host::{HOST_TIMEOUT, Host, HostBridge, HostFuture};
+pub use permissions::PROMPT_DELAY;

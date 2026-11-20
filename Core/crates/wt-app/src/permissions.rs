@@ -2,6 +2,9 @@
 //! from what was allowed before, or asks the person in the tab, and
 //! remembers a yes. The engine is told how to answer the page.
 
+use std::time::Duration;
+
+use tokio::time::Instant;
 use wt_core::{Address, LoginSetId, TabId, WebViewId, WindowId};
 use wt_proto::v1::{
     Ack, AnswerPrompt, ForgetPermissions, PermissionAnswer, PermissionKind, PermissionRequested,
@@ -11,6 +14,11 @@ use wt_proto::v1::{
 
 use crate::app::App;
 use crate::error::AppError;
+
+/// How long a prompt must have been before the person to be answered (014
+/// §3). A press that was on its way to the page when the prompt appeared
+/// under it, and the second press of two, must not answer for the person.
+pub const PROMPT_DELAY: Duration = Duration::from_millis(500);
 
 /// The name a kind is written by in the store. `None` for what is no kind.
 fn name(kind: PermissionKind) -> Option<&'static str> {
@@ -151,9 +159,41 @@ impl App {
         }
     }
 
+    /// A window's snapshot is about to be given to its subscribers: the
+    /// prompt in it, if it has one, is before the person from now. One that
+    /// was shown already has been since it first was.
+    pub(crate) fn prompt_shown(&self, window: WindowId, prompt: Option<u64>) {
+        let mut shown = self.prompts_shown.borrow_mut();
+        match prompt {
+            Some(prompt) => {
+                if shown.get(&window).map(|(id, _)| *id) != Some(prompt) {
+                    shown.insert(window, (prompt, Instant::now()));
+                }
+            }
+            None => {
+                shown.remove(&window);
+            }
+        }
+    }
+
     /// The person's answer to the prompt a tab shows.
     pub(crate) fn answer_prompt(&self, answer: &AnswerPrompt) -> Result<response::Kind, AppError> {
         let tab = TabId(answer.tab_id);
+        let window = self
+            .state
+            .borrow()
+            .window_of(tab)
+            .ok_or_else(|| AppError::new("tab.unknown").field("tab_id"))?;
+        // Only what a window was shown can be answered, and not in the
+        // moment it appeared.
+        match self.prompts_shown.borrow().get(&window) {
+            Some((prompt, since)) if *prompt == answer.prompt_id => {
+                if since.elapsed() < PROMPT_DELAY {
+                    return Err(AppError::new("prompt.too_soon").field("prompt_id"));
+                }
+            }
+            _ => return Err(AppError::new("prompt.unknown").field("prompt_id")),
+        }
         let answered = self
             .state
             .borrow_mut()

@@ -796,6 +796,11 @@ impl State {
         }
     }
 
+    /// The window a tab is in. `None` for no such tab.
+    pub(crate) fn window_of(&self, tab_id: TabId) -> Option<WindowId> {
+        self.tabs.get(&tab_id).map(|tab| tab.window)
+    }
+
     /// The person answered the prompt a tab shows: it is taken away, and
     /// given back with the tab's login set. `Err(false)` for no such tab,
     /// `Err(true)` when the tab does not show that prompt. A refusal is

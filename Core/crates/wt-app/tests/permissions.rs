@@ -10,7 +10,9 @@
 )]
 
 use std::path::Path;
+use std::time::Duration;
 
+use wt_app::PROMPT_DELAY;
 use wt_proto::v1::PermissionKind::{Camera, Location, Microphone};
 use wt_proto::v1::{
     AnswerPrompt, EngineEvent, ForgetPermissions, PermissionKind, PermissionRequested,
@@ -75,10 +77,11 @@ async fn answer(shell: &mut FakeShell, tab: u64, prompt: u64, allow: bool) -> re
         .await
 }
 
-/// Answers the prompt the tab in front shows, and expects to be told it was
-/// done.
+/// Answers the prompt the tab in front shows, once it has been there long
+/// enough to be answered, and expects to be told it was done.
 async fn answered(shell: &mut FakeShell, tab: u64, subscription: u64, allow: bool) {
     let prompt = shown(shell, subscription);
+    tokio::time::advance(PROMPT_DELAY).await;
     let done = answer(shell, tab, prompt, allow).await;
     assert!(
         matches!(done, response::Kind::Ack(_)),
@@ -740,6 +743,74 @@ fn an_answer_to_a_prompt_the_tab_does_not_show_answers_nothing() {
             first + 1,
             "the one that waited is shown now, by the name it had"
         );
+    });
+}
+
+#[test]
+fn a_prompt_is_not_answered_in_the_moment_it_appears() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (window, tab, subscription, web_view) = a_page(&mut shell).await;
+        ask(&mut shell, web_view, 1, &[Camera]).await;
+        ask(&mut shell, web_view, 2, &[Location]).await;
+        let first = shown(&shell, subscription);
+
+        // A press that was on its way to the page when the prompt appeared.
+        let at_once = answer(&mut shell, tab, first, true).await;
+        assert_eq!(error_code(at_once), "prompt.too_soon");
+        tokio::time::advance(PROMPT_DELAY - Duration::from_millis(1)).await;
+        let nearly = answer(&mut shell, tab, first, true).await;
+        assert_eq!(error_code(nearly), "prompt.too_soon");
+        assert_eq!(told(&shell), [], "nothing is answered");
+        assert_eq!(shown(&shell, subscription), first, "and the prompt waits");
+        assert_eq!(allowed(&mut shell, window).await, []);
+
+        tokio::time::advance(Duration::from_millis(1)).await;
+        let done = answer(&mut shell, tab, first, true).await;
+        assert!(matches!(done, response::Kind::Ack(_)), "{done:?}");
+        assert_eq!(told(&shell), [(1, true)]);
+
+        // The next prompt has a moment of its own: the second press of two
+        // does not answer what appeared under it.
+        let second = shown(&shell, subscription);
+        assert_ne!(second, first);
+        let twice = answer(&mut shell, tab, second, true).await;
+        assert_eq!(error_code(twice), "prompt.too_soon");
+        assert_eq!(told(&shell), [(1, true)]);
+        tokio::time::advance(PROMPT_DELAY).await;
+        let done = answer(&mut shell, tab, second, false).await;
+        assert!(matches!(done, response::Kind::Ack(_)), "{done:?}");
+        assert_eq!(told(&shell), [(1, true), (2, false)]);
+    });
+}
+
+#[test]
+fn only_a_prompt_its_window_shows_can_be_answered_and_its_moment_begins_when_it_is_shown() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (window, first, subscription, web_view) = a_page(&mut shell).await;
+        ask(&mut shell, web_view, 1, &[Camera]).await;
+        let waiting = shown(&shell, subscription);
+        tokio::time::advance(PROMPT_DELAY * 10).await;
+
+        // Another tab comes in front: the prompt is its tab's, and is not
+        // before the person. However long it has waited, it is not answered.
+        shell.open_tab(window, "example.org").await;
+        assert_eq!(prompt(&shell, subscription), None);
+        let behind = answer(&mut shell, first, waiting, true).await;
+        assert_eq!(error_code(behind), "prompt.unknown");
+        assert_eq!(told(&shell), []);
+
+        // Its tab comes back: it is shown again, from now.
+        shell.activate_tab(first).await;
+        assert_eq!(shown(&shell, subscription), waiting);
+        let at_once = answer(&mut shell, first, waiting, true).await;
+        assert_eq!(error_code(at_once), "prompt.too_soon");
+        tokio::time::advance(PROMPT_DELAY).await;
+        let done = answer(&mut shell, first, waiting, true).await;
+        assert!(matches!(done, response::Kind::Ack(_)), "{done:?}");
+        assert_eq!(told(&shell), [(1, true)]);
+        assert_eq!(front(&shell, subscription).tab_id, first);
     });
 }
 

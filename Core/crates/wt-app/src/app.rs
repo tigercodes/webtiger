@@ -89,6 +89,9 @@ pub struct App {
     /// When each web view last had a download started, for those that had
     /// one within [`DOWNLOAD_INTERVAL`].
     pub(crate) downloaded: Rc<RefCell<BTreeMap<WebViewId, Instant>>>,
+    /// The prompt each window's snapshot last showed, and since when (014):
+    /// only what was shown, and for a moment, can be answered.
+    pub(crate) prompts_shown: Rc<RefCell<BTreeMap<WindowId, (u64, Instant)>>>,
 }
 
 impl App {
@@ -125,6 +128,7 @@ impl App {
             clock: options.clock,
             downloads: Rc::new(RefCell::new(BTreeMap::new())),
             downloaded: Rc::new(RefCell::new(BTreeMap::new())),
+            prompts_shown: Rc::new(RefCell::new(BTreeMap::new())),
         }
     }
 
@@ -440,7 +444,16 @@ impl App {
     /// A window as its subscribers see it, or `None` when there is none.
     #[must_use]
     pub fn window_snapshot(&self, window: WindowId) -> Option<WindowSnapshot> {
-        self.state.borrow().window_snapshot(window)
+        let snapshot = self.state.borrow().window_snapshot(window);
+        // What the tab in front asks the person is before them from the
+        // snapshot that first has it (014).
+        let prompt = snapshot
+            .as_ref()
+            .and_then(|snapshot| snapshot.tab.as_ref())
+            .and_then(|tab| tab.prompt.as_ref())
+            .map(|prompt| prompt.prompt_id);
+        self.prompt_shown(window, prompt);
+        snapshot
     }
 
     /// The windows that may have changed since this was last called.
