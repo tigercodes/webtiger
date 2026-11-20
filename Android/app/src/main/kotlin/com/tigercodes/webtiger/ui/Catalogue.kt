@@ -54,6 +54,8 @@ import com.tigercodes.webtiger.core.ScriptedCore
 import com.tigercodes.webtiger.core.v1.Ack
 import com.tigercodes.webtiger.core.v1.AddressSuggestion
 import com.tigercodes.webtiger.core.v1.AddressView
+import com.tigercodes.webtiger.core.v1.DialogKind
+import com.tigercodes.webtiger.core.v1.DialogPrompt
 import com.tigercodes.webtiger.core.v1.DownloadEntry
 import com.tigercodes.webtiger.core.v1.DownloadPrompt
 import com.tigercodes.webtiger.core.v1.DownloadState
@@ -96,6 +98,9 @@ internal enum class CatalogueState(@StringRes val title: Int) {
     ZOOM(R.string.catalogue_state_zoom),
     PROMPT(R.string.catalogue_state_prompt),
     PROMPT_DOWNLOAD(R.string.catalogue_state_prompt_download),
+    PROMPT_ALERT(R.string.catalogue_state_prompt_alert),
+    PROMPT_CONFIRM(R.string.catalogue_state_prompt_confirm),
+    PROMPT_TEXT(R.string.catalogue_state_prompt_text),
     ;
 
     /** The window's zoom bar is open in this state. */
@@ -133,6 +138,16 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                 else -> null
             }
 
+    /** A page of example.com that says `message`, or asks. */
+    private fun saying(kind: DialogKind, message: String, offered: String = "", silence: Boolean = false): TabView =
+        page("https://example.com/", "example.com").copy(
+            prompt =
+                PromptView(
+                    prompt_id = 9,
+                    dialog = DialogPrompt(site = "example.com", kind = kind, message = message, default_text = offered, may_silence = silence),
+                ),
+        )
+
     /** What a core would publish for the state. The addresses are the documentation's own. */
     val snapshot: WindowSnapshot
         get() {
@@ -158,6 +173,10 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                     FIND_NONE -> page("https://example.com/", "example.com").copy(find = FindView(text = "zebra", answered = true))
                     SUGGESTIONS -> page("https://example.org/", "example.org")
                     ZOOM -> page("https://example.com/", "example.com").copy(zoom = ZoomView(percent = 125, can_zoom_in = true, can_zoom_out = true))
+                    PROMPT_ALERT -> saying(DialogKind.DIALOG_KIND_ALERT, "Your basket is empty.")
+                    // Not the page's first: it can be stopped.
+                    PROMPT_CONFIRM -> saying(DialogKind.DIALOG_KIND_CONFIRM, "Delete “Holiday photos”? This cannot be undone.", silence = true)
+                    PROMPT_TEXT -> saying(DialogKind.DIALOG_KIND_PROMPT, "What should we call you?", offered = "Ada")
                     PROMPT_DOWNLOAD ->
                         page("https://example.com/", "example.com").copy(
                             prompt = PromptView(prompt_id = 9, download = DownloadPrompt(site = "example.com", file_name = "Annual report 2026.pdf")),

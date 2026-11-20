@@ -10,6 +10,7 @@ import com.tigercodes.webtiger.core.v1.AddressSuggestion
 import com.tigercodes.webtiger.core.v1.AddressView
 import com.tigercodes.webtiger.core.v1.AnswerPrompt
 import com.tigercodes.webtiger.core.v1.CloseTab
+import com.tigercodes.webtiger.core.v1.DialogKind
 import com.tigercodes.webtiger.core.v1.FindInPage
 import com.tigercodes.webtiger.core.v1.LoadState
 import com.tigercodes.webtiger.core.v1.NavigationCommand
@@ -261,17 +262,19 @@ class BrowserModel(
      * asks nothing; and for a prompt this build has no words for, which is not put before a
      * person as two buttons and no question: its page waits.
      */
-    val prompt: PromptView? get() = tab.prompt?.takeIf { asked -> asked.download != null || asked.permission?.kinds.orEmpty().isNotEmpty() }
+    val prompt: PromptView? get() = tab.prompt?.takeIf { asked -> asked.download != null || asked.permission?.kinds.orEmpty().isNotEmpty() || asked.dialog?.kind in SPOKEN }
 
     /**
      * The person's answer to the prompt the tab shows. What it lets the page do, what is
      * remembered, and whether it came too soon after the prompt appeared to be the person's
-     * answer to it, are the core's: a refusal leaves the prompt where it is.
+     * answer to it, are the core's: a refusal leaves the prompt where it is. For what a page
+     * says or asks (016), `text` is what a prompt's field held, and `silence` stops the page's
+     * messages.
      */
-    fun answerPrompt(allow: Boolean) {
+    fun answerPrompt(allow: Boolean, text: String = "", silence: Boolean = false) {
         val front = frontTabId ?: return
         val shown = prompt ?: return
-        session.send(Request(answer_prompt = AnswerPrompt(tab_id = front, prompt_id = shown.prompt_id, allow = allow)))
+        session.send(Request(answer_prompt = AnswerPrompt(tab_id = front, prompt_id = shown.prompt_id, allow = allow, text = text, silence = silence)))
     }
 
     // Find on the page (010)
@@ -390,3 +393,6 @@ class BrowserModel(
         addressText = shownText
     }
 }
+
+/** What a page may say or ask that this build has a bar for (016): a later contract's kind is not shown. */
+private val SPOKEN = setOf(DialogKind.DIALOG_KIND_ALERT, DialogKind.DIALOG_KIND_CONFIRM, DialogKind.DIALOG_KIND_PROMPT)

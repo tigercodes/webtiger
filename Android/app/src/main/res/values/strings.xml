@@ -54,7 +54,13 @@
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_prompt">A page asks to use the camera and the microphone</string>
     <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_prompt_alert">A page says something</string>
+    <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_prompt_confirm">A page asks yes or no, not for the first time</string>
+    <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_prompt_download">A page asks to download a file</string>
+    <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_prompt_text">A page asks for a word</string>
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_secure">A secure page</string>
     <!-- Design catalogue: a state of the window. -->
@@ -189,6 +195,10 @@
     <string name="permissions_title">Permissions</string>
     <!-- Button in a tab's prompt: lets the site use what it asked for, now and when it asks again. -->
     <string name="prompt_allow">Allow</string>
+    <!-- Accessibility label of the field in the bar where a page asks for a line of text. -->
+    <string name="prompt_answer">Your answer</string>
+    <!-- Button in the bar that shows what a page asks: refuses it. -->
+    <string name="prompt_cancel">Cancel</string>
     <!-- The sentence in the bar a tab shows when a page starts a download and its site was not yet allowed to. %1$@ is the site, as the address field shows it; %2$@ is the name the file would be saved under, in quotation marks so that where it begins and ends can be seen. -->
     <string name="prompt_download">%1$s wants to download “%2$s”.</string>
     <!-- What a page asks to use, in the prompt.permission sentence. -->
@@ -197,10 +207,16 @@
     <string name="prompt_kind_location">your location</string>
     <!-- What a page asks to use, in the prompt.permission sentence. -->
     <string name="prompt_kind_microphone">your microphone</string>
+    <!-- Button in the bar that shows what a page says or asks: accepts it. -->
+    <string name="prompt_ok">OK</string>
     <!-- The sentence in the bar a tab shows when a page asks to use something of the device's. %1$@ is the site, as the address field shows it; %2$@ is what it wants: one or more of the prompt.kind strings, joined as a list by the system (in English: “your camera and your microphone”). -->
     <string name="prompt_permission">%1$s wants to use %2$s.</string>
     <!-- Button in a tab's prompt: refuses what the page asked for, this time. -->
     <string name="prompt_refuse">Don’t Allow</string>
+    <!-- The first line of the bar a tab shows when a page says something or asks (alert, confirm, prompt). %@ is the site, as the address field shows it; the page's own words follow on the next lines. -->
+    <string name="prompt_says">%s says:</string>
+    <!-- Button in the bar that shows what a page says, from the page's second message on: this page is shown no more messages until another page loads. -->
+    <string name="prompt_silence">Stop This Page’s Messages</string>
     <!-- Accessibility label of the list of places offered under the address field as it is typed in. -->
     <string name="suggestions_list">Suggestions</string>
     <!-- Hint under the heading of an empty tab. -->

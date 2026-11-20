@@ -402,7 +402,12 @@ private fun ZoomBar(model: BrowserModel) {
  * given by a key: a press on one of the buttons is the only way.
  */
 @Composable
-internal fun PromptBar(prompt: PromptView, onAnswer: (Boolean) -> Unit) {
+internal fun PromptBar(prompt: PromptView, onAnswer: (Boolean, String, Boolean) -> Unit) {
+    // What a page says or asks has a bar of its own (016).
+    prompt.dialog?.let { said ->
+        DialogBar(prompt.prompt_id, said, onAnswer)
+        return
+    }
     val words = promptWords(prompt)
     Column(
         modifier =
@@ -417,8 +422,8 @@ internal fun PromptBar(prompt: PromptView, onAnswer: (Boolean) -> Unit) {
         Text(text = words, modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite }.testTag("prompt-words"))
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Spacer(modifier = Modifier.weight(1f))
-            TextButton(onClick = { onAnswer(false) }, modifier = Modifier.testTag("prompt-refuse")) { Text(stringResource(R.string.prompt_refuse)) }
-            TextButton(onClick = { onAnswer(true) }, modifier = Modifier.testTag("prompt-allow")) { Text(stringResource(R.string.prompt_allow)) }
+            TextButton(onClick = { onAnswer(false, "", false) }, modifier = Modifier.testTag("prompt-refuse")) { Text(stringResource(R.string.prompt_refuse)) }
+            TextButton(onClick = { onAnswer(true, "", false) }, modifier = Modifier.testTag("prompt-allow")) { Text(stringResource(R.string.prompt_allow)) }
         }
     }
 }

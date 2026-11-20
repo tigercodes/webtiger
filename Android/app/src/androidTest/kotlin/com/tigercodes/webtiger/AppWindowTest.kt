@@ -718,6 +718,61 @@ internal class AppWindowTest {
     }
 
     /**
+     * What a page says or asks (016), with the real core and the real WebView: a question is
+     * shown in the tab under the site's name, and the page gets the answer; a prompt's field
+     * holds what the page offers, and the page gets what was typed; a page that has said
+     * something before can be stopped, and then says no more.
+     */
+    @Test
+    fun whatAPageSaysIsShownInItsTabAndThePageGetsTheAnswer() {
+        fun bars(): Int = compose.onAllNodesWithTag("prompt").fetchSemanticsNodes().size
+
+        /** Presses one of the bar's buttons, once the bar has been there long enough to be answered. */
+        fun press(button: String) {
+            Thread.sleep(700)
+            compose.onNodeWithTag(button).performClick()
+            compose.waitUntil(15_000) { bars() == 0 }
+        }
+        awaitPage("Home")
+        type(site.url("/says"))
+        awaitPage("Says")
+
+        // A finger on the page's button: the page asks yes or no, and its script waits.
+        PageTouch.tap(checkNotNull(shownWebView()), "confirm")
+        compose.waitUntil(15_000) { bars() == 1 }
+        compose.onNodeWithTag("prompt-site").assertTextEquals("${shown("/")} says:")
+        compose.onNodeWithTag("prompt-words").assertTextEquals("Delete it?")
+        compose.onAllNodesWithTag("prompt-silence").assertCountEquals(0)
+        assertEquals("the page waits for the answer", "Says", pageTitle())
+        compose.onRoot().tryPerformAccessibilityChecks()
+        press("prompt-ok")
+        awaitPage("confirm true")
+
+        // It asks for a word: the field holds what the page offers, and the page gets what
+        // was typed. It is the page's second: it could be stopped.
+        PageTouch.tap(checkNotNull(shownWebView()), "prompt")
+        compose.waitUntil(15_000) { bars() == 1 }
+        compose.onNodeWithTag("prompt-words").assertTextEquals("Your name?")
+        compose.onNodeWithTag("prompt-field").assertTextEquals("Ada")
+        compose.onAllNodesWithTag("prompt-silence").assertCountEquals(1)
+        compose.onRoot().tryPerformAccessibilityChecks()
+        compose.onNodeWithTag("prompt-field").performTextReplacement("Grace Hopper")
+        press("prompt-ok")
+        awaitPage("prompt Grace Hopper")
+
+        // It says something more, and is stopped: this one is dismissed, and what it asks
+        // after is answered as if it had been closed, with nothing shown.
+        PageTouch.tap(checkNotNull(shownWebView()), "alert")
+        compose.waitUntil(15_000) { bars() == 1 }
+        compose.onNodeWithTag("prompt-words").assertTextEquals("Your basket is empty.")
+        press("prompt-silence")
+        awaitPage("alert returned")
+        PageTouch.tap(checkNotNull(shownWebView()), "confirm")
+        awaitPage("confirm false")
+        assertEquals(0, bars())
+    }
+
+    /**
      * Zoom (012), with the real core and the real WebView: the bar is shut until asked for;
      * bigger and smaller go through the core, the bar says the level and the WebView draws its
      * text at it; the level is the site's, and is there on another page of it; the system's

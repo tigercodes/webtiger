@@ -313,6 +313,30 @@
         }
       }
     },
+    "catalogue.state.prompt_alert": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A page says something"
+          }
+        }
+      }
+    },
+    "catalogue.state.prompt_confirm": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A page asks yes or no, not for the first time"
+          }
+        }
+      }
+    },
     "catalogue.state.prompt_download": {
       "comment": "Design catalogue: a state of the window.",
       "extractionState": "manual",
@@ -321,6 +345,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "A page asks to download a file"
+          }
+        }
+      }
+    },
+    "catalogue.state.prompt_text": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A page asks for a word"
           }
         }
       }
@@ -1129,6 +1165,30 @@
         }
       }
     },
+    "prompt.answer": {
+      "comment": "Accessibility label of the field in the bar where a page asks for a line of text.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your answer"
+          }
+        }
+      }
+    },
+    "prompt.cancel": {
+      "comment": "Button in the bar that shows what a page asks: refuses it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        }
+      }
+    },
     "prompt.download": {
       "comment": "The sentence in the bar a tab shows when a page starts a download and its site was not yet allowed to. %1$@ is the site, as the address field shows it; %2$@ is the name the file would be saved under, in quotation marks so that where it begins and ends can be seen.",
       "extractionState": "manual",
@@ -1177,6 +1237,18 @@
         }
       }
     },
+    "prompt.ok": {
+      "comment": "Button in the bar that shows what a page says or asks: accepts it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
     "prompt.permission": {
       "comment": "The sentence in the bar a tab shows when a page asks to use something of the device's. %1$@ is the site, as the address field shows it; %2$@ is what it wants: one or more of the prompt.kind strings, joined as a list by the system (in English: “your camera and your microphone”).",
       "extractionState": "manual",
@@ -1197,6 +1269,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "Don’t Allow"
+          }
+        }
+      }
+    },
+    "prompt.says": {
+      "comment": "The first line of the bar a tab shows when a page says something or asks (alert, confirm, prompt). %@ is the site, as the address field shows it; the page's own words follow on the next lines.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ says:"
+          }
+        }
+      }
+    },
+    "prompt.silence": {
+      "comment": "Button in the bar that shows what a page says, from the page's second message on: this page is shown no more messages until another page loads.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop This Page’s Messages"
           }
         }
       }
