@@ -330,6 +330,33 @@
         "<p><a id=\"letter\" href=\"mailto:ada@example.com\">a letter to write</a></p>"
       ],
       "note": "A link in words, a link that is a picture, words that are no link, and a link for the system. For a link's menu, and a link the person asks for in a new tab."
+    },
+    {
+      "path": "/upload",
+      "title": "Upload",
+      "body": [
+        "<p><input id=\"one\" type=\"file\"></p>",
+        "<p><input id=\"many\" type=\"file\" multiple accept=\"text/plain,.txt\"></p>",
+        "<p id=\"said\">nothing chosen</p>",
+        "<script>",
+        "function tell(what) { document.getElementById('said').textContent = what; document.title = what; }",
+        "function chosen(input) {",
+        "  var files = Array.prototype.slice.call(input.files);",
+        "  if (!files.length) { tell('nothing chosen'); return; }",
+        "  var named = files.map(function (file) { return file.name + ' (' + file.size + ')'; }).join(', ');",
+        "  var reader = new FileReader();",
+        "  reader.onload = function () { tell('chosen: ' + named + ': ' + reader.result); };",
+        "  reader.onerror = function () { tell('chosen: ' + named + ', unread'); };",
+        "  reader.readAsText(files[0]);",
+        "}",
+        "['one', 'many'].forEach(function (id) {",
+        "  var input = document.getElementById(id);",
+        "  input.addEventListener('change', function () { chosen(input); });",
+        "  input.addEventListener('cancel', function () { tell('cancelled ' + id); });",
+        "});",
+        "</script>"
+      ],
+      "note": "A file input for one file and one for several (which says it accepts text). Says in its title what it was given: each file's name and size, and the words of the first; or that the picker was closed with nothing chosen. For uploads."
     }
   ],
   "not_found": {

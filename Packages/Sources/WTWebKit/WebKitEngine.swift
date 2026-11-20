@@ -57,6 +57,12 @@ public final class WebKitEngine: HostServices {
     /// WebKit's own menu is shown as it is.
     public var linkMenu: LinkMenu?
 
+    /// How a page's file input is given files (019). Nothing is picked, and nothing of the
+    /// system's shown, unless the app itself gives its engine the system's picker.
+    public var filePicker = FilePicker.none
+    /// The web views whose pages have a picker open.
+    let files = Files()
+
     /// Where each of those sends what it has to say of a web view: to the core.
     private var reporting: @MainActor (UInt64, WTEngineEvent.OneOf_Kind) -> Void {
         { [weak self] in self?.report($0, $1) }
@@ -128,6 +134,7 @@ public final class WebKitEngine: HostServices {
             permissions.drop(webViewID: destroy.webViewID)
             dialogs.drop(webViewID: destroy.webViewID)
             signIns.drop(webViewID: destroy.webViewID)
+            files.drop(webViewID: destroy.webViewID)
             if let page = pages.removeValue(forKey: destroy.webViewID) {
                 page.close()
                 if page.isPrivate, !pages.values.contains(where: { $0.isPrivate && $0.loginSet == page.loginSet }) {

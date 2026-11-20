@@ -336,6 +336,15 @@ enum TestSitePages {
             delayMilliseconds: 0,
             authorization: ""
         ),
+        TestSitePage(
+            path: "/upload",
+            status: "200 OK",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("<!doctype html><title>Upload</title><h1>Upload</h1><p><input id=\"one\" type=\"file\"></p>\n<p><input id=\"many\" type=\"file\" multiple accept=\"text/plain,.txt\"></p>\n<p id=\"said\">nothing chosen</p>\n<script>\nfunction tell(what) { document.getElementById('said').textContent = what; document.title = what; }\nfunction chosen(input) {\n  var files = Array.prototype.slice.call(input.files);\n  if (!files.length) { tell('nothing chosen'); return; }\n  var named = files.map(function (file) { return file.name + ' (' + file.size + ')'; }).join(', ');\n  var reader = new FileReader();\n  reader.onload = function () { tell('chosen: ' + named + ': ' + reader.result); };\n  reader.onerror = function () { tell('chosen: ' + named + ', unread'); };\n  reader.readAsText(files[0]);\n}\n['one', 'many'].forEach(function (id) {\n  var input = document.getElementById(id);\n  input.addEventListener('change', function () { chosen(input); });\n  input.addEventListener('cancel', function () { tell('cancelled ' + id); });\n});\n</script>")],
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
     ]
 
     /// What every other path is answered with.

@@ -60,47 +60,6 @@ final class WebKitLinkTests: AdapterTestCase {
     }
 
     #if os(macOS)
-        /// Puts a web view in a window that is not on the screen, so that it can be clicked.
-        private func window(for id: UInt64) throws -> NSWindow {
-            let webView = try XCTUnwrap(engine.webView(for: id))
-            let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 480, height: 360),
-                styleMask: [.borderless],
-                backing: .buffered,
-                defer: false
-            )
-            window.isReleasedWhenClosed = false
-            window.contentView = webView
-            return window
-        }
-
-        /// Clicks the middle of an element of the page with the mouse, as the system gives a
-        /// click to a window: with the keys that are held.
-        private func click(_ element: String, in id: UInt64, of window: NSWindow, holding keys: NSEvent.ModifierFlags) async throws {
-            let webView = try XCTUnwrap(engine.webView(for: id))
-            let middle = await run(
-                "(() => { const r = document.getElementById('\(element)').getBoundingClientRect(); "
-                    + "return [r.x + r.width / 2, r.y + r.height / 2]; })()",
-                in: id
-            )
-            let place = try XCTUnwrap(middle as? [Double])
-            // The page counts down from its top; a window counts up from its bottom.
-            let inWebView = NSPoint(x: place[0], y: webView.isFlipped ? place[1] : Double(webView.bounds.height) - place[1])
-            let point = webView.convert(inWebView, to: nil)
-            for (kind, number) in [(NSEvent.EventType.leftMouseDown, 1), (.leftMouseUp, 2)] {
-                let event = try XCTUnwrap(NSEvent.mouseEvent(
-                    with: kind, location: point, modifierFlags: keys, timestamp: ProcessInfo.processInfo.systemUptime,
-                    windowNumber: window.windowNumber, context: nil, eventNumber: number, clickCount: 1,
-                    pressure: kind == .leftMouseDown ? 1 : 0
-                ))
-                if kind == .leftMouseDown {
-                    webView.mouseDown(with: event)
-                } else {
-                    webView.mouseUp(with: event)
-                }
-            }
-        }
-
         func testAClickWithCommandHeldIsReportedAndThePageStays() async throws {
             await page()
             let window = try window(for: 1)
