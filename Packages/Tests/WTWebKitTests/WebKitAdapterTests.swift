@@ -111,7 +111,7 @@ final class WebKitAdapterTests: AdapterTestCase {
     // MARK: Failures
 
     /// A loopback port nothing listens on: one the system just handed out and took back.
-    private static func unusedPort() -> UInt16 {
+    static func unusedPort() -> UInt16 {
         let descriptor = socket(AF_INET, SOCK_STREAM, 0)
         defer { Darwin.close(descriptor) }
         var address = sockaddr_in()

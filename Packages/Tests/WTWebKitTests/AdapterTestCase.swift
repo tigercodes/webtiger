@@ -235,9 +235,8 @@ class AdapterTestCase: XCTestCase {
             return window
         }
 
-        /// Clicks the middle of an element of the page with the mouse, as the system gives a
-        /// click to a window: with the keys that are held.
-        func click(_ element: String, in id: UInt64, of window: NSWindow, holding keys: NSEvent.ModifierFlags) async throws {
+        /// Where the middle of an element of the page is, as a window says where the mouse is.
+        private func middle(of element: String, in id: UInt64) async throws -> NSPoint {
             let webView = try XCTUnwrap(engine.webView(for: id))
             let middle = await run(
                 "(() => { const r = document.getElementById('\(element)').getBoundingClientRect(); "
@@ -247,7 +246,14 @@ class AdapterTestCase: XCTestCase {
             let place = try XCTUnwrap(middle as? [Double])
             // The page counts down from its top; a window counts up from its bottom.
             let inWebView = NSPoint(x: place[0], y: webView.isFlipped ? place[1] : Double(webView.bounds.height) - place[1])
-            let point = webView.convert(inWebView, to: nil)
+            return webView.convert(inWebView, to: nil)
+        }
+
+        /// Clicks the middle of an element of the page with the mouse, as the system gives a
+        /// click to a window: with the keys that are held.
+        func click(_ element: String, in id: UInt64, of window: NSWindow, holding keys: NSEvent.ModifierFlags) async throws {
+            let webView = try XCTUnwrap(engine.webView(for: id))
+            let point = try await middle(of: element, in: id)
             for (kind, number) in [(NSEvent.EventType.leftMouseDown, 1), (.leftMouseUp, 2)] {
                 let event = try XCTUnwrap(NSEvent.mouseEvent(
                     with: kind, location: point, modifierFlags: keys, timestamp: ProcessInfo.processInfo.systemUptime,
@@ -258,6 +264,26 @@ class AdapterTestCase: XCTestCase {
                     webView.mouseDown(with: event)
                 } else {
                     webView.mouseUp(with: event)
+                }
+            }
+        }
+
+        /// Clicks the middle of an element of the page with the mouse's other button: the
+        /// click that asks for a menu. Only for a page that keeps the engine's menu from
+        /// opening: a menu that opened would wait for a choice nobody is there to make.
+        func rightClick(_ element: String, in id: UInt64, of window: NSWindow) async throws {
+            let webView = try XCTUnwrap(engine.webView(for: id))
+            let point = try await middle(of: element, in: id)
+            for (kind, number) in [(NSEvent.EventType.rightMouseDown, 1), (.rightMouseUp, 2)] {
+                let event = try XCTUnwrap(NSEvent.mouseEvent(
+                    with: kind, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                    windowNumber: window.windowNumber, context: nil, eventNumber: number, clickCount: 1,
+                    pressure: kind == .rightMouseDown ? 1 : 0
+                ))
+                if kind == .rightMouseDown {
+                    webView.rightMouseDown(with: event)
+                } else {
+                    webView.rightMouseUp(with: event)
                 }
             }
         }

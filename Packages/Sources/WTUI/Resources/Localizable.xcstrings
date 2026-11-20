@@ -1165,6 +1165,18 @@
         }
       }
     },
+    "link.download": {
+      "comment": "In a link's menu: save what the link leads to as a file, with the person's downloads.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download Linked File"
+          }
+        }
+      }
+    },
     "link.menu": {
       "comment": "Accessibility name of the menu shown for a link of a page that was pressed and held.",
       "extractionState": "manual",
@@ -1173,6 +1185,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Link"
+          }
+        }
+      }
+    },
+    "link.open_image_new_tab": {
+      "comment": "In the menu a Mac shows for a picture of a page (right-click), beside the system's own items such as Copy Image: open the picture by itself in a new tab.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Image in New Tab"
           }
         }
       }

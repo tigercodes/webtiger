@@ -29,6 +29,8 @@ final class Downloads: NSObject, WKDownloadDelegate {
     /// save under, or with nil to drop it.
     private var asked: [UInt64: CheckedContinuation<String?, Never>] = [:]
     private var coming: [UInt64: Coming] = [:]
+    /// The downloads the person chose in a menu, until they are reported as such.
+    private var personsOwn: Set<UInt64> = []
 
     /// How often, at most, a download's progress is passed on.
     private static let pace: TimeInterval = 0.25
@@ -38,10 +40,14 @@ final class Downloads: NSObject, WKDownloadDelegate {
         self.report = report
     }
 
-    /// WebKit turned a navigation into a download: it is this adapter's from here.
-    func adopt(_ download: WKDownload, from webView: UInt64) {
+    /// WebKit turned a navigation into a download, or was asked for one: it is this adapter's
+    /// from here. `chosen` for a file the person chose in a menu (022), which no page asked for.
+    func adopt(_ download: WKDownload, from webView: UInt64, chosen: Bool = false) {
         named += 1
         known[ObjectIdentifier(download)] = (named, webView)
+        if chosen {
+            personsOwn.insert(named)
+        }
         download.delegate = self
     }
 
@@ -78,6 +84,7 @@ final class Downloads: NSObject, WKDownloadDelegate {
         asking.suggestedFilename = suggestedFilename
         asking.mimeType = response.mimeType ?? ""
         asking.expectedBytes = response.expectedContentLength > 0 ? UInt64(response.expectedContentLength) : 0
+        asking.userAsked = personsOwn.remove(id) != nil
         let name = await withCheckedContinuation { (waiting: CheckedContinuation<String?, Never>) in
             asked[id] = waiting
             report(webView, .downloadRequested(asking))
@@ -101,8 +108,35 @@ final class Downloads: NSObject, WKDownloadDelegate {
     }
 
     func download(_ download: WKDownload, didFailWithError error: any Error, resumeData _: Data?) {
-        guard let (id, _) = known[ObjectIdentifier(download)] else { return }
-        ended(id, code: Self.code(for: error as NSError))
+        guard let (id, webView) = known[ObjectIdentifier(download)] else { return }
+        let code = Self.code(for: error as NSError)
+        if personsOwn.remove(id) != nil {
+            // A file the person chose (022) that could not be fetched at all: WebKit never
+            // asked where it goes, so nothing was said of it. They asked, and are told: it is
+            // reported, and when the core has listed it, said to have failed.
+            known[ObjectIdentifier(download)] = nil
+            neverCame(id, from: webView, address: download.originalRequest?.url, code: code)
+            return
+        }
+        ended(id, code: code)
+    }
+
+    private func neverCame(_ id: UInt64, from webView: UInt64, address: URL?, code: String) {
+        var asking = WTDownloadRequested()
+        asking.downloadID = id
+        asking.url = address?.absoluteString ?? ""
+        asking.userAsked = true
+        Task { @MainActor in
+            let name = await withCheckedContinuation { (waiting: CheckedContinuation<String?, Never>) in
+                asked[id] = waiting
+                report(webView, .downloadRequested(asking))
+            }
+            guard name != nil else { return }
+            var gone = WTDownloadFailed()
+            gone.downloadID = id
+            gone.code = code
+            report(webView, .downloadFailed(gone))
+        }
     }
 
     // MARK: How it goes

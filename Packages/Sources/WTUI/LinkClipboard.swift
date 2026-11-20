@@ -52,6 +52,12 @@ extension LinkMenu {
         #else
             let open = String(localized: "link.open_new_tab", bundle: .module)
         #endif
-        return LinkMenu(openInNewTab: open, copyLink: String(localized: "link.copy", bundle: .module), copy: clipboard.copy)
+        return LinkMenu(
+            openInNewTab: open,
+            openImageInNewTab: String(localized: "link.open_image_new_tab", bundle: .module),
+            downloadLinkedFile: String(localized: "link.download", bundle: .module),
+            copyLink: String(localized: "link.copy", bundle: .module),
+            copy: clipboard.copy
+        )
     }
 }

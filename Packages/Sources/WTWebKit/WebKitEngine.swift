@@ -56,6 +56,10 @@ public final class WebKitEngine: HostServices {
     /// A link's menu (018): the shell's words for it, and where it copies to. With none,
     /// WebKit's own menu is shown as it is.
     public var linkMenu: LinkMenu?
+    #if os(macOS)
+        /// What was right-clicked, as the adapter's own script says (022).
+        let pressed = PressedReports()
+    #endif
 
     /// How a page's file input is given files (019). Nothing is picked, and nothing of the
     /// system's shown, unless the app itself gives its engine the system's picker.
@@ -254,6 +258,9 @@ public final class WebKitEngine: HostServices {
         // A page gets a window when somebody clicked for one, and not by asking as it loads:
         // WebKit's own blocker, which is off by default on a Mac.
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
+        #if os(macOS)
+            pressed.listen(in: configuration.userContentController)
+        #endif
         pages[create.webViewID] = Page(
             id: create.webViewID,
             webView: Self.webView(configuration),

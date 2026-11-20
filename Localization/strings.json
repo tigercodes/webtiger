@@ -41,6 +41,8 @@
     "link.menu": { "en": "Link", "note": "Accessibility name of the menu shown for a link of a page that was pressed and held." },
     "link.open_new_tab": { "en": "Open in New Tab", "note": "In a link's menu: open the link in a new tab, behind the one being read." },
     "link.open_link_new_tab": { "en": "Open Link in New Tab", "note": "In the menu a Mac shows for a link (right-click), beside the system's own items such as Copy Link: open the link in a new tab." },
+    "link.open_image_new_tab": { "en": "Open Image in New Tab", "note": "In the menu a Mac shows for a picture of a page (right-click), beside the system's own items such as Copy Image: open the picture by itself in a new tab." },
+    "link.download": { "en": "Download Linked File", "note": "In a link's menu: save what the link leads to as a file, with the person's downloads." },
     "link.copy": { "en": "Copy Link", "note": "In a link's menu: copy the link's address." },
     "link.cancel": { "en": "Cancel", "note": "In a link's menu: close the menu and do nothing." },
     "prompt.permission": { "en": "%1$@ wants to use %2$@.", "note": "The sentence in the bar a tab shows when a page asks to use something of the device's. %1$@ is the site, as the address field shows it; %2$@ is what it wants: one or more of the prompt.kind strings, joined as a list by the system (in English: “your camera and your microphone”)." },

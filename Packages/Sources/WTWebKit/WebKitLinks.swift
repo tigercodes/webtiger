@@ -1,22 +1,35 @@
 // Where a page's navigations are decided, and a link the person asks for in a new tab (018):
 // by ⌘-click, which WebKit reports with the navigation; by the menu an iPhone shows for a long
 // press on a link, which is the shell's; and by WebKit's own menu on a Mac, whose item for it
-// is given the shell's words. The adapter reports the wish; whether a tab opens is the core's.
+// is given the shell's words (WebKitMenus.swift). The adapter reports the wish; whether a tab
+// opens is the core's.
 public import Foundation
 import WebKit
 import WTContract
 
-/// A link's menu: the shell's words, and where "Copy Link" copies to.
+/// A link's menu, and a picture's: the shell's words, and where "Copy Link" copies to.
 public struct LinkMenu {
     /// "Open in New Tab", as this system says it.
     public var openInNewTab: String
+    /// "Open Image in New Tab": the Mac's item for a picture, which WebKit names for a window.
+    public var openImageInNewTab: String
+    /// "Download Linked File" (022), in a menu that is the shell's.
+    public var downloadLinkedFile: String
     /// "Copy Link".
     public var copyLink: String
     /// Puts a link's address where it can be pasted from.
     public var copy: @MainActor (URL) -> Void
 
-    public init(openInNewTab: String, copyLink: String, copy: @escaping @MainActor (URL) -> Void) {
+    public init(
+        openInNewTab: String,
+        openImageInNewTab: String,
+        downloadLinkedFile: String,
+        copyLink: String,
+        copy: @escaping @MainActor (URL) -> Void
+    ) {
         self.openInNewTab = openInNewTab
+        self.openImageInNewTab = openImageInNewTab
+        self.downloadLinkedFile = downloadLinkedFile
         self.copyLink = copyLink
         self.copy = copy
     }
@@ -97,6 +110,10 @@ extension Page {
                     UIAction(title: menu.openInNewTab, image: UIImage(systemName: "plus.square.on.square")) { _ in
                         engine.openLink(webViewID: webViewID, url: link, background: true)
                     },
+                    // What the link leads to, saved (022): a download the person asked for.
+                    UIAction(title: menu.downloadLinkedFile, image: UIImage(systemName: "arrow.down.circle")) { _ in
+                        engine.saveFile(webViewID: webViewID, url: link)
+                    },
                     UIAction(title: menu.copyLink, image: UIImage(systemName: "doc.on.doc")) { _ in
                         menu.copy(link)
                     },
@@ -107,23 +124,4 @@ extension Page {
 
     /// The web view the adapter makes: WebKit's own.
     typealias MenuWebView = WKWebView
-#else
-    /// The web view the adapter makes on a Mac. WebKit builds a link's menu itself, and does
-    /// not tell an app what link it is for; its item that opens the link in a new window
-    /// already asks for a window (006), which the core opens as a tab. That item is given the
-    /// shell's words for what it does here.
-    final class MenuWebView: WKWebView {
-        /// WebKit's own name for its "Open Link in New Window" item. It is not a declared
-        /// constant: should WebKit rename it, the item keeps WebKit's words, and the app's
-        /// test of the menu says so.
-        static let opensLinkInNewWindow = "WKMenuItemIdentifierOpenLinkInNewWindow"
-
-        override func willOpenMenu(_ menu: NSMenu, with event: NSEvent) {
-            super.willOpenMenu(menu, with: event)
-            guard let words = (navigationDelegate as? Page)?.engine?.linkMenu else { return }
-            for item in menu.items where item.identifier?.rawValue == Self.opensLinkInNewWindow {
-                item.title = words.openInNewTab
-            }
-        }
-    }
 #endif

@@ -42,6 +42,9 @@ final class LinkMenuTests: XCTestCase {
             XCTAssertEqual(menu.openInNewTab, "Open in New Tab")
         #endif
         XCTAssertEqual(menu.copyLink, "Copy Link")
+        // A picture's item on a Mac, and what a link's menu saves (022).
+        XCTAssertEqual(menu.openImageInNewTab, "Open Image in New Tab")
+        XCTAssertEqual(menu.downloadLinkedFile, "Download Linked File")
         let link = try XCTUnwrap(URL(string: "https://example.com/next?page=2"))
         menu.copy(link)
         XCTAssertEqual(copied.all, [link])

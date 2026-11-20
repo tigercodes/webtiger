@@ -195,8 +195,12 @@
     <string name="link_cancel">Cancel</string>
     <!-- In a link's menu: copy the link's address. -->
     <string name="link_copy">Copy Link</string>
+    <!-- In a link's menu: save what the link leads to as a file, with the person's downloads. -->
+    <string name="link_download">Download Linked File</string>
     <!-- Accessibility name of the menu shown for a link of a page that was pressed and held. -->
     <string name="link_menu">Link</string>
+    <!-- In the menu a Mac shows for a picture of a page (right-click), beside the system's own items such as Copy Image: open the picture by itself in a new tab. -->
+    <string name="link_open_image_new_tab">Open Image in New Tab</string>
     <!-- In the menu a Mac shows for a link (right-click), beside the system's own items such as Copy Link: open the link in a new tab. -->
     <string name="link_open_link_new_tab">Open Link in New Tab</string>
     <!-- In a link's menu: open the link in a new tab, behind the one being read. -->

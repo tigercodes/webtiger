@@ -119,7 +119,10 @@ final class WebKitLinkTests: AdapterTestCase {
             webView.willOpenMenu(untouched, with: event)
             XCTAssertEqual(untouched.items.map(\.title), ["Open Link", "Open Link in New Window", "Copy Link"])
 
-            engine.linkMenu = LinkMenu(openInNewTab: "Open Link in New Tab", copyLink: "Copy Link") { _ in }
+            engine.linkMenu = LinkMenu(
+                openInNewTab: "Open Link in New Tab", openImageInNewTab: "Open Image in New Tab",
+                downloadLinkedFile: "Download Linked File", copyLink: "Copy Link"
+            ) { _ in }
             let named = menu()
             webView.willOpenMenu(named, with: event)
             XCTAssertEqual(named.items.map(\.title), ["Open Link", "Open Link in New Tab", "Copy Link"], "that item, and no other")
