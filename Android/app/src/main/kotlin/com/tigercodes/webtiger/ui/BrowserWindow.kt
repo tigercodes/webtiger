@@ -154,10 +154,12 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
         if (showingHistory && windowId != null) {
             val history = remember(windowId) { HistoryModel(session, windowId) }
             val downloads = remember(windowId) { DownloadsModel(session, windowId) }
+            val permissions = remember(windowId) { PermissionsModel(session, windowId) }
             BackHandler { showingHistory = false }
             Library(
                 history = history,
                 downloads = downloads,
+                permissions = permissions,
                 onOpen = { visit ->
                     showingHistory = false
                     model.load(visit.url)

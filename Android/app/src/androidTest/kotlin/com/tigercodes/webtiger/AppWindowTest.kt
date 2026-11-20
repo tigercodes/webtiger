@@ -632,7 +632,8 @@ internal class AppWindowTest {
      * A page asks to use the camera (014), with the real core and the real WebView: the tab
      * shows a bar that names the site; "Don't Allow", and the page is told no and does not get
      * to ask for it again; loaded again it may, and "Allow" gives it the emulator's camera;
-     * after that the site is not asked about. The system's own permission is given to the test
+     * after that the site is not asked about, until what it was allowed is taken back in the
+     * list beside History. The system's own permission is given to the test
      * as a person would give it by the system's dialog, with no dialog: fake mode asks the
      * system nothing, and lets a page have what the app holds.
      */
@@ -680,6 +681,28 @@ internal class AppWindowTest {
         type(site.url("/asks?now=camera"))
         awaitPage("granted camera 1")
         assertEquals(0, bars())
+
+        // What it was allowed is listed, behind the History button, and is taken back there.
+        compose.onNodeWithTag("history").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("library-permissions").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("library-permissions").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("permission-site").fetchSemanticsNodes().size == 1 }
+        val listed = compose.onAllNodesWithTag("permission-site")[0]
+        listed.assertTextContains(shown("/"))
+        listed.assertTextContains("Camera")
+        compose.onRoot().tryPerformAccessibilityChecks()
+        compose.onNodeWithTag("permission-forget").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("permissions-nothing").fetchSemanticsNodes().isNotEmpty() }
+        compose.onRoot().tryPerformAccessibilityChecks()
+        compose.onNodeWithTag("permissions-done").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("permissions-nothing").fetchSemanticsNodes().isEmpty() }
+
+        // Taken back, the site is asked about again: the page waits for the person.
+        type(site.url("/asks?now=camera"))
+        compose.waitUntil(15_000) { bars() == 1 }
+        assertEquals("asking camera", pageTitle())
+        answer("prompt-refuse")
+        awaitPage("refused camera NotAllowedError")
     }
 
     /**

@@ -63,8 +63,10 @@ import com.tigercodes.webtiger.core.v1.HistoryPage
 import com.tigercodes.webtiger.core.v1.LoadState
 import com.tigercodes.webtiger.core.v1.PermissionKind
 import com.tigercodes.webtiger.core.v1.PermissionPrompt
+import com.tigercodes.webtiger.core.v1.PermissionsPage
 import com.tigercodes.webtiger.core.v1.PromptView
 import com.tigercodes.webtiger.core.v1.Response
+import com.tigercodes.webtiger.core.v1.SitePermissions
 import com.tigercodes.webtiger.core.v1.Subscribed
 import com.tigercodes.webtiger.core.v1.TabSummary
 import com.tigercodes.webtiger.core.v1.TabView
@@ -311,6 +313,48 @@ internal enum class CatalogueDownloads(@StringRes val title: Int) {
     }
 }
 
+/** One state of the Permissions list (014). */
+internal enum class CataloguePermissions(@StringRes val title: Int) {
+    LIST(R.string.catalogue_state_permissions_list),
+    EMPTY(R.string.catalogue_state_permissions_empty),
+    ;
+
+    /**
+     * What a core would answer for the state: a site with the camera and the microphone, one
+     * that is not over https with the location, and one with a name longer than the list is
+     * wide. The addresses are the documentation's own.
+     */
+    private val page: PermissionsPage
+        get() =
+            if (this == LIST) {
+                PermissionsPage(
+                    sites =
+                        listOf(
+                            SitePermissions(
+                                origin = "https://a-site-whose-name-is-longer-than-the-list-is-wide-and-then-goes-on.example.com",
+                                site = "a-site-whose-name-is-longer-than-the-list-is-wide-and-then-goes-on.example.com",
+                                kinds = listOf(PermissionKind.PERMISSION_KIND_CAMERA),
+                            ),
+                            SitePermissions(origin = "http://127.0.0.1:8080", site = "http://127.0.0.1:8080", kinds = listOf(PermissionKind.PERMISSION_KIND_LOCATION)),
+                            SitePermissions(
+                                origin = "https://meet.example.com",
+                                site = "meet.example.com",
+                                kinds = listOf(PermissionKind.PERMISSION_KIND_CAMERA, PermissionKind.PERMISSION_KIND_MICROPHONE),
+                            ),
+                        ),
+                )
+            } else {
+                PermissionsPage()
+            }
+
+    /** A model over a core that answers with this state, and nothing else. */
+    fun model(context: Context, scope: CoroutineScope): PermissionsModel {
+        val answer = page
+        val core = ScriptedCore { request -> if (request.query_permissions != null) Response(permissions_page = answer) else Response(ack = Ack()) }
+        return PermissionsModel(BrowserSession(core, SystemWebViewEngine(context), scope), windowId = 1)
+    }
+}
+
 /** The catalogue: the tokens, then the window in each state, then the start failure. */
 @Composable
 fun CatalogueScreen() {
@@ -351,6 +395,12 @@ fun CatalogueScreen() {
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.Space.s)) {
                     Text(text = stringResource(state.title), style = MaterialTheme.typography.titleMedium)
                     CatalogueDownloadsList(state, Modifier.fillMaxWidth().height(CatalogueWindowHeight).framed())
+                }
+            }
+            for (state in CataloguePermissions.entries) {
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.Space.s)) {
+                    Text(text = stringResource(state.title), style = MaterialTheme.typography.titleMedium)
+                    CataloguePermissionsList(state, Modifier.fillMaxWidth().height(CatalogueWindowHeight).framed())
                 }
             }
             CatalogueHeading(R.string.catalogue_start_failed)
@@ -416,6 +466,20 @@ internal fun CatalogueDownloadsList(state: CatalogueDownloads, modifier: Modifie
     val model = remember(state) { state.model(context, scope) }
     Box(modifier = modifier) {
         DownloadsList(model, onDone = {}, switcher = { LibrarySwitch(LibraryPart.DOWNLOADS) {} }, watching = false)
+    }
+}
+
+/**
+ * The Permissions list in one state: [PermissionsList] over a scripted core that answers with
+ * it, under the switch it has in the window.
+ */
+@Composable
+internal fun CataloguePermissionsList(state: CataloguePermissions, modifier: Modifier = Modifier) {
+    val context = LocalContext.current.applicationContext
+    val scope = rememberCoroutineScope()
+    val model = remember(state) { state.model(context, scope) }
+    Box(modifier = modifier) {
+        PermissionsList(model, onDone = {}, switcher = { LibrarySwitch(LibraryPart.PERMISSIONS) {} })
     }
 }
 

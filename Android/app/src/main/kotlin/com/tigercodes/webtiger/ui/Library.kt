@@ -1,14 +1,16 @@
 // What the button beside the tabs opens: the History list (008) and, beside it, the Downloads
-// list (013), with a switch between the two. The Library (W3) will be the home of both; until
-// then they share a sheet, so that the row of tabs gains no button.
+// list (013) and the Permissions list (014), with a switch between them. The Library (W3) will
+// be their home; until then they share a sheet, so that the row of tabs gains no button.
 package com.tigercodes.webtiger.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
@@ -30,14 +32,15 @@ import com.tigercodes.webtiger.R
 import com.tigercodes.webtiger.core.v1.HistoryEntry
 import com.tigercodes.webtiger.design.Tokens
 
-/** Which of the sheet's two lists is shown. */
-enum class LibraryPart { HISTORY, DOWNLOADS }
+/** Which of the sheet's lists is shown. */
+enum class LibraryPart { HISTORY, DOWNLOADS, PERMISSIONS }
 
 /** `onOpen` is called with a visit a person chose; `onDone` when they are finished. */
 @Composable
 fun Library(
     history: HistoryModel,
     downloads: DownloadsModel,
+    permissions: PermissionsModel,
     onOpen: (HistoryEntry) -> Unit,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
@@ -48,18 +51,24 @@ fun Library(
     when (part) {
         LibraryPart.HISTORY -> HistoryList(model = history, onOpen = onOpen, onDone = onDone, modifier = modifier, switcher = switcher)
         LibraryPart.DOWNLOADS -> DownloadsList(model = downloads, onDone = onDone, modifier = modifier, switcher = switcher)
+        LibraryPart.PERMISSIONS -> PermissionsList(model = permissions, onDone = onDone, modifier = modifier, switcher = switcher)
     }
 }
 
 /**
- * Two things to choose between, of which the one for the list that is shown is marked: where a
- * list's title would be.
+ * The lists to choose between, of which the one that is shown is marked: where a list's title
+ * would be. On a narrow window, or with large text, the row is moved sideways to reach its end.
  */
 @Composable
 internal fun LibrarySwitch(part: LibraryPart, onChoose: (LibraryPart) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(Tokens.Space.xs), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(Tokens.Space.xs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Choice(R.string.history_title, chosen = part == LibraryPart.HISTORY, tag = "library-history") { onChoose(LibraryPart.HISTORY) }
         Choice(R.string.downloads_title, chosen = part == LibraryPart.DOWNLOADS, tag = "library-downloads") { onChoose(LibraryPart.DOWNLOADS) }
+        Choice(R.string.permissions_title, chosen = part == LibraryPart.PERMISSIONS, tag = "library-permissions") { onChoose(LibraryPart.PERMISSIONS) }
     }
 }
 

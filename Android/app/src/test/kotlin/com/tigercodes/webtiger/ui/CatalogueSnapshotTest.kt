@@ -89,6 +89,15 @@ class CatalogueSnapshotTest {
         }
     }
 
+    private fun permissionsLists(theme: String) {
+        var state by mutableStateOf(CataloguePermissions.LIST)
+        show { key(state) { CataloguePermissionsList(state, Modifier.fillMaxSize()) } }
+        for (next in CataloguePermissions.entries) {
+            state = next
+            verify("permissions-${next.name.lowercase().replace('_', '-')}-$theme")
+        }
+    }
+
     private fun startFailed(theme: String) {
         show { StartFailed("store.open") }
         verify("start-failed-$theme")
@@ -117,6 +126,12 @@ class CatalogueSnapshotTest {
 
     @Test @Config(qualifiers = LIST_DARK)
     fun everyStateOfTheDownloadsListInTheDarkTheme() = downloadsLists("dark")
+
+    @Test @Config(qualifiers = LIGHT)
+    fun everyStateOfThePermissionsListInTheLightTheme() = permissionsLists("light")
+
+    @Test @Config(qualifiers = DARK)
+    fun everyStateOfThePermissionsListInTheDarkTheme() = permissionsLists("dark")
 
     @Test @Config(qualifiers = LIGHT)
     fun startFailedInTheLightTheme() = startFailed("light")

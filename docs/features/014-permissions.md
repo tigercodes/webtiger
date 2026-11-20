@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress: the store's record of what was allowed (§5), the contract (1.10) and the core (§3) are built and tested. The Android shell draws the prompt and answers it, and its window asks the system for the app's own permission (§7). Not yet: the list of what was allowed, in any shell, and all of Apple's part (§11). The System WebView adapter reports a page asking and answers it as the core says, run on an emulator (§6). The design is to be read before the rest is built: §9 lists what it decides, and §10 what cannot be tested here and why |
+| **Status** | In progress: the store's record of what was allowed (§5), the contract (1.10) and the core (§3) are built and tested. The Android shell draws the prompt and answers it, and its window asks the system for the app's own permission (§7). It lists what was allowed, where it can be taken back. Not yet: all of Apple's part (§11). The System WebView adapter reports a page asking and answers it as the core says, run on an emulator (§6). The design is to be read before the rest is built: §9 lists what it decides, and §10 what cannot be tested here and why |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "permission prompts". Site permissions per login set (000 §5.6, `wt-permissions`) in their first form, and the first of a tab's prompts |
 | **Contract** | 1.10: `PermissionRequested`, `PermissionWithdrawn`; the host request `PermissionAnswer`; `TabView.prompt`; `AnswerPrompt`; `QueryPermissions`, `ForgetPermissions` |
 | **Last updated** | 2026-11-19 |
@@ -202,6 +202,8 @@ It is not `site_setting` (012), whose rows are one to a site: these are several 
 
 **What was allowed** is a third list in the sheet behind the History button, beside History and Downloads (013): each site with what it may use, and a button to take that back; one button takes all back. The Library (W3) will be its home, and a site's own sheet at the padlock a nearer one (§2).
 
+**As built on Android** (`PermissionsList`, `PermissionsModel`; the third part of `Library`'s switch): each site by the name the core gives it, with what it may use under it ("Camera and Microphone", joined as the language joins a list), and a button that takes it back, named "Stop Allowing" to a screen reader. "Remove All" takes every site's back. A site leaves the list at once; nothing that is running is stopped. With three lists the switch can be wider than a narrow window, or than one with large text: it is then moved sideways to reach its end.
+
 ## 8. Tests
 
 | Where | What |
@@ -214,7 +216,8 @@ It is not `site_setting` (012), whose rows are one to a site: these are several 
 | System WebView adapter suite (`SystemWebViewPermissionTest`, 10, on the emulator) | With a finger on each of the test site's buttons. The camera: reported with the page's origin and a name of the shell's, the page waits, and told no its promise fails as not allowed, with the system asked nothing. The microphone, and both together, are reported as what they are. Granted, with the system's permission given to the test without a dialog: the page gets one track from the emulator's camera, and two for camera and microphone. A site the core allows is refused when the system refuses the app. Where the device is: reported, the page waits, refused; granted, the page is not refused. A page asks again each time. A frame from another origin is reported as itself. A web view destroyed while its page asks. A word about a request there is not |
 | The Android bar (`PromptTest`, 5, drawn on the JVM against `ScriptedCore`) | The bar is there while the snapshot has a prompt and gone when it has not; the sentence for each kind, for two and for three, and with a site that is not over `https` named as the core names it; each button sends its answer for the prompt that is shown, by the prompt's own id, and the bar stays until the core says the prompt is gone; no button has the keyboard; a prompt this build has no words for is not shown, and nothing is sent for it. When the system may be asked (1 more in `ThroughTheCoreTest`): not in fake mode. Pictures of the bar in the window, light and dark. Four of the rules checked by breaking them |
 | The Android app, with the real core and engine | On the emulator, in fake mode, with the system's permission given to the test without a dialog: a finger on the page's button, and the bar names the site while the page waits; Android's accessibility checks over the bar; "Don't Allow", and the page is refused; the same page asks again and is refused with no bar; loaded again it may ask, and "Allow" gives it one track from the emulator's camera; the next page of the site has the camera at once, with nobody asked |
-| The Apple bar, and the lists | As above, when built |
+| The Android list | `PermissionsModelTest` (3): the list is what the core says of the window's sites, in its order; taking one back sends its origin and it leaves at once, and taking all back asks again; only the answer to the last question is shown. `PermissionsListTest` (4, drawn on the JVM): a site by its name and what it may use, with the button that takes it back; that button sends the site's origin and the row goes; "Remove All", after which the list says there is nothing and the button is off; the switch has a third list, and nothing is asked of it until it is shown. Pictures of the list and the empty list, light and dark; the Downloads list's pictures drawn again for the switch's third choice, which the comparison had let through. Four of the rules checked by breaking them. On the emulator, in the app's test above: the site that was allowed is listed with what it may use, Android's accessibility checks pass over the list and the empty list, it is taken back, and the site's next page is asked about again |
+| The Apple bar and list | As above, when built |
 
 A page of the test site asks for each thing by a button, and writes what became of it where a test can read it.
 
@@ -250,6 +253,6 @@ A page of the test site asks for each thing by a button, and writes what became 
 - [ ] Apple: the adapter and its suite; the reasons in `Info.plist`; the bar, its model's tests and pictures; the list; a UI test.
 - [x] Android: the adapter, and the system's permission behind a seam, on the JVM (13) and the device (10).
 - [x] Android: the window's way to ask the system; the bar and its tests (5); pictures; a device test of the app.
-- [ ] Android: the list of what was allowed.
+- [x] Android: the list of what was allowed, and its tests (3 and 4); pictures; in the app's device test.
 - [ ] `Tools/test.sh all` green, and `android-device`.
 - [ ] Windows shell.
