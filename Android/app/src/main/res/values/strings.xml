@@ -44,6 +44,8 @@
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_insecure">A page that is not secure</string>
     <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_link_menu">A link was pressed and held</string>
+    <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_loading">A page loading</string>
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_long">An address too long for its field</string>
@@ -179,6 +181,16 @@
     <string name="history_search">Search history</string>
     <!-- Title of the list of pages visited. -->
     <string name="history_title">History</string>
+    <!-- In a link's menu: close the menu and do nothing. -->
+    <string name="link_cancel">Cancel</string>
+    <!-- In a link's menu: copy the link's address. -->
+    <string name="link_copy">Copy Link</string>
+    <!-- Accessibility name of the menu shown for a link of a page that was pressed and held. -->
+    <string name="link_menu">Link</string>
+    <!-- In the menu a Mac shows for a link (right-click), beside the system's own items such as Copy Link: open the link in a new tab. -->
+    <string name="link_open_link_new_tab">Open Link in New Tab</string>
+    <!-- In a link's menu: open the link in a new tab, behind the one being read. -->
+    <string name="link_open_new_tab">Open in New Tab</string>
     <!-- Button in the Permissions list that takes back what every site was allowed. Each will ask again. -->
     <string name="permissions_clear">Remove All</string>
     <!-- Button that closes the Permissions list. -->

@@ -13,6 +13,7 @@ import android.os.Environment
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -24,6 +25,7 @@ import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.accessibility.disableAccessibilityChecks
 import androidx.compose.ui.test.junit4.accessibility.enableAccessibilityChecks
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
@@ -773,6 +775,51 @@ internal class AppWindowTest {
         PageTouch.tap(checkNotNull(shownWebView()), "confirm")
         awaitPage("confirm false")
         assertEquals(0, bars())
+    }
+
+    /**
+     * A link's menu (018), with the real core and WebView: a finger pressed and held on a link
+     * shows where it leads; "Open in New Tab" opens the link's page in a tab behind, and the
+     * page being read stays in front; a picture that is a link has the link's menu; and a
+     * touch beside the menu puts it away and is not the page's.
+     */
+    @Test
+    fun aLinkPressedAndHeldOpensInANewTabBehindThePageBeingRead() {
+        fun menus(): Int = compose.onAllNodesWithTag("link-menu").fetchSemanticsNodes().size
+        awaitPage("Home")
+        type(site.url("/links"))
+        awaitPage("Links")
+        compose.onAllNodesWithTag("tab").assertCountEquals(1)
+
+        // A finger held on the link: the menu says where it leads, and the page stays.
+        PageTouch.longPress(checkNotNull(shownWebView()), "words")
+        compose.waitUntil(15_000) { menus() == 1 }
+        compose.onNodeWithTag("link-address").assertTextEquals(site.url("/landed"))
+        compose.onRoot().tryPerformAccessibilityChecks()
+        assertEquals("the link was not followed", "Links", pageTitle())
+
+        // "Open in New Tab": a second tab, behind; the page being read is still in front.
+        compose.onNodeWithTag("link-open").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("tab").fetchSemanticsNodes().size == 2 }
+        assertEquals(0, menus())
+        compose.onAllNodesWithTag("tab")[0].assertIsSelected()
+        assertEquals("Links", pageTitle())
+        // Brought forward, it is the link's page.
+        compose.onAllNodesWithTag("tab")[1].performClick()
+        awaitPage("Landed")
+        awaitAddress(shown("/landed"))
+        compose.onAllNodesWithTag("tab")[0].performClick()
+        awaitPage("Links")
+
+        // A picture that is a link has the link's menu, with the link's address.
+        PageTouch.longPress(checkNotNull(shownWebView()), "picture")
+        compose.waitUntil(15_000) { menus() == 1 }
+        compose.onNodeWithTag("link-address").assertTextEquals(site.url("/landed?from=picture"))
+        // A touch beside the menu puts it away, and is not a touch on the page.
+        compose.onNodeWithTag("link-menu-beside").performTouchInput { click(topCenter + Offset(0f, 8f)) }
+        compose.waitUntil(15_000) { menus() == 0 }
+        assertEquals("Links", pageTitle())
+        compose.onAllNodesWithTag("tab").assertCountEquals(2)
     }
 
     /**

@@ -41,6 +41,7 @@ class BrowserModel(
     typing: String? = null,
     offered: List<AddressSuggestion> = emptyList(),
     zooming: Boolean = false,
+    pressing: String? = null,
 ) {
     /** The tab in front, as the core last published it. The window's controls act on it. */
     var tab by mutableStateOf(TabView())
@@ -107,6 +108,8 @@ class BrowserModel(
     suspend fun open() {
         if (window != null || opening) return
         opening = true
+        // From now this window is told when a link of a page is pressed and held (018).
+        session.engine.onLinkPressed = ::linkPressed
         try {
             window = session.openWindow(::apply)
         } catch (_: CoreError) {
@@ -278,6 +281,39 @@ class BrowserModel(
         session.send(Request(answer_prompt = AnswerPrompt(tab_id = front, prompt_id = shown.prompt_id, allow = allow, text = text, silence = silence, secret = secret)))
     }
 
+    // A link's menu (018)
+
+    /**
+     * The link whose menu is open: one the person pressed and held in the page in front. Null
+     * when no menu is. A model made with `pressing` starts with the menu of that link open:
+     * for a picture of it (004).
+     */
+    internal var pressedLink by mutableStateOf(pressing?.let { PressedLink(webViewId = PICTURED, url = it) })
+        private set
+
+    /** The engine says a link of a page was pressed and held. Only of the page in front: a page behind is not being touched. */
+    private fun linkPressed(webViewId: Long, url: String) {
+        if (webViewId != 0L && webViewId == tab.web_view_id) pressedLink = PressedLink(webViewId, url)
+    }
+
+    /** "Open in New Tab": the core is asked, through the engine that saw the press, and opens the tab behind this one, or does not. */
+    fun openPressedLink() {
+        val link = pressedLink ?: return
+        pressedLink = null
+        session.engine.openLink(link.webViewId, link.url, background = true)
+    }
+
+    /** "Copy Link". */
+    fun copyPressedLink() {
+        val link = pressedLink ?: return
+        pressedLink = null
+        session.clipboard.copy(link.url)
+    }
+
+    fun dismissLinkMenu() {
+        pressedLink = null
+    }
+
     // Find on the page (010)
 
     /**
@@ -375,6 +411,9 @@ class BrowserModel(
             // What was offered was offered for what was typed for that tab.
             putSuggestionsAway()
         }
+        // A link's menu is of the page it was pressed in: with another web view in front, or
+        // none, it is put away. (A picture's menu stays in its picture.)
+        if (pressedLink?.let { it.webViewId != PICTURED && it.webViewId != front.web_view_id } == true) pressedLink = null
         tab = front
         tabs = snapshot.tabs
         downloadsActive = snapshot.downloads_active
@@ -394,6 +433,9 @@ class BrowserModel(
         addressText = shownText
     }
 }
+
+/** The web view a picture's link menu is said to be of: none of the core's, whose ids count up from one, and none of a shell's. */
+private const val PICTURED = -1L
 
 /** What a page may say or ask that this build has a bar for (016): a later contract's kind is not shown. */
 private val SPOKEN = setOf(DialogKind.DIALOG_KIND_ALERT, DialogKind.DIALOG_KIND_CONFIRM, DialogKind.DIALOG_KIND_PROMPT)

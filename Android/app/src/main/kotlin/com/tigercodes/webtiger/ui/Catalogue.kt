@@ -102,12 +102,16 @@ internal enum class CatalogueState(@StringRes val title: Int) {
     PROMPT_ALERT(R.string.catalogue_state_prompt_alert),
     PROMPT_CONFIRM(R.string.catalogue_state_prompt_confirm),
     PROMPT_TEXT(R.string.catalogue_state_prompt_text),
+    LINK_MENU(R.string.catalogue_state_link_menu),
     PROMPT_SIGN_IN(R.string.catalogue_state_prompt_sign_in),
     PROMPT_SIGN_IN_AGAIN(R.string.catalogue_state_prompt_sign_in_again),
     ;
 
     /** The window's zoom bar is open in this state. */
     val zooming: Boolean get() = this == ZOOM
+
+    /** The link whose menu is open in this state, when one is: an address longer than the menu is wide. */
+    val pressing: String? get() = if (this == LINK_MENU) "https://example.com/articles/2026/11/a-long-read-about-links-and-where-they-lead?from=the-front-page" else null
 
     /** What is typed in the address field in this state, when something is. */
     val typing: String? get() = if (this == SUGGESTIONS) "exa" else null
@@ -180,6 +184,7 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                     // Not the page's first: it can be stopped.
                     PROMPT_CONFIRM -> saying(DialogKind.DIALOG_KIND_CONFIRM, "Delete “Holiday photos”? This cannot be undone.", silence = true)
                     PROMPT_TEXT -> saying(DialogKind.DIALOG_KIND_PROMPT, "What should we call you?", offered = "Ada")
+                    LINK_MENU -> page("https://example.com/", "example.com")
                     // The load is on its way to a server that asks first: the page before it is still there.
                     PROMPT_SIGN_IN ->
                         page("https://example.com/", "example.com").copy(
@@ -473,7 +478,7 @@ internal fun CatalogueWindow(state: CatalogueState, modifier: Modifier = Modifie
     val context = LocalContext.current.applicationContext
     val scope = rememberCoroutineScope()
     val session = remember(state) { state.session(context, scope) }
-    val model = remember(session) { BrowserModel(session, finding = state.finding, typing = state.typing, offered = state.offered, zooming = state.zooming) }
+    val model = remember(session) { BrowserModel(session, finding = state.finding, typing = state.typing, offered = state.offered, zooming = state.zooming, pressing = state.pressing) }
     // A window takes the system's Back for its page. These are pictures of windows: Back leaves
     // the catalogue, whatever state one of them shows.
     val lifecycle = LocalLifecycleOwner.current.lifecycle

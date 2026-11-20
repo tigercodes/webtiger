@@ -253,6 +253,18 @@
         }
       }
     },
+    "catalogue.state.link_menu": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A link was pressed and held"
+          }
+        }
+      }
+    },
     "catalogue.state.loading": {
       "comment": "Design catalogue: a state of the window.",
       "extractionState": "manual",
@@ -1065,6 +1077,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "History"
+          }
+        }
+      }
+    },
+    "link.cancel": {
+      "comment": "In a link's menu: close the menu and do nothing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        }
+      }
+    },
+    "link.copy": {
+      "comment": "In a link's menu: copy the link's address.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy Link"
+          }
+        }
+      }
+    },
+    "link.menu": {
+      "comment": "Accessibility name of the menu shown for a link of a page that was pressed and held.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Link"
+          }
+        }
+      }
+    },
+    "link.open_link_new_tab": {
+      "comment": "In the menu a Mac shows for a link (right-click), beside the system's own items such as Copy Link: open the link in a new tab.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Link in New Tab"
+          }
+        }
+      }
+    },
+    "link.open_new_tab": {
+      "comment": "In a link's menu: open the link in a new tab, behind the one being read.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open in New Tab"
           }
         }
       }

@@ -48,6 +48,11 @@ class BrowserSession(
      * where nothing may bring the system's dialog up: fake mode, and every session a test makes.
      */
     val systemPermissions: AppPermissions? = null,
+    /**
+     * Where "Copy Link" puts an address (018). The session's own, unless it is given the
+     * system's: fake mode, and every session a test makes, leave the person's clipboard alone.
+     */
+    val clipboard: LinkClipboard = MemoryClipboard(),
 ) {
     private val windows = HashMap<Long, (WindowSnapshot) -> Unit>()
 
@@ -135,7 +140,8 @@ class BrowserSession(
             val opener = if (launch.fake) OutsideOpener.nothing else SystemOpener(application)
             // Host requests are answered on the main thread, where a WebView must be used.
             val core = NativeCore.start(config, ShellHost(engine, opener), Dispatchers.Main)
-            return BrowserSession(core, engine, MainScope(), permissions.takeIf { mayAskTheSystem(launch) })
+            val clipboard = if (launch.fake) MemoryClipboard() else SystemClipboard(application)
+            return BrowserSession(core, engine, MainScope(), permissions.takeIf { mayAskTheSystem(launch) }, clipboard)
         }
 
         /**

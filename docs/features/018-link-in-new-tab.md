@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress: the contract (1.14) and the core's rule (§3) are built and tested. No shell reports the wish yet (§8): a person still cannot ask for a link in a new tab on Android or an iPhone; on a Mac WebKit's own menu offers "Open Link in New Window", which opens a tab |
+| **Status** | In progress: the contract (1.14) and the core's rule (§3) are built and tested. The Android shell shows a link's menu and reports what is chosen, run on an emulator. On Apple nothing is built yet (§8): a person cannot ask for a link in a new tab on an iPhone; on a Mac WebKit's own menu offers "Open Link in New Window", which opens a tab |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "context menus". The first of them, and the one a day's browsing cannot do without: the menu of a link |
 | **Contract** | 1.14: `LinkOpenRequested` |
 | **Builds on** | [005](005-tabs.md): tabs, and a tab opened behind another. [006](006-new-windows.md): a tab that remembers the tab it was opened from |
@@ -63,7 +63,12 @@ message LinkOpenRequested {
 | The menu | WebKit's own, which WebKit builds and shows. Its "Open Link in New Window" asks for a window (006), and the core opens a tab in front: the item is renamed "Open Link in New Tab". "Copy Link" is WebKit's | WebTiger's, given to WebKit when it asks what a long press on a link shows: "Open in New Tab", "Copy Link". No preview | WebTiger's, drawn by the shell when the WebView reports a long press on a link: the link's address, "Open in New Tab", "Copy Link" |
 | ⌘-click | The navigation is refused in its own tab and reported as `LinkOpenRequested`, behind; with ⇧, in front | The same, with a keyboard | Not told apart from a click |
 
-What each does in fact, as observed, is written here when built.
+**As built on Android** (`WebViewPage`, `SystemWebViewEngine.onLinkPressed` and `openLink`; `LinkMenu`, `BrowserModel`), and as seen on the emulator (System WebView 133):
+
+- **A long press on a link** is the adapter's: the WebView is asked where the link leads (`requestFocusNodeHref`), answers in a message of its own, and the adapter tells the window. For a link in words and for a picture that is a link alike, the answer was the link's own address; what the WebView names at once for such a picture is the picture's address, which is why it is asked. A long press anywhere else is left to the WebView, which selects the words under the finger. A tap still follows the link.
+- **The menu is the window's**, over the page and at its foot: where the link leads, as the engine says it, on two lines at most, its beginning first; "Open in New Tab"; "Copy Link"; "Cancel". A touch beside the menu puts it away and is not the page's; so does the system's Back. It is the menu of the page in front: a press said of a page behind shows nothing, and the menu goes when another tab comes forward.
+- **"Open in New Tab"** tells the core, through the engine that saw the press, with "behind" and "the person did it". Nothing is said to the core of a press, a menu, or a copy.
+- **"Copy Link"** copies to the system's clipboard; in fake mode, and in every session a test makes, to a clipboard of the session's own.
 
 **The clipboard** is the system's, and the person's: in fake mode a shell copies to a clipboard of its own, so that no test changes what somebody had copied.
 
@@ -72,8 +77,12 @@ What each does in fact, as observed, is written here when built.
 | Where | What |
 |---|---|
 | Core (`wt-app/tests/link_in_new_tab.rs`, 10 through `FakeShell`) | A link opens in a tab after the one that has it, behind it, in a web view of the core's own naming that is sent to the link; the page that has the link is as it was; brought forward, the new tab is the link's page, in the same login set. In front when the shell says so. Links opened one after another stand in that order after their tab, before what stood there already; a link of one of them opens after that one. A page that only makes it look so opens nothing. Only an address a tab starts from opens one: not a script, a page of no address, a file, nor what is for the system, which is not handed to the system either; a page not over `https` does. A web view that is no tab's opens nothing. The new tab's field is empty until its page commits. A first download there asks, in the name of where the file comes from. A page cannot close it, and the person's closing it brings back the tab it came from, not the one after. A load that fails shows in the new tab. Eleven parts of the rule checked by breaking them |
-| Adapter suites | A ⌘-click on a link of the test site is reported and the page stays; what a plain click does is unchanged; what each engine says of a press a page made by itself |
-| The shells | Android: the menu drawn against a scripted core, and what each choice does; pictures. In the apps, with the real core and engines: the link's menu is opened as a person opens it, "Open in New Tab" is chosen, and a second tab is there behind the first, with the link's page in it |
+| The test site | A page with a link in words, a link that is a picture, words that are no link, and a link for the system |
+| System WebView adapter, on the JVM (`LinksTest`, 3) | A long press on a link is told to whoever shows its menu, and not to the core; a link the WebView could say nothing of is not told of. With nobody to tell, nothing comes of the press. A link asked for in a new tab is reported for its web view, with its address, behind or in front as chosen, as the person's doing |
+| System WebView adapter suite (`SystemWebViewLinkTest`, 5, on the emulator) | With a finger pressed and held on the test site's page, against the real WebView: a link in words is told with where it leads, and the page stays where it is; a picture that is a link is told with the link's address, not the picture's; words that are no link are the WebView's own; a tap still follows the link; and a link chosen is reported for the core to open |
+| The Android menu (`LinkMenuTest`, 5, drawn on the JVM against `ScriptedCore`) | A link pressed and held shows where it leads and the three choices, and nothing is asked or copied until one is made. "Open in New Tab" asks the core for a tab behind, as the person's doing, and puts the menu away. "Copy Link" copies the address and asks nothing of the core. "Cancel" and a touch beside the menu put it away and do nothing. The menu is of the page in front, and goes with it. Pictures of the menu, light and dark, each looked at. Twelve of the rules, the adapter's among them, checked by breaking them |
+| The Android app, on the emulator | With the real core and WebView, in fake mode: a finger is held on a link; the menu says where it leads, Android's accessibility checks pass over it, and the page stays; "Open in New Tab", and a second tab is there behind the first, which is still in front; brought forward, it is the link's page; a picture that is a link has the link's menu; a touch beside the menu puts it away and is not the page's |
+| WebKit adapter suite; the Apple apps | ⌘-click, the iPhone's menu and the Mac's renamed item: when built |
 
 ## 7. Decisions
 
@@ -88,13 +97,17 @@ What each does in fact, as observed, is written here when built.
 ## 8. What is not verified
 
 - **The login set of the new tab.** It is the asking tab's. With one Space every tab has the same one, and a core that used the window's instead passes every test: it is a test for W2.
-- The shells: written when built.
+- **The system's clipboard.** No test copies to it: every session a test makes has a clipboard of its own, and the two lines that copy to the system's were read, not run.
+- **A long press with a mouse, a pen or a keyboard's menu key** on Android: not tried. A finger was.
+- **A link inside a frame**, and one that a page's script follows instead of the browser: the WebView is asked the same way; not tried.
+- **Android: a phone.** It ran on an emulator.
+- Apple: written when built.
 
 ## 9. Done checklist
 
 - [x] Contract 1.14 and its version in every place it is written.
 - [x] The core: the rule of §3. 10 tests through `FakeShell`.
-- [ ] Android: the adapter's report of a long press on a link; the menu; pictures; a device test.
+- [x] Android: the adapter's report of a long press on a link (3 on the JVM, 5 on the device); the menu and its tests (5); pictures; a device test of the app.
 - [ ] Apple: ⌘-click in the adapter and its suite; the iPhone's menu; the Mac's renamed item; UI tests.
 - [ ] `Tools/test.sh all` green, and `android-device`.
 - [ ] Windows shell.

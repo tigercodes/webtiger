@@ -145,6 +145,10 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
                 }
                 // What is offered for what is typed (011): under the toolbar, over the page.
                 if (model.suggestions.isNotEmpty()) SuggestionList(model, onChosen = { page.requestFocus() })
+                // The menu of a link that was pressed and held (018): over the page it is of.
+                model.pressedLink?.let { link ->
+                    LinkMenu(link, onOpen = model::openPressedLink, onCopy = model::copyPressedLink, onDismiss = model::dismissLinkMenu)
+                }
             }
         }
         // Over the window, which stays as it is underneath: the page's web view is not taken
