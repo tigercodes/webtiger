@@ -87,7 +87,7 @@ message SearchRequested {
 - **The menu**: in place of WebKit's item that searches stands one of the adapter's own, under WebKit's name for it and the shell's words, "Search with DuckDuckGo", which reports `SearchRequested` with the words as they were selected. It is there only when words were selected and the shell has said where searches go. **Otherwise WebKit's item is taken out**: it is never left in the menu, since what it does is go elsewhere.
 - **The item's words follow the choice**: the shell gives the adapter "Search with" and the engine's name when the core says where searches go, and again when another engine is chosen. Until the core has said, there are none, and no search is offered.
 
-**The iPhone**: not built. What its menu of selected words offers was not established: a first look, with the app's test holding a finger on a word in the simulator, did not find the menu's items.
+**The iPhone**: not built. What its menu of selected words offers was not established: with the app's test holding a finger on a word in the simulator, and tapping it twice, nothing of a menu of selected words was in what the app shows a test (no "Copy", no "Look Up", no search). Whether the simulator showed no such menu, or shows it where a test cannot see, is not known.
 
 ## 6. Tests
 
