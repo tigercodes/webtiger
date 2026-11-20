@@ -19,6 +19,7 @@ import http.client
 import json
 import pathlib
 import re
+import socket
 import socketserver
 import sys
 import threading
@@ -279,6 +280,12 @@ def respond(site: dict, head: str) -> tuple:
     return ("\r\n".join(headers) + "\r\n\r\n").encode("latin-1") + body, entry["delay_ms"] / 1000
 
 
+# What a connection that begins as TLS is told. The site speaks plain HTTP: a browser that asks
+# for it over https is answered in plain words, at once, and the connection is closed, as a
+# web server does. To the browser that is a secure connection that could not be made.
+NOT_TLS = b"HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n"
+
+
 class Handler(socketserver.BaseRequestHandler):
     def handle(self):
         received = b""
@@ -287,6 +294,10 @@ class Handler(socketserver.BaseRequestHandler):
             if not chunk:
                 return
             received += chunk
+            # The first byte of a TLS hello: no request for a page begins with it.
+            if received[:1] == b"\x16":
+                self.request.sendall(NOT_TLS)
+                return
         answer, delay = respond(self.server.site, received.split(b"\r\n\r\n", 1)[0].decode("latin-1"))
         if delay:
             time.sleep(delay)
@@ -381,6 +392,17 @@ def self_test() -> int:
     expect("/staff to ada", answer.status, 200)
     expect("/staff is a page", body.startswith("<!doctype html><title>Staff only</title>"), True)
     expect("/staff asks nothing more", answer.getheader("WWW-Authenticate"), None)
+
+    hello = socket.create_connection(("127.0.0.1", port), timeout=10)
+    hello.sendall(b"\x16\x03\x01\x00\x05hello")
+    told = b""
+    while True:
+        chunk = hello.recv(4096)
+        if not chunk:
+            break
+        told += chunk
+    hello.close()
+    expect("a connection that begins as TLS", told, NOT_TLS)
 
     answer, body = get("/nowhere")
     expect("a path no page has", answer.status, 404)

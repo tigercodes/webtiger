@@ -103,6 +103,16 @@ internal class TestSite : Closeable {
             val count = input.read(buffer)
             if (count < 0) return null
             received.append(String(buffer, 0, count, Charsets.ISO_8859_1))
+            // The first byte of a TLS hello: no request for a page begins with it. The site
+            // speaks plain HTTP: a browser that asks for it over https is answered in plain
+            // words, at once, and the connection is closed, as a web server does.
+            if (received.first() == TLS_HELLO) {
+                socket.getOutputStream().apply {
+                    write(NOT_TLS.toByteArray(Charsets.ISO_8859_1))
+                    flush()
+                }
+                return null
+            }
         }
         return received.substring(0, received.indexOf("\r\n\r\n"))
     }
@@ -152,6 +162,10 @@ internal class TestSite : Closeable {
         }
 
     companion object {
+        /** The first byte of a TLS hello, and what a connection that begins with it is told. */
+        private const val TLS_HELLO = '\u0016'
+        private const val NOT_TLS = "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n"
+
         /** A loopback port nothing listens on: one the system just handed out and took back. */
         fun unusedPort(): Int = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1")).use { it.localPort }
     }

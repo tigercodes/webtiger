@@ -88,11 +88,21 @@ final class TestSite: @unchecked Sendable {
         asked.all
     }
 
+    /// What a connection that begins as TLS is told.
+    private static let notTLS = Data("HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n".utf8)
+
     private static func serve(_ connection: NWConnection, received: Data, on queue: DispatchQueue, asked: Asked) {
         connection.receive(minimumIncompleteLength: 1, maximumLength: 16384) { data, _, finished, error in
             var received = received
             if let data {
                 received.append(data)
+            }
+            // The first byte of a TLS hello: no request for a page begins with it. The site
+            // speaks plain HTTP: a browser that asks for it over https is answered in plain
+            // words, at once, and the connection is closed, as a web server does.
+            if received.first == 0x16 {
+                connection.send(content: notTLS, completion: .contentProcessed { _ in connection.cancel() })
+                return
             }
             guard let end = received.range(of: Data("\r\n\r\n".utf8)) else {
                 if finished || error != nil {
