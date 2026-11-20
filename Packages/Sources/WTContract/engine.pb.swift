@@ -513,6 +513,12 @@ public nonisolated struct WTDownloadRequested: Sendable {
   /// How big the site says the file is. 0 when it did not say.
   public var expectedBytes: UInt64 = 0
 
+  /// Since 1.16 (022). The person asked for this file themselves: a choice in
+  /// a menu, the shell's or the engine's own ("Save Picture", "Download Linked
+  /// File"). No page asked, so the core asks nobody whether the site may
+  /// download. A shell says so of nothing else.
+  public var userAsked: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1524,7 +1530,7 @@ nonisolated extension WTFindResult: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension WTDownloadRequested: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DownloadRequested"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}download_id\0\u{1}url\0\u{3}suggested_filename\0\u{3}mime_type\0\u{3}expected_bytes\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}download_id\0\u{1}url\0\u{3}suggested_filename\0\u{3}mime_type\0\u{3}expected_bytes\0\u{3}user_asked\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1537,6 +1543,7 @@ nonisolated extension WTDownloadRequested: SwiftProtobuf.Message, SwiftProtobuf.
       case 3: try { try decoder.decodeSingularStringField(value: &self.suggestedFilename) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.mimeType) }()
       case 5: try { try decoder.decodeSingularUInt64Field(value: &self.expectedBytes) }()
+      case 6: try { try decoder.decodeSingularBoolField(value: &self.userAsked) }()
       default: break
       }
     }
@@ -1558,6 +1565,9 @@ nonisolated extension WTDownloadRequested: SwiftProtobuf.Message, SwiftProtobuf.
     if self.expectedBytes != 0 {
       try visitor.visitSingularUInt64Field(value: self.expectedBytes, fieldNumber: 5)
     }
+    if self.userAsked != false {
+      try visitor.visitSingularBoolField(value: self.userAsked, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1567,6 +1577,7 @@ nonisolated extension WTDownloadRequested: SwiftProtobuf.Message, SwiftProtobuf.
     if lhs.suggestedFilename != rhs.suggestedFilename {return false}
     if lhs.mimeType != rhs.mimeType {return false}
     if lhs.expectedBytes != rhs.expectedBytes {return false}
+    if lhs.userAsked != rhs.userAsked {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

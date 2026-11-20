@@ -1295,6 +1295,12 @@ pub struct DownloadRequested {
     /// How big the site says the file is. 0 when it did not say.
     #[prost(uint64, tag = "5")]
     pub expected_bytes: u64,
+    /// Since 1.16 (022). The person asked for this file themselves: a choice in
+    /// a menu, the shell's or the engine's own ("Save Picture", "Download Linked
+    /// File"). No page asked, so the core asks nobody whether the site may
+    /// download. A shell says so of nothing else.
+    #[prost(bool, tag = "6")]
+    pub user_asked: bool,
 }
 /// How far a download has got. An engine reports it as often as it likes; a
 /// shell passes on a few times a second at most.

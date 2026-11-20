@@ -98,7 +98,15 @@ impl App {
         {
             return;
         }
-        let Some(login_set) = self.may_download(web_view) else {
+        // A file the person chose in a menu (022 §3) is no page's: it is
+        // not held to a page's one download a second, and is not counted
+        // against it.
+        let login_set = if asked.user_asked {
+            self.state.borrow().login_set_of(web_view)
+        } else {
+            self.may_download(web_view)
+        };
+        let Some(login_set) = login_set else {
             self.drop_download(shell_id);
             return;
         };
@@ -110,6 +118,13 @@ impl App {
             mime_type: asked.mime_type.clone(),
             expected: asked.expected_bytes,
         };
+        // And nobody is asked whether the site may download: no page asked.
+        // Nothing is written about the site, and what the person typed is
+        // still good for its own download (015 §3).
+        if asked.user_asked {
+            self.start_download(shell_id, wanted);
+            return;
+        }
         match self.may_start(web_view, shell_id, &wanted) {
             Some(true) => self.start_download(shell_id, wanted),
             Some(false) => self.drop_download(shell_id),

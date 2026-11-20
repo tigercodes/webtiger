@@ -527,6 +527,24 @@ impl FakeEngine {
                 suggested_filename: suggested.to_owned(),
                 mime_type: mime_type.to_owned(),
                 expected_bytes: bytes,
+                user_asked: false,
+            }),
+        )
+    }
+
+    /// The person chose in a menu to save a file of a web view's page
+    /// (022): a download nobody's page asked for.
+    #[must_use]
+    pub fn download_chosen(id: u64, download: u64, url: &str, suggested: &str) -> EngineEvent {
+        event(
+            id,
+            engine_event::Kind::DownloadRequested(DownloadRequested {
+                download_id: download,
+                url: url.to_owned(),
+                suggested_filename: suggested.to_owned(),
+                mime_type: String::new(),
+                expected_bytes: 0,
+                user_asked: true,
             }),
         )
     }

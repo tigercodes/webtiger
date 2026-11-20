@@ -307,6 +307,128 @@ fn an_address_the_person_sent_the_tab_to_is_downloaded_without_asking() {
     });
 }
 
+/// The person chooses in a menu to save a file of a web view's page (022).
+async fn chosen(shell: &mut FakeShell, web_view: u64, download: u64, suggested: &str) {
+    shell.report(FakeEngine::download_chosen(
+        web_view,
+        download,
+        "https://pictures.example.net/tiger.png",
+        suggested,
+    ));
+    shell.settle().await;
+}
+
+#[test]
+fn a_file_the_person_chose_in_a_menu_starts_with_nobody_asked() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (window, tab, subscription, web_view) = a_page(&mut shell).await;
+
+        // A site that was never allowed: the person chose the file.
+        chosen(&mut shell, web_view, 7, "tiger.png").await;
+        assert_eq!(started_and_dropped(&shell), (vec![7], vec![]));
+        assert_eq!(asked(&shell, subscription), None, "no page asked");
+        assert_eq!(
+            shell
+                .engine
+                .download_starts
+                .last()
+                .map(|(_, name)| name.as_str()),
+            Some("tiger.png"),
+            "named as any other download"
+        );
+        assert_eq!(listed(&mut shell, window).await, ["tiger.png"]);
+
+        // One file is not the site: nothing was written down about it, and
+        // the page's own download still asks.
+        assert_eq!(may_download(&mut shell, window).await, Vec::<String>::new());
+        tokio::time::advance(DOWNLOAD_INTERVAL).await;
+        download(&mut shell, web_view, 8, "the page's own.pdf").await;
+        assert_eq!(started_and_dropped(&shell), (vec![7], vec![]));
+        let (_, site, _) = asked(&shell, subscription).expect("the page's own is asked about");
+        assert_eq!(site, "example.com");
+
+        // While that question is still there, and after the person says no
+        // to it, a file they choose is still theirs.
+        chosen(&mut shell, web_view, 9, "another.png").await;
+        assert_eq!(started_and_dropped(&shell), (vec![7, 9], vec![]));
+        answer(&mut shell, tab, subscription, false).await;
+        assert_eq!(started_and_dropped(&shell), (vec![7, 9], vec![8]));
+        chosen(&mut shell, web_view, 10, "a third.png").await;
+        assert_eq!(started_and_dropped(&shell), (vec![7, 9, 10], vec![8]));
+        assert_eq!(may_download(&mut shell, window).await, Vec::<String>::new());
+    });
+}
+
+#[test]
+fn a_file_the_person_chose_is_not_held_to_a_pages_pace_nor_counted_against_it() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (_, tab, subscription, web_view) = a_page(&mut shell).await;
+
+        // Two in the same moment: both are the person's.
+        chosen(&mut shell, web_view, 7, "one.png").await;
+        chosen(&mut shell, web_view, 8, "two.png").await;
+        assert_eq!(started_and_dropped(&shell), (vec![7, 8], vec![]));
+
+        // The page's own, in that same moment, is judged as the page's
+        // first: it is asked about, not dropped for coming too soon.
+        download(&mut shell, web_view, 9, "the page's own.pdf").await;
+        assert_eq!(started_and_dropped(&shell), (vec![7, 8], vec![]));
+        assert!(
+            asked(&shell, subscription).is_some(),
+            "asked about, not dropped"
+        );
+        answer(&mut shell, tab, subscription, true).await;
+        assert_eq!(started_and_dropped(&shell), (vec![7, 8, 9], vec![]));
+
+        // And a page's download a moment before does not stand in the
+        // person's way.
+        tokio::time::advance(DOWNLOAD_INTERVAL).await;
+        download(&mut shell, web_view, 10, "again.pdf").await;
+        chosen(&mut shell, web_view, 11, "three.png").await;
+        assert_eq!(started_and_dropped(&shell), (vec![7, 8, 9, 10, 11], vec![]));
+        // The page's second within the second is still dropped.
+        download(&mut shell, web_view, 12, "too soon.pdf").await;
+        assert_eq!(
+            started_and_dropped(&shell),
+            (vec![7, 8, 9, 10, 11], vec![12])
+        );
+    });
+}
+
+#[test]
+fn a_file_chosen_does_not_use_up_what_the_person_typed() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (_, tab, subscription, web_view) = a_page(&mut shell).await;
+
+        // The person sends the tab to a file's address; before its download
+        // is reported, they save a picture of the page that is still there.
+        shell.submit(tab, REPORT).await;
+        chosen(&mut shell, web_view, 7, "tiger.png").await;
+        download(&mut shell, web_view, 8, "report.pdf").await;
+
+        // The address they typed is still theirs: nobody is asked.
+        assert_eq!(started_and_dropped(&shell), (vec![7, 8], vec![]));
+        assert_eq!(asked(&shell, subscription), None);
+    });
+}
+
+#[test]
+fn a_file_chosen_in_a_web_view_that_is_no_tabs_is_dropped() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (window, _, subscription, _) = a_page(&mut shell).await;
+
+        chosen(&mut shell, 4242, 7, "tiger.png").await;
+
+        assert_eq!(started_and_dropped(&shell), (vec![], vec![7]));
+        assert_eq!(asked(&shell, subscription), None);
+        assert_eq!(listed(&mut shell, window).await, Vec::<String>::new());
+    });
+}
+
 #[test]
 fn what_the_person_asked_for_is_not_lent_to_a_page() {
     run(async {
