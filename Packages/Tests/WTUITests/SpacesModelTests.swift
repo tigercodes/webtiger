@@ -180,6 +180,15 @@ final class SpacesModelTests: XCTestCase {
         XCTAssertNil(model.spaceRefusal)
     }
 
+    func testWhereThereIsNoRoomForANameASpaceIsItsInitial() {
+        XCTAssertEqual(SpaceName.initial(of: "Home"), "H")
+        XCTAssertEqual(SpaceName.initial(of: "work"), "W", "as a capital")
+        XCTAssertEqual(SpaceName.initial(of: "élan"), "É")
+        // A picture is one letter, whatever it is made of.
+        XCTAssertEqual(SpaceName.initial(of: "👩‍🚀 Missions"), "👩‍🚀")
+        XCTAssertEqual(SpaceName.initial(of: ""), "")
+    }
+
     func testARefusalIsSaidInWordsAndNeverByItsCode() {
         XCTAssertEqual(SpacesView.words(for: "space.too_many"), "There are as many Spaces as there can be.")
         XCTAssertEqual(SpacesView.words(for: "space.name_empty"), "A Space needs a name.")

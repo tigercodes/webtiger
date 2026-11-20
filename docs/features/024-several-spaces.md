@@ -134,6 +134,10 @@ The same chip, list and page, in Compose. The chip is the Space's initial in a w
 
 **The client names the answers it knows.** Android's `NativeCore` took an answer of a kind it did not name for no answer at all, so the list of Spaces came back empty on a device, where the tests drawn on the JVM, against a scripted core, could not see it. The two new answers are named, the client's own test asks the real core for both, and a test now reads the contract's kinds of answer from the generated type and fails for one the client does not name: it is the third time a new answer was lost this way, and the first time a test would have said so before a device did.
 
+### 6.3 Naming a Space
+
+In the list, beside "New Space…": "Rename…". It names **the Space the window shows**: to name another, show it first. It opens a page like the one that makes a Space: a field that holds the name the Space has (empty, for the Space the app made while nobody has named it: the shell's word for it is not a name it was given), "Back", and "Save", which is not to be pressed while the field is empty. Saved, the list closes, and the chip says the new name: the core's snapshot does. What the core refuses is said in words, and the page stays. The name goes to the core as typed.
+
 ## 7. Tests
 
 | Where | What |
@@ -166,6 +170,7 @@ The same chip, list and page, in Compose. The chip is the Space's initial in a w
 - **The Mac's app.** Its UI suite has not run with any of this: a dialog of the system's, about a simulator's daemon and none of WebTiger's, is on this Mac's screen, and the suite does not start while one is (001). The same test passes on the iPhone simulator, and the Mac's pictures and model tests pass.
 - **An iPhone, and an iPad.** The simulator is not a device; and no picture or test here is of an iPad's width.
 - **An Android phone.** The emulator (Android 16, WebView 133) is not a phone, and one version of the WebView is not the others.
+- **The iPhone's pictures are wider than an iPhone.** They are drawn 480 points wide, and an iPhone is some 400: with the name in the chip they looked well, and it was Android's pictures, at a phone's own width, and its app's tests on the emulator, that showed the strip was too full. The iPhone's pictures say that a state is drawn, not that it fits a phone.
 - **A phone's width, beyond the pictures.** With the initial in the chip the strip holds what it held before less the chip's own width, about a button's: a tab with a long name still pushes the new-tab button along the strip, as it did. No test measures how many tabs fit; the two of Android's app that open a second tab and go back to the first pass again. Whether an initial is enough to tell two Spaces apart at a glance is not something a test can say: "Work" and "Web" have the same one, until Spaces have colours and icons.
 - **Naming a Space, in a shell.** The core names one (`RenameSpace`), and no shell offers it yet.
 - **Windows.** Not started.

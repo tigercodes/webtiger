@@ -67,31 +67,50 @@ enum SpaceName {
     static func shown(_ name: String, locale: Locale = .current) -> String {
         name.isEmpty ? String(localized: "space.home", bundle: .module, locale: locale) : name
     }
+
+    /// The first letter of a name as it is shown, as a capital: what stands for the Space
+    /// where there is no room for its name. A name that begins with a picture has the picture.
+    static func initial(of shown: String) -> String {
+        shown.first.map { String($0).uppercased() } ?? ""
+    }
 }
 
 /// The chip that names the Space the window shows, and opens the list of Spaces. It stands
 /// before the tabs and does not scroll with them.
+///
+/// In a window as narrow as a phone's the strip has no room for a name beside the tabs: with
+/// one, a second tab is pushed out of reach. There the chip is the Space's initial, and its
+/// name is what a screen reader says and what the list shows.
 struct SpaceChip: View {
     let name: String
     let action: () -> Void
     /// How wide the name may be: it grows with the text's size, and a long name is cut.
     @ScaledMetric private var widestName: CGFloat = 120
     @Environment(\.locale) private var locale
+    @Environment(\.horizontalSizeClass) private var width
 
     var body: some View {
         let shown = SpaceName.shown(name, locale: locale)
         Button(action: action) {
-            HStack(spacing: Tokens.Space.xs) {
-                Text(verbatim: shown)
-                    .lineLimit(1)
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: widestName, alignment: .leading)
-                    .fixedSize(horizontal: true, vertical: false)
-                Image(systemName: "chevron.down")
-                    .font(.caption)
-                    .accessibilityHidden(true)
+            Group {
+                if width == .compact {
+                    Text(verbatim: SpaceName.initial(of: shown))
+                        .fontWeight(.semibold)
+                        .frame(minWidth: BrowserWindowView.hitSize)
+                } else {
+                    HStack(spacing: Tokens.Space.xs) {
+                        Text(verbatim: shown)
+                            .lineLimit(1)
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: widestName, alignment: .leading)
+                            .fixedSize(horizontal: true, vertical: false)
+                        Image(systemName: "chevron.down")
+                            .font(.caption)
+                            .accessibilityHidden(true)
+                    }
+                    .padding(.horizontal, Tokens.Space.s)
+                }
             }
-            .padding(.horizontal, Tokens.Space.s)
             .frame(minHeight: BrowserWindowView.hitSize)
             .contentShape(Rectangle())
         }
@@ -186,7 +205,8 @@ struct SpacesView: View {
         _isMaking = State(initialValue: making)
         _name = State(initialValue: name)
         _shares = State(initialValue: sharingWith != nil)
-        _shareWith = State(initialValue: sharingWith ?? 0)
+        // Whose logins it would share, should that be chosen: those of the Space shown.
+        _shareWith = State(initialValue: sharingWith ?? Self.owner(of: shownID, among: spaces ?? []))
     }
 
     var body: some View {
@@ -221,7 +241,7 @@ struct SpacesView: View {
                 Button {
                     // Whose logins a new Space would share, should the person choose to: those
                     // of the Space the window shows.
-                    shareWith = owner(of: shownID)
+                    shareWith = Self.owner(of: shownID, among: spaces ?? [])
                     isMaking = true
                 } label: {
                     Text("spaces.new", bundle: .module)
@@ -286,13 +306,18 @@ struct SpacesView: View {
     /// The Spaces a new one can share logins with: the first of each that has logins of its
     /// own. (Sharing with one that shares already is sharing with whoever it shares with.)
     private var owners: [WTSpaceSummary] {
+        Self.owners(among: spaces ?? [])
+    }
+
+    private static func owners(among spaces: [WTSpaceSummary]) -> [WTSpaceSummary] {
         var seen = Set<UInt32>()
-        return (spaces ?? []).filter { seen.insert($0.logins).inserted }
+        return spaces.filter { seen.insert($0.logins).inserted }
     }
 
     /// The first Space with the logins of the Space `id`.
-    private func owner(of id: UInt64) -> UInt64 {
-        let logins = (spaces ?? []).first { $0.spaceID == id }?.logins
+    private static func owner(of id: UInt64, among spaces: [WTSpaceSummary]) -> UInt64 {
+        let logins = spaces.first { $0.spaceID == id }?.logins
+        let owners = owners(among: spaces)
         return owners.first { $0.logins == logins }?.spaceID ?? owners.first?.spaceID ?? 0
     }
 
