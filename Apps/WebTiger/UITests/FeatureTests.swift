@@ -268,4 +268,59 @@ final class FeatureTests: AppTestCase {
         XCTAssertTrue(pageShows("Staff only", in: app), "the page the server kept")
         XCTAssertFalse(app.buttons["prompt-sign-in"].exists)
     }
+
+    /// A link the person asks for in a new tab (018), with the real core and WebKit. On a
+    /// Mac: by the link's menu, which is WebKit's own with the shell's words for the item,
+    /// and by a click with ⌘ held, which opens the tab behind. On an iPhone: by the menu a
+    /// long press on the link shows, which is the shell's.
+    func testALinkIsOpenedInANewTabAsThePersonAsks() {
+        let app = launch(start: site.url("/links"))
+        XCTAssertTrue(pageShows("Links", in: app), "the page of links loaded")
+        let tabs = app.buttons.matching(identifier: "tab")
+        let link = app.webViews.links["a link in words"]
+        XCTAssertTrue(link.waitForExistence(timeout: 30), "the page's link is there to press")
+        XCTAssertEqual(tabs.count, 1)
+
+        #if os(macOS)
+            // A click with ⌘ held: a tab behind, and the page being read stays in front.
+            XCUIElement.perform(withKeyModifiers: .command) { link.click() }
+            let behind = NSPredicate(format: "count == 2")
+            XCTAssertEqual(
+                XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: behind, object: tabs)], timeout: 30),
+                .completed,
+                "a second tab"
+            )
+            XCTAssertTrue(tabs.element(boundBy: 0).isSelected, "the page being read is still in front")
+            XCTAssertTrue(pageShows("Links", in: app))
+
+            // The link's menu: WebKit's own, with the shell's words for what its item does.
+            link.rightClick()
+            let item = app.menuItems["Open Link in New Tab"]
+            XCTAssertTrue(item.waitForExistence(timeout: 30), "the menu's item has the shell's words")
+            item.click()
+            // WebKit's item asks for a window (006): its tab comes in front.
+            XCTAssertTrue(pageShows("Landed", in: app), "the link's page, in a tab of its own")
+            XCTAssertEqual(tabs.count, 3)
+        #else
+            // A finger held on the link: the shell's menu.
+            link.press(forDuration: 1.2)
+            let item = app.buttons["Open in New Tab"]
+            XCTAssertTrue(item.waitForExistence(timeout: 30), "the link's menu")
+            XCTAssertTrue(app.buttons["Copy Link"].exists)
+            // No preview: nobody has asked the site for the link's page yet.
+            XCTAssertFalse(site.requests.contains("/landed"), "the menu loaded the link: \(site.requests)")
+            item.tap()
+            let behind = NSPredicate(format: "count == 2")
+            XCTAssertEqual(
+                XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: behind, object: tabs)], timeout: 30),
+                .completed,
+                "a second tab"
+            )
+            XCTAssertTrue(tabs.element(boundBy: 0).isSelected, "the page being read is still in front")
+            XCTAssertTrue(pageShows("Links", in: app))
+            // Brought forward, it is the link's page.
+            press(tabs.element(boundBy: 1))
+            XCTAssertTrue(pageShows("Landed", in: app))
+        #endif
+    }
 }

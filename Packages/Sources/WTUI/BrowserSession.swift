@@ -16,10 +16,12 @@ public final class BrowserSession {
     private var unclaimed: [UInt64: WTWindowSnapshot] = [:]
     private var listening: Task<Void, Never>?
 
-    /// A session over a core that is already running. Tests pass a `ScriptedCore`.
-    public init(core: any CoreClient, engine: WebKitEngine) {
+    /// A session over a core that is already running. Tests pass a `ScriptedCore`. A link is
+    /// copied to a clipboard of the app's own unless the session is given the system's (018).
+    public init(core: any CoreClient, engine: WebKitEngine, clipboard: LinkClipboard = .ownOfTheApp) {
         self.core = core
         self.engine = engine
+        engine.linkMenu = .words(copyingTo: clipboard)
         engine.attach(core)
         let events = core.events
         listening = Task { [weak self] in
@@ -74,7 +76,8 @@ public final class BrowserSession {
             }
             let engine = WebKitEngine(downloads: downloads, deviceAccess: deviceAccess(fake: config.testMode == .fake))
             let core = try NativeCore.start(config: config, host: ShellHost(engine: engine, opener: opener))
-            return BrowserSession(core: core, engine: engine)
+            // In fake mode nothing of the person's is touched: not their clipboard either.
+            return BrowserSession(core: core, engine: engine, clipboard: config.testMode == .fake ? .ownOfTheApp : .system)
         }
 
         /// Whether a page is let have what the core grants it of the device's (014). Not in

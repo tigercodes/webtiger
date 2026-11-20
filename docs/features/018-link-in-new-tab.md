@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress: the contract (1.14) and the core's rule (§3) are built and tested. The Android shell shows a link's menu and reports what is chosen, run on an emulator. On Apple nothing is built yet (§8): a person cannot ask for a link in a new tab on an iPhone; on a Mac WebKit's own menu offers "Open Link in New Window", which opens a tab |
+| **Status** | Built and tested in the core, the Android shell and the Apple shell. Both shells report the wish: Android by the menu it draws for a long press on a link, run on an emulator; Apple by ⌘-click, by the menu an iPhone shows for a long press, and by the Mac's own menu, run against real WebKit in the adapter's suite and in the apps on the Mac and the iPhone simulator. Windows is not started |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "context menus". The first of them, and the one a day's browsing cannot do without: the menu of a link |
 | **Contract** | 1.14: `LinkOpenRequested` |
 | **Builds on** | [005](005-tabs.md): tabs, and a tab opened behind another. [006](006-new-windows.md): a tab that remembers the tab it was opened from |
@@ -63,6 +63,14 @@ message LinkOpenRequested {
 | The menu | WebKit's own, which WebKit builds and shows. Its "Open Link in New Window" asks for a window (006), and the core opens a tab in front: the item is renamed "Open Link in New Tab". "Copy Link" is WebKit's | WebTiger's, given to WebKit when it asks what a long press on a link shows: "Open in New Tab", "Copy Link". No preview | WebTiger's, drawn by the shell when the WebView reports a long press on a link: the link's address, "Open in New Tab", "Copy Link" |
 | ⌘-click | The navigation is refused in its own tab and reported as `LinkOpenRequested`, behind; with ⇧, in front | The same, with a keyboard | Not told apart from a click |
 
+**As built on Apple** (`WebKitLinks.swift`: the page's navigation delegate, `LinkMenu`, `MenuWebView`; `LinkClipboard` in the shell), and as seen against real WebKit:
+
+- **⌘-click.** WebKit says with each navigation which keys were held. A link of the page, pressed with ⌘ held, that would have loaded in the page's own frame at the top, is reported as `LinkOpenRequested` (behind; in front with ⇧ as well) and refused in its own tab; the page stays, and nothing is said to have ended there. A click with no key held follows the link as before.
+- **A click a page makes by itself**, saying in its script that ⌘ was held: WebKit followed the link in its own tab and said nothing of a key. A page cannot ask for a tab this way.
+- **The iPhone's menu** is the shell's, given to WebKit when it asks what a long press on a link shows: "Open in New Tab", which reports the wish, behind; and "Copy Link". No preview is given, and the site was asked for nothing while the menu was open. Anything that is not a link is left to WebKit.
+- **The Mac's menu** is WebKit's own: WebKit builds it and does not tell an app what link it is for. Its "Open Link in New Window" asks for a window, which the core opens as a tab in front (006); the item is given the shell's words, "Open Link in New Tab", by the name WebKit gives the item. That name is not a declared constant: should WebKit change it, the item keeps WebKit's words and the app's test says so. "Copy Link" on a Mac is WebKit's.
+- **The clipboard**: the system's, or in fake mode and in every session a test makes, one of the app's own by a name nothing else pastes from. (An iPhone simulator shares its clipboard with the Mac it runs on.)
+
 **As built on Android** (`WebViewPage`, `SystemWebViewEngine.onLinkPressed` and `openLink`; `LinkMenu`, `BrowserModel`), and as seen on the emulator (System WebView 133):
 
 - **A long press on a link** is the adapter's: the WebView is asked where the link leads (`requestFocusNodeHref`), answers in a message of its own, and the adapter tells the window. For a link in words and for a picture that is a link alike, the answer was the link's own address; what the WebView names at once for such a picture is the picture's address, which is why it is asked. A long press anywhere else is left to the WebView, which selects the words under the finger. A tap still follows the link.
@@ -82,7 +90,9 @@ message LinkOpenRequested {
 | System WebView adapter suite (`SystemWebViewLinkTest`, 5, on the emulator) | With a finger pressed and held on the test site's page, against the real WebView: a link in words is told with where it leads, and the page stays where it is; a picture that is a link is told with the link's address, not the picture's; words that are no link are the WebView's own; a tap still follows the link; and a link chosen is reported for the core to open |
 | The Android menu (`LinkMenuTest`, 5, drawn on the JVM against `ScriptedCore`) | A link pressed and held shows where it leads and the three choices, and nothing is asked or copied until one is made. "Open in New Tab" asks the core for a tab behind, as the person's doing, and puts the menu away. "Copy Link" copies the address and asks nothing of the core. "Cancel" and a touch beside the menu put it away and do nothing. The menu is of the page in front, and goes with it. Pictures of the menu, light and dark, each looked at. Twelve of the rules, the adapter's among them, checked by breaking them |
 | The Android app, on the emulator | With the real core and WebView, in fake mode: a finger is held on a link; the menu says where it leads, Android's accessibility checks pass over it, and the page stays; "Open in New Tab", and a second tab is there behind the first, which is still in front; brought forward, it is the link's page; a picture that is a link has the link's menu; a touch beside the menu puts it away and is not the page's |
-| WebKit adapter suite; the Apple apps | ⌘-click, the iPhone's menu and the Mac's renamed item: when built |
+| WebKit adapter suite (`WebKitLinkTests`, 6 on the Mac, 3 on the iPhone simulator) | Against real WebKit and the test site's page of links. A plain click, made by a script, still follows the link. A link asked for in a new tab is reported as the person's doing, behind or in front. A click a page makes by itself with the ⌘ key said to be held is only a click. On the Mac, with the mouse's own events given to a web view in a window that is not on the screen: a click with ⌘ held is reported with the link's address, behind, and the page stays with nothing said to have ended; with ⇧ as well, in front; a click with no key held follows the link. And the Mac's own item for a link in a new window is given the shell's words, that item and no other, and none without words of the shell's. Six of the rules checked by breaking them |
+| The Apple shell (`LinkMenuTests`, 2) | A session gives its engine the menu's words for the system it runs on, and where to copy; and the app's own clipboard is not the system's, whose count of changes stays as it was |
+| The Apple apps | With the real core and WebKit, in fake mode. On the Mac: a click on the page's link with ⌘ held opens a second tab behind, and the page being read stays in front; the link's menu has the shell's words for its item, and choosing it opens the link's page in a tab of its own. On the iPhone simulator: a finger held on the link shows the shell's menu, with nothing asked of the site meanwhile; "Open in New Tab" opens a second tab behind, and brought forward it is the link's page |
 
 ## 7. Decisions
 
@@ -101,13 +111,17 @@ message LinkOpenRequested {
 - **A long press with a mouse, a pen or a keyboard's menu key** on Android: not tried. A finger was.
 - **A link inside a frame**, and one that a page's script follows instead of the browser: the WebView is asked the same way; not tried.
 - **Android: a phone.** It ran on an emulator.
-- Apple: written when built.
+- **⌘-click on an iPad**, with a keyboard: the same code as the Mac's, where it ran; no test holds a key on the simulator.
+- **A link in a frame**, with ⌘ held: left to load in its frame, as before. Not tried.
+- **A link that asks for a window of its own** (`target="_blank"`), with ⌘ held: WebKit asks for a window, and the core opens a tab in front (006), not behind.
+- **"Copy Link" on an iPhone.** The app's test opens the menu and chooses "Open in New Tab"; that the other item copies is the shell's test of where it copies to, not a press on the item.
+- **The iPhone's menu keeps a UI test waiting.** While the system's menu is open on the simulator, the test runner is never told that the app has come to rest, and waits a minute before each thing it does: the app's test of the menu takes over two minutes. Nothing of the shell's animates without end; what does was not found.
 
 ## 9. Done checklist
 
 - [x] Contract 1.14 and its version in every place it is written.
 - [x] The core: the rule of §3. 10 tests through `FakeShell`.
 - [x] Android: the adapter's report of a long press on a link (3 on the JVM, 5 on the device); the menu and its tests (5); pictures; a device test of the app.
-- [ ] Apple: ⌘-click in the adapter and its suite; the iPhone's menu; the Mac's renamed item; UI tests.
-- [ ] `Tools/test.sh all` green, and `android-device`.
+- [x] Apple: ⌘-click in the adapter and its suite (6 on the Mac); the iPhone's menu; the Mac's renamed item; the shell's words and clipboard (2); UI tests on the Mac and the iPhone simulator.
+- [x] `Tools/test.sh all` green, and `android-device` (126 on the emulator).
 - [ ] Windows shell.
