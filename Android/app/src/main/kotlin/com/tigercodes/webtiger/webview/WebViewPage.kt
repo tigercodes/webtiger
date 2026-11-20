@@ -349,7 +349,8 @@ internal class WebViewPage(
         override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {
             // A certificate the system does not trust is never accepted on the user's behalf.
             handler.cancel()
-            if (view === webView) tracker.certificateRefused(error.url)
+            // And said to have failed for the kind of trouble the certificate was (021).
+            if (view === webView) tracker.certificateRefused(error.url, certificateErrorCode(error.primaryError))
         }
 
         /**

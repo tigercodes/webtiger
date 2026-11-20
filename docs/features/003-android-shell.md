@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built, and **run on an emulator** (Android 16, System WebView 133): the app starts, a page loads through the core, and 131 tests pass on the device, among them the adapter suite against the real WebView and isolation between login sets. 278 more pass on the JVM, 28 of them driving the real core through JNI. **Not yet run on a physical device, on any other WebView version, or folded** (§8) |
+| **Status** | Built, and **run on an emulator** (Android 16, System WebView 133): the app starts, a page loads through the core, and 133 tests pass on the device, among them the adapter suite against the real WebView and isolation between login sets. 281 more pass on the JVM, 28 of them driving the real core through JNI. **Not yet run on a physical device, on any other WebView version, or folded** (§8) |
 | **Phase** | W0 of [000](000-master-plan.md) §9; item 1 of [001](001-foundations.md) §12 |
 | **Stack** | 000 §5.1: Kotlin, Jetpack Compose, Material 3, `androidx.webkit`, Wire, JNI through `wt-ffi` |
 | **Last updated** | 2026-11-18 (run on an emulator; the device suite) |
@@ -235,7 +235,7 @@ The line above was run against the emulator, with a page served from the Mac (`1
 
 An emulator without a window, made by `Tools/android/emulator.sh` from the Google APIs image for Android 16 (API 36, `arm64-v8a`, revision 7) with the Pixel 8 profile, on a Mac with Apple silicon; its System WebView is **133.0.6943.137**. 2026-11-18.
 
-`Tools/test.sh android-device` runs the tests in `Android/app/src/androidTest` there: 131 pass. From a cold emulator the whole step took 40 s, the boot included.
+`Tools/test.sh android-device` runs the tests in `Android/app/src/androidTest` there: 133 pass. From a cold emulator the whole step took 40 s, the boot included.
 
 | Suite | Count | What it shows |
 |---|---|---|
@@ -251,6 +251,7 @@ An emulator without a window, made by `Tools/android/emulator.sh` from the Googl
 | `SystemWebViewSignInTest` | 8 | A server that asks who is there ([017](017-sign-in-prompts.md)): it is reported with its host and where the load is heading, and the load waits; the right answer loads the page, a wrong one asks again and says so, none shows the server's refusal; what the WebView keeps of an answer stays in its login set; a picture from another server is given no answer by the WebView itself |
 | `SystemWebViewLinkTest` | 5 | A link's menu ([018](018-link-in-new-tab.md)), with a finger pressed and held: a link in words and a picture that is a link are each told of with the link's own address, and the page stays; words that are no link are the WebView's own; a tap still follows the link; a link chosen is reported for the core to open |
 | `SystemWebViewFileTest` | 3 | A page that asks for a file ([019](019-uploads.md)), with a finger on its file inputs and a chooser of the test's own: the page has the file that was picked; several where several may be chosen, with the kinds the page accepts; nothing picked, and the page is told so and may ask again |
+| `SystemWebViewCertificateTest` | 2 | A secure connection that cannot be made ([021](021-certificate-errors.md)): a server that speaks no TLS, asked for over `https`; and a site whose certificate signs itself, made on the device for the test, which is not trusted, is not shown, and is never asked for its page |
 | `SystemOpenerTest` | 2 | The system's own opener: the activity it starts for a letter and for a number, caught before it leaves the app; a scheme nothing opens is said to be so |
 | `SystemWebViewRestoreTest` | 3 | What a sleeping tab keeps (Q5; 001 §11.3): `saveState` is one small byte array, and a new web view in the same profile wakes from it with the page, its history, its login set, and, once the engine has had a second to record them, the scroll position and the text typed into a form |
 | `AppWindowTest` | 26 | The app, started in fake mode, with the real core and the real WebView in its window: a page loads through the core; a typed address loads, and the window's Back and the system's Back go back; a failure is shown in words, over the engine's own error page; the address field at rest, tapped, and when it took the focus by itself (§6); **turning the device reloads nothing**: the same activity, the same web view, no second request; tabs open, switch and close, each with a web view of its own ([005](005-tabs.md)); a link that opens a window, touched, opens a tab beside the one it was in, and closing it brings that one forward, and a window opened on a letter to write leaves no tab behind (006); a touch on a link to write a letter leaves the page as it was and starts no activity (007); history lists what was visited, finds it, opens it again and forgets it ([008](008-history.md)); find on the page counts, follows next and previous, and says when the text is not there (010); a place visited is offered when part of its name is typed, and a long press on the field at rest is not typing ([011](011-suggestions.md)); zoom goes through the core, the bar says the level and the WebView draws its text at it (012); a file a link offers is fetched into the app's own folder and listed beside History (013); a page that asks for the camera is asked about in a bar in its tab, and answered as the person says; what it was allowed is listed, and taken back (014); what a page says or asks is shown in its tab and the page gets the answer (016); a server that asks who is there is answered in the tab, a wrong password is asked for again, and the page loads (017); a link pressed and held opens in a new tab behind the page being read (018); a file input starts nothing of the system's in fake mode (019); an empty tab says where searches go, and it can be changed (020); the design catalogue opens in place of a browser (004); **Android's accessibility checks** (Google's Accessibility Test Framework, through Compose's test rule) pass over a page, a failed page and the catalogue, which has every state the window has |
@@ -288,7 +289,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | `cd Core && cargo test --workspace --locked` | 139 passed |
 | `Tools/test.sh android`, from nothing | OK, 48 s |
 | … `:core-engine:testDebugUnitTest` | 31 passed |
-| … `:app:testDebugUnitTest` | 247 passed |
+| … `:app:testDebugUnitTest` | 250 passed |
 | … `:app:assembleDebug` | `app-debug.apk`, with `libwebtiger_core.so` for `arm64-v8a` and `x86_64` |
 | `Tools/strings/strings.py --check`, `Tools/design/tokens.py --check` | up to date; the Apple outputs' checksums unchanged |
 | `./gradlew :app:lintDebug` | no errors. Apart from notices that newer versions exist, two warnings are left on purpose: no launcher icon (the brand is not settled, 001 F10), and `toolbar_open_location` unused (it is the Mac's ⌘L) |

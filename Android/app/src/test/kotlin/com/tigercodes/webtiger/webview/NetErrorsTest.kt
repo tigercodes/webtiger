@@ -1,5 +1,6 @@
 package com.tigercodes.webtiger.webview
 
+import android.net.http.SslError
 import android.webkit.WebViewClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -28,6 +29,23 @@ class NetErrorsTest {
                 WebViewClient.ERROR_UNSAFE_RESOURCE to "net.failed",
             )
         for ((error, code) in expected) assertEquals("error $error", code, netErrorCode(error, online = true))
+    }
+
+    @Test
+    fun aCertificateTheWebViewWouldNotTrustSaysWhichKindOfTroubleItWas() {
+        val expected =
+            mapOf(
+                SslError.SSL_UNTRUSTED to "net.tls.untrusted",
+                SslError.SSL_EXPIRED to "net.tls.date",
+                SslError.SSL_NOTYETVALID to "net.tls.date",
+                SslError.SSL_DATE_INVALID to "net.tls.date",
+                SslError.SSL_IDMISMATCH to "net.tls.name",
+                // Whatever else it was, and a kind this build has not heard of.
+                SslError.SSL_INVALID to "net.tls",
+                -1 to "net.tls",
+                99 to "net.tls",
+            )
+        for ((error, code) in expected) assertEquals("error $error", code, certificateErrorCode(error))
     }
 
     @Test

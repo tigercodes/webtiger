@@ -1,6 +1,7 @@
 // The System WebView's load errors as the contract's codes (engine.proto, NavigationFailed).
 package com.tigercodes.webtiger.webview
 
+import android.net.http.SslError
 import android.webkit.WebViewClient
 
 /**
@@ -18,4 +19,17 @@ internal fun netErrorCode(errorCode: Int, online: Boolean): String =
         WebViewClient.ERROR_TIMEOUT -> "net.timeout"
         WebViewClient.ERROR_FAILED_SSL_HANDSHAKE -> "net.tls"
         else -> "net.failed"
+    }
+
+/**
+ * A certificate the WebView would not trust, as one of the contract's codes (021): which kind
+ * of trouble it was, where the WebView says. [primaryError] is `SslError.getPrimaryError()`.
+ * Whatever the kind, the load is cancelled: nothing is accepted on a person's behalf.
+ */
+internal fun certificateErrorCode(primaryError: Int): String =
+    when (primaryError) {
+        SslError.SSL_UNTRUSTED -> "net.tls.untrusted"
+        SslError.SSL_EXPIRED, SslError.SSL_NOTYETVALID, SslError.SSL_DATE_INVALID -> "net.tls.date"
+        SslError.SSL_IDMISMATCH -> "net.tls.name"
+        else -> "net.tls"
     }

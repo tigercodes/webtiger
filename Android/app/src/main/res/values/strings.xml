@@ -131,6 +131,12 @@
     <string name="error_net_timeout">The site took too long to answer.</string>
     <!-- A load failed: TLS or certificate problem. -->
     <string name="error_net_tls">A secure connection to the site couldn’t be made.</string>
+    <!-- A load failed: the site's certificate has expired or is not valid yet, by this device's clock. -->
+    <string name="error_net_tls_date">This site’s certificate isn’t valid today. It may have run out, or this device’s date may be wrong.</string>
+    <!-- A load failed: the certificate the site presented names another site. -->
+    <string name="error_net_tls_name">This site’s certificate is for a different site.</string>
+    <!-- A load failed: the site's certificate signs itself, or was signed by an authority this device does not know. -->
+    <string name="error_net_tls_untrusted">This device doesn’t trust this site’s certificate.</string>
     <!-- The process drawing the page died. -->
     <string name="error_page_renderer_gone">The page stopped unexpectedly.</string>
     <!-- Button on the failed-page view: reload. -->

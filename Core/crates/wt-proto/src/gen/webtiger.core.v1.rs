@@ -1166,7 +1166,9 @@ pub struct NavigationFinished {}
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct NavigationFailed {
     /// "net.cancelled" (not shown as a failure), "net.offline", "net.dns",
-    /// "net.connect", "net.timeout", "net.tls", "net.failed".
+    /// "net.connect", "net.timeout", "net.tls", "net.failed". Under "net.tls",
+    /// where the engine says which kind of certificate trouble it was (021):
+    /// "net.tls.untrusted", "net.tls.date", "net.tls.name".
     #[prost(string, tag = "1")]
     pub code: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]

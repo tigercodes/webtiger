@@ -176,13 +176,44 @@ final class WebKitAdapterTests: AdapterTestCase {
         XCTAssertEqual(failed.code, "net.dns")
     }
 
+    func testAServerThatSpeaksNoTLSAskedForOverHTTPSIsASecureConnectionThatCouldNotBeMade() async {
+        await create(1)
+        // The test site speaks plain HTTP: asked for over https, there is nothing to trust.
+        await load(1, "https://127.0.0.1:\(site.port)/")
+
+        await wait(1, "the load to fail") { reports in
+            reports.contains {
+                if case .navigationFailed = $0 {
+                    true
+                } else {
+                    false
+                }
+            }
+        }
+        let failed = reports(1).compactMap { report -> WTNavigationFailed? in
+            if case let .navigationFailed(failed) = report {
+                failed
+            } else {
+                nil
+            }
+        }
+        XCTAssertEqual(failed.map(\.code), ["net.tls"])
+        // Nothing of the site was shown.
+        XCTAssertFalse(names(reports(1)).contains("committed"), "\(names(reports(1)))")
+    }
+
     func testEngineErrorsBecomeCodes() {
         // The mapping is the whole of what the shell knows about a failure; no engine text passes it.
         let cases: [(Int, String)] = [
             (NSURLErrorCancelled, "net.cancelled"), (NSURLErrorNotConnectedToInternet, "net.offline"),
             (NSURLErrorCannotFindHost, "net.dns"), (NSURLErrorCannotConnectToHost, "net.connect"),
-            (NSURLErrorTimedOut, "net.timeout"), (NSURLErrorServerCertificateUntrusted, "net.tls"),
-            (NSURLErrorBadServerResponse, "net.failed"),
+            (NSURLErrorTimedOut, "net.timeout"), (NSURLErrorBadServerResponse, "net.failed"),
+            // A certificate that is not trusted says why (021), where WebKit says.
+            (NSURLErrorServerCertificateUntrusted, "net.tls.untrusted"), (NSURLErrorServerCertificateHasUnknownRoot, "net.tls.untrusted"),
+            (NSURLErrorServerCertificateHasBadDate, "net.tls.date"), (NSURLErrorServerCertificateNotYetValid, "net.tls.date"),
+            // And whatever else kept a secure connection from being made.
+            (NSURLErrorSecureConnectionFailed, "net.tls"), (NSURLErrorClientCertificateRejected, "net.tls"),
+            (NSURLErrorClientCertificateRequired, "net.tls"), (NSURLErrorAppTransportSecurityRequiresSecureConnection, "net.tls"),
         ]
         for (code, expected) in cases {
             XCTAssertEqual(WebKitEngine.code(for: NSError(domain: NSURLErrorDomain, code: code)), expected)

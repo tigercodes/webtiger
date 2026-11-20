@@ -332,9 +332,12 @@ public final class WebKitEngine: HostServices {
         case NSURLErrorCannotFindHost, NSURLErrorDNSLookupFailed: return "net.dns"
         case NSURLErrorCannotConnectToHost, NSURLErrorNetworkConnectionLost: return "net.connect"
         case NSURLErrorTimedOut: return "net.timeout"
-        case NSURLErrorSecureConnectionFailed, NSURLErrorServerCertificateHasBadDate, NSURLErrorServerCertificateUntrusted,
-             NSURLErrorServerCertificateHasUnknownRoot, NSURLErrorServerCertificateNotYetValid, NSURLErrorClientCertificateRejected,
-             NSURLErrorClientCertificateRequired, NSURLErrorAppTransportSecurityRequiresSecureConnection:
+        // A certificate that is not trusted says why (021), where WebKit says. One that is
+        // another site's it calls untrusted, like one that signs itself.
+        case NSURLErrorServerCertificateUntrusted, NSURLErrorServerCertificateHasUnknownRoot: return "net.tls.untrusted"
+        case NSURLErrorServerCertificateHasBadDate, NSURLErrorServerCertificateNotYetValid: return "net.tls.date"
+        case NSURLErrorSecureConnectionFailed, NSURLErrorClientCertificateRejected, NSURLErrorClientCertificateRequired,
+             NSURLErrorAppTransportSecurityRequiresSecureConnection:
             return "net.tls"
         default: return "net.failed"
         }

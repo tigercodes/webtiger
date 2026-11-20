@@ -401,6 +401,14 @@ class PageTrackerTest {
     }
 
     @Test
+    fun aCertificateIsRefusedWithTheKindOfTroubleItWas() {
+        tracker.willLoad(A)
+        told()
+        tracker.certificateRefused(A, "net.tls.date")
+        assertEquals(listOf("failed net.tls.date $A"), told())
+    }
+
+    @Test
     fun aCertificateTheSystemDoesNotTrust() {
         tracker.willLoad(A)
         told()

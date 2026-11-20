@@ -223,8 +223,8 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
      * `onReceivedSslError`, which the adapter always answers by cancelling. Only the page's own
      * load fails by it; a resource of the page that was refused is the page's business.
      */
-    fun certificateRefused(url: String) {
-        if (loading && awaitingCommit && url == heading) failed("net.tls", url)
+    fun certificateRefused(url: String, code: String = "net.tls") {
+        if (loading && awaitingCommit && url == heading) failed(code, url)
     }
 
     /** `onRenderProcessGone`. The adapter replaces the web view, so its history is gone too. */

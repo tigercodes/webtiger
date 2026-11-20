@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Designed. Nothing is built yet: a site whose certificate is not trusted fails with one sentence for every cause, "A secure connection to the site couldn't be made." |
+| **Status** | Built and tested in the Android shell (against the real System WebView, on an emulator, with a certificate that signs itself) and the Apple shell (WebKit's kinds as the adapter's rule; no certificate is presented to WebKit, §7). There is still no way past a certificate that is not trusted (§2). Windows is not started |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "error and certificate pages". Error pages are there (001); this is what they say of a certificate |
 | **Contract** | No new message. Three more codes of `NavigationFailed`, under the one there is: `net.tls.untrusted`, `net.tls.date`, `net.tls.name` |
 | **Builds on** | [001](001-foundations.md): a load that fails is reported with a code, and the shell has the words |
@@ -47,16 +47,21 @@ Nothing is accepted on a person's behalf, by any adapter, for any of these: the 
 | Another site's | Not told apart: WebKit says "untrusted" | "id mismatch" |
 | The rest | `net.tls` | `net.tls` |
 
-What each does in fact, as observed, is written here when built.
+**As built**, and as seen:
+
+- **The System WebView** (133, on the emulator) was served a certificate that signs itself, made on the device by the test: it said "untrusted", the adapter reported `net.tls.untrusted` and cancelled the load, nothing of the site was shown, and the site was never asked for its page.
+- **A server that speaks no TLS**, asked for over `https`, is `net.tls` on both engines. (The test site answers a connection that begins as TLS in plain words and closes it, as a web server does: left waiting instead, WebKit gave up after a minute and called it a timeout.)
+- **WebKit** was not served a certificate (§7): its four kinds are the adapter's rule, by their numbers.
 
 ## 5. Tests
 
 | Where | What |
 |---|---|
-| Core (through `FakeShell`) | A code under `net.tls` reaches the tab as it was reported |
-| The adapters' own rules | Each engine's kinds of certificate error as the codes of §3, and every other as before |
-| Adapter suites, against the real engines | A server that does not speak TLS, asked for over `https`: `net.tls`. On Android, a server whose certificate signs itself, made by the test: `net.tls.untrusted`, and the page is not shown |
-| The shells | The words for each code; a code with no words of its own has the words of the code above it |
+| Core (`wt-app/tests/browsing.rs`, 1 more) | A finer code under one the shells know reaches the tab as it was reported: each of the three |
+| The adapters' own rules | WebKit (`testEngineErrorsBecomeCodes`): untrusted and unknown root; bad date and not yet valid; and every other way a secure connection is not made, as before. The System WebView (`NetErrorsTest`, 1 more; `PageTrackerTest`, 1 more): untrusted; expired, not yet valid and date invalid; another site's; whatever else, and a kind this build has not heard of; and the load is said to have failed with the kind it was |
+| Adapter suites, against the real engines | A server that speaks no TLS, asked for over `https`, is a secure connection that could not be made, and nothing of the site is shown: WebKit on the Mac and the iPhone simulator; the System WebView on the emulator (`SystemWebViewCertificateTest`, 2). On the emulator, a site whose certificate signs itself, with a key made on the device for the test and removed after it: not trusted, nothing shown, and the page never asked for |
+| The test site | A connection that begins as TLS is answered in plain words and closed, in all three of its servers |
+| The shells' words | Each of the three codes has its words; a finer code with none of its own has the words of the code above it, and with nothing above it the general ones; never the code's own text (`WordsTest`, 1 more; `testACertificateThatIsNotTrustedSaysWhy`). Seven of the rules checked by breaking them |
 
 ## 6. Decisions
 
@@ -70,12 +75,13 @@ What each does in fact, as observed, is written here when built.
 
 - **A certificate presented to WebKit.** No test on Apple's systems serves one: a test that makes a server's identity on a Mac does it through the system's keychain, which is the person's own and can raise the system's dialogs. WebKit's kinds of error are tested as the adapter's own rule, by their numbers.
 - **A certificate whose dates do not hold, or that is another site's, against a real engine.** A certificate a test can make signs itself, and an engine that sees one says "untrusted" first, whatever else is wrong with it.
-- The rest: written when built.
+- **Another site's certificate, on WebKit**: WebKit calls it untrusted, and the words then say less than they could. Telling it apart needs the adapter to look at the certificate itself, which it does not.
+- **That the failed page shows the new words in an app.** The words are tested by their codes; no app's test fails a load over a certificate.
 
 ## 8. Done checklist
 
-- [ ] The core: a code under `net.tls` passes through.
-- [ ] Android: the adapter's rule; the suite against the real WebView; the words.
-- [ ] Apple: the adapter's rule; the suite against real WebKit (a server that speaks no TLS); the words.
-- [ ] `Tools/test.sh all` green, and `android-device`.
+- [x] The core: a code under `net.tls` passes through.
+- [x] Android: the adapter's rule; the suite against the real WebView, with a certificate that signs itself; the words.
+- [x] Apple: the adapter's rule; the suite against real WebKit (a server that speaks no TLS); the words.
+- [x] `Tools/test.sh all` green, and `android-device` (133 on the emulator).
 - [ ] Windows shell.

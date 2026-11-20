@@ -529,13 +529,19 @@ struct FailedPageView: View {
         }
     }
 
-    /// The words for a core error code: the string keyed `error.<code>`, or the general ones
-    /// when the code has none of its own.
+    /// The words for a core error code: the string keyed `error.<code>`. A code with none of
+    /// its own has those of the code above it (`net.tls` for `net.tls.date`, 021 §3), so that
+    /// a newer core's finer code is never worse than the one it refines; and only then the
+    /// general ones.
     static func words(for code: String) -> String {
-        let key = "error.\(code)"
-        let words = Bundle.module.localizedString(forKey: key, value: nil, table: nil)
-        if words != key {
-            return words
+        var parts = code.split(separator: ".").map(String.init)
+        while parts.count >= 2 {
+            let key = "error." + parts.joined(separator: ".")
+            let words = Bundle.module.localizedString(forKey: key, value: nil, table: nil)
+            if words != key {
+                return words
+            }
+            parts.removeLast()
         }
         return Bundle.module.localizedString(forKey: "error.net.failed", value: nil, table: nil)
     }

@@ -463,4 +463,22 @@ final class BrowserModelTests: XCTestCase {
         // A code this build has no words for still says something, and never shows the code's text.
         XCTAssertEqual(FailedPageView.words(for: "net.something_new"), "Something went wrong while loading the page.")
     }
+
+    func testACertificateThatIsNotTrustedSaysWhy() {
+        let general = "A secure connection to the site couldn’t be made."
+        XCTAssertEqual(FailedPageView.words(for: "net.tls"), general)
+        XCTAssertEqual(FailedPageView.words(for: "net.tls.untrusted"), "This device doesn’t trust this site’s certificate.")
+        XCTAssertEqual(
+            FailedPageView.words(for: "net.tls.date"),
+            "This site’s certificate isn’t valid today. It may have run out, or this device’s date may be wrong."
+        )
+        XCTAssertEqual(FailedPageView.words(for: "net.tls.name"), "This site’s certificate is for a different site.")
+        // A finer code this build has no words for has the words of the code above it: a
+        // newer core's code is never worse than the one it refines.
+        XCTAssertEqual(FailedPageView.words(for: "net.tls.revoked"), general)
+        XCTAssertEqual(FailedPageView.words(for: "net.tls.date.far_future"), FailedPageView.words(for: "net.tls.date"))
+        // And with nothing above it either, the general words; never the code's own text.
+        XCTAssertEqual(FailedPageView.words(for: "net.new.kind"), "Something went wrong while loading the page.")
+        XCTAssertEqual(FailedPageView.words(for: "title"), "Something went wrong while loading the page.")
+    }
 }

@@ -76,7 +76,9 @@ message NavigationFinished {}
 // A load failed, before or after it committed.
 message NavigationFailed {
   // "net.cancelled" (not shown as a failure), "net.offline", "net.dns",
-  // "net.connect", "net.timeout", "net.tls", "net.failed".
+  // "net.connect", "net.timeout", "net.tls", "net.failed". Under "net.tls",
+  // where the engine says which kind of certificate trouble it was (021):
+  // "net.tls.untrusted", "net.tls.date", "net.tls.name".
   string code = 1;
   string url = 2 [(wt.redact) = true];
   // Since 1.3. The shell refused the navigation on the core's verdict, and

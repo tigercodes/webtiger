@@ -285,6 +285,22 @@ fn a_failed_load_shows_its_code_and_the_address_that_failed() {
 }
 
 #[test]
+fn a_finer_code_under_one_the_shells_know_reaches_the_tab_as_it_was_reported() {
+    run(async {
+        // Which kind of trouble a certificate was (021): the core passes it on.
+        for code in ["net.tls.untrusted", "net.tls.date", "net.tls.name"] {
+            let mut shell = FakeShell::fake();
+            shell.engine.fail("https://down.example.com/", code);
+            let (_, tab_id, subscription) = shell.open_window().await;
+            shell.submit(tab_id, "down.example.com").await;
+            let tab = tab(&shell, subscription);
+            assert_eq!(tab.load_state(), LoadState::Failed);
+            assert_eq!(tab.error_code, code);
+        }
+    });
+}
+
+#[test]
 fn a_finish_reported_after_a_failure_does_not_clear_it() {
     run(async {
         // Android's WebView commits and finishes an error page of its own

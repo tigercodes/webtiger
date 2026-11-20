@@ -781,6 +781,42 @@
         }
       }
     },
+    "error.net.tls.date": {
+      "comment": "A load failed: the site's certificate has expired or is not valid yet, by this device's clock.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This site’s certificate isn’t valid today. It may have run out, or this device’s date may be wrong."
+          }
+        }
+      }
+    },
+    "error.net.tls.name": {
+      "comment": "A load failed: the certificate the site presented names another site.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This site’s certificate is for a different site."
+          }
+        }
+      }
+    },
+    "error.net.tls.untrusted": {
+      "comment": "A load failed: the site's certificate signs itself, or was signed by an authority this device does not know.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This device doesn’t trust this site’s certificate."
+          }
+        }
+      }
+    },
     "error.page.renderer_gone": {
       "comment": "The process drawing the page died.",
       "extractionState": "manual",

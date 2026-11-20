@@ -312,7 +312,9 @@ public nonisolated struct WTNavigationFailed: Sendable {
   // methods supported on all messages.
 
   /// "net.cancelled" (not shown as a failure), "net.offline", "net.dns",
-  /// "net.connect", "net.timeout", "net.tls", "net.failed".
+  /// "net.connect", "net.timeout", "net.tls", "net.failed". Under "net.tls",
+  /// where the engine says which kind of certificate trouble it was (021):
+  /// "net.tls.untrusted", "net.tls.date", "net.tls.name".
   public var code: String = String()
 
   public var url: String = String()

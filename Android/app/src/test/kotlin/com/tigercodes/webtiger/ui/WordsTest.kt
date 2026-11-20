@@ -28,6 +28,20 @@ class WordsTest {
     }
 
     @Test
+    fun aCertificateThatIsNotTrustedSaysWhy() {
+        val general = "A secure connection to the site couldn’t be made."
+        assertEquals("This device doesn’t trust this site’s certificate.", words("net.tls.untrusted"))
+        assertEquals("This site’s certificate isn’t valid today. It may have run out, or this device’s date may be wrong.", words("net.tls.date"))
+        assertEquals("This site’s certificate is for a different site.", words("net.tls.name"))
+        // A finer code this build has no words for has the words of the code above it: a newer
+        // core's code is never worse than the one it refines.
+        assertEquals(general, words("net.tls.revoked"))
+        assertEquals(words("net.tls.date"), words("net.tls.date.far_future"))
+        // And with nothing above it either, the general words.
+        assertEquals("Something went wrong while loading the page.", words("net.new.kind"))
+    }
+
+    @Test
     fun aCodeWithoutWordsOfItsOwnStillSaysSomething() {
         val general = context.getString(R.string.error_net_failed)
         assertEquals("Something went wrong while loading the page.", general)
