@@ -47,6 +47,10 @@ class BrowserModel(
     var tabs by mutableStateOf<List<TabSummary>>(emptyList())
         private set
 
+    /** How many downloads of the window's Space are coming (013): the core's count. */
+    var downloadsActive by mutableStateOf(0)
+        private set
+
     private var fieldText by mutableStateOf(typing.orEmpty())
 
     /**
@@ -347,6 +351,7 @@ class BrowserModel(
         }
         tab = front
         tabs = snapshot.tabs
+        downloadsActive = snapshot.downloads_active
         // The zoom bar is the window's, and says the level of the page in front: with no page
         // there that can be zoomed, it has nothing to say.
         if (isZooming && front.zoom == null) isZooming = false

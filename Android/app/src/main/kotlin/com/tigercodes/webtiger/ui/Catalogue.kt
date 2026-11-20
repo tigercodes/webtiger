@@ -65,6 +65,9 @@ import com.tigercodes.webtiger.core.v1.TabView
 import com.tigercodes.webtiger.core.v1.WindowOpened
 import com.tigercodes.webtiger.core.v1.WindowSnapshot
 import com.tigercodes.webtiger.core.v1.ZoomView
+import com.tigercodes.webtiger.core.v1.DownloadEntry
+import com.tigercodes.webtiger.core.v1.DownloadState
+import com.tigercodes.webtiger.core.v1.DownloadsPage
 import com.tigercodes.webtiger.design.Tokens
 import com.tigercodes.webtiger.webview.SystemWebViewEngine
 import java.time.ZoneOffset
@@ -245,6 +248,53 @@ internal enum class CatalogueHistory(@StringRes val title: Int) {
     }
 }
 
+/** One state of the Downloads list (013). */
+internal enum class CatalogueDownloads(@StringRes val title: Int) {
+    LIST(R.string.catalogue_state_downloads_list),
+    EMPTY(R.string.catalogue_state_downloads_empty),
+    ;
+
+    /**
+     * What a core would answer for the state: one download coming with its size known, one
+     * that failed, one that finished, one coming whose size is not known, and one whose name
+     * is longer than the list is wide and that was stopped. The addresses are the
+     * documentation's own.
+     */
+    private val page: DownloadsPage
+        get() =
+            if (this == LIST) {
+                DownloadsPage(
+                    downloads =
+                        listOf(
+                            download(5, "Annual report 2026.pdf", "example.com", DownloadState.DOWNLOAD_STATE_COMING, received = 1_200_000, total = 4_800_000),
+                            download(4, "notes.txt", "example.com", DownloadState.DOWNLOAD_STATE_FAILED, code = "download.network"),
+                            download(3, "holiday-photos.zip", "example.net", DownloadState.DOWNLOAD_STATE_FINISHED, total = 12_400_000),
+                            download(2, "stream.bin", "example.org", DownloadState.DOWNLOAD_STATE_COMING, received = 300_000),
+                            download(
+                                1,
+                                "A file whose name is longer than the list is wide, and then goes on for a while.tar.gz",
+                                "downloads.example.com",
+                                DownloadState.DOWNLOAD_STATE_FAILED,
+                                code = "download.cancelled",
+                            ),
+                        ),
+                    more = true,
+                )
+            } else {
+                DownloadsPage()
+            }
+
+    private fun download(id: Long, name: String, host: String, state: DownloadState, received: Long = 0, total: Long = 0, code: String = ""): DownloadEntry =
+        DownloadEntry(id = id, file_name = name, host = host, url = "https://$host/files/$id", state = state, received_bytes = received, total_bytes = total, error_code = code)
+
+    /** A model over a core that answers with this state, and nothing else. */
+    fun model(context: Context, scope: CoroutineScope): DownloadsModel {
+        val answer = page
+        val core = ScriptedCore { request -> if (request.query_downloads != null) Response(downloads_page = answer) else Response(ack = Ack()) }
+        return DownloadsModel(BrowserSession(core, SystemWebViewEngine(context), scope), windowId = 1)
+    }
+}
+
 /** The catalogue: the tokens, then the window in each state, then the start failure. */
 @Composable
 fun CatalogueScreen() {
@@ -279,6 +329,12 @@ fun CatalogueScreen() {
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.Space.s)) {
                     Text(text = stringResource(state.title), style = MaterialTheme.typography.titleMedium)
                     CatalogueHistoryList(state, Modifier.fillMaxWidth().height(CatalogueWindowHeight).framed())
+                }
+            }
+            for (state in CatalogueDownloads.entries) {
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.Space.s)) {
+                    Text(text = stringResource(state.title), style = MaterialTheme.typography.titleMedium)
+                    CatalogueDownloadsList(state, Modifier.fillMaxWidth().height(CatalogueWindowHeight).framed())
                 }
             }
             CatalogueHeading(R.string.catalogue_start_failed)
@@ -331,6 +387,20 @@ internal fun CatalogueHistoryList(state: CatalogueHistory, modifier: Modifier = 
     val scope = rememberCoroutineScope()
     val model = remember(state) { state.model(context, scope) }
     Box(modifier = modifier) { HistoryList(model, onOpen = {}, onDone = {}, zone = ZoneOffset.UTC, locale = Locale.UK) }
+}
+
+/**
+ * The Downloads list in one state: [DownloadsList] over a scripted core that answers with it,
+ * under the switch it has in the window. It asks once and not again: a picture stands still.
+ */
+@Composable
+internal fun CatalogueDownloadsList(state: CatalogueDownloads, modifier: Modifier = Modifier) {
+    val context = LocalContext.current.applicationContext
+    val scope = rememberCoroutineScope()
+    val model = remember(state) { state.model(context, scope) }
+    Box(modifier = modifier) {
+        DownloadsList(model, onDone = {}, switcher = { LibrarySwitch(LibraryPart.DOWNLOADS) {} }, watching = false)
+    }
 }
 
 /** A Back dispatcher nothing ever calls. */

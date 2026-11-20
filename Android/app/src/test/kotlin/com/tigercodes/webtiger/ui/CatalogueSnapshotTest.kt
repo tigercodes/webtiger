@@ -35,6 +35,10 @@ import org.robolectric.annotation.GraphicsMode
 
 private const val LIGHT = "w411dp-h320dp-notnight-xhdpi"
 private const val DARK = "w411dp-h320dp-night-xhdpi"
+
+// Tall enough for the Downloads list's five downloads, each in a different state, and what follows them.
+private const val LIST_LIGHT = "w411dp-h560dp-notnight-xhdpi"
+private const val LIST_DARK = "w411dp-h560dp-night-xhdpi"
 private const val TALL_LIGHT = "w411dp-h900dp-notnight-xhdpi"
 private const val TALL_DARK = "w411dp-h900dp-night-xhdpi"
 
@@ -76,6 +80,15 @@ class CatalogueSnapshotTest {
         }
     }
 
+    private fun downloadsLists(theme: String) {
+        var state by mutableStateOf(CatalogueDownloads.LIST)
+        show { key(state) { CatalogueDownloadsList(state, Modifier.fillMaxSize()) } }
+        for (next in CatalogueDownloads.entries) {
+            state = next
+            verify("downloads-${next.name.lowercase().replace('_', '-')}-$theme")
+        }
+    }
+
     private fun startFailed(theme: String) {
         show { StartFailed("store.open") }
         verify("start-failed-$theme")
@@ -98,6 +111,12 @@ class CatalogueSnapshotTest {
 
     @Test @Config(qualifiers = DARK)
     fun everyStateOfTheHistoryListInTheDarkTheme() = historyLists("dark")
+
+    @Test @Config(qualifiers = LIST_LIGHT)
+    fun everyStateOfTheDownloadsListInTheLightTheme() = downloadsLists("light")
+
+    @Test @Config(qualifiers = LIST_DARK)
+    fun everyStateOfTheDownloadsListInTheDarkTheme() = downloadsLists("dark")
 
     @Test @Config(qualifiers = LIGHT)
     fun startFailedInTheLightTheme() = startFailed("light")

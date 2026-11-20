@@ -144,9 +144,11 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
         val windowId = model.windowId
         if (showingHistory && windowId != null) {
             val history = remember(windowId) { HistoryModel(session, windowId) }
+            val downloads = remember(windowId) { DownloadsModel(session, windowId) }
             BackHandler { showingHistory = false }
-            HistoryList(
-                model = history,
+            Library(
+                history = history,
+                downloads = downloads,
                 onOpen = { visit ->
                     showingHistory = false
                     model.load(visit.url)
@@ -195,8 +197,24 @@ private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit
         IconButton(onClick = onZoom, enabled = model.zoom != null, modifier = Modifier.testTag("zoom")) {
             Icon(painter = painterResource(R.drawable.ic_zoom), contentDescription = stringResource(R.string.zoom_open))
         }
-        IconButton(onClick = onHistory, modifier = Modifier.testTag("history")) {
-            Icon(painter = painterResource(R.drawable.ic_history), contentDescription = stringResource(R.string.history_open))
+        // A download is coming (013): a dot says so, where the list of them opens, and a
+        // screen reader is told.
+        val downloading = if (model.downloadsActive > 0) stringResource(R.string.downloads_active) else ""
+        IconButton(onClick = onHistory, modifier = Modifier.semantics { stateDescription = downloading }.testTag("history")) {
+            Box {
+                Icon(painter = painterResource(R.drawable.ic_history), contentDescription = stringResource(R.string.history_open))
+                if (model.downloadsActive > 0) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .size(Tokens.Space.s)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary)
+                                .testTag("downloading"),
+                    )
+                }
+            }
         }
     }
 }

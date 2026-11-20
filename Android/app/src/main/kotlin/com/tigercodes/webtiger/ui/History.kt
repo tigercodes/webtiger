@@ -42,9 +42,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
@@ -62,7 +60,9 @@ import java.util.Locale
 /**
  * The list over `model`. `onOpen` is called with the visit a person chose; `onDone` when they
  * are finished. Times are shown in `zone` and as `locale` writes them: the person's own, unless
- * a picture of the list is to be the same wherever it is drawn.
+ * a picture of the list is to be the same wherever it is drawn. With a `switcher`, it stands
+ * where the title would, on a row of its own: the list is then one of two a person can choose
+ * between (013).
  */
 @Composable
 fun HistoryList(
@@ -72,6 +72,7 @@ fun HistoryList(
     modifier: Modifier = Modifier,
     zone: ZoneId = ZoneId.systemDefault(),
     locale: Locale = LocalConfiguration.current.locales[0],
+    switcher: (@Composable () -> Unit)? = null,
 ) {
     LaunchedEffect(model) { model.reload() }
     // The question of which visits to forget is up.
@@ -79,13 +80,7 @@ fun HistoryList(
     val times = remember(zone, locale) { DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT).withLocale(locale).withZone(zone) }
     Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Row(modifier = Modifier.fillMaxWidth().padding(start = Tokens.Space.m, end = Tokens.Space.xs), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = stringResource(R.string.history_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f).semantics { heading() },
-                )
+            ListHeader(switcher = switcher, title = R.string.history_title) {
                 // A button that asks, and not a menu: forgetting is chosen in two steps.
                 TextButton(onClick = { choosing = true }, modifier = Modifier.testTag("history-clear")) { Text(stringResource(R.string.history_clear)) }
                 TextButton(onClick = onDone, modifier = Modifier.testTag("history-done")) { Text(stringResource(R.string.history_done)) }

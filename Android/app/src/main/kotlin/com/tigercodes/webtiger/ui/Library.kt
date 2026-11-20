@@ -1,0 +1,83 @@
+// What the button beside the tabs opens: the History list (008) and, beside it, the Downloads
+// list (013), with a switch between the two. The Library (W3) will be the home of both; until
+// then they share a sheet, so that the row of tabs gains no button.
+package com.tigercodes.webtiger.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import com.tigercodes.webtiger.R
+import com.tigercodes.webtiger.core.v1.HistoryEntry
+import com.tigercodes.webtiger.design.Tokens
+
+/** Which of the sheet's two lists is shown. */
+enum class LibraryPart { HISTORY, DOWNLOADS }
+
+/** `onOpen` is called with a visit a person chose; `onDone` when they are finished. */
+@Composable
+fun Library(
+    history: HistoryModel,
+    downloads: DownloadsModel,
+    onOpen: (HistoryEntry) -> Unit,
+    onDone: () -> Unit,
+    modifier: Modifier = Modifier,
+    showing: LibraryPart = LibraryPart.HISTORY,
+) {
+    var part by rememberSaveable { mutableStateOf(showing) }
+    val switcher: @Composable () -> Unit = { LibrarySwitch(part) { part = it } }
+    when (part) {
+        LibraryPart.HISTORY -> HistoryList(model = history, onOpen = onOpen, onDone = onDone, modifier = modifier, switcher = switcher)
+        LibraryPart.DOWNLOADS -> DownloadsList(model = downloads, onDone = onDone, modifier = modifier, switcher = switcher)
+    }
+}
+
+/**
+ * Two things to choose between, of which the one for the list that is shown is marked: where a
+ * list's title would be.
+ */
+@Composable
+internal fun LibrarySwitch(part: LibraryPart, onChoose: (LibraryPart) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Tokens.Space.xs), verticalAlignment = Alignment.CenterVertically) {
+        Choice(R.string.history_title, chosen = part == LibraryPart.HISTORY, tag = "library-history") { onChoose(LibraryPart.HISTORY) }
+        Choice(R.string.downloads_title, chosen = part == LibraryPart.DOWNLOADS, tag = "library-downloads") { onChoose(LibraryPart.DOWNLOADS) }
+    }
+}
+
+@Composable
+private fun Choice(title: Int, chosen: Boolean, tag: String, onChoose: () -> Unit) {
+    Box(
+        modifier =
+            Modifier
+                .clip(RoundedCornerShape(Tokens.Radius.field))
+                // Which list is shown is said by the fill, and to a screen reader as "selected".
+                .background(if (chosen) Tokens.Palette.fieldFill.current else MaterialTheme.colorScheme.background)
+                .selectable(selected = chosen, role = Role.Tab, onClick = onChoose)
+                .heightIn(min = LocalMinimumInteractiveComponentSize.current)
+                .padding(horizontal = Tokens.Space.m)
+                .testTag(tag),
+        contentAlignment = Alignment.Center,
+    ) {
+        // Words a person must be able to read: the primary colour (001 F14).
+        Text(text = stringResource(title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    }
+}

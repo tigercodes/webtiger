@@ -4,9 +4,11 @@
 package com.tigercodes.webtiger
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
+import android.os.Environment
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
@@ -38,6 +40,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import java.io.File
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -550,6 +553,78 @@ internal class AppWindowTest {
         awaitPage("Landed")
         awaitAddress(shown("/landed"))
         awaitOffered(0)
+    }
+
+    /**
+     * A download (013), with the real core, the real WebView and the system's own fetcher: a
+     * finger on a link that offers a file; the page stays as it was; the file is listed beside
+     * History, by its name, its site and its size; it is taken off the list, and stays where it
+     * was saved. That is the app's own folder: this is fake mode, and nothing is written where
+     * a person's files are.
+     */
+    @Test
+    fun aFileALinkOffersIsDownloadedAndListed() {
+        awaitPage("Home")
+        val folder = checkNotNull(ApplicationProvider.getApplicationContext<Context>().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS))
+        folder.listFiles()?.forEach { it.delete() }
+        fun rows(): Int = compose.onAllNodesWithTag("download-entry").fetchSemanticsNodes().size
+
+        // The list is beside History, behind the same button, and starts from nothing: the
+        // app's core lives as long as its process.
+        compose.onNodeWithTag("history").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("library-downloads").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("library-downloads").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("downloads-clear").fetchSemanticsNodes().isNotEmpty() }
+        if (rows() > 0) compose.onNodeWithTag("downloads-clear").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("downloads-nothing").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("downloads-nothing").assertTextContains("Files you download will be listed here.")
+        compose.onRoot().tryPerformAccessibilityChecks()
+        compose.onNodeWithTag("downloads-done").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("downloads-nothing").fetchSemanticsNodes().isEmpty() }
+
+        type(site.url("/downloads"))
+        awaitPage("Downloads")
+        awaitAddress(shown("/downloads"))
+
+        // A finger on the page's link. The system fetches the file, in its own time.
+        PageTouch.tap(checkNotNull(shownWebView()), "attachment")
+        val file = File(folder, "notes.txt")
+        compose.waitUntil(60_000) { file.isFile && file.length() == 26L }
+        assertEquals("Twelve notes, to be saved.", file.readText())
+        assertEquals("nothing else was written", listOf("notes.txt"), folder.listFiles().orEmpty().map { it.name })
+
+        // The page that offered it is still the page, and nothing failed.
+        assertEquals("Downloads", pageTitle())
+        awaitAddress(shown("/downloads"))
+        compose.onAllNodesWithTag("failed-page").assertCountEquals(0)
+
+        // Listed, once it is whole: with the button that takes it off the list, not the one
+        // that stops it.
+        compose.onNodeWithTag("history").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("library-downloads").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("library-downloads").performClick()
+        compose.waitUntil(30_000) { compose.onAllNodesWithTag("download-forget").fetchSemanticsNodes().isNotEmpty() }
+        assertEquals(1, rows())
+        val row = compose.onAllNodesWithTag("download-entry")[0]
+        row.assertTextContains("notes.txt")
+        row.assertTextContains("127.0.0.1", substring = true)
+        row.assertTextContains("26", substring = true)
+        compose.onAllNodesWithTag("download-stop").assertCountEquals(0)
+        compose.onRoot().tryPerformAccessibilityChecks()
+
+        // Off the list; the file stays.
+        compose.onNodeWithTag("download-forget").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("downloads-nothing").fetchSemanticsNodes().isNotEmpty() }
+        assertEquals("Twelve notes, to be saved.", file.readText())
+
+        // The switch goes back to History, where the page that offered the file was visited;
+        // and the system's Back closes the list.
+        compose.onNodeWithTag("library-history").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("history-search").fetchSemanticsNodes().isNotEmpty() }
+        scenario.onActivity { activity -> activity.onBackPressedDispatcher.onBackPressed() }
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("library-history").fetchSemanticsNodes().isEmpty() }
+        awaitPage("Downloads")
+        file.delete()
     }
 
     /**
