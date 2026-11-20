@@ -68,11 +68,15 @@ final class MenuTests: AppTestCase {
         func testTheMenuOfSelectedWordsOffersASearchWithTheEngineThePersonChose() {
             let app = launch(start: site.url("/words"))
             XCTAssertTrue(pageShows("Words", in: app), "the page of words loaded")
-            let word = app.webViews.staticTexts["tigers"]
-            XCTAssertTrue(word.waitForExistence(timeout: 30), "the page's word is there to select")
+            // The word is in a line of words: the line may be one thing to a test, or several.
+            let line = app.webViews.staticTexts.matching(NSPredicate(format: "label CONTAINS 'tigers' OR value CONTAINS 'tigers'"))
+                .firstMatch
+            XCTAssertTrue(line.waitForExistence(timeout: 30), "the page's word is there to select")
+            let said = value(of: line).isEmpty ? line.label : value(of: line)
+            let across = said.trimmingCharacters(in: .whitespaces) == "tigers" ? 0.5 : 0.35
 
             // A right-click on a word selects it, and opens the menu of selected words.
-            word.rightClick()
+            line.coordinate(withNormalizedOffset: CGVector(dx: across, dy: 0.5)).rightClick()
             // Fake mode takes the engine that stands in as chosen (020).
             XCTAssertTrue(app.menuItems["Search with DuckDuckGo"].waitForExistence(timeout: 30), "the shell's search, named for the engine")
             let webKits = NSPredicate(format: "identifier == 'WKMenuItemIdentifierSearchWeb'")
