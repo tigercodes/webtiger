@@ -248,6 +248,40 @@
         "</script>"
       ],
       "note": "Holds /asks in a frame from another origin (the same server by its other name, localhost), which asks at once and is allowed by the page to: says in its title what the frame said became of it. For who a permission request is reported to be from."
+    },
+    {
+      "path": "/says",
+      "title": "Says",
+      "body": [
+        "<p><button id=\"alert\" onclick=\"say('alert')\">says something</button></p>",
+        "<p><button id=\"confirm\" onclick=\"say('confirm')\">asks yes or no</button></p>",
+        "<p><button id=\"prompt\" onclick=\"say('prompt')\">asks for a word</button></p>",
+        "<p><a id=\"away\" href=\"/landed\">somewhere else</a></p>",
+        "<p id=\"said\">nothing said</p>",
+        "<script>",
+        "function tell(what) { document.getElementById('said').textContent = what; document.title = what; if (parent !== window) parent.postMessage(what, '*'); }",
+        "function say(what) {",
+        "  if (what === 'alert') { alert('Your basket is empty.'); tell('alert returned'); }",
+        "  else if (what === 'confirm') { tell('confirm ' + confirm('Delete it?')); }",
+        "  else { var got = prompt('Your name?', 'Ada'); tell(got === null ? 'prompt nothing' : 'prompt ' + got); }",
+        "}",
+        "if ('{query:hold|no}' === 'yes') addEventListener('beforeunload', function (leaving) { leaving.preventDefault(); leaving.returnValue = 'stay'; });",
+        "var now = '{query:now|nothing}'; if (now !== 'nothing') say(now);",
+        "</script>"
+      ],
+      "note": "Says something (alert), asks yes or no (confirm) or asks for a word (prompt), by a button or at once with ?now=, and says in its title what it got: 'alert returned', 'confirm true', 'prompt Ada', 'prompt nothing'. In a frame it tells its parent the same. With ?hold=yes it asks to keep the person when they leave. For what a page says or asks."
+    },
+    {
+      "path": "/says-in-a-frame",
+      "title": "Says in a frame",
+      "body": [
+        "<iframe id=\"frame\" width=\"320\" height=\"240\"></iframe>",
+        "<script>",
+        "addEventListener('message', function (said) { document.title = 'frame: ' + said.data; });",
+        "document.getElementById('frame').src = 'http://localhost:' + location.port + '/says?now={query:now|confirm}';",
+        "</script>"
+      ],
+      "note": "Holds /says in a frame from another origin (the same server by its other name, localhost), which asks at once: says in its title what the frame said it got. For who a page's dialog is reported to be from."
     }
   ],
   "not_found": {

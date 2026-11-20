@@ -6,6 +6,7 @@ import android.view.View
 import com.tigercodes.webtiger.core.NavigationVerdict
 import com.tigercodes.webtiger.core.RequestVerdict
 import com.tigercodes.webtiger.core.ResourceType
+import com.tigercodes.webtiger.core.v1.DialogKind
 import com.tigercodes.webtiger.core.v1.EngineEvent
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.core.v1.PermissionKind
@@ -65,6 +66,13 @@ internal interface PageHost {
 
     /** The page no longer waits for an answer to that request. */
     fun permissionWithdrawn(request: Long)
+
+    /**
+     * A page of the web view `webViewId` says `message`, or asks, from a frame at `url` (016).
+     * `answer` gives the page its answer, once the core has said: whether it was accepted, and
+     * for a prompt the text.
+     */
+    fun dialog(webViewId: Long, url: String, kind: DialogKind, message: String, defaultText: String, answer: (Boolean, String) -> Unit)
 }
 
 /** Makes pages. [WebViewPages] makes real ones. */

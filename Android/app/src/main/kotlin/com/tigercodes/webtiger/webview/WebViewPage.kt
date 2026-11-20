@@ -15,6 +15,8 @@ import android.os.Message
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.GeolocationPermissions
+import android.webkit.JsPromptResult
+import android.webkit.JsResult
 import android.webkit.PermissionRequest
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.SslErrorHandler
@@ -31,6 +33,7 @@ import com.tigercodes.webtiger.core.NavigationVerdict
 import com.tigercodes.webtiger.core.RequestVerdict
 import com.tigercodes.webtiger.core.ResourceType
 import com.tigercodes.webtiger.core.v1.CloseRequested
+import com.tigercodes.webtiger.core.v1.DialogKind
 import com.tigercodes.webtiger.core.v1.EngineEvent
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.core.v1.PermissionKind
@@ -369,6 +372,44 @@ internal class WebViewPage(
          */
         override fun onCloseWindow(window: WebView) {
             if (window === webView) host.report(EngineEvent(web_view_id = id, close_requested = CloseRequested()))
+        }
+
+        /**
+         * A page says something (016). The WebView would show a dialog of its own: it is told
+         * the app sees to it, and the page's script waits for the core's word.
+         */
+        override fun onJsAlert(view: WebView, url: String?, message: String?, result: JsResult): Boolean {
+            says(DialogKind.DIALOG_KIND_ALERT, url, message, "") { accepted, _ -> if (accepted) result.confirm() else result.cancel() }
+            return true
+        }
+
+        override fun onJsConfirm(view: WebView, url: String?, message: String?, result: JsResult): Boolean {
+            says(DialogKind.DIALOG_KIND_CONFIRM, url, message, "") { accepted, _ -> if (accepted) result.confirm() else result.cancel() }
+            return true
+        }
+
+        override fun onJsPrompt(view: WebView, url: String?, message: String?, defaultValue: String?, result: JsPromptResult): Boolean {
+            says(DialogKind.DIALOG_KIND_PROMPT, url, message, defaultValue.orEmpty()) { accepted, text -> if (accepted) result.confirm(text) else result.cancel() }
+            return true
+        }
+
+        /**
+         * A page asks to keep the person when they leave ("Leave site?"). It is never asked
+         * about (016 §2): the person leaves.
+         */
+        override fun onJsBeforeUnload(view: WebView, url: String?, message: String?, result: JsResult): Boolean {
+            result.confirm()
+            return true
+        }
+
+        private fun says(kind: DialogKind, url: String?, message: String?, defaultText: String, answer: (Boolean, String) -> Unit) {
+            host.dialog(id, url.orEmpty(), kind, message.orEmpty(), defaultText) { accepted, text ->
+                // A page that has gone meanwhile has nobody to tell.
+                try {
+                    answer(accepted, text)
+                } catch (_: RuntimeException) {
+                }
+            }
         }
 
         /**

@@ -243,6 +243,22 @@ enum TestSitePages {
             body: [.text("<!doctype html><title>Asks in a frame</title><h1>Asks in a frame</h1><iframe id=\"frame\" allow=\"camera; microphone; geolocation\" width=\"320\" height=\"240\"></iframe>\n<script>\naddEventListener('message', function (said) { document.title = 'frame: ' + said.data; });\ndocument.getElementById('frame').src = 'http://localhost:' + location.port + '/asks?now="), .query("now", or: "camera"), .text("';\n</script>")],
             delayMilliseconds: 0
         ),
+        TestSitePage(
+            path: "/says",
+            status: "200 OK",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("<!doctype html><title>Says</title><h1>Says</h1><p><button id=\"alert\" onclick=\"say('alert')\">says something</button></p>\n<p><button id=\"confirm\" onclick=\"say('confirm')\">asks yes or no</button></p>\n<p><button id=\"prompt\" onclick=\"say('prompt')\">asks for a word</button></p>\n<p><a id=\"away\" href=\"/landed\">somewhere else</a></p>\n<p id=\"said\">nothing said</p>\n<script>\nfunction tell(what) { document.getElementById('said').textContent = what; document.title = what; if (parent !== window) parent.postMessage(what, '*'); }\nfunction say(what) {\n  if (what === 'alert') { alert('Your basket is empty.'); tell('alert returned'); }\n  else if (what === 'confirm') { tell('confirm ' + confirm('Delete it?')); }\n  else { var got = prompt('Your name?', 'Ada'); tell(got === null ? 'prompt nothing' : 'prompt ' + got); }\n}\nif ('"), .query("hold", or: "no"), .text("' === 'yes') addEventListener('beforeunload', function (leaving) { leaving.preventDefault(); leaving.returnValue = 'stay'; });\nvar now = '"), .query("now", or: "nothing"), .text("'; if (now !== 'nothing') say(now);\n</script>")],
+            delayMilliseconds: 0
+        ),
+        TestSitePage(
+            path: "/says-in-a-frame",
+            status: "200 OK",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("<!doctype html><title>Says in a frame</title><h1>Says in a frame</h1><iframe id=\"frame\" width=\"320\" height=\"240\"></iframe>\n<script>\naddEventListener('message', function (said) { document.title = 'frame: ' + said.data; });\ndocument.getElementById('frame').src = 'http://localhost:' + location.port + '/says?now="), .query("now", or: "confirm"), .text("';\n</script>")],
+            delayMilliseconds: 0
+        ),
     ]
 
     /// What every other path is answered with.

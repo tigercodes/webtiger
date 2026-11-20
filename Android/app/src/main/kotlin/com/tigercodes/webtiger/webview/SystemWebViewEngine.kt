@@ -24,6 +24,7 @@ import com.tigercodes.webtiger.core.NavigationVerdict
 import com.tigercodes.webtiger.core.RequestVerdict
 import com.tigercodes.webtiger.core.ResourceType
 import com.tigercodes.webtiger.core.v1.Ack
+import com.tigercodes.webtiger.core.v1.DialogKind
 import com.tigercodes.webtiger.core.v1.EngineEvent
 import com.tigercodes.webtiger.core.v1.EngineInfo
 import com.tigercodes.webtiger.core.v1.EngineKind
@@ -67,6 +68,9 @@ class SystemWebViewEngine internal constructor(
 
     /** Downloads: what is being fetched for a page, and what waits for the core's word. */
     private val downloads = Downloads(fetcher) { event -> core?.report(event) }
+
+    /** What pages say or ask (016), while the core has not said how each is answered. */
+    private val dialogs = Dialogs { event -> core?.report(event) }
 
     /** A tick is on its way: asking after the downloads is not asked for twice. */
     private var ticking = false
@@ -113,6 +117,7 @@ class SystemWebViewEngine internal constructor(
         val start = request.download_start
         val cancel = request.download_cancel
         val permission = request.permission_answer
+        val dialog = request.dialog_answer
         val response =
             when {
                 // The core's word on a download this adapter reported (013).
@@ -131,6 +136,12 @@ class SystemWebViewEngine internal constructor(
                 // that no longer waits: its page went away.
                 permission != null -> {
                     permissions.answer(permission.request_id, permission.granted)
+                    done
+                }
+                // The core's word on what a page said or asked (016). Done, also for one
+                // that no longer waits.
+                dialog != null -> {
+                    dialogs.answer(dialog.request_id, dialog.accepted, dialog.text)
                     done
                 }
                 zoom != null -> {
@@ -158,6 +169,7 @@ class SystemWebViewEngine internal constructor(
                 destroy != null -> {
                     // What its page was asking goes with it: refused, while there is a page to tell.
                     permissions.dropped(destroy.web_view_id)
+                    dialogs.dropped(destroy.web_view_id)
                     pages.remove(destroy.web_view_id)?.close()
                     loginSets.remove(destroy.web_view_id)
                     done
@@ -266,6 +278,9 @@ class SystemWebViewEngine internal constructor(
             permissions.asked(webViewId, origin, kinds, answer)
 
         override fun permissionWithdrawn(request: Long) = permissions.withdrawn(request)
+
+        override fun dialog(webViewId: Long, url: String, kind: DialogKind, message: String, defaultText: String, answer: (Boolean, String) -> Unit) =
+            dialogs.asked(webViewId, url, kind, message, defaultText, answer)
 
         override fun download(webViewId: Long, offer: DownloadOffer) {
             // A download is its login set's: its cookies are what the fetch is given.
