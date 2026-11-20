@@ -121,4 +121,17 @@ class LinksTest {
             assertEquals(emptyList<String>(), page.saved)
             assertTrue(core.reports.isEmpty())
         }
+
+    @Test
+    fun aSearchForSelectedWordsIsReportedAsThePersonsDoing() =
+        runTest {
+            val page = aWebView(4)
+
+            page.host.searchFor(4, "tigers in the wild")
+
+            val asked = core.reports.single { it.search_requested != null }
+            assertEquals("of the web view whose page has the words", 4L, asked.web_view_id)
+            assertEquals("the words as they were selected: the core tidies them", "tigers in the wild", asked.search_requested?.text)
+            assertEquals("chosen from the bar for selected text: the person did it", true, asked.search_requested?.user_gesture)
+        }
 }

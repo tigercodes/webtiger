@@ -334,7 +334,7 @@ internal object TestSitePages {
                 status = "200 OK",
                 type = "text/html",
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
-                body = listOf(TestSitePiece.Text("<!doctype html><title>Links</title><h1>Links</h1><p><a id=\"words\" href=\"/landed\">a link in words</a></p>\n<p><a id=\"picture\" href=\"/landed?from=picture\"><img alt=\"a link that is a picture\" width=\"160\" height=\"80\" src=\"/pixel\" style=\"background: #888\"></a></p>\n<p id=\"plain\">words that are no link</p>\n<p><a id=\"letter\" href=\"mailto:ada@example.com\">a letter to write</a></p>")),
+                body = listOf(TestSitePiece.Text("<!doctype html><title>Links</title><h1>Links</h1><p><a id=\"words\" href=\"/landed\">a link in words</a></p>\n<p><a id=\"picture\" href=\"/landed?from=picture\"><img alt=\"a link that is a picture\" width=\"160\" height=\"80\" src=\"/pixel\" style=\"background: #888\"></a></p>\n<p>some <span id=\"plain\">words</span> that are no link</p>\n<p><a id=\"letter\" href=\"mailto:ada@example.com\">a letter to write</a></p>")),
                 delayMilliseconds = 0,
                 authorization = "",
             ),

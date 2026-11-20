@@ -133,6 +133,11 @@ internal abstract class AdapterTestCase {
         PageTouch.awaitShown(checkNotNull(webView(id)))
     }
 
+    /** Does something with the window the web views are shown in, on the main thread. Only once one has been shown. */
+    protected fun onStage(block: (ComponentActivity) -> Unit) {
+        checkNotNull(stage) { "no web view has been shown" }.onActivity(block)
+    }
+
     /** Taps an element of a web view's page with a finger, having put the web view on the screen. */
     protected fun tap(id: Long, element: String) {
         show(id)

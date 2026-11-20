@@ -326,10 +326,10 @@
       "body": [
         "<p><a id=\"words\" href=\"/landed\">a link in words</a></p>",
         "<p><a id=\"picture\" href=\"/landed?from=picture\"><img alt=\"a link that is a picture\" width=\"160\" height=\"80\" src=\"/pixel\" style=\"background: #888\"></a></p>",
-        "<p id=\"plain\">words that are no link</p>",
+        "<p>some <span id=\"plain\">words</span> that are no link</p>",
         "<p><a id=\"letter\" href=\"mailto:ada@example.com\">a letter to write</a></p>"
       ],
-      "note": "A link in words, a link that is a picture, words that are no link, and a link for the system. For a link's menu, and a link the person asks for in a new tab."
+      "note": "A link in words, a link that is a picture, words that are no link (one of them an element of its own, to press and hold), and a link for the system. For a link's menu, a link the person asks for in a new tab, and words that are selected."
     },
     {
       "path": "/tiger.svg",

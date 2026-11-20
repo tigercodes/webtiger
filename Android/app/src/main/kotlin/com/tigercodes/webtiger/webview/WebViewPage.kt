@@ -236,7 +236,10 @@ internal class WebViewPage(
         // Asked here as well as by the engine: no web view is ever made that would have to run
         // in the default profile, whatever became of the installed WebView in between.
         if (WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) {
-            val view = WebView(context)
+            // A search the WebView's own bar for selected text asks the system for is the
+            // person's wish to search, and the core's to answer (023): the context hears it,
+            // and no other app is started.
+            val view = WebView(SearchingContext(context) { words -> host.searchFor(id, words) })
             try {
                 // Before anything else is done with the web view, as the API requires: its pages
                 // run in the login set's profile (made here if it is new).

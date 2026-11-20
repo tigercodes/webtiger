@@ -105,6 +105,12 @@ internal interface PageHost {
     fun pressed(webViewId: Long, pressed: Pressed)
 
     /**
+     * The person chose, in the bar the WebView shows for selected text, to search for the words
+     * they selected in the page of the web view `webViewId` (023).
+     */
+    fun searchFor(webViewId: Long, words: String)
+
+    /**
      * A page of the web view `webViewId` asks for a file (019). `give` gives the engine what
      * was picked, once: the files' addresses, or null for none.
      */

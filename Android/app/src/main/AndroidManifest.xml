@@ -46,5 +46,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- For a search for words that are selected in a page (023). The WebView's bar for
+             selected text offers "Web search" only when it can see something that answers a
+             web search; this is the app's own answerer. It is not exported: no other app sees
+             it or can start it. It is never shown: the adapter hears the WebView's request and
+             tells the core, which searches with the engine the person chose
+             (webview/SearchingContext.kt). -->
+        <activity
+            android:name=".webview.SearchSelectionActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="android.intent.action.WEB_SEARCH" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
     </application>
 </manifest>

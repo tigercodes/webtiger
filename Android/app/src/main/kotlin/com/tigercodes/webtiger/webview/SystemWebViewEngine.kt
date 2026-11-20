@@ -36,6 +36,7 @@ import com.tigercodes.webtiger.core.v1.LinkOpenRequested
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.core.v1.NewWindowRequested
 import com.tigercodes.webtiger.core.v1.PermissionKind
+import com.tigercodes.webtiger.core.v1.SearchRequested
 import com.tigercodes.webtiger.core.v1.WebViewCommand
 import com.tigercodes.webtiger.core.v1.WebViewCreate
 import com.tigercodes.webtiger.core.v1.WebViewLoad
@@ -335,6 +336,12 @@ class SystemWebViewEngine internal constructor(
             signIns.asked(webViewId, host, realm, heading, again, answer)
 
         override fun files(webViewId: Long, asked: FilesAsked, give: (List<String>?) -> Unit) = files.choose(webViewId, asked, give)
+
+        override fun searchFor(webViewId: Long, words: String) {
+            // The core is told, as the person's doing: where the search goes, and whether a
+            // tab opens for it, are its to say.
+            core?.report(EngineEvent(web_view_id = webViewId, search_requested = SearchRequested(text = words, user_gesture = true)))
+        }
 
         override fun pressed(webViewId: Long, pressed: Pressed) {
             // A picture that is not of the web can be neither opened in a tab nor fetched; and
