@@ -9,6 +9,10 @@ import XCTest
 final class CatalogueSnapshotTests: XCTestCase {
     private static let tokensSize = CGSize(width: 480, height: 820)
     private static let windowSize = CGSize(width: 480, height: CatalogueWindow.height)
+    /// For the states of the window whose bar is taller than the window's usual picture, so
+    /// that all of it is seen.
+    private static let tallWindowSize = CGSize(width: 480, height: CatalogueWindow.height + 160)
+    private static let tallStates: Set<CatalogueState> = [.promptSignInAgain]
 
     private func verify(_ view: some View, size: CGSize, named name: String, file: StaticString = #filePath, line: UInt = #line) async {
         for dark in [false, true] {
@@ -33,7 +37,8 @@ final class CatalogueSnapshotTests: XCTestCase {
     func testEveryStateOfTheWindow() async throws {
         try skipWithoutPictures()
         for state in CatalogueState.allCases {
-            await verify(CatalogueWindow(state: state), size: Self.windowSize, named: "window-\(state.rawValue)")
+            let size = Self.tallStates.contains(state) ? Self.tallWindowSize : Self.windowSize
+            await verify(CatalogueWindow(state: state), size: size, named: "window-\(state.rawValue)")
         }
     }
 

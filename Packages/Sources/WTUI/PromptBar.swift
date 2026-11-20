@@ -17,6 +17,8 @@ public extension BrowserModel {
         case let .permission(permission): return PromptBar.wanted(permission).isEmpty ? nil : tab.prompt
         // What a page says or asks (016): a later contract's kind has no bar here.
         case let .dialog(dialog): return [.alert, .confirm, .prompt].contains(dialog.kind) ? tab.prompt : nil
+        // A server that asks who is there (017).
+        case .signIn: return tab.prompt
         default: return nil
         }
     }
@@ -25,8 +27,9 @@ public extension BrowserModel {
     /// remembered, and whether it came too soon after the prompt appeared to be the person's
     /// answer to it, are the core's: a refusal leaves the prompt where it is. For what a page
     /// says or asks (016), `text` is what a prompt's field held, and `silence` stops the
-    /// page's messages.
-    func answerPrompt(allow: Bool, text: String = "", silence: Bool = false) {
+    /// page's messages. For a server that asks who is there (017), `text` is the name and
+    /// `secret` the password: they are sent, and kept nowhere here.
+    func answerPrompt(allow: Bool, text: String = "", silence: Bool = false, secret: String = "") {
         guard let frontTabID, let prompt else { return }
         var answer = WTAnswerPrompt()
         answer.tabID = frontTabID
@@ -34,6 +37,7 @@ public extension BrowserModel {
         answer.allow = allow
         answer.text = text
         answer.silence = silence
+        answer.secret = secret
         send(.answerPrompt(answer))
     }
 }
@@ -42,17 +46,19 @@ public extension BrowserModel {
 /// press on one of the buttons is the only way.
 struct PromptBar: View {
     let prompt: WTPromptView
-    /// Allowed or not; and for what a page says or asks, a prompt's text and whether the
-    /// page's messages are to be stopped.
-    let answer: (Bool, String, Bool) -> Void
+    /// Allowed or not; for what a page says or asks, a prompt's text and whether the page's
+    /// messages are to be stopped; and for a server that asks who is there, the name as the
+    /// text, and last the password.
+    let answer: (Bool, String, Bool, String) -> Void
     @Environment(\.locale) private var locale
 
     var body: some View {
+        switch prompt.kind {
         // What a page says or asks has a bar of its own (016).
-        if case let .dialog(said)? = prompt.kind {
-            DialogBar(dialog: said, answer: answer)
-        } else {
-            asking
+        case let .dialog(said)?: DialogBar(dialog: said) { answer($0, $1, $2, "") }
+        // And so has a server that asks who is there (017).
+        case let .signIn(asked)?: SignInBar(signIn: asked) { answer($0, $1, false, $2) }
+        default: asking
         }
     }
 
@@ -94,7 +100,7 @@ struct PromptBar: View {
     @ViewBuilder private var buttons: some View {
         // Neutral, as every button with words is (F14).
         Button {
-            answer(false, "", false)
+            answer(false, "", false, "")
         } label: {
             Text("prompt.refuse", bundle: .module)
                 // On more lines where one is not enough, and never cut short.
@@ -105,7 +111,7 @@ struct PromptBar: View {
         .tint(.primary)
         .accessibilityIdentifier("prompt-refuse")
         Button {
-            answer(true, "", false)
+            answer(true, "", false, "")
         } label: {
             Text("prompt.allow", bundle: .module)
                 .fixedSize(horizontal: false, vertical: true)

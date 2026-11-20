@@ -25,6 +25,8 @@ enum CatalogueState: String, CaseIterable, Identifiable {
     case promptAlert = "prompt-alert"
     case promptConfirm = "prompt-confirm"
     case promptText = "prompt-text"
+    case promptSignIn = "prompt-sign-in"
+    case promptSignInAgain = "prompt-sign-in-again"
 
     var id: String {
         rawValue
@@ -50,6 +52,8 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         case .promptAlert: "catalogue.state.prompt_alert"
         case .promptConfirm: "catalogue.state.prompt_confirm"
         case .promptText: "catalogue.state.prompt_text"
+        case .promptSignIn: "catalogue.state.prompt_sign_in"
+        case .promptSignInAgain: "catalogue.state.prompt_sign_in_again"
         }
     }
 
@@ -162,6 +166,18 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         case .promptText:
             saying(&window, .prompt, "What should we call you?")
             window.tab.prompt.dialog.defaultText = "Ada"
+        case .promptSignIn:
+            // The load is on its way to a server that asks first: the page before it is
+            // still there.
+            page(&window, url: "https://example.com/", display: "example.com", security: .secure)
+            window.tab.prompt.promptID = 9
+            window.tab.prompt.signIn.site = "staff.example.com"
+            window.tab.prompt.signIn.confidential = true
+        case .promptSignInAgain:
+            page(&window, url: "http://printer.example.com/", display: "http://printer.example.com", security: .insecure)
+            window.tab.prompt.promptID = 9
+            window.tab.prompt.signIn.site = "http://printer.example.com"
+            window.tab.prompt.signIn.again = true
         }
         // The strip names every tab: the one in front, and for "several tabs" its neighbours,
         // one with a title, one still loading and known only by its site, one with no page.

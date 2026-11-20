@@ -226,4 +226,46 @@ final class FeatureTests: AppTestCase {
         XCTAssertTrue(pageShows("confirm false", in: app))
         XCTAssertFalse(app.buttons["prompt-ok"].exists)
     }
+
+    /// A server asks who is there (017), with the real core and WebKit: the tab asks for a
+    /// name and a password under the server's name; a wrong answer is said to be one and
+    /// asked for again; the right one loads the page.
+    func testAServerThatAsksWhoIsThereIsAnsweredInTheTab() {
+        let app = launch(start: site.url("/staff"))
+        func shownWords(_ identifier: String) -> String {
+            let text = app.staticTexts[identifier]
+            return text.label.isEmpty ? value(of: text) : text.label
+        }
+        // Types a name and a password, and signs in once the bar has been there long enough
+        // to be answered.
+        func signIn(_ name: String, _ password: String) {
+            let nameField = app.textFields["prompt-name"]
+            XCTAssertTrue(nameField.waitForExistence(timeout: 30), "the tab asks for a name")
+            press(nameField)
+            nameField.typeText(name)
+            let passwordField = app.secureTextFields["prompt-password"]
+            press(passwordField)
+            passwordField.typeText(password)
+            usleep(700_000)
+            press(app.buttons["prompt-sign-in"])
+        }
+
+        // The load waits: the tab asks under the name of the server that gets what is typed.
+        XCTAssertTrue(app.buttons["prompt-sign-in"].waitForExistence(timeout: 30), "the tab asks who is there")
+        XCTAssertTrue(shownWords("prompt-site").hasPrefix("Sign in to "), shownWords("prompt-site"))
+        // This device itself: nothing travels, and it is the first time of asking.
+        XCTAssertFalse(app.staticTexts["prompt-not-private"].exists)
+        XCTAssertFalse(app.staticTexts["prompt-again"].exists)
+        audit(app, "a server asks who is there")
+
+        // A wrong password: the server asks again, and the bar says so.
+        signIn("ada", "wrong")
+        XCTAssertTrue(app.staticTexts["prompt-again"].waitForExistence(timeout: 30), "said to be refused")
+        audit(app, "a server asks again")
+
+        // The right one: the page loads, and nothing more is asked.
+        signIn("ada", "lovelace")
+        XCTAssertTrue(pageShows("Staff only", in: app), "the page the server kept")
+        XCTAssertFalse(app.buttons["prompt-sign-in"].exists)
+    }
 }
