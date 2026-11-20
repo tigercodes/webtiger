@@ -332,6 +332,31 @@
       "note": "A link in words, a link that is a picture, words that are no link, and a link for the system. For a link's menu, and a link the person asks for in a new tab."
     },
     {
+      "path": "/tiger.svg",
+      "type": "image/svg+xml",
+      "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"160\" height=\"80\"><rect width=\"160\" height=\"80\" fill=\"#c60\"/></svg>",
+      "note": "A picture with a name of its own, big enough to press."
+    },
+    {
+      "path": "/pictures",
+      "title": "Pictures",
+      "body": [
+        "<p><img id=\"plain\" alt=\"a picture\" width=\"160\" height=\"80\" src=\"/tiger.svg\"></p>",
+        "<p><a id=\"linked\" href=\"/landed?from=picture\"><img alt=\"a picture that is a link\" width=\"160\" height=\"80\" src=\"/tiger.svg\"></a></p>",
+        "<p id=\"words\">words that are no picture</p>",
+        "<script>",
+        "if ('{query:menu|engine}' === 'own') {",
+        "  window.addEventListener('contextmenu', function (event) {",
+        "    event.preventDefault();",
+        "    event.stopImmediatePropagation();",
+        "    document.title = 'own menu';",
+        "  }, true);",
+        "}",
+        "</script>"
+      ],
+      "note": "A picture, a picture that is a link, and words. With ?menu=own the page takes the menu's event for itself, before anything else of the page can hear it: it keeps the engine's menu from opening, and says so in its title. For a picture's menu."
+    },
+    {
       "path": "/upload",
       "title": "Upload",
       "body": [
