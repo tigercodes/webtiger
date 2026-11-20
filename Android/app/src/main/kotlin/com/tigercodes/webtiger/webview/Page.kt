@@ -51,6 +51,9 @@ internal interface PageHost {
      * becomes of it is the core's to say. Null when none could be made.
      */
     fun newWindow(askingId: Long, userGesture: Boolean): Page?
+
+    /** The page of the web view `webViewId` offered something to be downloaded (013). */
+    fun download(webViewId: Long, offer: DownloadOffer)
 }
 
 /** Makes pages. [WebViewPages] makes real ones. */

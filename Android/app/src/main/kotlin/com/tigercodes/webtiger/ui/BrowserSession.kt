@@ -18,6 +18,7 @@ import com.tigercodes.webtiger.core.v1.Subscribe
 import com.tigercodes.webtiger.core.v1.TestMode
 import com.tigercodes.webtiger.core.v1.WindowSnapshot
 import com.tigercodes.webtiger.core.v1.WindowTopic
+import com.tigercodes.webtiger.webview.DownloadPlace
 import com.tigercodes.webtiger.webview.SystemWebViewEngine
 import java.io.File
 import java.util.Locale
@@ -109,7 +110,7 @@ class BrowserSession(val core: CoreClient, val engine: SystemWebViewEngine, inte
         /** Starts the Rust core for this process. Throws [CoreError] when it would not start. */
         fun live(context: Context, launch: LaunchOptions): BrowserSession {
             val application = context.applicationContext
-            val engine = SystemWebViewEngine(application)
+            val engine = SystemWebViewEngine(application, downloadPlace(launch))
             val config =
                 coreConfig(
                     launch = launch,
@@ -130,6 +131,12 @@ class BrowserSession(val core: CoreClient, val engine: SystemWebViewEngine, inte
          * What the core is started with. In fake mode the store is in memory, so no folder is
          * named, and every new window opens [LaunchOptions.fakeStart].
          */
+        /**
+         * Where the app's downloads go (013): the device's Downloads. In fake mode, the app's
+         * own folder: a UI suite writes nothing where a person's files are.
+         */
+        internal fun downloadPlace(launch: LaunchOptions): DownloadPlace = if (launch.fake) DownloadPlace.APP else DownloadPlace.DEVICE
+
         internal fun coreConfig(launch: LaunchOptions, locale: String, appVersion: String, engine: EngineInfo, dataDir: String): CoreConfig =
             CoreConfig(
                 platform = Platform.PLATFORM_ANDROID,

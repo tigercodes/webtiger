@@ -530,4 +530,29 @@ class PageTrackerTest {
         assertEquals(2, reported.count { it.find_result != null })
         assertEquals(2, reported.last { it.find_result != null }.find_result?.matches)
     }
+
+    @Test
+    fun aLoadThatBecameADownloadIsOverAndNoPageComesOfIt() {
+        val reported = ArrayList<EngineEvent>()
+        val tracker = PageTracker(7) { reported.add(it) }
+        tracker.willLoad("https://example.com/")
+        tracker.pageStarted("https://example.com/")
+        tracker.committed("https://example.com/", canGoBack = false, canGoForward = false)
+        tracker.pageFinished("https://example.com/")
+        val before = reported.size
+
+        // A link on the page leads to a file: the load begins, and becomes a download.
+        tracker.navigationAllowed("https://example.com/file.zip")
+        tracker.becameDownload("https://example.com/file.zip")
+
+        val after = reported.drop(before)
+        assertEquals("the load began, and stopped", 2, after.size)
+        assertEquals("https://example.com/file.zip", after[0].navigation_started?.url)
+        assertEquals("net.cancelled", after[1].navigation_failed?.code)
+        assertEquals("the page on screen is the page", "https://example.com/", tracker.pageUrl)
+
+        // A download with no load on its way (a link that says "download") ends nothing.
+        tracker.becameDownload("https://example.com/other.zip")
+        assertEquals(before + 2, reported.size)
+    }
 }

@@ -194,7 +194,7 @@ internal object TestSitePages {
                 status = "200 OK",
                 type = "text/html",
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
-                body = listOf(TestSitePiece.Text("<!doctype html><title>Downloads</title><h1>Downloads</h1><p><a id=\"attachment\" href=\"/notes\">a file that says it is to be saved</a></p>\n<p><a id=\"kind\" href=\"/data.bin\">a file of a kind nothing shows</a></p>\n<p><a id=\"says\" href=\"/landed\" download=\"kept page.html\">a link that says download</a></p>\n<p><a id=\"sneaky\" href=\"/sneaky\">a file whose name is a path</a></p>")),
+                body = listOf(TestSitePiece.Text("<!doctype html><title>Downloads</title><h1>Downloads</h1><p><a id=\"attachment\" href=\"/notes\">a file that says it is to be saved</a></p>\n<p><a id=\"kind\" href=\"/data.bin\">a file of a kind nothing shows</a></p>\n<p><a id=\"says\" href=\"/landed\" download=\"kept page.html\">a link that says download</a></p>\n<p><a id=\"sneaky\" href=\"/sneaky\">a file whose name is a path</a></p>\n<p><a id=\"whose\" href=\"/whose-file\">a file that says who is signed in</a></p>")),
                 delayMilliseconds = 0,
             ),
             TestSitePage(
@@ -219,6 +219,14 @@ internal object TestSitePages {
                 type = "text/plain",
                 headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store")), listOf(TestSitePiece.Text("Content-Disposition: attachment; filename=\"../../sneaky.txt\""))),
                 body = listOf(TestSitePiece.Text("This file's name tried to be a path.")),
+                delayMilliseconds = 0,
+            ),
+            TestSitePage(
+                path = "/whose-file",
+                status = "200 OK",
+                type = "text/plain",
+                headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store")), listOf(TestSitePiece.Text("Content-Disposition: attachment; filename=\"who.txt\""))),
+                body = listOf(TestSitePiece.Text("who="), TestSitePiece.Cookie("who", or = "none")),
                 delayMilliseconds = 0,
             ),
         )

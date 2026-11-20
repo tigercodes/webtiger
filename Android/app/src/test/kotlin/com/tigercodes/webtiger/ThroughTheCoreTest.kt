@@ -18,6 +18,7 @@ import com.tigercodes.webtiger.core.v1.TestMode
 import com.tigercodes.webtiger.ui.BrowserModel
 import com.tigercodes.webtiger.ui.BrowserSession
 import com.tigercodes.webtiger.ui.LaunchOptions
+import com.tigercodes.webtiger.webview.DownloadPlace
 import com.tigercodes.webtiger.webview.FakePage
 import com.tigercodes.webtiger.webview.FakePages
 import com.tigercodes.webtiger.webview.SystemWebViewEngine
@@ -99,6 +100,12 @@ class ThroughTheCoreTest {
         assertEquals(TestMode.TEST_MODE_LIVE, live.test_mode)
         assertNull(live.fake)
         assertEquals("/nowhere", live.data_dir)
+    }
+
+    @Test
+    fun onlyTheAppStartedForRealSavesWhereThePersonsFilesAre() {
+        assertEquals(DownloadPlace.DEVICE, BrowserSession.downloadPlace(LaunchOptions()))
+        assertEquals("fake mode saves in the app's own folder", DownloadPlace.APP, BrowserSession.downloadPlace(LaunchOptions(fake = true)))
     }
 
     @Test

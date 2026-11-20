@@ -22,6 +22,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.URLUtil
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.tigercodes.webtiger.core.NavigationVerdict
@@ -220,6 +221,24 @@ internal class WebViewPage(
         view.settings.textZoom = zoomPercent
         view.webViewClient = Client()
         view.webChromeClient = Chrome()
+        // The WebView does not download: it says one was asked for (013). What it was loading
+        // then comes to nothing, and the page stays. The name is what the site suggests, read
+        // as the platform reads it; the core makes the name the file is saved under.
+        view.setDownloadListener { url, userAgent, contentDisposition, mimeType, contentLength ->
+            if (view === webView && url != null) {
+                tracker.becameDownload(url)
+                host.download(
+                    id,
+                    DownloadOffer(
+                        url = url,
+                        userAgent = userAgent.orEmpty(),
+                        suggestedName = URLUtil.guessFileName(url, contentDisposition, mimeType),
+                        mimeType = mimeType.orEmpty(),
+                        length = contentLength,
+                    ),
+                )
+            }
+        }
         // What a find found, once the WebView has finished counting (010). A web view made
         // anew has found nothing.
         finding = ""

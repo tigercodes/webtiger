@@ -192,7 +192,7 @@ enum TestSitePages {
             status: "200 OK",
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
-            body: [.text("<!doctype html><title>Downloads</title><h1>Downloads</h1><p><a id=\"attachment\" href=\"/notes\">a file that says it is to be saved</a></p>\n<p><a id=\"kind\" href=\"/data.bin\">a file of a kind nothing shows</a></p>\n<p><a id=\"says\" href=\"/landed\" download=\"kept page.html\">a link that says download</a></p>\n<p><a id=\"sneaky\" href=\"/sneaky\">a file whose name is a path</a></p>")],
+            body: [.text("<!doctype html><title>Downloads</title><h1>Downloads</h1><p><a id=\"attachment\" href=\"/notes\">a file that says it is to be saved</a></p>\n<p><a id=\"kind\" href=\"/data.bin\">a file of a kind nothing shows</a></p>\n<p><a id=\"says\" href=\"/landed\" download=\"kept page.html\">a link that says download</a></p>\n<p><a id=\"sneaky\" href=\"/sneaky\">a file whose name is a path</a></p>\n<p><a id=\"whose\" href=\"/whose-file\">a file that says who is signed in</a></p>")],
             delayMilliseconds: 0
         ),
         TestSitePage(
@@ -217,6 +217,14 @@ enum TestSitePages {
             type: "text/plain",
             headers: [[.text("Cache-Control: no-store")], [.text("Content-Disposition: attachment; filename=\"../../sneaky.txt\"")]],
             body: [.text("This file's name tried to be a path.")],
+            delayMilliseconds: 0
+        ),
+        TestSitePage(
+            path: "/whose-file",
+            status: "200 OK",
+            type: "text/plain",
+            headers: [[.text("Cache-Control: no-store")], [.text("Content-Disposition: attachment; filename=\"who.txt\"")]],
+            body: [.text("who="), .cookie("who", or: "none")],
             delayMilliseconds: 0
         ),
     ]

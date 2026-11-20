@@ -11,6 +11,8 @@
 package com.tigercodes.webtiger.webview
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -39,9 +41,28 @@ import com.tigercodes.webtiger.core.v1.WebViewLoad
  * Answers the WebViews host service with the System WebView. Used on the main thread only, as
  * a WebView must be; the core's fast path is the one thing asked from other threads.
  */
-class SystemWebViewEngine internal constructor(private val factory: PageFactory) : HostServices {
-    /** An engine over this device's WebView. */
-    constructor(context: Context) : this(WebViewPages(context.applicationContext))
+class SystemWebViewEngine internal constructor(
+    private val factory: PageFactory,
+    fetcher: Fetcher = NoFetcher,
+    /** Runs something a moment later, on the main thread: how the downloads' progress is asked after. */
+    private val later: (() -> Unit) -> Unit = {},
+) : HostServices {
+    /**
+     * An engine over this device's WebView. Its downloads go to the app's own folder unless it
+     * is told the device's: only the app itself, started for real, saves where the person's own
+     * files are (013).
+     */
+    constructor(context: Context, downloads: DownloadPlace = DownloadPlace.APP) : this(
+        WebViewPages(context.applicationContext),
+        SystemFetcher(context.applicationContext, downloads),
+        Handler(Looper.getMainLooper()).let { main -> { tick: () -> Unit -> main.postDelayed(tick, DOWNLOAD_PACE_MS) } },
+    )
+
+    /** Downloads: what is being fetched for a page, and what waits for the core's word. */
+    private val downloads = Downloads(fetcher) { event -> core?.report(event) }
+
+    /** A tick is on its way: asking after the downloads is not asked for twice. */
+    private var ticking = false
 
     private val pages = HashMap<Long, Page>()
 
@@ -82,8 +103,22 @@ class SystemWebViewEngine internal constructor(private val factory: PageFactory)
         val destroy = request.web_view_destroy
         val find = request.web_view_find
         val zoom = request.web_view_set_zoom
+        val start = request.download_start
+        val cancel = request.download_cancel
         val response =
             when {
+                // The core's word on a download this adapter reported (013).
+                start != null ->
+                    if (downloads.start(start.download_id, start.file_name)) {
+                        watchDownloads()
+                        done
+                    } else {
+                        failure("download.unknown")
+                    }
+                cancel != null -> {
+                    downloads.cancel(cancel.download_id)
+                    done
+                }
                 zoom != null -> {
                     val page = pages[zoom.web_view_id]
                     if (page == null) {
@@ -210,9 +245,36 @@ class SystemWebViewEngine internal constructor(private val factory: PageFactory)
             core?.requestVerdict(url, sourceUrl, webViewId, resource) ?: RequestVerdict.ALLOW
 
         override fun newWindow(askingId: Long, userGesture: Boolean): Page? = this@SystemWebViewEngine.newWindow(askingId, userGesture)
+
+        override fun download(webViewId: Long, offer: DownloadOffer) {
+            // A download is its login set's: its cookies are what the fetch is given.
+            val loginSet = loginSets[webViewId] ?: return
+            downloads.offered(webViewId, loginSet, offer)
+        }
+    }
+
+    /**
+     * Asks how the downloads that are coming stand, and reports what changed. The engine asks
+     * by itself, a couple of times a second, for as long as one is coming.
+     */
+    fun pollDownloads() {
+        downloads.poll()
+    }
+
+    private fun watchDownloads() {
+        if (ticking || !downloads.isBusy) return
+        ticking = true
+        later {
+            ticking = false
+            pollDownloads()
+            watchDownloads()
+        }
     }
 
     companion object {
+        /** How long between two looks at the downloads that are coming. */
+        private const val DOWNLOAD_PACE_MS = 400L
+
         /**
          * The bit that marks a web view's id as the shell's own: the core's ids never have it
          * (`NewWindowRequested`, engine.proto). It is the sign bit of a Long, so these ids are

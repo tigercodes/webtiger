@@ -177,6 +177,10 @@ internal abstract class AdapterTestCase {
                 report.find_result != null -> "found(${report.find_result?.current} of ${report.find_result?.matches})"
                 report.close_requested != null -> "close"
                 report.outside_link_requested != null -> "outside"
+                report.download_requested != null -> "download"
+                report.download_progress != null -> "download-progress"
+                report.download_finished != null -> "downloaded"
+                report.download_failed != null -> "download-failed(${report.download_failed?.code})"
                 else -> null
             }
         }

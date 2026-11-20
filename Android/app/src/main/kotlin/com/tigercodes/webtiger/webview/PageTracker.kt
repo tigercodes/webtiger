@@ -128,6 +128,15 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
         if (loading) emit(EngineEvent(web_view_id = webViewId, navigation_started = NavigationStarted(url = heading.orEmpty())))
     }
 
+    /**
+     * `DownloadListener`: what the web view was going to became a download (013). No page comes
+     * of it: when it is the load that is on its way, that load is over, as one that stopped,
+     * and the page on screen stays.
+     */
+    fun becameDownload(url: String) {
+        if (loading && awaitingCommit && (heading == null || heading == url)) end(url)
+    }
+
     /** `onPageStarted`. */
     fun pageStarted(url: String) {
         // The engine announcing the load whose failure has been reported already.

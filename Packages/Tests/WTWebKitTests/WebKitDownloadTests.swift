@@ -179,6 +179,23 @@ final class WebKitDownloadTests: AdapterTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: above.path), "nothing is written outside the folder")
     }
 
+    func testADownloadIsFetchedAsItsLoginSet() async {
+        // Signed in, in this web view's login set; then a file that says who asked for it.
+        await create(1)
+        await load(1, site.url("/set?v=ada"))
+        await wait(1, "the cookie to be set") { self.finished($0) && self.hasTitle("Set")($0) }
+        await load(1, site.url("/downloads"))
+        await wait(1, "the page of links") { self.hasTitle("Downloads")($0) }
+
+        let name = await save(click("whose"), as: "who.txt")
+
+        XCTAssertEqual(saved(name), "who=ada", "WebKit fetches in the page's own session")
+        // Another login set's web view is nobody there.
+        await page(2)
+        let other = await save(click("whose", in: 2), as: "who.txt", in: 2)
+        XCTAssertEqual(saved(other), "who=none")
+    }
+
     func testAWordAboutADownloadThereIsNot() async {
         guard case let .error(error) = await start(99, as: "nothing.txt") else { return XCTFail("expected a refusal") }
         XCTAssertEqual(error.code, "download.unknown")

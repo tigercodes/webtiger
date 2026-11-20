@@ -178,7 +178,8 @@
         "<p><a id=\"attachment\" href=\"/notes\">a file that says it is to be saved</a></p>",
         "<p><a id=\"kind\" href=\"/data.bin\">a file of a kind nothing shows</a></p>",
         "<p><a id=\"says\" href=\"/landed\" download=\"kept page.html\">a link that says download</a></p>",
-        "<p><a id=\"sneaky\" href=\"/sneaky\">a file whose name is a path</a></p>"
+        "<p><a id=\"sneaky\" href=\"/sneaky\">a file whose name is a path</a></p>",
+        "<p><a id=\"whose\" href=\"/whose-file\">a file that says who is signed in</a></p>"
       ],
       "note": "Links that each start a download in a different way: for downloads."
     },
@@ -201,6 +202,13 @@
       "headers": ["Content-Disposition: attachment; filename=\"../../sneaky.txt\""],
       "content": "This file's name tried to be a path.",
       "note": "An attachment whose suggested name has folders in it."
+    },
+    {
+      "path": "/whose-file",
+      "type": "text/plain",
+      "headers": ["Content-Disposition: attachment; filename=\"who.txt\""],
+      "content": "who={cookie:who|none}",
+      "note": "An attachment that says who the cookie says is signed in: a download is fetched as its login set."
     }
   ],
   "not_found": {
