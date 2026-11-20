@@ -184,6 +184,11 @@
                 return XCTFail("expected what sites were allowed")
             }
             XCTAssertTrue(allowed.sites.isEmpty)
+            guard case let .searchSettings(search) = try await core.request(.querySearch(WTQuerySearch())) else {
+                return XCTFail("expected where searches go")
+            }
+            XCTAssertFalse(search.engines.isEmpty)
+            XCTAssertTrue(search.chosen, "fake mode has nobody to ask")
         }
 
         func testARefusalIsThrownWithItsCode() async throws {

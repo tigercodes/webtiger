@@ -6,6 +6,7 @@ pub mod clock;
 pub mod download;
 pub mod id;
 pub mod policy;
+mod search;
 pub mod uuid;
 pub mod zoom;
 
@@ -14,5 +15,6 @@ pub use clock::{Clock, ManualClock, SystemClock, Timestamp};
 pub use download::download_file_name;
 pub use id::{IdMint, LoginSetId, SpaceId, SubscriptionId, TabId, WebViewId, WindowId};
 pub use policy::{NavigationAction, check_navigation, opens_outside};
+pub use search::{SEARCH_ENGINES, STAND_IN_SEARCH_ENGINE, SearchEngine, search_engine};
 pub use uuid::Uuid;
 pub use zoom::{ACTUAL_SIZE, ZOOM_LEVELS, zoom_in, zoom_out};

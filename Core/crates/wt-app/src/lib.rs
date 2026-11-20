@@ -22,12 +22,10 @@ mod fence;
 mod host;
 mod model;
 mod permissions;
+mod search;
 mod signin;
 
-pub use app::{
-    App, AppFuture, AppOptions, DEFAULT_SEARCH_TEMPLATE, HISTORY_PAGE, OUTSIDE_LINK_INTERVAL,
-    SUGGESTIONS,
-};
+pub use app::{App, AppFuture, AppOptions, HISTORY_PAGE, OUTSIDE_LINK_INTERVAL, SUGGESTIONS};
 pub use dialogs::DIALOG_WORDS;
 pub use dispatch::{CORE_VERSION, Dispatcher, MAX_PING_PAYLOAD, Outbox, StartError};
 pub use downloads::{DOWNLOAD_INTERVAL, DOWNLOADS_PAGE};

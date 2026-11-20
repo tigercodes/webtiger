@@ -10,7 +10,7 @@
 
 /// WebTiger Core ↔ shell contract (docs/features/000-master-plan.md §5.5,
 /// docs/features/001-foundations.md §4).
-/// Contract version: 1.14 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
+/// Contract version: 1.15 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
 ///   1.1  Tabs: OpenTab, CloseTab, ActivateTab, TabOpened; WindowSnapshot.tabs.
 ///   1.2  A page that asks for a new window: NewWindowRequested, CloseRequested;
 ///        web view ids with their top bit set are the shell's.
@@ -334,6 +334,23 @@ public nonisolated struct WTRequest: Sendable {
     set {kind = .forgetPermissions(newValue)}
   }
 
+  /// Since 1.15
+  public var querySearch: WTQuerySearch {
+    get {
+      if case .querySearch(let v)? = kind {return v}
+      return WTQuerySearch()
+    }
+    set {kind = .querySearch(newValue)}
+  }
+
+  public var chooseSearchEngine: WTChooseSearchEngine {
+    get {
+      if case .chooseSearchEngine(let v)? = kind {return v}
+      return WTChooseSearchEngine()
+    }
+    set {kind = .chooseSearchEngine(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -368,6 +385,9 @@ public nonisolated struct WTRequest: Sendable {
     case answerPrompt(WTAnswerPrompt)
     case queryPermissions(WTQueryPermissions)
     case forgetPermissions(WTForgetPermissions)
+    /// Since 1.15
+    case querySearch(WTQuerySearch)
+    case chooseSearchEngine(WTChooseSearchEngine)
 
   }
 
@@ -467,6 +487,15 @@ public nonisolated struct WTResponse: Sendable {
     set {kind = .permissionsPage(newValue)}
   }
 
+  /// Since 1.15
+  public var searchSettings: WTSearchSettings {
+    get {
+      if case .searchSettings(let v)? = kind {return v}
+      return WTSearchSettings()
+    }
+    set {kind = .searchSettings(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -485,6 +514,8 @@ public nonisolated struct WTResponse: Sendable {
     case downloadsPage(WTDownloadsPage)
     /// Since 1.10
     case permissionsPage(WTPermissionsPage)
+    /// Since 1.15
+    case searchSettings(WTSearchSettings)
 
   }
 
@@ -845,7 +876,7 @@ nonisolated extension WTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Request"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0\u{3}open_tab\0\u{3}close_tab\0\u{3}activate_tab\0\u{3}query_history\0\u{3}forget_history\0\u{3}find_in_page\0\u{3}suggest_addresses\0\u{3}zoom_page\0\u{3}query_downloads\0\u{3}cancel_download\0\u{3}forget_downloads\0\u{3}answer_prompt\0\u{3}query_permissions\0\u{3}forget_permissions\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0\u{3}open_tab\0\u{3}close_tab\0\u{3}activate_tab\0\u{3}query_history\0\u{3}forget_history\0\u{3}find_in_page\0\u{3}suggest_addresses\0\u{3}zoom_page\0\u{3}query_downloads\0\u{3}cancel_download\0\u{3}forget_downloads\0\u{3}answer_prompt\0\u{3}query_permissions\0\u{3}forget_permissions\0\u{3}query_search\0\u{3}choose_search_engine\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1139,6 +1170,32 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
           self.kind = .forgetPermissions(v)
         }
       }()
+      case 23: try {
+        var v: WTQuerySearch?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .querySearch(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .querySearch(v)
+        }
+      }()
+      case 24: try {
+        var v: WTChooseSearchEngine?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .chooseSearchEngine(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .chooseSearchEngine(v)
+        }
+      }()
       default: break
       }
     }
@@ -1238,6 +1295,14 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       guard case .forgetPermissions(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 22)
     }()
+    case .querySearch?: try {
+      guard case .querySearch(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 23)
+    }()
+    case .chooseSearchEngine?: try {
+      guard case .chooseSearchEngine(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 24)
+    }()
     case nil: break
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -1252,7 +1317,7 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 nonisolated extension WTResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Response"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}error\0\u{1}ack\0\u{1}pong\0\u{1}subscribed\0\u{3}window_opened\0\u{3}tab_opened\0\u{3}history_page\0\u{3}address_suggestions\0\u{3}downloads_page\0\u{3}permissions_page\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}error\0\u{1}ack\0\u{1}pong\0\u{1}subscribed\0\u{3}window_opened\0\u{3}tab_opened\0\u{3}history_page\0\u{3}address_suggestions\0\u{3}downloads_page\0\u{3}permissions_page\0\u{3}search_settings\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1390,6 +1455,19 @@ nonisolated extension WTResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
           self.kind = .permissionsPage(v)
         }
       }()
+      case 11: try {
+        var v: WTSearchSettings?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .searchSettings(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .searchSettings(v)
+        }
+      }()
       default: break
       }
     }
@@ -1440,6 +1518,10 @@ nonisolated extension WTResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     case .permissionsPage?: try {
       guard case .permissionsPage(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
+    }()
+    case .searchSettings?: try {
+      guard case .searchSettings(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
     }()
     case nil: break
     }

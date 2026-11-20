@@ -56,6 +56,10 @@ message FakeOptions {
   // An address every new window's first tab opens (WEBTIGER_FAKE_START).
   // Empty: the tab starts empty.
   string start_address = 1 [(wt.redact) = true];
+  // Since 1.15. Nobody has chosen a search engine yet (020): the core says
+  // so, and a shell asks. Without it fake mode takes the engine that stands
+  // in as chosen: its store is in memory, and every run would be a first.
+  bool first_run = 2;
 }
 
 // One engine a shell offers.

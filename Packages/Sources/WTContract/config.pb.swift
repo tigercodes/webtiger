@@ -175,6 +175,11 @@ public nonisolated struct WTFakeOptions: Sendable {
   /// Empty: the tab starts empty.
   public var startAddress: String = String()
 
+  /// Since 1.15. Nobody has chosen a search engine yet (020): the core says
+  /// so, and a shell asks. Without it fake mode takes the engine that stands
+  /// in as chosen: its store is in memory, and every run would be a first.
+  public var firstRun: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -285,7 +290,7 @@ nonisolated extension WTCoreConfig: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".FakeOptions"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}start_address\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}start_address\0\u{3}first_run\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -294,6 +299,7 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.startAddress) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.firstRun) }()
       default: break
       }
     }
@@ -303,11 +309,15 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if !self.startAddress.isEmpty {
       try visitor.visitSingularStringField(value: self.startAddress, fieldNumber: 1)
     }
+    if self.firstRun != false {
+      try visitor.visitSingularBoolField(value: self.firstRun, fieldNumber: 2)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: WTFakeOptions, rhs: WTFakeOptions) -> Bool {
     if lhs.startAddress != rhs.startAddress {return false}
+    if lhs.firstRun != rhs.firstRun {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

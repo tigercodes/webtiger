@@ -26,6 +26,7 @@ import com.tigercodes.webtiger.core.v1.Platform
 import com.tigercodes.webtiger.core.v1.QueryDownloads
 import com.tigercodes.webtiger.core.v1.QueryHistory
 import com.tigercodes.webtiger.core.v1.QueryPermissions
+import com.tigercodes.webtiger.core.v1.QuerySearch
 import com.tigercodes.webtiger.core.v1.Request
 import com.tigercodes.webtiger.core.v1.SubmitAddress
 import com.tigercodes.webtiger.core.v1.SuggestAddresses
@@ -246,6 +247,10 @@ class NativeCoreTest {
             val permissions = core.request(Request(query_permissions = QueryPermissions(window_id = opened.window_id))).permissions_page
             assertNotNull("what sites were allowed is an answer, also when none was", permissions)
             assertTrue(permissions!!.sites.isEmpty())
+            val search = core.request(Request(query_search = QuerySearch())).search_settings
+            assertNotNull("where searches go is an answer", search)
+            assertTrue(search!!.engines.isNotEmpty())
+            assertTrue("fake mode has nobody to ask", search.chosen)
             assertNotNull(core.request(Request(close_tab = CloseTab(tab_id = tab.tab_id))).ack)
             assertNotNull(core.request(Request(forget_history = ForgetHistory(window_id = opened.window_id, everything = true))).ack)
         }

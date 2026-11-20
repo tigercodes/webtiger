@@ -1,6 +1,6 @@
 //! The app: what a shell's requests and reports do to the models.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet};
 use std::future::Future;
 use std::pin::Pin;
@@ -9,8 +9,8 @@ use std::time::Duration;
 
 use tokio::time::Instant;
 use wt_core::{
-    ACTUAL_SIZE, Address, Clock, Input, TabId, Timestamp, WebViewId, WindowId, classify,
-    opens_outside, search_address, zoom_in, zoom_out,
+    ACTUAL_SIZE, Address, Clock, Input, SearchEngine, TabId, Timestamp, WebViewId, WindowId,
+    classify, opens_outside, zoom_in, zoom_out,
 };
 use wt_proto::v1::{
     Ack, ActivateTab, AddressSuggestion, AddressSuggestions, CloseTab, CloseWindow, EngineEvent,
@@ -26,11 +26,6 @@ use crate::downloads::{Downloading, Wanted};
 use crate::error::AppError;
 use crate::host::{Host, HostFuture};
 use crate::model::{LoadTarget, State};
-
-/// The search a query loads until the first-run flow lets the user choose a
-/// provider (WT-D17, W1). Chosen for W0 because it needs no account and no
-/// agreement; it is a placeholder, not a default the product has decided on.
-pub const DEFAULT_SEARCH_TEMPLATE: &str = "https://duckduckgo.com/?q={query}";
 
 /// How many visits a page of history holds when the shell does not say
 /// (008).
@@ -56,8 +51,10 @@ pub type AppFuture = Pin<Box<dyn Future<Output = Result<response::Kind, AppError
 pub struct AppOptions {
     /// The engine new tabs use: the shell's first.
     pub engine: EngineKind,
-    /// A search provider's address with `{query}` for the words.
-    pub search_template: String,
+    /// Nobody is there to be asked where searches go (020): the engine that
+    /// stands in is taken as chosen. Fake mode, unless it asks for a first
+    /// run.
+    pub search_settled: bool,
     /// Fake mode: what every new window's first tab opens.
     pub fake_start: Option<String>,
     /// Where the app reads the time: a visit's (008).
@@ -72,7 +69,8 @@ pub struct AppOptions {
 pub struct App {
     pub(crate) state: Rc<RefCell<State>>,
     pub(crate) host: Rc<dyn Host>,
-    search_template: Rc<str>,
+    /// Where searches go (020), and whether the person chose it.
+    pub(crate) search: Rc<Cell<(&'static SearchEngine, bool)>>,
     fake_start: Option<Rc<str>>,
     /// When each web view last had an address handed to the system, for
     /// those that had one within [`OUTSIDE_LINK_INTERVAL`].
@@ -119,12 +117,14 @@ impl App {
         if store.borrow().any_download_coming().unwrap_or(false) {
             let _ = store.borrow_mut().interrupt_downloads(options.clock.now());
         }
+        // Where searches go (020): what the store has of a choice, if any.
+        let search = crate::search::kept(&store.borrow(), options.search_settled);
         App {
             space: space.id,
             written: Rc::new(RefCell::new(kept.clone().unwrap_or_default())),
             state: Rc::new(RefCell::new(State::new(space, options.engine, kept))),
             host,
-            search_template: options.search_template.into(),
+            search: Rc::new(Cell::new(search)),
             fake_start: options.fake_start.map(Into::into),
             outside: Rc::new(RefCell::new(BTreeMap::new())),
             store,
@@ -171,6 +171,8 @@ impl App {
             request::Kind::QueryPermissions(query) => answer(self.query_permissions(&query)),
             request::Kind::ForgetPermissions(forget) => answer(self.forget_permissions(&forget)),
             request::Kind::ForgetHistory(forget) => answer(self.forget_history(&forget)),
+            request::Kind::QuerySearch(_) => answer(Ok(self.search_settings())),
+            request::Kind::ChooseSearchEngine(choice) => answer(self.choose_search_engine(&choice)),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
             | request::Kind::Unsubscribe(_)
@@ -803,7 +805,7 @@ impl App {
     fn address_for(&self, text: &str) -> Option<Address> {
         match classify(text)? {
             Input::Address(address) => Some(address),
-            Input::Search(words) => search_address(&self.search_template, &words),
+            Input::Search(words) => self.search.get().0.search(&words),
         }
     }
 

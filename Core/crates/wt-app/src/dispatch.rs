@@ -22,7 +22,7 @@ use wt_proto::v1::{
 use wt_proto::{CONTRACT_MAJOR, CONTRACT_MINOR};
 use wt_store::Store;
 
-use crate::app::{App, AppFuture, AppOptions, DEFAULT_SEARCH_TEMPLATE};
+use crate::app::{App, AppFuture, AppOptions};
 use crate::error::AppError;
 use crate::fence::CatchUnwind;
 use crate::host::{HOST_TIMEOUT, Host as _, HostBridge};
@@ -151,7 +151,13 @@ impl Dispatcher {
         let bridge = Rc::new(HostBridge::new(Rc::clone(&outbox), host_timeout));
         let options = AppOptions {
             engine,
-            search_template: DEFAULT_SEARCH_TEMPLATE.to_owned(),
+            // In fake mode nobody is there to be asked where searches go,
+            // unless the run is to be a first run (020).
+            search_settled: fake
+                && !config
+                    .fake
+                    .as_ref()
+                    .is_some_and(|options| options.first_run),
             fake_start: config
                 .fake
                 .as_ref()

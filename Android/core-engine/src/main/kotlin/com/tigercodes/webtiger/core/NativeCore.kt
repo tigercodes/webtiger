@@ -181,7 +181,7 @@ class NativeCore private constructor(
     companion object {
         /** The contract this shell was built with (`WT_CONTRACT_*` in webtiger_core.h). */
         const val CONTRACT_MAJOR = 1
-        const val CONTRACT_MINOR = 14
+        const val CONTRACT_MINOR = 15
 
         /**
          * Starts the core. [config] needs no contract version: it is filled in here. Host
@@ -280,4 +280,4 @@ private class Receiver : EnvelopeListener {
  * then a page of history, came back as "response.empty" (found by the History list, on a
  * device).
  */
-private fun Response.hasKind(): Boolean = listOf(ack, pong, subscribed, window_opened, tab_opened, history_page, address_suggestions, downloads_page, permissions_page).any { it != null }
+private fun Response.hasKind(): Boolean = listOf(ack, pong, subscribed, window_opened, tab_opened, history_page, address_suggestions, downloads_page, permissions_page, search_settings).any { it != null }

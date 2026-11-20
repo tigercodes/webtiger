@@ -815,6 +815,45 @@ pub mod forget_permissions {
         Everything(bool),
     }
 }
+/// Asks where searches go (020): the engines the core knows, and the one in
+/// use. Answered with SearchSettings.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct QuerySearch {}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SearchSettings {
+    /// The engines a person chooses among, in the order they are listed.
+    #[prost(message, repeated, tag = "1")]
+    pub engines: ::prost::alloc::vec::Vec<SearchEngine>,
+    /// Where searches go now: one of `engines`.
+    #[prost(string, tag = "2")]
+    pub chosen_id: ::prost::alloc::string::String,
+    /// The person chose it. False: nobody has been asked yet, and searches go
+    /// to the engine that stands in until somebody is. A shell that is told
+    /// so asks before anything else.
+    #[prost(bool, tag = "3")]
+    pub chosen: bool,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SearchEngine {
+    /// The core's name for it: what a choice names it by.
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Its own name, which is not translated.
+    #[prost(string, tag = "2")]
+    pub name: ::prost::alloc::string::String,
+    /// Where searches are sent, for a shell to show under the name.
+    #[prost(string, tag = "3")]
+    pub host: ::prost::alloc::string::String,
+}
+/// The person's choice of where searches go (020): one of the engines in
+/// SearchSettings. It is the whole app's, and holds until another is chosen.
+/// Answered with Ack, or "search.unknown_engine" for a name the core does
+/// not have, which changes nothing.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ChooseSearchEngine {
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum LoadState {
@@ -952,6 +991,11 @@ pub struct FakeOptions {
     /// Empty: the tab starts empty.
     #[prost(string, tag = "1")]
     pub start_address: ::prost::alloc::string::String,
+    /// Since 1.15. Nobody has chosen a search engine yet (020): the core says
+    /// so, and a shell asks. Without it fake mode takes the engine that stands
+    /// in as chosen: its store is in memory, and every run would be a first.
+    #[prost(bool, tag = "2")]
+    pub first_run: bool,
 }
 /// One engine a shell offers.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -1646,7 +1690,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -1707,12 +1751,17 @@ pub mod request {
         QueryPermissions(super::QueryPermissions),
         #[prost(message, tag = "22")]
         ForgetPermissions(super::ForgetPermissions),
+        /// Since 1.15
+        #[prost(message, tag = "23")]
+        QuerySearch(super::QuerySearch),
+        #[prost(message, tag = "24")]
+        ChooseSearchEngine(super::ChooseSearchEngine),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Response {
-    #[prost(oneof = "response::Kind", tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10")]
+    #[prost(oneof = "response::Kind", tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11")]
     pub kind: ::core::option::Option<response::Kind>,
 }
 /// Nested message and enum types in `Response`.
@@ -1744,6 +1793,9 @@ pub mod response {
         /// Since 1.10
         #[prost(message, tag = "10")]
         PermissionsPage(super::PermissionsPage),
+        /// Since 1.15
+        #[prost(message, tag = "11")]
+        SearchSettings(super::SearchSettings),
     }
 }
 /// Core → shell, unasked.

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Designed. Nothing is built yet: searches go to one engine that nobody chose (001 F3, "a placeholder, not a product decision") |
+| **Status** | In progress: the store's table, the contract (1.15) and the core's rule (§3) are built and tested. No shell asks yet (§9): searches go to the engine that stands in (001 F3) |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "the first-run flow". Of the first run's four choices (000 §6.3) this is the one that W1 can make: importing and the style need W2's Spaces, and the default browser is the system's to set |
 | **Contract** | 1.15: `QuerySearch`, `SearchSettings`, `ChooseSearchEngine`; `FakeOptions.first_run` |
 | **Builds on** | [001](001-foundations.md): typed text is an address or a search. The store |
@@ -81,8 +81,9 @@ A table of the app's own settings, each a name and a value: `setting(key, value)
 
 | Where | What |
 |---|---|
-| Store | The migration; a setting written is read back, and replaced; one that was never written |
-| Core (through `FakeShell`) | The rule of §3, each part of it, and each checked by breaking it: the list and its order; where searches go before a choice and after; that the choice is kept when the app starts again; a name the list does not have; fake mode and its first run |
+| Store (`wt-store`, 3) | A setting written is read back, and replaced, and is not another's; it is still there when the store is opened again; a store from before settings gains them and keeps what it had |
+| The list (`wt-core`, 3) | It is in the order of the names and names each engine once; every engine makes an address over `https` with the words in it, written so that they stay words; the engine that stands in is one of the list, and an engine is found by its id as written |
+| Core (`wt-app/tests/search_engine.rs`, 7 through `FakeShell`) | The engines are listed by name, with where each sends a search. Nobody has chosen at a first run, and fake mode takes the stand-in as chosen. Searches go to the stand-in until somebody chooses and then to the choice, in every tab, and another can be chosen after. A name the core does not have is refused and changes nothing. An address is loaded as before whatever was chosen. The choice is kept when the app starts again, and nobody is asked twice. A choice the list no longer has is no choice. Fourteen parts of the rule checked by breaking them |
 | The shells | Against a scripted core: the question, what it lists, what a press sends; the empty tab's line. Pictures. In the apps, started as for a first run: the question is there before anything else, an engine is chosen, and the empty tab says so. No test searches: a search goes to the internet |
 
 ## 8. Decisions
@@ -101,9 +102,9 @@ A table of the app's own settings, each a name and a value: `setting(key, value)
 
 ## 10. Done checklist
 
-- [ ] The store's table, and its migration.
-- [ ] Contract 1.15 and its version in every place it is written.
-- [ ] The core: the rule of §3, through `FakeShell`.
+- [x] The store's table, and its migration (7).
+- [x] Contract 1.15 and its version in every place it is written.
+- [x] The core: the rule of §3. 7 tests through `FakeShell`, 3 of the list's own.
 - [ ] Android: the question; the empty tab's line; pictures; a device test.
 - [ ] Apple: the question; the empty tab's line; pictures; UI tests.
 - [ ] `Tools/test.sh all` green, and `android-device`.

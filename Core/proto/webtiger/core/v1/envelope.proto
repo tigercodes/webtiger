@@ -1,6 +1,6 @@
 // WebTiger Core ↔ shell contract (docs/features/000-master-plan.md §5.5,
 // docs/features/001-foundations.md §4).
-// Contract version: 1.14 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
+// Contract version: 1.15 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
 //   1.1  Tabs: OpenTab, CloseTab, ActivateTab, TabOpened; WindowSnapshot.tabs.
 //   1.2  A page that asks for a new window: NewWindowRequested, CloseRequested;
 //        web view ids with their top bit set are the shell's.
@@ -108,6 +108,9 @@ message Request {
     AnswerPrompt answer_prompt = 20;
     QueryPermissions query_permissions = 21;
     ForgetPermissions forget_permissions = 22;
+    // Since 1.15
+    QuerySearch query_search = 23;
+    ChooseSearchEngine choose_search_engine = 24;
   }
 }
 
@@ -129,6 +132,8 @@ message Response {
     DownloadsPage downloads_page = 9;
     // Since 1.10
     PermissionsPage permissions_page = 10;
+    // Since 1.15
+    SearchSettings search_settings = 11;
   }
 }
 
