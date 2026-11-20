@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress: the store's record of what was allowed (§5), the contract (1.10) and the core (§3) are built and tested. No shell draws the prompt yet (§11): on Android a page that asks waits, and on Apple it is not reported. The System WebView adapter reports a page asking and answers it as the core says, run on an emulator (§6). The design is to be read before the rest is built: §9 lists what it decides, and §10 what cannot be tested here and why |
+| **Status** | In progress: the store's record of what was allowed (§5), the contract (1.10) and the core (§3) are built and tested. The Android shell draws the prompt and answers it, and its window asks the system for the app's own permission (§7). Not yet: the list of what was allowed, in any shell, and all of Apple's part (§11). The System WebView adapter reports a page asking and answers it as the core says, run on an emulator (§6). The design is to be read before the rest is built: §9 lists what it decides, and §10 what cannot be tested here and why |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "permission prompts". Site permissions per login set (000 §5.6, `wt-permissions`) in their first form, and the first of a tab's prompts |
 | **Contract** | 1.10: `PermissionRequested`, `PermissionWithdrawn`; the host request `PermissionAnswer`; `TabView.prompt`; `AnswerPrompt`; `QueryPermissions`, `ForgetPermissions` |
 | **Last updated** | 2026-11-19 |
@@ -182,7 +182,7 @@ It is not `site_setting` (012), whose rows are one to a site: these are several 
 - A request that names anything the contract has no kind for (protected media, MIDI) is refused whole, there and then: there is nothing to report it as.
 - A web view that is destroyed refuses what its pages were asking, before it is closed.
 - The manifest names the camera, the microphone (and the WebView's own audio settings) and the location, fine and coarse; none is held until the system has asked the person, and no part of a device is required.
-- **Not yet**: the app's window gives the adapter no way to ask the system. It comes with the bar, where it can be seen to work.
+- **The app's window is how the system is asked**: the activity gives `AppPermissions` the way to raise the system's dialog, and takes it back when it goes. Not in fake mode, whose session has nothing to ask with.
 
 ## 7. The shells
 
@@ -190,6 +190,15 @@ It is not `site_setting` (012), whose rows are one to a site: these are several 
 
 - The site is named as the address field names it, by the core. The bar shows nothing the page wrote.
 - Neither button is the default for Return, and the bar does not take the keyboard from the page or the field by appearing: a key meant for the page must not answer for the person.
+
+**As built on Android** (`PromptBar` in the window; `BrowserModel.prompt` and `answerPrompt`):
+
+- The bar is under the toolbar, above the find and zoom bars, in the colour of the address field: the sentence on a line of its own, wrapped when it is long, and the two buttons under it at the end.
+- The sentence is one pattern, "*site* wants to use *what*", where what a page wants is each kind's own words ("your camera") joined as the person's language joins a list. So every combination the contract allows has words, and a language can make each kind agree with its own grammar.
+- A screen reader is told when the bar appears: a page that waits says nothing by itself.
+- Neither button has the keyboard, and the bar takes it from nothing.
+- A prompt this build has no words for (a later contract's kind, or one that names nothing it knows) is not put before a person as two buttons and no question: its page waits.
+- The half second is the core's (§3): a press that comes too soon is refused there, and the bar stays. The buttons are not drawn as "not yet ready"; a person who presses at once presses again.
 
 **What was allowed** is a third list in the sheet behind the History button, beside History and Downloads (013): each site with what it may use, and a button to take that back; one button takes all back. The Library (W3) will be its home, and a site's own sheet at the padlock a nearer one (§2).
 
@@ -203,10 +212,13 @@ It is not `site_setting` (012), whose rows are one to a site: these are several 
 | WebKit adapter | At the seam between the adapter and WebKit, with no web view: a request is reported with an id of its own, who asks and for what, and waits; the core's word answers it; an engine a test makes says no to the page whatever the core said; a web view that is destroyed refuses what waited with it. Not run against WebKit on this machine (§10) |
 | System WebView adapter, on the JVM | `PermissionsTest` (9), through the engine with a system that says what the test tells it: a page that asks is reported with who asks and for what, and waits, with the system asked nothing; each request has a name of the shell's own, never given again; a request the core refuses is refused, and the system is not asked; one it grants is granted when the app holds what the system wants; what the app does not hold the system is asked for, and its answer is the page's ("the site was allowed; the device was not"); a request the page withdraws is reported and never answered; a web view that is destroyed refuses what its pages asked, and not another's; a word about a request there is not; a request is answered once. `AppPermissionsTest` (4): what the app holds, and that rough location is location; with no window to ask from nobody is asked; the system is asked for what a kind needs and the answer is what the app then holds; one question at a time, and not again for what was granted meanwhile. Eleven of the rules checked by breaking them |
 | System WebView adapter suite (`SystemWebViewPermissionTest`, 10, on the emulator) | With a finger on each of the test site's buttons. The camera: reported with the page's origin and a name of the shell's, the page waits, and told no its promise fails as not allowed, with the system asked nothing. The microphone, and both together, are reported as what they are. Granted, with the system's permission given to the test without a dialog: the page gets one track from the emulator's camera, and two for camera and microphone. A site the core allows is refused when the system refuses the app. Where the device is: reported, the page waits, refused; granted, the page is not refused. A page asks again each time. A frame from another origin is reported as itself. A web view destroyed while its page asks. A word about a request there is not |
-| The shells' models and bars | Against `ScriptedCore`: the bar is there when the snapshot has a prompt and gone when it has not; each button sends its answer with the prompt's id; the words for each kind and for camera and microphone together; Return answers nothing. Pictures of the bar, light and dark. The list of what was allowed: its model, drawn, and pictures |
-| The apps | In fake mode, with the real core and engine: a page asks; the bar names the site; "Don't Allow" and the page says it was refused; asked again, the bar does not come back. On Android also "Allow", with the permission given to the test |
+| The Android bar (`PromptTest`, 5, drawn on the JVM against `ScriptedCore`) | The bar is there while the snapshot has a prompt and gone when it has not; the sentence for each kind, for two and for three, and with a site that is not over `https` named as the core names it; each button sends its answer for the prompt that is shown, by the prompt's own id, and the bar stays until the core says the prompt is gone; no button has the keyboard; a prompt this build has no words for is not shown, and nothing is sent for it. When the system may be asked (1 more in `ThroughTheCoreTest`): not in fake mode. Pictures of the bar in the window, light and dark. Four of the rules checked by breaking them |
+| The Android app, with the real core and engine | On the emulator, in fake mode, with the system's permission given to the test without a dialog: a finger on the page's button, and the bar names the site while the page waits; Android's accessibility checks over the bar; "Don't Allow", and the page is refused; the same page asks again and is refused with no bar; loaded again it may ask, and "Allow" gives it one track from the emulator's camera; the next page of the site has the camera at once, with nobody asked |
+| The Apple bar, and the lists | As above, when built |
 
 A page of the test site asks for each thing by a button, and writes what became of it where a test can read it.
+
+**By hand, once** (2026-11-19, the emulator, the app started for real and not in fake mode, a page served from the Mac and reached as the emulator's own loopback): the page asked for the camera; the bar named it; "Allow" brought up the system's own dialog ("Allow WebTiger to take pictures and record video?"); answered "While using the app", the page had one track, and the system's camera mark was lit. Loaded again, the page had the camera at once, with neither the bar nor the dialog. The app was then removed from the emulator.
 
 ## 9. Decisions
 
@@ -226,7 +238,7 @@ A page of the test site asks for each thing by a button, and writes what became 
 - **A capture that starts, on Apple.** Granting one makes the system ask, with its own dialog, whether the app may use the camera: no test may raise it, and nobody is at this Mac to answer it. That WebKit starts the capture on "granted", and that the system then asks, will be written and not seen until a person runs the app.
 - **Apple, on a machine with no camera or microphone**: WebKit does not ask at all there, and that is every iPhone simulator, GitHub's Macs, and the Mac this is built on (the system lists no camera and no audio input). So WebKit's asking for a camera or a microphone is not run against the engine here at all, not even to be told no: the adapter is tested at its seam.
 - **Location on Apple, against the engine.** It could be asked for here. Whether WebKit, asked for a location and told no, leaves the system's own location dialog alone is not known, and finding out by trying could raise it on this Mac's screen. It is not tried until its owner says to; until then, the seam.
-- **The system's dialog on Android**: asked through a seam that the tests replace. Its real form is run only by a person.
+- **The system's dialog on Android**: asked through a seam that the tests replace. Its real form was seen once, by hand, answered yes (§8). Answered no, and "Only this time", were not tried; nor was a second question waiting behind one that is up, outside the JVM's test of it.
 - **A phone.** Android's part runs on an emulator, with an emulated camera.
 
 ## 11. Done checklist
@@ -237,6 +249,7 @@ A page of the test site asks for each thing by a button, and writes what became 
 - [x] The test site's pages: one that asks by its buttons, and one that holds it in a frame from another origin.
 - [ ] Apple: the adapter and its suite; the reasons in `Info.plist`; the bar, its model's tests and pictures; the list; a UI test.
 - [x] Android: the adapter, and the system's permission behind a seam, on the JVM (13) and the device (10).
-- [ ] Android: the window's way to ask the system; the bar; the list; pictures; a device test.
+- [x] Android: the window's way to ask the system; the bar and its tests (5); pictures; a device test of the app.
+- [ ] Android: the list of what was allowed.
 - [ ] `Tools/test.sh all` green, and `android-device`.
 - [ ] Windows shell.

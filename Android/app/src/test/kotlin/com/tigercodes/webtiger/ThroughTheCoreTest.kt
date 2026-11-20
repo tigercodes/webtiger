@@ -103,6 +103,14 @@ class ThroughTheCoreTest {
     }
 
     @Test
+    fun onlyTheAppStartedForRealMayHaveTheSystemAskThePerson() {
+        assertEquals(true, BrowserSession.mayAskTheSystem(LaunchOptions()))
+        assertEquals("fake mode brings no dialog of the system's up", false, BrowserSession.mayAskTheSystem(LaunchOptions(fake = true)))
+        // And a session nobody gave the app's permissions has no way to ask.
+        assertNull(session().systemPermissions)
+    }
+
+    @Test
     fun onlyTheAppStartedForRealSavesWhereThePersonsFilesAre() {
         assertEquals(DownloadPlace.DEVICE, BrowserSession.downloadPlace(LaunchOptions()))
         assertEquals("fake mode saves in the app's own folder", DownloadPlace.APP, BrowserSession.downloadPlace(LaunchOptions(fake = true)))

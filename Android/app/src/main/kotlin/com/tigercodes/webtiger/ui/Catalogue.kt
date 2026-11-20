@@ -54,20 +54,23 @@ import com.tigercodes.webtiger.core.ScriptedCore
 import com.tigercodes.webtiger.core.v1.Ack
 import com.tigercodes.webtiger.core.v1.AddressSuggestion
 import com.tigercodes.webtiger.core.v1.AddressView
-import com.tigercodes.webtiger.core.v1.LoadState
-import com.tigercodes.webtiger.core.v1.Response
+import com.tigercodes.webtiger.core.v1.DownloadEntry
+import com.tigercodes.webtiger.core.v1.DownloadState
+import com.tigercodes.webtiger.core.v1.DownloadsPage
 import com.tigercodes.webtiger.core.v1.FindView
 import com.tigercodes.webtiger.core.v1.HistoryEntry
 import com.tigercodes.webtiger.core.v1.HistoryPage
+import com.tigercodes.webtiger.core.v1.LoadState
+import com.tigercodes.webtiger.core.v1.PermissionKind
+import com.tigercodes.webtiger.core.v1.PermissionPrompt
+import com.tigercodes.webtiger.core.v1.PromptView
+import com.tigercodes.webtiger.core.v1.Response
 import com.tigercodes.webtiger.core.v1.Subscribed
 import com.tigercodes.webtiger.core.v1.TabSummary
 import com.tigercodes.webtiger.core.v1.TabView
 import com.tigercodes.webtiger.core.v1.WindowOpened
 import com.tigercodes.webtiger.core.v1.WindowSnapshot
 import com.tigercodes.webtiger.core.v1.ZoomView
-import com.tigercodes.webtiger.core.v1.DownloadEntry
-import com.tigercodes.webtiger.core.v1.DownloadState
-import com.tigercodes.webtiger.core.v1.DownloadsPage
 import com.tigercodes.webtiger.design.Tokens
 import com.tigercodes.webtiger.webview.SystemWebViewEngine
 import java.time.ZoneOffset
@@ -88,6 +91,7 @@ internal enum class CatalogueState(@StringRes val title: Int) {
     FIND_NONE(R.string.catalogue_state_find_none),
     SUGGESTIONS(R.string.catalogue_state_suggestions),
     ZOOM(R.string.catalogue_state_zoom),
+    PROMPT(R.string.catalogue_state_prompt),
     ;
 
     /** The window's zoom bar is open in this state. */
@@ -150,6 +154,18 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                     FIND_NONE -> page("https://example.com/", "example.com").copy(find = FindView(text = "zebra", answered = true))
                     SUGGESTIONS -> page("https://example.org/", "example.org")
                     ZOOM -> page("https://example.com/", "example.com").copy(zoom = ZoomView(percent = 125, can_zoom_in = true, can_zoom_out = true))
+                    PROMPT ->
+                        page("https://meet.example.com/", "meet.example.com").copy(
+                            prompt =
+                                PromptView(
+                                    prompt_id = 9,
+                                    permission =
+                                        PermissionPrompt(
+                                            site = "meet.example.com",
+                                            kinds = listOf(PermissionKind.PERMISSION_KIND_CAMERA, PermissionKind.PERMISSION_KIND_MICROPHONE),
+                                        ),
+                                ),
+                        )
                 }
             // The strip names every tab: the one in front, and for "several tabs" its neighbours,
             // one with a title, one still loading and known only by its site, one with no page.

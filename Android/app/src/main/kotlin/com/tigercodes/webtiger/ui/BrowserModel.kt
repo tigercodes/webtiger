@@ -8,11 +8,13 @@ import com.tigercodes.webtiger.core.CoreError
 import com.tigercodes.webtiger.core.v1.ActivateTab
 import com.tigercodes.webtiger.core.v1.AddressSuggestion
 import com.tigercodes.webtiger.core.v1.AddressView
+import com.tigercodes.webtiger.core.v1.AnswerPrompt
 import com.tigercodes.webtiger.core.v1.CloseTab
 import com.tigercodes.webtiger.core.v1.FindInPage
 import com.tigercodes.webtiger.core.v1.LoadState
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.core.v1.OpenTab
+import com.tigercodes.webtiger.core.v1.PromptView
 import com.tigercodes.webtiger.core.v1.Request
 import com.tigercodes.webtiger.core.v1.SubmitAddress
 import com.tigercodes.webtiger.core.v1.SuggestAddresses
@@ -250,6 +252,26 @@ class BrowserModel(
         val front = frontTabId ?: return
         if (zoom == null) return
         session.send(Request(zoom_page = ZoomPage(tab_id = front, change = change)))
+    }
+
+    // What the tab asks the person (014)
+
+    /**
+     * What the tab in front asks: the core's, in the core's words for who asks. Null when it
+     * asks nothing; and for a prompt this build has no words for, which is not put before a
+     * person as two buttons and no question: its page waits.
+     */
+    val prompt: PromptView? get() = tab.prompt?.takeIf { asked -> asked.permission?.kinds.orEmpty().isNotEmpty() }
+
+    /**
+     * The person's answer to the prompt the tab shows. What it lets the page do, what is
+     * remembered, and whether it came too soon after the prompt appeared to be the person's
+     * answer to it, are the core's: a refusal leaves the prompt where it is.
+     */
+    fun answerPrompt(allow: Boolean) {
+        val front = frontTabId ?: return
+        val shown = prompt ?: return
+        session.send(Request(answer_prompt = AnswerPrompt(tab_id = front, prompt_id = shown.prompt_id, allow = allow)))
     }
 
     // Find on the page (010)

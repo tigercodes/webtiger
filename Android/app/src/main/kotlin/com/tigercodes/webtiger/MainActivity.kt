@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.tigercodes.webtiger.design.WebTigerTheme
@@ -16,8 +17,22 @@ import com.tigercodes.webtiger.ui.BrowserWindow
 import com.tigercodes.webtiger.ui.CatalogueScreen
 import com.tigercodes.webtiger.ui.LaunchOptions
 import com.tigercodes.webtiger.ui.StartFailed
+import com.tigercodes.webtiger.webview.AppPermissions
 
 class MainActivity : ComponentActivity() {
+    /** The app's own permissions, while this window is their way to ask the system (014). */
+    private var permissions: AppPermissions? = null
+
+    /** What is told when the system's dialog has been answered: one question is up at a time. */
+    private var answered: (() -> Unit)? = null
+
+    /** Asks the system for permissions by name, with the system's own dialog. */
+    private val asksTheSystem =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            // Whatever the person said: what the app now holds is what counts.
+            answered.also { answered = null }?.invoke()
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -29,6 +44,16 @@ class MainActivity : ComponentActivity() {
             return
         }
         val session = (application as WebTigerApp).session(launch)
+        // A page the core lets use the camera, the microphone or the location gets it when the
+        // system lets the app: this window is how the system is asked. Not in fake mode, whose
+        // session has nothing to ask with.
+        permissions =
+            session.getOrNull()?.systemPermissions?.also { own ->
+                own.asker = { names, done ->
+                    answered = done
+                    asksTheSystem.launch(names)
+                }
+            }
         val window = ViewModelProvider(this)[WindowHolder::class.java]
         setContent {
             WebTigerTheme {
@@ -38,6 +63,15 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    override fun onDestroy() {
+        // The window goes, and the system's dialog with it: nobody can be asked from here, and
+        // a question that was up is answered by what the app holds.
+        permissions?.asker = null
+        permissions = null
+        answered.also { answered = null }?.invoke()
+        super.onDestroy()
     }
 
     companion object {

@@ -277,6 +277,18 @@
         }
       }
     },
+    "catalogue.state.prompt": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A page asks to use the camera and the microphone"
+          }
+        }
+      }
+    },
     "catalogue.state.secure": {
       "comment": "Design catalogue: a state of the window.",
       "extractionState": "manual",
@@ -957,6 +969,78 @@
           "stringUnit": {
             "state": "translated",
             "value": "History"
+          }
+        }
+      }
+    },
+    "prompt.allow": {
+      "comment": "Button in a tab's prompt: lets the site use what it asked for, now and when it asks again.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow"
+          }
+        }
+      }
+    },
+    "prompt.kind.camera": {
+      "comment": "What a page asks to use, in the prompt.permission sentence.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "your camera"
+          }
+        }
+      }
+    },
+    "prompt.kind.location": {
+      "comment": "What a page asks to use, in the prompt.permission sentence: where the device is.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "your location"
+          }
+        }
+      }
+    },
+    "prompt.kind.microphone": {
+      "comment": "What a page asks to use, in the prompt.permission sentence.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "your microphone"
+          }
+        }
+      }
+    },
+    "prompt.permission": {
+      "comment": "The sentence in the bar a tab shows when a page asks to use something of the device's. %1$@ is the site, as the address field shows it; %2$@ is what it wants: one or more of the prompt.kind strings, joined as a list by the system (in English: “your camera and your microphone”).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ wants to use %2$@."
+          }
+        }
+      }
+    },
+    "prompt.refuse": {
+      "comment": "Button in a tab's prompt: refuses what the page asked for, this time.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Don’t Allow"
           }
         }
       }

@@ -18,6 +18,7 @@ import com.tigercodes.webtiger.core.v1.Subscribe
 import com.tigercodes.webtiger.core.v1.TestMode
 import com.tigercodes.webtiger.core.v1.WindowSnapshot
 import com.tigercodes.webtiger.core.v1.WindowTopic
+import com.tigercodes.webtiger.webview.AppPermissions
 import com.tigercodes.webtiger.webview.DownloadPlace
 import com.tigercodes.webtiger.webview.SystemWebViewEngine
 import java.io.File
@@ -38,7 +39,16 @@ data class LaunchOptions(val fake: Boolean = false, val fakeStart: String = "", 
  * The app's connection to the core: started once, shared by every window. Used on the main
  * thread, where [scope] runs.
  */
-class BrowserSession(val core: CoreClient, val engine: SystemWebViewEngine, internal val scope: CoroutineScope) {
+class BrowserSession(
+    val core: CoreClient,
+    val engine: SystemWebViewEngine,
+    internal val scope: CoroutineScope,
+    /**
+     * The app's own permissions (014), for a window to give the way to ask the system by. Null
+     * where nothing may bring the system's dialog up: fake mode, and every session a test makes.
+     */
+    val systemPermissions: AppPermissions? = null,
+) {
     private val windows = HashMap<Long, (WindowSnapshot) -> Unit>()
 
     /** Windows being opened, and the snapshots that came for subscriptions not yet known to be theirs. */
@@ -110,7 +120,8 @@ class BrowserSession(val core: CoreClient, val engine: SystemWebViewEngine, inte
         /** Starts the Rust core for this process. Throws [CoreError] when it would not start. */
         fun live(context: Context, launch: LaunchOptions): BrowserSession {
             val application = context.applicationContext
-            val engine = SystemWebViewEngine(application, downloadPlace(launch))
+            val permissions = AppPermissions(application)
+            val engine = SystemWebViewEngine(application, downloadPlace(launch), permissions)
             val config =
                 coreConfig(
                     launch = launch,
@@ -124,7 +135,7 @@ class BrowserSession(val core: CoreClient, val engine: SystemWebViewEngine, inte
             val opener = if (launch.fake) OutsideOpener.nothing else SystemOpener(application)
             // Host requests are answered on the main thread, where a WebView must be used.
             val core = NativeCore.start(config, ShellHost(engine, opener), Dispatchers.Main)
-            return BrowserSession(core, engine, MainScope())
+            return BrowserSession(core, engine, MainScope(), permissions.takeIf { mayAskTheSystem(launch) })
         }
 
         /**
@@ -136,6 +147,13 @@ class BrowserSession(val core: CoreClient, val engine: SystemWebViewEngine, inte
          * own folder: a UI suite writes nothing where a person's files are.
          */
         internal fun downloadPlace(launch: LaunchOptions): DownloadPlace = if (launch.fake) DownloadPlace.APP else DownloadPlace.DEVICE
+
+        /**
+         * Whether a window may have the system ask the person for the app's own permissions
+         * (014): the camera, the microphone, the location. Not in fake mode: a UI suite puts no
+         * dialog of the system's on the screen, and a page is let have what the app holds.
+         */
+        internal fun mayAskTheSystem(launch: LaunchOptions): Boolean = !launch.fake
 
         internal fun coreConfig(launch: LaunchOptions, locale: String, appVersion: String, engine: EngineInfo, dataDir: String): CoreConfig =
             CoreConfig(

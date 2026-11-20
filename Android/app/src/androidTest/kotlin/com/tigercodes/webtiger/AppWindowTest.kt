@@ -3,6 +3,7 @@
 // show for their platforms, this shows for Android: a page loads through the core.
 package com.tigercodes.webtiger
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -625,6 +626,60 @@ internal class AppWindowTest {
         compose.waitUntil(15_000) { compose.onAllNodesWithTag("library-history").fetchSemanticsNodes().isEmpty() }
         awaitPage("Downloads")
         file.delete()
+    }
+
+    /**
+     * A page asks to use the camera (014), with the real core and the real WebView: the tab
+     * shows a bar that names the site; "Don't Allow", and the page is told no and does not get
+     * to ask for it again; loaded again it may, and "Allow" gives it the emulator's camera;
+     * after that the site is not asked about. The system's own permission is given to the test
+     * as a person would give it by the system's dialog, with no dialog: fake mode asks the
+     * system nothing, and lets a page have what the app holds.
+     */
+    @Test
+    fun aPageThatAsksIsAskedAboutInItsTabAndAnsweredAsThePersonSays() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.uiAutomation.grantRuntimePermission(instrumentation.targetContext.packageName, Manifest.permission.CAMERA)
+        fun bars(): Int = compose.onAllNodesWithTag("prompt").fetchSemanticsNodes().size
+
+        /** Presses one of the bar's buttons, once the prompt has been there long enough to be answered. */
+        fun answer(button: String) {
+            compose.waitUntil(15_000) { bars() == 1 }
+            Thread.sleep(700)
+            compose.onNodeWithTag(button).performClick()
+            compose.waitUntil(15_000) { bars() == 0 }
+        }
+        awaitPage("Home")
+        type(site.url("/asks"))
+        awaitPage("Asks")
+        assertEquals(0, bars())
+
+        // A finger on the page's button: the page asks, and waits.
+        PageTouch.tap(checkNotNull(shownWebView()), "camera")
+        compose.waitUntil(15_000) { bars() == 1 }
+        compose.onNodeWithTag("prompt-words").assertTextEquals("${shown("/")} wants to use your camera.")
+        assertEquals("asking camera", pageTitle())
+        compose.onRoot().tryPerformAccessibilityChecks()
+
+        answer("prompt-refuse")
+        awaitPage("refused camera NotAllowedError")
+
+        // The same page asks for the camera again, with the microphone: told no, with nobody asked.
+        PageTouch.tap(checkNotNull(shownWebView()), "both")
+        awaitPage("refused both NotAllowedError")
+        assertEquals(0, bars())
+
+        // Loaded again, the page may ask; allowed, it has the camera.
+        type(site.url("/asks"))
+        awaitPage("Asks")
+        PageTouch.tap(checkNotNull(shownWebView()), "camera")
+        answer("prompt-allow")
+        awaitPage("granted camera 1")
+
+        // And the site is not asked about again: the next page of it has the camera at once.
+        type(site.url("/asks?now=camera"))
+        awaitPage("granted camera 1")
+        assertEquals(0, bars())
     }
 
     /**

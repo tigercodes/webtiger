@@ -3,16 +3,20 @@
 // strip proper arrive in W2.
 package com.tigercodes.webtiger.ui
 
+import android.icu.text.ListFormatter
 import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,26 +26,20 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextOverflow
-import com.tigercodes.webtiger.core.v1.TabSummary
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
@@ -53,6 +51,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -63,15 +63,22 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -79,18 +86,17 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tigercodes.webtiger.R
 import com.tigercodes.webtiger.core.v1.AddressView
 import com.tigercodes.webtiger.core.v1.NavigationCommand
-import com.tigercodes.webtiger.design.Tokens
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.ui.semantics.paneTitle
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.semantics.stateDescription
+import com.tigercodes.webtiger.core.v1.PermissionKind
+import com.tigercodes.webtiger.core.v1.PromptView
+import com.tigercodes.webtiger.core.v1.TabSummary
 import com.tigercodes.webtiger.core.v1.ZoomChange
 import com.tigercodes.webtiger.core.v1.ZoomView
-import androidx.compose.foundation.layout.Spacer
+import com.tigercodes.webtiger.design.Tokens
 
 /** One window over `model`. The system's Back goes back in the page while it can. */
 @Composable
@@ -124,6 +130,9 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
         Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
             TabStrip(model, onFind = model::openFind, onZoom = model::openZoom, onHistory = { showingHistory = true })
             Toolbar(model, addressField, onSubmitted = { page.requestFocus() })
+            // What the tab asks the person (014): in the tab, under the toolbar, and not over
+            // the window. It takes the keyboard from nothing by appearing.
+            model.prompt?.let { asked -> PromptBar(asked, onAnswer = model::answerPrompt) }
             if (model.isFinding) FindBar(model)
             if (model.isZooming) ZoomBar(model)
             ProgressLine(model)
@@ -383,6 +392,54 @@ private fun ZoomBar(model: BrowserModel) {
         Spacer(modifier = Modifier.weight(1f))
         TextButton(onClick = model::closeZoom, modifier = Modifier.testTag("zoom-done")) { Text(stringResource(R.string.zoom_done)) }
     }
+}
+
+/**
+ * What a tab asks the person (014 §7): a sentence that names who asks, in the core's words for
+ * the site, and what for; and the two answers. Nothing in it is the page's. Neither answer is
+ * given by a key: a press on one of the buttons is the only way.
+ */
+@Composable
+internal fun PromptBar(prompt: PromptView, onAnswer: (Boolean) -> Unit) {
+    val words = promptWords(prompt)
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(Tokens.Palette.fieldFill.current)
+                .padding(start = Tokens.Space.m, end = Tokens.Space.xs, top = Tokens.Space.s)
+                .testTag("prompt"),
+    ) {
+        // Said to a screen reader when it appears: a page that waits for an answer says
+        // nothing by itself.
+        Text(text = words, modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite }.testTag("prompt-words"))
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Spacer(modifier = Modifier.weight(1f))
+            TextButton(onClick = { onAnswer(false) }, modifier = Modifier.testTag("prompt-refuse")) { Text(stringResource(R.string.prompt_refuse)) }
+            TextButton(onClick = { onAnswer(true) }, modifier = Modifier.testTag("prompt-allow")) { Text(stringResource(R.string.prompt_allow)) }
+        }
+    }
+}
+
+/**
+ * A prompt's sentence. What a page wants is named in the person's language and joined as the
+ * language joins a list; a kind this build has no words for is left out of the list, and a
+ * prompt of a kind it does not know says nothing.
+ */
+@Composable
+internal fun promptWords(prompt: PromptView): String {
+    val permission = prompt.permission ?: return ""
+    val wanted =
+        permission.kinds.mapNotNull { kind ->
+            when (kind) {
+                PermissionKind.PERMISSION_KIND_CAMERA -> stringResource(R.string.prompt_kind_camera)
+                PermissionKind.PERMISSION_KIND_MICROPHONE -> stringResource(R.string.prompt_kind_microphone)
+                PermissionKind.PERMISSION_KIND_LOCATION -> stringResource(R.string.prompt_kind_location)
+                else -> null
+            }
+        }
+    val locale = LocalConfiguration.current.locales[0]
+    return stringResource(R.string.prompt_permission, permission.site, ListFormatter.getInstance(locale).format(wanted))
 }
 
 /** Actual size, in per cent: the level at which there is nothing to put back. */
