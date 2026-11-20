@@ -15,19 +15,25 @@ public extension BrowserModel {
         switch tab.prompt.kind {
         case .download: return tab.prompt
         case let .permission(permission): return PromptBar.wanted(permission).isEmpty ? nil : tab.prompt
+        // What a page says or asks (016): a later contract's kind has no bar here.
+        case let .dialog(dialog): return [.alert, .confirm, .prompt].contains(dialog.kind) ? tab.prompt : nil
         default: return nil
         }
     }
 
     /// The person's answer to the prompt the tab shows. What it lets the page do, what is
     /// remembered, and whether it came too soon after the prompt appeared to be the person's
-    /// answer to it, are the core's: a refusal leaves the prompt where it is.
-    func answerPrompt(allow: Bool) {
+    /// answer to it, are the core's: a refusal leaves the prompt where it is. For what a page
+    /// says or asks (016), `text` is what a prompt's field held, and `silence` stops the
+    /// page's messages.
+    func answerPrompt(allow: Bool, text: String = "", silence: Bool = false) {
         guard let frontTabID, let prompt else { return }
         var answer = WTAnswerPrompt()
         answer.tabID = frontTabID
         answer.promptID = prompt.promptID
         answer.allow = allow
+        answer.text = text
+        answer.silence = silence
         send(.answerPrompt(answer))
     }
 }
@@ -36,10 +42,21 @@ public extension BrowserModel {
 /// press on one of the buttons is the only way.
 struct PromptBar: View {
     let prompt: WTPromptView
-    let answer: (Bool) -> Void
+    /// Allowed or not; and for what a page says or asks, a prompt's text and whether the
+    /// page's messages are to be stopped.
+    let answer: (Bool, String, Bool) -> Void
     @Environment(\.locale) private var locale
 
     var body: some View {
+        // What a page says or asks has a bar of its own (016).
+        if case let .dialog(said)? = prompt.kind {
+            DialogBar(dialog: said, answer: answer)
+        } else {
+            asking
+        }
+    }
+
+    @ViewBuilder private var asking: some View {
         let words = Self.words(prompt, locale: locale)
         Group {
             // The sentence on a line of its own where the window is a phone's; beside the
@@ -77,7 +94,7 @@ struct PromptBar: View {
     @ViewBuilder private var buttons: some View {
         // Neutral, as every button with words is (F14).
         Button {
-            answer(false)
+            answer(false, "", false)
         } label: {
             Text("prompt.refuse", bundle: .module)
                 // On more lines where one is not enough, and never cut short.
@@ -88,7 +105,7 @@ struct PromptBar: View {
         .tint(.primary)
         .accessibilityIdentifier("prompt-refuse")
         Button {
-            answer(true)
+            answer(true, "", false)
         } label: {
             Text("prompt.allow", bundle: .module)
                 .fixedSize(horizontal: false, vertical: true)

@@ -36,7 +36,9 @@ public struct BrowserWindowView: View {
             // What the tab asks the person (014): in the tab, under the toolbar, and not
             // over the window. It takes the keyboard from nothing by appearing.
             if let asked = model.prompt {
-                PromptBar(prompt: asked) { model.answerPrompt(allow: $0) }
+                PromptBar(prompt: asked) { model.answerPrompt(allow: $0, text: $1, silence: $2) }
+                    // Each prompt is a bar of its own: a field starts from what its page offers.
+                    .id(asked.promptID)
             }
             if model.isFinding {
                 findBar

@@ -175,4 +175,55 @@ final class FeatureTests: AppTestCase {
         press(app.buttons["history-done"])
         XCTAssertTrue(pageShows("Home", in: app))
     }
+
+    /// What a page says or asks (016), with the real core and WebKit: a question is shown in
+    /// the tab under the site's name, and the page gets the answer; a prompt's field holds
+    /// what the page offers; a page that has said something before can be stopped, and then
+    /// says no more.
+    func testWhatAPageSaysIsShownInItsTabAndThePageGetsTheAnswer() {
+        let app = launch(start: site.url("/says"))
+        XCTAssertTrue(pageShows("Says", in: app), "the page that says and asks loaded")
+        func shownWords(_ identifier: String) -> String {
+            let text = app.staticTexts[identifier]
+            return text.label.isEmpty ? value(of: text) : text.label
+        }
+
+        // A press on the page's button: it asks yes or no, and its script waits.
+        press(app.webViews.buttons["asks yes or no"])
+        let ok = app.buttons["prompt-ok"]
+        XCTAssertTrue(ok.waitForExistence(timeout: 30), "the tab shows what the page asks")
+        XCTAssertEqual(shownWords("prompt-words"), "Delete it?")
+        XCTAssertTrue(shownWords("prompt-site").hasSuffix(" says:"), "under the site's name: \(shownWords("prompt-site"))")
+        XCTAssertFalse(app.buttons["prompt-silence"].exists, "a page's first is not to be stopped")
+        audit(app, "what a page asks")
+        // Not at once: a prompt is not answered in the moment it appears.
+        usleep(700_000)
+        press(ok)
+        XCTAssertTrue(pageShows("confirm true", in: app), "the page has its answer")
+
+        // It asks for a word: the field holds what the page offers. It is the page's
+        // second: it could be stopped.
+        press(app.webViews.buttons["asks for a word"])
+        let field = app.textFields["prompt-field"]
+        XCTAssertTrue(field.waitForExistence(timeout: 30))
+        XCTAssertEqual(value(of: field), "Ada")
+        XCTAssertTrue(app.buttons["prompt-silence"].exists)
+        audit(app, "a page's prompt")
+        usleep(700_000)
+        press(app.buttons["prompt-ok"])
+        XCTAssertTrue(pageShows("prompt Ada", in: app))
+
+        // It says something more, and is stopped: what it asks after is answered as if it
+        // had been closed, with nothing shown.
+        press(app.webViews.buttons["says something"])
+        let stop = app.buttons["prompt-silence"]
+        XCTAssertTrue(stop.waitForExistence(timeout: 30))
+        XCTAssertEqual(shownWords("prompt-words"), "Your basket is empty.")
+        usleep(700_000)
+        press(stop)
+        XCTAssertTrue(pageShows("alert returned", in: app))
+        press(app.webViews.buttons["asks yes or no"])
+        XCTAssertTrue(pageShows("confirm false", in: app))
+        XCTAssertFalse(app.buttons["prompt-ok"].exists)
+    }
 }

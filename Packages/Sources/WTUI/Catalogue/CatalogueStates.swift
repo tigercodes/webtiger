@@ -22,6 +22,9 @@ enum CatalogueState: String, CaseIterable, Identifiable {
     case zoom
     case prompt
     case promptDownload = "prompt-download"
+    case promptAlert = "prompt-alert"
+    case promptConfirm = "prompt-confirm"
+    case promptText = "prompt-text"
 
     var id: String {
         rawValue
@@ -44,6 +47,9 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         case .zoom: "catalogue.state.zoom"
         case .prompt: "catalogue.state.prompt"
         case .promptDownload: "catalogue.state.prompt_download"
+        case .promptAlert: "catalogue.state.prompt_alert"
+        case .promptConfirm: "catalogue.state.prompt_confirm"
+        case .promptText: "catalogue.state.prompt_text"
         }
     }
 
@@ -147,6 +153,15 @@ enum CatalogueState: String, CaseIterable, Identifiable {
             window.tab.prompt.promptID = 9
             window.tab.prompt.download.site = "example.com"
             window.tab.prompt.download.fileName = "Annual report 2026.pdf"
+        case .promptAlert:
+            saying(&window, .alert, "Your basket is empty.")
+        case .promptConfirm:
+            // Not the page's first: it can be stopped.
+            saying(&window, .confirm, "Delete “Holiday photos”? This cannot be undone.")
+            window.tab.prompt.dialog.maySilence = true
+        case .promptText:
+            saying(&window, .prompt, "What should we call you?")
+            window.tab.prompt.dialog.defaultText = "Ada"
         }
         // The strip names every tab: the one in front, and for "several tabs" its neighbours,
         // one with a title, one still loading and known only by its site, one with no page.
@@ -187,6 +202,15 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         window.tab.zoom.percent = 100
         window.tab.zoom.canZoomIn = true
         window.tab.zoom.canZoomOut = true
+    }
+
+    /// A page of example.com that says `message`, or asks (016).
+    private func saying(_ window: inout WTWindowSnapshot, _ kind: WTDialogKind, _ message: String) {
+        page(&window, url: "https://example.com/", display: "example.com", security: .secure)
+        window.tab.prompt.promptID = 9
+        window.tab.prompt.dialog.site = "example.com"
+        window.tab.prompt.dialog.kind = kind
+        window.tab.prompt.dialog.message = message
     }
 
     /// A session whose core opens one window and publishes this state for it, and nothing else:
