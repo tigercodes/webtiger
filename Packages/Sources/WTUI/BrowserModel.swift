@@ -65,6 +65,8 @@ public final class BrowserModel {
 
     let session: BrowserSession
     private var window: OpenedWindow?
+    /// Addresses the system handed over before the window was open (031).
+    @ObservationIgnored var addressesWaiting: [String] = []
 
     /// What the core says of where searches go (020): the engines, the one in use, and whether
     /// anybody chose it. `nil` until the core has said. Setting it tells nobody: what the
@@ -117,6 +119,8 @@ public final class BrowserModel {
         // Where searches go, and whether anybody chose it (020): asked once, as the window
         // opens.
         askWhereSearchesGo()
+        // Links pressed in other apps before the window was open (031).
+        openWhatWaited()
     }
 
     public func close() {

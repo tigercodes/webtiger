@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built and tested in the core and the Android shell: on the JVM, in the app on an emulator, and by hand in the app started for real on an emulator, against the test site with the emulator's network off. Not run on a phone, and not from a real app's link (§9). The Mac is not built; the iPhone cannot be yet (§2) |
+| **Status** | Built and tested in the core, the Android shell and the Mac. Android: on the JVM, in the app on an emulator, and by hand in the app started for real on an emulator, against the test site with the emulator's network off. The Mac: the model, the app started by a link in fake mode, and by hand a link handed to a copy that was running. Not run on a phone, and not from a real app's link on either system (§9). The iPhone cannot be yet (§2) |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "outside links", the way in. [007](007-outside-links.md) §2 left it for later in W1: "Links from outside into WebTiger (being the system's browser)" |
 | **Contract** | 1.23: `OpenAddress` |
 | **Builds on** | [005](005-tabs.md): a tab opened in a window. [028](028-search-from-other-apps.md): words another app hands over, and how Android's window is told of them. [029](029-the-mark-waits-for-the-page.md): no mark beside an address until its page arrives |
@@ -84,7 +84,22 @@ What the first form was for does not apply to a link: the item for selected word
 
 ## 6. The Mac
 
-Not built. The app would say in its `Info.plist` that it opens `http` and `https` addresses, and hear them from the system (`onOpenURL`). Two things to settle first: a Mac's system keeps a record of every app that says so, a development build included, so WebTiger will be in the list of browsers in System Settings on any Mac it is built on; and the app's window must take the address itself, and not have the system open a second window for it.
+- **The app says it opens addresses over `http` and `https`** (`CFBundleURLTypes` in its `Info.plist`, as a viewer). That is what puts it in the Mac's list of browsers (System Settings, "Default web browser") and lets the system hand it a link.
+- **The window hears the address** (`onOpenURL`) and hands it to its model, which hands it to the core as it was given, with the window it is for (`OpenAddress`), as Android's does. Before the window is open, addresses wait for it, each of them, in order.
+- **The window that is there takes it**: the system is told that a window of the app's handles what comes from outside (`handlesExternalEvents`), so that it does not open a second window for a link.
+- **Nothing but the address is taken**: the system hands over nothing else.
+- **A Mac keeps a record of every app that says it opens such addresses, a development build included.** So on any Mac WebTiger is built on, it is in the list of browsers from then on. Nothing makes it the browser links go to: that is the person's choice, in the system's settings, and the first run's question later (000 §6.3).
+
+Not on an iPhone or an iPad: the system hands links only to an app with Apple's browser entitlement (§2).
+
+**As found on the Mac** (macOS 27).
+
+- **Started by a link**, the app opens its one window, with the tab a window starts with, and the link in a new tab after it, in front.
+- **A second window was a red herring.** The first runs had two windows after a link. That was the Mac putting back the windows the app had when it last ended (the run before had ended with two), not a window made for the link: the app's tests now start it with that turned off, each from the one window the app opens by itself.
+- **XCTest cannot hand a link to a copy of the app that is running.** Asked to open an address in the app under test, it starts another copy of the app each time, with the address. So the app's test is of being started by a link. A link handed to a running copy was seen by hand (§8).
+- **And it does not end the copy the test before left.** Starting the app the usual way ends whatever copy is running; being started for an address does not, and the copy it starts is not always ended before the next test's. With the new test in the suite, three whole runs each lost one or two other tests, different ones each time: the app "is not foreground", or a click landed on a window of another copy. The test now ends every copy before it starts its own and after it has done, and waits until none is running.
+- **The Mac lists the app** among those that show an address of the web as soon as a build that says so has run; it does not send links to it.
+
 
 ## 7. Decisions
 
@@ -104,6 +119,9 @@ Not built. The app would say in its `Info.plist` that it opens `http` and `https
 | The real core from Kotlin (`ThroughTheCoreTest`, 1 more) | The window's model hands the address on; the real core, through JNI, opens a new tab in front and asks its web view for that address as it was given; what is no address of the web (a name with no scheme, words, a script, a file, an `intent:`) opens nothing; an address over `http` asked after them is opened, not made `https`. The web view is the test's: nothing is fetched |
 | Android (`ViewAddressTest`, 6, on the JVM) | The address is read only from the system's own request, as it was given, and only when there is one; one too long is not handed on, and not cut. The window hands it to the core with its window, and nothing else of what it was handed: not what another app put beside it. An intent that asks for no address to be shown asks the core nothing: the app's own launch, a thing that is sent, words (which are searched for, an address among them included). What was handed over is not handed over again when the system makes the window again from recent apps: links, and words. Addresses that come before the window is open wait for it, each of them, in order, once. **The system is told** the window shows an address of the web of any site, as something a page may link to, and nothing of any other kind (a file, what an app keeps, a letter, a number, a script, an app's own scheme); and the window is one. Fourteen parts of this checked by breaking them: all caught (one only after the test's addresses were made to differ: a list that read the same backwards hid a wrong order) |
 | The Android app, on the emulator (`AppLinksTest`, 1) | With the real core and the real WebView, in fake mode, the window asked as the system asks it: a link opens in a new tab after the one in front, in front, its page loads and the field says where it is; the same link again opens again; six requests at once, two pages of the site among what is no address of the web, are each answered in order: two more tabs, the last in front, and the site asked for four pages in all and nothing else. Passed three runs one after another |
+| The Apple shell's model (`OutsideAddressTests`, 2, on the Mac and the iPhone simulator) | An address from outside is handed to the core with its window, as it was given, an address of the web or not; nothing else is asked for it. Addresses that come before the window is open wait for it, each of them, in order, once. Six parts checked by breaking them: all caught |
+| The Mac's app (`FeatureTests`, 1, fake mode: the real core and real WebKit) | Started by a link, as the system starts an app for one (XCTest's own way, to the app under test and no other): the link's page loads in a new tab after the tab the window starts with, in front; the field says where it is; there is one window; the Mac counts this copy of the app among those that show an address of the web; and the site was asked for the window's own page and the link, once each. Passed four runs one after another by itself. In the whole suite it was at first in the other tests' way (§6), and passes there since it ends the copies it finds and the one it starts. Two parts checked by breaking them, both caught: a window that does not hear the address, and an app that does not say it shows the web |
+| By hand on the Mac (2026-11-21; a copy of the app in fake mode, started with the system's `open`, which was told to set fake mode on every call so that no copy could start on anybody's data; a server on the loopback address that writes down what it is asked) | A link handed to the copy that was running: the system said the app was already running and handed it over; the server was asked for it; one process and one window throughout. The same link again: asked for again. Another: asked for. The copy and the server were then stopped. The Mac lists one copy of WebTiger for an address of the web, and links do not go to it |
 | By hand (2026-11-21, the emulator, the app started for real, the test site served from the Mac, **the emulator's network switched off**) | The system lists WebTiger among what answers a link of the web, and the system's "Default browser app" list offers it beside the browser that is there (nothing was chosen). Started by a link with WebTiger not running: it opened, asked where searches go as a first run does, and had the page in a new tab in front, marked not secure (the test site is over `http`). From the home screen, the very same link: the one window came forward with another tab. In front, the same again, and another: a tab each. Six addresses that are not of the web, handed to the window by name: no tab, the field as it was, and no other app started. The app's icon: the same window, unchanged. One window and one entry in recent apps throughout. With the app's process ended behind the person's back, and the icon pressed: the five tabs came back, and the link that first started the app was not opened again. The network was switched back on and the app's data cleared |
 
 ## 9. What is not verified
@@ -113,7 +131,10 @@ Not built. The app would say in its `Info.plist` that it opens `http` and `https
 - **A link that arrives while a system picker of WebTiger's is open** (a file being picked for a page): the window coming forward ends the picker. Not tried.
 - **Very many links at once.** Six were sent; nothing limits how many tabs another app can open this way, as nothing does in other browsers.
 - **The first form's fault on other versions of Android.** It was seen on the emulator's (Android 16); whether older systems start every one of such activities was not looked at, and no longer matters here.
-- **The Mac, the iPhone and the iPad**: not built (§2, §6).
+- **The Mac: what a link handed to a running copy looks like.** By hand it was seen from outside: the server was asked, and there was one window. That the link's tab was a new one, in front, was not looked at on the screen; it is the same request to the core as when the app is started by a link, which the app's test does look at.
+- **The Mac: WebTiger as the browser links go to.** Nothing made it that: no link pressed in another app was routed to it by the system. It was handed addresses by name.
+- **The Mac: several windows.** With more than one window open, which of them takes a link is the system's choice; W1 has one window.
+- **The iPhone and the iPad**: not built (§2).
 
 ## 10. Done checklist
 
@@ -121,5 +142,5 @@ Not built. The app would say in its `Info.plist` that it opens `http` and `https
 - [x] The core: the rule of §3 (7 tests).
 - [x] Android: the way in, what it hands on, and what the window asks of the core (6 tests, 1 through the real core, 1 in the app on the emulator).
 - [x] On the emulator, by hand.
-- [ ] The Mac.
-- [x] `Tools/test.sh all` green, and `android-device`, on 2026-11-21: `lint`, `core` (505), `unit` (261 on the Mac), `build`, the Mac's UI suite (28), `ios` (243 on the iPhone simulator, one skipped as before), the iPhone's UI suite (25), `android` (348 and 32 on the JVM) and `android-device` (145 on the emulator).
+- [x] The Mac: the app says it shows the web, the window hears an address and hands it to the core; the app started by a link, in a test; a running copy handed links, by hand.
+- [x] `Tools/test.sh all` green, and `android-device`, on 2026-11-21 (and again after the Mac's part, the same day: `core` 505; `unit` 265 on the Mac; the Mac's UI suite 29; `ios` 247; the iPhone's UI suite 26; `android` 348 and 32; `android-device` 145). The first run's numbers: `lint`, `core` (505), `unit` (261 on the Mac), `build`, the Mac's UI suite (28), `ios` (243 on the iPhone simulator, one skipped as before), the iPhone's UI suite (25), `android` (348 and 32 on the JVM) and `android-device` (145 on the emulator).

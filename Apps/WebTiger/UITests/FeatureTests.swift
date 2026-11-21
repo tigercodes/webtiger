@@ -340,6 +340,53 @@ final class FeatureTests: AppTestCase {
             XCTAssertEqual(app.sheets.count, 0, "no panel of the system's")
             XCTAssertEqual(app.dialogs.count, 0)
         }
+
+        /// A link pressed in another app (031), when WebTiger is not running: the Mac starts
+        /// it and hands it the address, and its one window opens the link in a new tab in
+        /// front, beside the tab the window starts with. The address is handed over as the
+        /// system hands one, to the app under test and to no other: no other app is started,
+        /// and the address is the test site's. (A link handed to a copy that is already
+        /// running is not something a test can do: 031 §8 says how it was seen.)
+        func testStartedByALinkFromAnotherAppTheWindowOpensItInANewTabInFront() throws {
+            let asked = site.requests.count
+
+            let app = try launch(start: site.url("/"), byLink: XCTUnwrap(URL(string: site.url("/landed"))))
+
+            XCTAssertTrue(pageShows("Landed", in: app), "the link's page loaded")
+            let tabs = app.buttons.matching(identifier: "tab")
+            let two = NSPredicate(format: "count == 2")
+            XCTAssertEqual(
+                XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: two, object: tabs)], timeout: 30), .completed,
+                "tabs \(tabs.count), windows \(app.windows.count), the site was asked \(site.requests.dropFirst(asked))"
+            )
+            // After the tab the window started with, in front; the field says where it is,
+            // and the mark says what its connection is.
+            XCTAssertTrue(tabs.element(boundBy: 1).isSelected, "the link's tab is in front")
+            let first = tabs.element(boundBy: 0)
+            XCTAssertTrue((first.label + value(of: first) + first.title).contains("Home"), "the window's own tab is before it")
+            expect(app.textFields["address-field"], toShow: "http://127.0.0.1:\(site.port)/landed")
+            // One window: the system opened no second one for the link, and the window that
+            // was started took it.
+            XCTAssertEqual(app.windows.count, 1)
+            // The Mac counts this copy of the app among those that show an address of the
+            // web: that is what its list of browsers is made of. (Only this app is looked
+            // for: which others there are is nobody's business here.)
+            let running = NSRunningApplication.runningApplications(withBundleIdentifier: "com.tigercodes.webtiger").compactMap(\.bundleURL)
+            XCTAssertFalse(running.isEmpty)
+            let showsTheWeb = try NSWorkspace.shared.urlsForApplications(toOpen: XCTUnwrap(URL(string: "https://example.com/")))
+            XCTAssertTrue(
+                running.contains { copy in showsTheWeb.contains { $0.standardizedFileURL == copy.standardizedFileURL } },
+                "the Mac does not list the app under test for an address of the web"
+            )
+            // The site was asked for the window's own page and for the link, once each (the
+            // two load at once: which reaches the site first is not said).
+            XCTAssertEqual(site.requests.dropFirst(asked).filter { $0 != "/favicon.ico" }.sorted(), ["/", "/landed"], "\(site.requests)")
+
+            // The copy of the app this test started is ended here, and seen to be gone: left
+            // running, its window is in the way of the tests that come after (seen: one test
+            // in each run failed, a different one each time, until this was here).
+            endEveryCopy()
+        }
     #endif
 
     /// The first run's default (020), with the real core: the list is offered with DuckDuckGo

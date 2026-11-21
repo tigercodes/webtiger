@@ -16,6 +16,44 @@ class AppTestCase: XCTestCase {
     }
 
     func launch(start: String?, firstRun: Bool = false) -> XCUIApplication {
+        let app = inFakeMode(start: start, firstRun: firstRun)
+        app.launch()
+        return app
+    }
+
+    /// Starts the app in fake mode by handing it an address, as the system starts an app for
+    /// a link pressed in another one (031). The address goes to the app under test and to no
+    /// other. (XCTest starts a copy of the app for every address it is asked to open: a copy
+    /// that is already running is not handed one this way.)
+    func launch(start: String?, byLink address: URL) -> XCUIApplication {
+        // Starting the app the usual way ends the copy the test before left running; being
+        // started for an address does not. So that copy is ended here first.
+        endEveryCopy()
+        let app = inFakeMode(start: start, firstRun: false)
+        app.open(address)
+        return app
+    }
+
+    /// Ends the app under test, and waits until no copy of it is running: a copy left behind
+    /// is in the way of the next test, whose clicks land on its window.
+    func endEveryCopy(file: StaticString = #filePath, line: UInt = #line) {
+        #if os(macOS)
+            func copies() -> Int {
+                NSRunningApplication.runningApplications(withBundleIdentifier: "com.tigercodes.webtiger").count
+            }
+            let waitedSince = Date()
+            while copies() > 0, Date().timeIntervalSince(waitedSince) < 30 {
+                XCUIApplication().terminate()
+                usleep(300_000)
+            }
+            XCTAssertEqual(copies(), 0, "copies of the app are still running", file: file, line: line)
+        #else
+            XCUIApplication().terminate()
+        #endif
+    }
+
+    /// The app, to be started in fake mode: nothing of the person's is read or written.
+    private func inFakeMode(start: String?, firstRun: Bool) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["WEBTIGER_FAKE"] = "1"
         if let start {
@@ -25,8 +63,16 @@ class AppTestCase: XCTestCase {
             // Nobody has chosen where searches go yet (020): the app asks before anything else.
             app.launchEnvironment["WEBTIGER_FAKE_FIRST_RUN"] = "1"
         }
-        app.launch()
+        startWithOneWindow(app)
         return app
+    }
+
+    /// A Mac puts back the windows an app had when it last ended, however many. A test starts
+    /// from the one window the app opens by itself, whatever the run before it left open.
+    private func startWithOneWindow(_ app: XCUIApplication) {
+        #if os(macOS)
+            app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"]
+        #endif
     }
 
     /// Launches the app itself, not in fake mode, on a profile of the suite's own: a store on
@@ -37,6 +83,7 @@ class AppTestCase: XCTestCase {
         if fresh {
             app.launchEnvironment["WEBTIGER_PROFILE_FRESH"] = "1"
         }
+        startWithOneWindow(app)
         app.launch()
         return app
     }

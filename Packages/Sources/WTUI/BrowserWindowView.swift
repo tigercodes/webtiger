@@ -80,6 +80,7 @@ public struct BrowserWindowView: View {
         .background { tabShortcuts }
         .task { await model.open() }
         .onDisappear { model.close() }
+        .modifier(OutsideLinks(model: model))
         // The find bar takes the keyboard when it opens, unless it is only a picture of one.
         .onChange(of: model.isFinding) { _, isFinding in
             if finding == nil {

@@ -54,6 +54,15 @@ targets:
         CFBundleDisplayName: WebTiger
         LSApplicationCategoryType: public.app-category.productivity
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        # A link pressed in another app (031): the app says it shows addresses of the web,
+        # which is what puts it in the Mac's list of browsers and lets the system hand it a
+        # link. Which addresses are opened is the core's to say.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.tigercodes.webtiger.web
+            CFBundleTypeRole: Viewer
+            CFBundleURLSchemes:
+              - http
+              - https
         # A browser loads whatever the user asks for, plain http included. The core marks
         # such a page "not secure"; App Transport Security must not refuse it first.
         NSAppTransportSecurity:
