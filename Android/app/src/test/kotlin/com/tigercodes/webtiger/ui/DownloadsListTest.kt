@@ -3,6 +3,12 @@
 // a download is coming.
 package com.tigercodes.webtiger.ui
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -19,6 +25,7 @@ import com.tigercodes.webtiger.core.ScriptedCore
 import com.tigercodes.webtiger.core.v1.DownloadEntry
 import com.tigercodes.webtiger.core.v1.DownloadState
 import com.tigercodes.webtiger.core.v1.DownloadsPage
+import com.tigercodes.webtiger.core.v1.Error
 import com.tigercodes.webtiger.core.v1.HistoryPage
 import com.tigercodes.webtiger.core.v1.Response
 import com.tigercodes.webtiger.design.WebTigerTheme
@@ -64,7 +71,9 @@ class DownloadsListTest {
         ScriptedCore { request ->
             val forget = request.forget_downloads
             if (forget != null) downloads = if (forget.everything == true) emptyList() else downloads.filter { it.id != forget.download_id }
+            val refused = notOpened
             when {
+                request.open_download != null && refused != null -> Response(error = Error(code = refused))
                 request.query_downloads != null -> Response(downloads_page = DownloadsPage(downloads = downloads))
                 request.query_history != null -> Response(history_page = HistoryPage())
                 else -> windowScript(request)
@@ -80,6 +89,62 @@ class DownloadsListTest {
     }
 
     private fun asked(): Int = core.requests.count { it.query_downloads != null }
+
+    /** What the core says when it is asked to open a download: nothing, when it opens. */
+    private var notOpened: String? = null
+
+    /** The downloads the core was asked to open, in order. */
+    private fun opened(): List<Long> = core.requests.mapNotNull { it.open_download?.download_id }
+
+    @Test
+    fun aDownloadThatHasFinishedIsPressedToOpenItsFileAndTheOthersAreNot() {
+        show()
+        val entries = compose.onAllNodesWithTag("download-entry")
+
+        // Only the one with a whole file can be pressed, and a screen reader says what pressing does.
+        entries[1].assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+        val label = entries[1].fetchSemanticsNode().config.getOrNull(SemanticsActions.OnClick)?.label
+        assertEquals("Open", label)
+        for (other in listOf(0, 2)) {
+            assertEquals("one with no whole file is not pressed", null, entries[other].fetchSemanticsNode().config.getOrNull(SemanticsActions.OnClick))
+        }
+
+        entries[1].performClick()
+        compose.waitForIdle()
+
+        assertEquals(listOf(2L), opened())
+        compose.onAllNodesWithTag("download-not-opened", useUnmergedTree = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun whyAFileDidNotOpenIsSaidUnderItInWords() {
+        notOpened = "download.missing"
+        show()
+        val finished = compose.onAllNodesWithTag("download-entry")[1]
+
+        finished.performClick()
+        compose.waitForIdle()
+        finished.assertTextContains("The file isn’t where it was saved any more.")
+
+        notOpened = "system.no_handler"
+        finished.performClick()
+        compose.waitForIdle()
+        finished.assertTextContains("Nothing on this device opens this kind of file.")
+
+        // A code this build has no words for says something, and never the code.
+        notOpened = "download.something_new"
+        finished.performClick()
+        compose.waitForIdle()
+        finished.assertTextContains("The file couldn’t be opened.")
+        compose.onAllNodesWithTag("download-not-opened", useUnmergedTree = true).assertCountEquals(1)
+
+        // Pressed again and opened: nothing is said.
+        notOpened = null
+        finished.performClick()
+        compose.waitForIdle()
+        compose.onAllNodesWithTag("download-not-opened", useUnmergedTree = true).assertCountEquals(0)
+        assertEquals(4, opened().size)
+    }
 
     @Test
     fun aDownloadIsShownByItsNameItsSiteAndHowItStands() {

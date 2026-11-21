@@ -757,6 +757,30 @@
         }
       }
     },
+    "downloads.open": {
+      "comment": "What pressing a finished download in the list does, as a screen reader says it: opens the file with whatever the device has for its kind.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open"
+          }
+        }
+      }
+    },
+    "downloads.open_failed": {
+      "comment": "Under a download in the list, after a person pressed it to open its file, when it did not open for a reason this build has no words for.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file couldn’t be opened."
+          }
+        }
+      }
+    },
     "downloads.stop": {
       "comment": "Accessibility label of the button beside a download that is still coming, which stops it.",
       "extractionState": "manual",
@@ -825,6 +849,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "WebTiger was closed before it finished."
+          }
+        }
+      }
+    },
+    "error.download.missing": {
+      "comment": "Under a download in the list, after a person pressed it to open its file: the file was moved, renamed or removed since it was downloaded.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file isn’t where it was saved any more."
           }
         }
       }
@@ -1101,6 +1137,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "WebTiger couldn’t start"
+          }
+        }
+      }
+    },
+    "error.system.no_handler": {
+      "comment": "Under a download in the list, after a person pressed it to open its file: no app on the device opens files of its kind.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing on this device opens this kind of file."
           }
         }
       }

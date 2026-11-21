@@ -169,6 +169,57 @@ class DownloadsModelTest {
 
             assertEquals("an answer to a question that was asked again is out of date", listOf("file-5.txt", "file-4.txt"), names(model))
         }
+
+    /** The downloads the core was asked to open, with the window they were asked for, in order. */
+    private fun opened(core: ScriptedCore): List<Pair<Long, Long>> = core.requests.mapNotNull { it.open_download?.let { open -> open.window_id to open.download_id } }
+
+    @Test
+    fun aFinishedDownloadIsOpenedByAskingTheCoreAndOneWithNoWholeFileIsNotAskedAbout() =
+        runTest {
+            val script = DownloadsScript()
+            val core = ScriptedCore(script::answer)
+            val model = DownloadsModel(unconfinedSession(core), windowId = 7)
+            model.reload()
+            val coming = model.entries.first { it.state == DownloadState.DOWNLOAD_STATE_COMING }
+            val finished = model.entries.first { it.state == DownloadState.DOWNLOAD_STATE_FINISHED }
+
+            model.open(finished)
+            model.open(coming)
+            model.open(finished.copy(state = DownloadState.DOWNLOAD_STATE_FAILED, error_code = "download.network"))
+
+            assertEquals("the window's own list, and the download", listOf(7L to finished.id), opened(core))
+            assertTrue("it opened: nothing is said", model.refusals.isEmpty())
+        }
+
+    @Test
+    fun whyAFileDidNotOpenIsKeptByTheCoresCodeUntilItIsPressedAgain() =
+        runTest {
+            val script = DownloadsScript()
+            var says: String? = "download.missing"
+            val core =
+                ScriptedCore { request ->
+                    val code = says
+                    if (request.open_download != null && code != null) Response(error = com.tigercodes.webtiger.core.v1.Error(code = code)) else script.answer(request)
+                }
+            val model = DownloadsModel(unconfinedSession(core), windowId = 7)
+            model.reload()
+            model.showOlder()
+            val (first, second) = model.entries.filter { it.state == DownloadState.DOWNLOAD_STATE_FINISHED }
+
+            model.open(first)
+            assertEquals(mapOf(first.id to "download.missing"), model.refusals)
+
+            // Another's refusal is its own.
+            says = "system.no_handler"
+            model.open(second)
+            assertEquals(mapOf(first.id to "download.missing", second.id to "system.no_handler"), model.refusals)
+
+            // Pressed again and opened: what was said of it goes.
+            says = null
+            model.open(first)
+            assertEquals(mapOf(second.id to "system.no_handler"), model.refusals)
+            assertEquals(3, opened(core).size)
+        }
 }
 
 /** A core whose answer about downloads waits until the test lets it go: answers that come in any order. */

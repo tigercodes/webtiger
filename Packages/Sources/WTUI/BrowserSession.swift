@@ -84,7 +84,10 @@ public final class BrowserSession {
                     engine.filePicker = .system
                 }
             #endif
-            let core = try NativeCore.start(config: config, host: ShellHost(engine: engine, opener: opener))
+            // A file is opened from where the app saves (030). Not in fake mode: no test
+            // starts another app.
+            let files: FileOpener = config.testMode == .fake ? .nothing : .system(in: engine.downloadsFolder)
+            let core = try NativeCore.start(config: config, host: ShellHost(engine: engine, opener: opener, files: files))
             // In fake mode nothing of the person's is touched: not their clipboard either.
             return BrowserSession(core: core, engine: engine, clipboard: config.testMode == .fake ? .ownOfTheApp : .system)
         }

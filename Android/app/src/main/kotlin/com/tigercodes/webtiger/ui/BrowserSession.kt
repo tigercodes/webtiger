@@ -155,7 +155,10 @@ class BrowserSession(
             // In fake mode nothing leaves the app: a link for the system opens no other app (007).
             val opener = if (launch.fake) OutsideOpener.nothing else SystemOpener(application)
             // Host requests are answered on the main thread, where a WebView must be used.
-            val core = NativeCore.start(config, ShellHost(engine, opener), Dispatchers.Main)
+            // A file is opened from where the real app saves: fake mode saves in the app's own
+            // folder, and opens nothing.
+            val opensFiles = if (launch.fake) FileOpener.nothing else SystemFileOpener(application)
+            val core = NativeCore.start(config, ShellHost(engine, opener, opensFiles), Dispatchers.Main)
             val clipboard = if (launch.fake) MemoryClipboard() else SystemClipboard(application)
             return BrowserSession(core, engine, MainScope(), permissions.takeIf { mayAskTheSystem(launch) }, clipboard, files)
         }

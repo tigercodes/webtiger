@@ -48,7 +48,7 @@ The system's `DownloadManager` is no longer used. A fetcher of the adapter's own
 
 **What is lost by leaving the system's downloader:**
 
-- **The system's notice** of a download in the status bar, which was how a person opened a file that had come (013 §6). The file is in the device's Downloads, where the system's Files app shows it, and in WebTiger's list; the list still cannot open it. Opening a file from the list is planned with the Library (013 §2, W3): with the notice gone, it is wanted sooner on Android than it was.
+- **The system's notice** of a download in the status bar, which was how a person opened a file that had come (013 §6). The file is in the device's Downloads, where the system's Files app shows it, and in WebTiger's list; the list still cannot open it. Opening a file from the list was planned with the Library (013 §2, W3); with the notice gone it was wanted sooner, and is built: [030](030-open-a-download.md).
 - **A download that outlives the app.** The system's downloader went on when the app was closed. The adapter's goes on while the app's process lives, as WebKit's does on Apple's systems.
 
 ## 5. Decisions

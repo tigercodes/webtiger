@@ -644,6 +644,19 @@ pub struct CancelDownload {
     #[prost(uint64, tag = "1")]
     pub download_id: u64,
 }
+/// Since 1.22. Opens a finished download's file with whatever the system has
+/// for its kind (030): a person pressed it in the list. The core asks the
+/// shell's System service (OpenFile) and answers as it answers. Answered with
+/// Ack; "window.unknown"; "download.unknown" for one that is not on the
+/// window's list; "download.not_finished" for one that is coming or that
+/// failed; or the shell's "system.no_handler" or "download.missing".
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct OpenDownload {
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
+    #[prost(uint64, tag = "2")]
+    pub download_id: u64,
+}
 /// Takes downloads off a window's list: one, or all of them. One that is
 /// still coming is stopped first. The files are not touched. Answered with
 /// Ack; "window.unknown"; "download.nothing_named" when it says neither.
@@ -1598,7 +1611,7 @@ pub struct SearchRequested {
 pub struct HostRequest {
     #[prost(
         oneof = "host_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15"
     )]
     pub kind: ::core::option::Option<host_request::Kind>,
 }
@@ -1642,6 +1655,9 @@ pub mod host_request {
         /// Since 1.20
         #[prost(message, tag = "14")]
         WebViewTrustCertificate(super::WebViewTrustCertificate),
+        /// Since 1.22
+        #[prost(message, tag = "15")]
+        OpenFile(super::OpenFile),
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -1842,6 +1858,24 @@ pub struct WebViewTrustCertificate {
     #[prost(uint64, tag = "1")]
     pub web_view_id: u64,
 }
+/// Since 1.22. System: opens a file this shell saved as a download, by the
+/// name it was saved under, with whatever the system has for its kind (030).
+/// The core asks only for a download that has finished, on a person's press;
+/// a shell opens no file unasked. What the system is handed is the file and
+/// nothing else: not where it came from, and no leave beyond reading that
+/// one file. Answered with Ack once the system has taken the file;
+/// "system.no_handler" when nothing on the device opens it;
+/// "download.missing" when the file is not where it was saved. In fake mode
+/// a shell opens nothing and answers Ack.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct OpenFile {
+    #[prost(string, tag = "1")]
+    pub file_name: ::prost::alloc::string::String,
+    /// What the site said the file is. Empty when it did not say: the shell
+    /// then goes by the file's name.
+    #[prost(string, tag = "2")]
+    pub mime_type: ::prost::alloc::string::String,
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Envelope {
     /// A request's id, chosen by the shell, correlates its response; a request
@@ -1875,7 +1909,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -1959,6 +1993,9 @@ pub mod request {
         /// Since 1.21
         #[prost(message, tag = "31")]
         SearchWords(super::SearchWords),
+        /// Since 1.22
+        #[prost(message, tag = "32")]
+        OpenDownload(super::OpenDownload),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.

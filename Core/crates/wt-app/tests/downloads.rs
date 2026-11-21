@@ -17,8 +17,9 @@ use std::time::Duration;
 
 use wt_app::{DOWNLOAD_INTERVAL, PROMPT_DELAY};
 use wt_proto::v1::{
-    AnswerPrompt, CancelDownload, DownloadEntry, DownloadState, ForgetDownloads, QueryDownloads,
-    TabView, forget_downloads, request, response,
+    AnswerPrompt, CancelDownload, CreateSpace, DownloadEntry, DownloadState, ForgetDownloads,
+    OpenDownload, QueryDownloads, SwitchSpace, TabView, forget_downloads, host_request, request,
+    response,
 };
 use wt_testkit::{FakeEngine, FakeShell, run};
 
@@ -570,6 +571,176 @@ fn a_download_outlives_the_tab_that_asked_for_it() {
             [],
             "closing its tab stops nothing"
         );
+    });
+}
+
+/// The person presses a download in the list to open its file (030).
+async fn open(shell: &mut FakeShell, window: u64, download: u64) -> response::Kind {
+    shell
+        .request(request::Kind::OpenDownload(OpenDownload {
+            window_id: window,
+            download_id: download,
+        }))
+        .await
+}
+
+/// The files the shell's System service was asked to open, as the contract
+/// carried them: the name and the kind, and nothing else.
+fn asked_to_open(shell: &FakeShell) -> Vec<(String, String)> {
+    shell
+        .host_requests
+        .iter()
+        .filter_map(|request| match request {
+            host_request::Kind::OpenFile(open) => {
+                Some((open.file_name.clone(), open.mime_type.clone()))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn a_download_that_has_finished_is_opened_by_the_name_it_was_saved_under() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (window, _, _, web_view) = a_page(&mut shell).await;
+        ask(&mut shell, web_view, 7, "report.pdf").await;
+        // The name was taken: the shell says what it used.
+        shell.report(FakeEngine::download_finished(7, "report (2).pdf"));
+        shell.settle().await;
+        let download = list(&mut shell, window).await[0].id;
+
+        let answer = open(&mut shell, window, download).await;
+
+        assert!(matches!(answer, response::Kind::Ack(_)), "{answer:?}");
+        // The file as the shell saved it, and the kind the site said: not
+        // the name the site suggested, and nothing of where it came from.
+        let asked = [("report (2).pdf".to_owned(), "application/pdf".to_owned())];
+        assert_eq!(asked_to_open(&shell), asked);
+        assert_eq!(shell.engine.opened_files, asked);
+
+        // Opened again when it is pressed again: once for each press.
+        open(&mut shell, window, download).await;
+        assert_eq!(shell.engine.opened_files.len(), 2);
+    });
+}
+
+#[test]
+fn a_download_with_no_whole_file_and_one_there_is_not_are_not_opened() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (window, _, _, web_view) = a_page(&mut shell).await;
+        ask(&mut shell, web_view, 7, "report.pdf").await;
+        let coming = list(&mut shell, window).await[0].id;
+
+        // Still coming: there is no whole file.
+        assert_eq!(
+            error_code(open(&mut shell, window, coming).await),
+            "download.not_finished"
+        );
+        // Failed: there is none either.
+        shell.report(FakeEngine::download_failed(7, "download.network"));
+        shell.settle().await;
+        assert_eq!(
+            error_code(open(&mut shell, window, coming).await),
+            "download.not_finished"
+        );
+        // One the core does not have, and an id no download could have.
+        for nobody in [coming + 999, 0, u64::MAX] {
+            assert_eq!(
+                error_code(open(&mut shell, window, nobody).await),
+                "download.unknown",
+                "{nobody}"
+            );
+        }
+        // A window there is not.
+        assert_eq!(
+            error_code(open(&mut shell, window + 999, coming).await),
+            "window.unknown"
+        );
+
+        // The shell was asked to open nothing.
+        assert_eq!(asked_to_open(&shell), []);
+    });
+}
+
+#[test]
+fn what_the_shell_says_of_opening_a_file_is_the_answer() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (window, _, _, web_view) = a_page(&mut shell).await;
+        ask(&mut shell, web_view, 7, "report.pdf").await;
+        shell.report(FakeEngine::download_finished(7, "report.pdf"));
+        shell.settle().await;
+        let download = list(&mut shell, window).await[0].id;
+
+        // Nothing on the device opens that kind of file.
+        shell.engine.nothing_opens_files = true;
+        assert_eq!(
+            error_code(open(&mut shell, window, download).await),
+            "system.no_handler"
+        );
+        // The file is not where it was saved any more.
+        shell.engine.nothing_opens_files = false;
+        shell.engine.missing_files.push("report.pdf".to_owned());
+        assert_eq!(
+            error_code(open(&mut shell, window, download).await),
+            "download.missing"
+        );
+        // It was asked for each time, and nothing was opened.
+        assert_eq!(asked_to_open(&shell).len(), 2);
+        assert!(shell.engine.opened_files.is_empty());
+        // The list is as it was: a file that is gone is still a download
+        // that finished.
+        assert_eq!(
+            standing(&mut shell, window).await,
+            [("report.pdf".to_owned(), "finished".to_owned())]
+        );
+    });
+}
+
+#[test]
+fn a_download_is_opened_only_from_the_list_it_is_on() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (window, _, subscription, web_view) = a_page(&mut shell).await;
+        ask(&mut shell, web_view, 7, "report.pdf").await;
+        shell.report(FakeEngine::download_finished(7, "report.pdf"));
+        shell.settle().await;
+        let download = list(&mut shell, window).await[0].id;
+        let home = shell.window(subscription).space_id;
+
+        // A Space with logins of its own has a list of its own: the first
+        // Space's download is not on it, and is not opened from it.
+        let made = shell
+            .request(request::Kind::CreateSpace(CreateSpace {
+                name: "Work".to_owned(),
+                share_logins_with: 0,
+                colour: String::new(),
+            }))
+            .await;
+        let response::Kind::SpaceCreated(work) = made else {
+            panic!("expected a Space, got {made:?}");
+        };
+        let switch = |space: u64| {
+            request::Kind::SwitchSpace(SwitchSpace {
+                window_id: window,
+                space_id: space,
+            })
+        };
+        shell.request(switch(work.space_id)).await;
+        assert!(list(&mut shell, window).await.is_empty());
+        assert_eq!(
+            error_code(open(&mut shell, window, download).await),
+            "download.unknown"
+        );
+        assert_eq!(asked_to_open(&shell), []);
+
+        // Back in the Space it was downloaded in, it opens.
+        shell.request(switch(home)).await;
+        let answer = open(&mut shell, window, download).await;
+        assert!(matches!(answer, response::Kind::Ack(_)), "{answer:?}");
+        assert_eq!(asked_to_open(&shell).len(), 1);
     });
 }
 

@@ -19,7 +19,7 @@ I click a link to a file. WebTiger saves it in my Downloads folder under a sensi
 
 - **Asking before a site's first download**, and remembering the answer for the site: [015](015-first-download.md), on the prompt that [014](014-permissions.md) built. As this feature was built, every download a page started was started, at most one a second from a web view (as links for the system are, 007), and always shown: nothing is saved that the list does not say.
 - **Choosing where a file goes**, and "Save As": settings, and the System service's file picker.
-- **Opening a file, or showing it in its folder**, from the list: the System service again, with the Library (W3).
+- **Opening a file, or showing it in its folder**, from the list: the System service again, with the Library (W3). *Opening was brought forward: [030](030-open-a-download.md), on Android and the Mac.*
 - **Resuming** a download that was cut off, and one that outlives a quit. A download that was coming when the app ended is listed as failed.
 - **Checking what was downloaded** (a file's kind against its name, a known-bad list): Guard's, later.
 - **Private windows** (W2): their downloads are in no list after the window closes.

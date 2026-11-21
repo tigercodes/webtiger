@@ -392,6 +392,17 @@ message CancelDownload {
   uint64 download_id = 1;
 }
 
+// Since 1.22. Opens a finished download's file with whatever the system has
+// for its kind (030): a person pressed it in the list. The core asks the
+// shell's System service (OpenFile) and answers as it answers. Answered with
+// Ack; "window.unknown"; "download.unknown" for one that is not on the
+// window's list; "download.not_finished" for one that is coming or that
+// failed; or the shell's "system.no_handler" or "download.missing".
+message OpenDownload {
+  uint64 window_id = 1;
+  uint64 download_id = 2;
+}
+
 // Takes downloads off a window's list: one, or all of them. One that is
 // still coming is stopped first. The files are not touched. Answered with
 // Ack; "window.unknown"; "download.nothing_named" when it says neither.

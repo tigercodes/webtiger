@@ -10,6 +10,7 @@ import com.tigercodes.webtiger.core.v1.CancelDownload
 import com.tigercodes.webtiger.core.v1.DownloadEntry
 import com.tigercodes.webtiger.core.v1.DownloadState
 import com.tigercodes.webtiger.core.v1.ForgetDownloads
+import com.tigercodes.webtiger.core.v1.OpenDownload
 import com.tigercodes.webtiger.core.v1.QueryDownloads
 import com.tigercodes.webtiger.core.v1.Request
 import kotlinx.coroutines.launch
@@ -51,6 +52,33 @@ class DownloadsModel(private val session: BrowserSession, private val windowId: 
     fun stop(entry: DownloadEntry) {
         session.send(Request(cancel_download = CancelDownload(download_id = entry.id)))
         reload()
+    }
+
+    /**
+     * Why a file a person pressed did not open, by its download: the core's code (030). Said
+     * under the download until it is pressed again.
+     */
+    var refusals by mutableStateOf<Map<Long, String>>(emptyMap())
+        private set
+
+    /**
+     * Opens a finished download's file with whatever the system has for it (030). The core is
+     * asked: whether it may be opened, and what came of it, are the core's to say. A download
+     * with no whole file is not asked about.
+     */
+    fun open(entry: DownloadEntry) {
+        if (entry.state != DownloadState.DOWNLOAD_STATE_FINISHED) return
+        refusals = refusals - entry.id
+        session.scope.launch {
+            try {
+                session.core.request(Request(open_download = OpenDownload(window_id = windowId, download_id = entry.id)))
+            } catch (refused: CoreError.Refused) {
+                refusals = refusals + (entry.id to refused.code)
+            } catch (_: CoreError) {
+                // The core is gone, or did not answer: the file did not open.
+                refusals = refusals + (entry.id to "")
+            }
+        }
     }
 
     /** Takes one download off the list. It leaves at once; its file stays where it is. */

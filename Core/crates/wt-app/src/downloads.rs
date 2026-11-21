@@ -7,12 +7,12 @@ use tokio::time::Instant;
 use wt_core::{Address, LoginSetId, WebViewId, WindowId, download_file_name};
 use wt_proto::v1::{
     Ack, CancelDownload, DownloadCancel, DownloadEntry, DownloadProgress, DownloadRequested,
-    DownloadStart, DownloadState, DownloadsPage, ForgetDownloads, PermissionKind, QueryDownloads,
-    engine_event, forget_downloads, host_request, response,
+    DownloadStart, DownloadState, DownloadsPage, ForgetDownloads, OpenDownload, OpenFile,
+    PermissionKind, QueryDownloads, engine_event, forget_downloads, host_request, response,
 };
 use wt_store::{COMING, Download, FINISHED};
 
-use crate::app::App;
+use crate::app::{App, AppFuture, refuse};
 use crate::error::{AppError, is_code};
 use crate::model::{AskedFor, Asker};
 
@@ -389,6 +389,45 @@ impl App {
             .ok_or_else(|| AppError::new("download.unknown").field("download_id"))?;
         self.stop(shell_id);
         Ok(response::Kind::Ack(Ack {}))
+    }
+
+    /// A person pressed a download in the list to open its file (030). The
+    /// core says whether it may be: one on the window's own list, that has
+    /// finished. The shell's System service then opens it, and its answer
+    /// is the answer.
+    pub(crate) fn open_download(&self, open: &OpenDownload) -> AppFuture {
+        let download = match self.finished_download(open) {
+            Ok(download) => download,
+            Err(refused) => return refuse(refused),
+        };
+        // The file and nothing else: not where it came from.
+        let opening = self.host.request(host_request::Kind::OpenFile(OpenFile {
+            file_name: download.file_name,
+            mime_type: download.mime_type,
+        }));
+        Box::pin(async move {
+            opening.await?;
+            Ok(response::Kind::Ack(Ack {}))
+        })
+    }
+
+    /// The download a request to open one names, when it may be opened.
+    fn finished_download(&self, open: &OpenDownload) -> Result<Download, AppError> {
+        let login_set = self.downloads_of(open.window_id)?;
+        let unknown = || AppError::new("download.unknown").field("download_id");
+        // An id beyond any the store could have given is nobody's.
+        let record = i64::try_from(open.download_id).map_err(|_| unknown())?;
+        let download = self
+            .store
+            .borrow()
+            .download(login_set, record)
+            .map_err(|error| AppError::new(error.code()))?
+            .ok_or_else(unknown)?;
+        // One that is coming has no whole file, and one that failed has none.
+        if download.state != FINISHED {
+            return Err(AppError::new("download.not_finished").field("download_id"));
+        }
+        Ok(download)
     }
 
     /// Takes downloads off a window's list: one, or all of its login set's.

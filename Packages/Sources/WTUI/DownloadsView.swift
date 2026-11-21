@@ -112,6 +112,11 @@ public struct DownloadsView: View {
                     }
                     Text(Self.standing(entry))
                         .accessibilityIdentifier("download-standing")
+                    // Why its file did not open when it was last asked to (030), in words.
+                    if let refusal = model.refusals[entry.id] {
+                        Text(Self.notOpened(refusal))
+                            .accessibilityIdentifier("download-not-opened")
+                    }
                 }
                 .font(.footnote)
                 if entry.state == .coming {
@@ -124,11 +129,38 @@ public struct DownloadsView: View {
             if entry.state == .coming {
                 button("downloads.stop", symbol: "xmark.circle", identifier: "download-stop") { model.stop(entry) }
             } else {
+                // A file that is whole is opened with whatever the Mac has for its kind (030).
+                // Not on an iPhone yet, which has no way to hand a file of an app's on.
+                if Self.opensFiles, entry.state == .finished {
+                    button("downloads.open", symbol: "arrow.up.forward.square", identifier: "download-open") {
+                        Task { await model.open(entry) }
+                    }
+                }
                 button("downloads.forget", symbol: "trash", identifier: "download-forget") { model.forget(entry) }
             }
         }
         .padding(.horizontal, Tokens.Space.m)
         .padding(.vertical, Tokens.Space.xs)
+    }
+
+    /// Whether this system's list can open a file (030): a Mac's.
+    static var opensFiles: Bool {
+        #if os(macOS)
+            true
+        #else
+            false
+        #endif
+    }
+
+    /// Why a file did not open, in words, by the core's code (030). A code this build has no
+    /// words for still says something, and never shows the code's own text.
+    static func notOpened(_ code: String) -> String {
+        let key = switch code {
+        case "system.no_handler": "error.system.no_handler"
+        case "download.missing": "error.download.missing"
+        default: "downloads.open_failed"
+        }
+        return Bundle.module.localizedString(forKey: key, value: nil, table: nil)
     }
 
     /// How far a download has got, drawn, when its size is known. One whose size is not known

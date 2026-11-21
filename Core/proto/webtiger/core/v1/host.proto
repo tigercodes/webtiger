@@ -43,6 +43,8 @@ message HostRequest {
     SignInAnswer sign_in_answer = 13;
     // Since 1.20
     WebViewTrustCertificate web_view_trust_certificate = 14;
+    // Since 1.22
+    OpenFile open_file = 15;
   }
 }
 
@@ -204,4 +206,20 @@ message SignInAnswer {
 // for this web view.
 message WebViewTrustCertificate {
   uint64 web_view_id = 1;
+}
+
+// Since 1.22. System: opens a file this shell saved as a download, by the
+// name it was saved under, with whatever the system has for its kind (030).
+// The core asks only for a download that has finished, on a person's press;
+// a shell opens no file unasked. What the system is handed is the file and
+// nothing else: not where it came from, and no leave beyond reading that
+// one file. Answered with Ack once the system has taken the file;
+// "system.no_handler" when nothing on the device opens it;
+// "download.missing" when the file is not where it was saved. In fake mode
+// a shell opens nothing and answers Ack.
+message OpenFile {
+  string file_name = 1 [(wt.redact) = true];
+  // What the site said the file is. Empty when it did not say: the shell
+  // then goes by the file's name.
+  string mime_type = 2;
 }

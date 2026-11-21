@@ -17,6 +17,10 @@ public final class DownloadsModel {
     /// than that nothing was downloaded.
     public private(set) var loaded = false
 
+    /// Why a file a person pressed did not open, by its download: the core's code (030). Said
+    /// under the download until it is pressed again.
+    public private(set) var refusals: [UInt64: String] = [:]
+
     private let core: any CoreClient
     private let windowID: UInt64
     /// Counts what was asked: an answer to anything but the last question is out of date.
@@ -42,6 +46,28 @@ public final class DownloadsModel {
     public func showOlder() {
         guard more, let last = entries.last else { return }
         ask(before: last.id)
+    }
+
+    /// Opens a finished download's file with whatever the system has for it (030). The core
+    /// is asked: whether it may be opened, and what came of it, are the core's to say. A
+    /// download with no whole file is not asked about.
+    public func open(_ entry: WTDownloadEntry) async {
+        guard entry.state == .finished else { return }
+        refusals[entry.id] = nil
+        var open = WTOpenDownload()
+        open.windowID = windowID
+        open.downloadID = entry.id
+        do {
+            // A core says no by throwing; one that answers with the error says the same.
+            if case let .error(refused) = try await core.send(.openDownload(open)).value {
+                refusals[entry.id] = refused.code
+            }
+        } catch let CoreError.refused(code, _) {
+            refusals[entry.id] = code
+        } catch {
+            // The core is gone, or did not answer: the file did not open.
+            refusals[entry.id] = ""
+        }
     }
 
     /// Asks again every second for as long as the list is shown: how far a download has got

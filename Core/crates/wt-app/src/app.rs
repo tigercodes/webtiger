@@ -191,6 +191,7 @@ impl App {
                 self.proceed_past_certificate(&proceed)
             }
             request::Kind::SearchWords(asked) => self.search_words(&asked),
+            request::Kind::OpenDownload(open) => self.open_download(&open),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
             | request::Kind::Unsubscribe(_)

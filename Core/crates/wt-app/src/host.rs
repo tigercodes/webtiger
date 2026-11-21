@@ -116,7 +116,8 @@ impl Expected {
             | host_request::Kind::PermissionAnswer(_)
             | host_request::Kind::DialogAnswer(_)
             | host_request::Kind::SignInAnswer(_)
-            | host_request::Kind::WebViewTrustCertificate(_) => Expected::Ack,
+            | host_request::Kind::WebViewTrustCertificate(_)
+            | host_request::Kind::OpenFile(_) => Expected::Ack,
         }
     }
 

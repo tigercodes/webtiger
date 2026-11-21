@@ -5,6 +5,7 @@ package com.tigercodes.webtiger.ui
 
 import android.content.Context
 import android.text.format.Formatter
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,8 +34,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -93,7 +97,13 @@ fun DownloadsList(
                 else ->
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
                         items(model.entries, key = { it.id }) { entry ->
-                            DownloadRow(entry = entry, onStop = { model.stop(entry) }, onForget = { model.forget(entry) })
+                            DownloadRow(
+                                entry = entry,
+                                refusal = model.refusals[entry.id],
+                                onOpen = { model.open(entry) },
+                                onStop = { model.stop(entry) },
+                                onForget = { model.forget(entry) },
+                            )
                             HorizontalDivider(color = Tokens.Palette.hairline.current, modifier = Modifier.padding(start = Tokens.Space.m))
                         }
                         if (model.more) {
@@ -137,10 +147,15 @@ internal fun ListHeader(switcher: (@Composable () -> Unit)?, title: Int, buttons
     }
 }
 
-/** One download: its file's name, where it came from and how it stands; a button stops it, or takes it off the list. */
+/**
+ * One download: its file's name, where it came from and how it stands; a button stops it, or
+ * takes it off the list. One that has finished is pressed to open its file (030); `refusal` is
+ * why the file did not open when it was last pressed, by the core's code.
+ */
 @Composable
-private fun DownloadRow(entry: DownloadEntry, onStop: () -> Unit, onForget: () -> Unit) {
+private fun DownloadRow(entry: DownloadEntry, refusal: String?, onOpen: () -> Unit, onStop: () -> Unit, onForget: () -> Unit) {
     val coming = entry.state == DownloadState.DOWNLOAD_STATE_COMING
+    val finished = entry.state == DownloadState.DOWNLOAD_STATE_FINISHED
     val standing = standing(LocalContext.current, entry)
     Row(modifier = Modifier.fillMaxWidth().padding(start = Tokens.Space.m), verticalAlignment = Alignment.CenterVertically) {
         Column(
@@ -148,6 +163,9 @@ private fun DownloadRow(entry: DownloadEntry, onStop: () -> Unit, onForget: () -
                 Modifier
                     .weight(1f)
                     .heightIn(min = LocalMinimumInteractiveComponentSize.current)
+                    // Only a file that is whole is opened: one that is coming, or that failed,
+                    // is not pressed.
+                    .then(if (finished) Modifier.clickable(onClickLabel = stringResource(R.string.downloads_open), role = Role.Button, onClick = onOpen) else Modifier)
                     .padding(vertical = Tokens.Space.xs)
                     // One thing to a screen reader: the file, its site, and how it stands.
                     .semantics(mergeDescendants = true) {}
@@ -161,6 +179,14 @@ private fun DownloadRow(entry: DownloadEntry, onStop: () -> Unit, onForget: () -
                 Text(text = entry.host, maxLines = 1, overflow = TextOverflow.MiddleEllipsis, style = MaterialTheme.typography.bodySmall)
             }
             if (standing.isNotEmpty()) Text(text = standing, style = MaterialTheme.typography.bodySmall)
+            // Why it did not open, in words, said aloud when it comes.
+            if (refusal != null) {
+                Text(
+                    text = stringResource(openRefusalWords(refusal)),
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }.testTag("download-not-opened"),
+                )
+            }
             // How far it has got, drawn, when its size is known. One whose size is not known
             // has only its words: a bar that moved without saying anything would be the one
             // thing in the list that never stood still.
@@ -210,6 +236,17 @@ internal fun wordsFor(code: String): Int =
         "download.disk" -> R.string.error_download_disk
         "download.interrupted" -> R.string.error_download_interrupted
         else -> R.string.error_download_failed
+    }
+
+/**
+ * Why a file did not open, in words, by the core's code (030). A code this build has no words
+ * for still says something, and never shows the code's own text.
+ */
+internal fun openRefusalWords(code: String): Int =
+    when (code) {
+        "system.no_handler" -> R.string.error_system_no_handler
+        "download.missing" -> R.string.error_download_missing
+        else -> R.string.downloads_open_failed
     }
 
 /** A number of bytes as a person reads a file's size. */

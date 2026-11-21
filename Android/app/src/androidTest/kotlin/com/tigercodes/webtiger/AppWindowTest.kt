@@ -633,6 +633,16 @@ internal class AppWindowTest {
         compose.onAllNodesWithTag("download-stop").assertCountEquals(0)
         compose.onRoot().tryPerformAccessibilityChecks()
 
+        // Pressed, its file is opened (030): asked of the real core, which says it may be and
+        // asks the shell. In fake mode the shell opens nothing and says it did: nothing is
+        // said under the download, and the list is still there.
+        row.performClick()
+        compose.waitForIdle()
+        Thread.sleep(1_000)
+        compose.onAllNodesWithTag("download-not-opened", useUnmergedTree = true).assertCountEquals(0)
+        assertEquals(1, rows())
+        compose.onRoot().tryPerformAccessibilityChecks()
+
         // Off the list; the file stays.
         compose.onNodeWithTag("download-forget").performClick()
         compose.waitUntil(15_000) { compose.onAllNodesWithTag("downloads-nothing").fetchSemanticsNodes().isNotEmpty() }

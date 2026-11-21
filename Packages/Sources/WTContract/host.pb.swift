@@ -163,6 +163,15 @@ public nonisolated struct WTHostRequest: Sendable {
     set {kind = .webViewTrustCertificate(newValue)}
   }
 
+  /// Since 1.22
+  public var openFile: WTOpenFile {
+    get {
+      if case .openFile(let v)? = kind {return v}
+      return WTOpenFile()
+    }
+    set {kind = .openFile(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -188,6 +197,8 @@ public nonisolated struct WTHostRequest: Sendable {
     case signInAnswer(WTSignInAnswer)
     /// Since 1.20
     case webViewTrustCertificate(WTWebViewTrustCertificate)
+    /// Since 1.22
+    case openFile(WTOpenFile)
 
   }
 
@@ -539,13 +550,38 @@ public nonisolated struct WTWebViewTrustCertificate: Sendable {
   public init() {}
 }
 
+/// Since 1.22. System: opens a file this shell saved as a download, by the
+/// name it was saved under, with whatever the system has for its kind (030).
+/// The core asks only for a download that has finished, on a person's press;
+/// a shell opens no file unasked. What the system is handed is the file and
+/// nothing else: not where it came from, and no leave beyond reading that
+/// one file. Answered with Ack once the system has taken the file;
+/// "system.no_handler" when nothing on the device opens it;
+/// "download.missing" when the file is not where it was saved. In fake mode
+/// a shell opens nothing and answers Ack.
+public nonisolated struct WTOpenFile: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var fileName: String = String()
+
+  /// What the site said the file is. Empty when it did not say: the shell
+  /// then goes by the file's name.
+  public var mimeType: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
 
 nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".HostRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{3}web_view_create\0\u{3}web_view_load\0\u{3}web_view_command\0\u{3}web_view_destroy\0\u{3}open_outside\0\u{3}web_view_find\0\u{3}web_view_set_zoom\0\u{3}download_start\0\u{3}download_cancel\0\u{3}permission_answer\0\u{3}dialog_answer\0\u{3}sign_in_answer\0\u{3}web_view_trust_certificate\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{3}web_view_create\0\u{3}web_view_load\0\u{3}web_view_command\0\u{3}web_view_destroy\0\u{3}open_outside\0\u{3}web_view_find\0\u{3}web_view_set_zoom\0\u{3}download_start\0\u{3}download_cancel\0\u{3}permission_answer\0\u{3}dialog_answer\0\u{3}sign_in_answer\0\u{3}web_view_trust_certificate\0\u{3}open_file\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -735,6 +771,19 @@ nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
           self.kind = .webViewTrustCertificate(v)
         }
       }()
+      case 15: try {
+        var v: WTOpenFile?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .openFile(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .openFile(v)
+        }
+      }()
       default: break
       }
     }
@@ -801,6 +850,10 @@ nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
     case .webViewTrustCertificate?: try {
       guard case .webViewTrustCertificate(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
+    }()
+    case .openFile?: try {
+      guard case .openFile(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 15)
     }()
     case nil: break
     }
@@ -1452,6 +1505,41 @@ nonisolated extension WTWebViewTrustCertificate: SwiftProtobuf.Message, SwiftPro
 
   public static func ==(lhs: WTWebViewTrustCertificate, rhs: WTWebViewTrustCertificate) -> Bool {
     if lhs.webViewID != rhs.webViewID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTOpenFile: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".OpenFile"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}file_name\0\u{3}mime_type\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.fileName) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.mimeType) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.fileName.isEmpty {
+      try visitor.visitSingularStringField(value: self.fileName, fieldNumber: 1)
+    }
+    if !self.mimeType.isEmpty {
+      try visitor.visitSingularStringField(value: self.mimeType, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTOpenFile, rhs: WTOpenFile) -> Bool {
+    if lhs.fileName != rhs.fileName {return false}
+    if lhs.mimeType != rhs.mimeType {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

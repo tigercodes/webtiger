@@ -11,6 +11,7 @@ import com.tigercodes.webtiger.core.v1.Ack
 import com.tigercodes.webtiger.core.v1.HostPing
 import com.tigercodes.webtiger.core.v1.HostRequest
 import com.tigercodes.webtiger.core.v1.HostResponse
+import com.tigercodes.webtiger.core.v1.OpenFile
 import com.tigercodes.webtiger.core.v1.OpenOutside
 import com.tigercodes.webtiger.core.v1.WebViewCommand
 import com.tigercodes.webtiger.core.v1.WebViewCreate
@@ -43,10 +44,13 @@ class ShellHostTest {
     private val opened = ArrayList<String>()
 
     private fun host(opens: Boolean = true) =
-        ShellHost(engine) { url ->
-            opened.add(url)
-            opens
-        }
+        ShellHost(
+            engine,
+            OutsideOpener { url ->
+                opened.add(url)
+                opens
+            },
+        )
 
     private fun openOutside(url: String) = HostRequest(open_outside = OpenOutside(url = url))
 
@@ -128,5 +132,97 @@ class ShellHostTest {
         val application = ApplicationProvider.getApplicationContext<Application>()
         for (text in listOf("", "not an address", "ada@example.com")) assertFalse(text, SystemOpener(application).open(text))
         assertNull(shadowOf(application).nextStartedActivity)
+    }
+
+    // Opening a downloaded file (030).
+
+    private fun openFile(name: String, kind: String = "") = HostRequest(open_file = OpenFile(file_name = name, mime_type = kind))
+
+    @Test
+    fun aFileGoesToTheOpenerByItsNameAndKindAndWhatCameOfItIsTheAnswer() =
+        runTest {
+            val asked = ArrayList<Pair<String, String>>()
+            var comes = FileOpened.TAKEN
+            val host =
+                ShellHost(engine, OutsideOpener.nothing) { name, kind ->
+                    asked.add(name to kind)
+                    comes
+                }
+
+            assertNotNull("the system took it", host.answer(openFile("report (2).pdf", "application/pdf")).ack)
+            comes = FileOpened.NO_HANDLER
+            assertEquals("system.no_handler", host.answer(openFile("data.bin")).error?.code)
+            comes = FileOpened.MISSING
+            assertEquals("download.missing", host.answer(openFile("gone.txt", "text/plain")).error?.code)
+
+            assertEquals(listOf("report (2).pdf" to "application/pdf", "data.bin" to "", "gone.txt" to "text/plain"), asked)
+            assertTrue("an engine is asked nothing about it", engine.asked.isEmpty())
+            assertTrue("and nothing was opened as an address", opened.isEmpty())
+        }
+
+    @Test
+    fun inFakeModeNoFileIsOpenedAndTheCoreIsToldItWas() =
+        runTest {
+            // The host a session is given in fake mode: no opener of files but the one that opens nothing.
+            val answer = ShellHost(engine, OutsideOpener.nothing).answer(openFile("report.pdf", "application/pdf"))
+
+            assertNotNull(answer.ack)
+            assertNull(shadowOf(ApplicationProvider.getApplicationContext<Application>()).nextStartedActivity)
+        }
+
+    @Test
+    fun theSystemIsHandedTheFileItsKindAndLeaveToReadItAndNothingElse() {
+        val file = android.net.Uri.parse("content://media/external/downloads/42")
+        val started = ArrayList<Intent>()
+        var found: android.net.Uri? = file
+        var systemsKind: String? = "application/pdf"
+        val looked = ArrayList<String>()
+        val opener =
+            SystemFileOpener(
+                find = { name ->
+                    looked.add(name)
+                    found
+                },
+                kindOf = { systemsKind },
+                start = { started.add(it) },
+            )
+
+        assertEquals(FileOpened.TAKEN, opener.open("report.pdf", "text/html"))
+
+        assertEquals("looked for by the name it was saved under", listOf("report.pdf"), looked)
+        val intent = started.single()
+        assertEquals(Intent.ACTION_VIEW, intent.action)
+        assertEquals(file, intent.data)
+        // What the system makes of the file as it is saved, not what the site said it was.
+        assertEquals("application/pdf", intent.type)
+        assertTrue("in a task of its own", intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
+        assertTrue("with leave to read that one file", intent.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0)
+        assertFalse("and none to change it", intent.flags and Intent.FLAG_GRANT_WRITE_URI_PERMISSION != 0)
+        assertNull("the system chooses what opens it", intent.component)
+        assertNull(intent.`package`)
+        assertNull("nothing of where it came from rides along", intent.extras)
+
+        // Where the system makes nothing of the file, what the site said; and then any kind.
+        systemsKind = null
+        opener.open("report", "application/pdf")
+        assertEquals("application/pdf", started.last().type)
+        systemsKind = " "
+        opener.open("report", "")
+        assertEquals("*/*", started.last().type)
+
+        // A file that is not there is not looked for anywhere else, and nothing is started.
+        found = null
+        val before = started.size
+        assertEquals(FileOpened.MISSING, opener.open("gone.txt", "text/plain"))
+        assertEquals(before, started.size)
+    }
+
+    @Test
+    fun aKindNothingOpensAndAnActivityThatMayNotBeStartedAreNoHandler() {
+        val file = android.net.Uri.parse("content://media/external/downloads/42")
+        val nothing = SystemFileOpener(find = { file }, kindOf = { "application/x-unknown" }, start = { throw android.content.ActivityNotFoundException() })
+        assertEquals(FileOpened.NO_HANDLER, nothing.open("data.bin", ""))
+        val forbidden = SystemFileOpener(find = { file }, kindOf = { "text/plain" }, start = { throw SecurityException() })
+        assertEquals(FileOpened.NO_HANDLER, forbidden.open("notes.txt", "text/plain"))
     }
 }

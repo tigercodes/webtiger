@@ -95,6 +95,15 @@ pub struct FakeEngine {
     /// This shell keeps no certificate it refuses: it says so with the
     /// failure, and is told nothing it can act on.
     pub holds_no_certificate: bool,
+    /// The files this shell was asked to open with the system (030), in
+    /// order: the name and the kind. It opens nothing.
+    pub opened_files: Vec<(String, String)>,
+    /// Nothing on this device opens a file: `OpenFile` is answered with
+    /// "system.no_handler".
+    pub nothing_opens_files: bool,
+    /// Files that are no longer where they were saved: `OpenFile` for one of
+    /// these names is answered with "download.missing".
+    pub missing_files: Vec<String>,
 }
 
 impl FakeEngine {
@@ -118,6 +127,9 @@ impl FakeEngine {
             refused: BTreeMap::new(),
             trust_asked: Vec::new(),
             holds_no_certificate: false,
+            opened_files: Vec::new(),
+            nothing_opens_files: false,
+            missing_files: Vec::new(),
         }
     }
 
@@ -385,6 +397,16 @@ impl FakeEngine {
                     return (error("system.no_handler"), Vec::new());
                 }
                 self.opened_outside.push(open.url);
+                (ack, Vec::new())
+            }
+            Kind::OpenFile(open) => {
+                if self.missing_files.contains(&open.file_name) {
+                    return (error("download.missing"), Vec::new());
+                }
+                if self.nothing_opens_files {
+                    return (error("system.no_handler"), Vec::new());
+                }
+                self.opened_files.push((open.file_name, open.mime_type));
                 (ack, Vec::new())
             }
         }

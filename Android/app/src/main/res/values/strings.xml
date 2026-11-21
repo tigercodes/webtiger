@@ -127,6 +127,10 @@
     <string name="downloads_forget">Remove from List</string>
     <!-- Button at the end of the Downloads list that shows the next, older page of downloads. -->
     <string name="downloads_older">Show Older Downloads</string>
+    <!-- What pressing a finished download in the list does, as a screen reader says it: opens the file with whatever the device has for its kind. -->
+    <string name="downloads_open">Open</string>
+    <!-- Under a download in the list, after a person pressed it to open its file, when it did not open for a reason this build has no words for. -->
+    <string name="downloads_open_failed">The file couldn’t be opened.</string>
     <!-- Accessibility label of the button beside a download that is still coming, which stops it. -->
     <string name="downloads_stop">Stop Download</string>
     <!-- Title of the list of downloads, and the name of its half of the switch beside History. -->
@@ -139,6 +143,8 @@
     <string name="error_download_failed">The download failed.</string>
     <!-- Under a download that was still coming when the app ended. -->
     <string name="error_download_interrupted">WebTiger was closed before it finished.</string>
+    <!-- Under a download in the list, after a person pressed it to open its file: the file was moved, renamed or removed since it was downloaded. -->
+    <string name="error_download_missing">The file isn’t where it was saved any more.</string>
     <!-- Under a download that failed because of the network. -->
     <string name="error_download_network">The connection was lost.</string>
     <!-- The engine cannot make a login set that is kept in memory only. -->
@@ -185,6 +191,8 @@
     <string name="error_start_detail">Error code: %s</string>
     <!-- Heading when the core refused to start. -->
     <string name="error_start_title">WebTiger couldn’t start</string>
+    <!-- Under a download in the list, after a person pressed it to open its file: no app on the device opens files of its kind. -->
+    <string name="error_system_no_handler">Nothing on this device opens this kind of file.</string>
     <!-- Heading shown over a page that failed to load. -->
     <string name="error_title">This page didn’t load</string>
     <!-- Shown in the find bar where the engine counts: which match is shown, and how many there are. First %ld is the match's number, second the total. -->

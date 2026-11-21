@@ -1,5 +1,6 @@
 // The Downloads list's model (013) against a scripted core: what it asks, what it shows, and
 // what its words are for how a download stands.
+import Foundation
 import WTContract
 import WTCoreClient
 @testable import WTUI
@@ -151,5 +152,75 @@ final class DownloadsModelTests: XCTestCase {
         // A code this build has no words for still says something, and never the code's own text.
         XCTAssertEqual(DownloadsView.standing(entry(1, "a", .failed, code: "download.something_new")), "The download failed.")
         XCTAssertEqual(DownloadsView.standing(entry(1, "a", .failed, code: "../../etc")), "The download failed.")
+    }
+
+    // Opening a download's file (030).
+
+    /// The downloads the core was asked to open, with the window they were asked for.
+    private func opened(_ core: ScriptedCore) -> [[UInt64]] {
+        core.requests.compactMap {
+            if case let .openDownload(open) = $0 {
+                [open.windowID, open.downloadID]
+            } else {
+                nil
+            }
+        }
+    }
+
+    func testAFinishedDownloadIsOpenedByAskingTheCoreAndOneWithNoWholeFileIsNotAskedAbout() async {
+        let core = core([entry(3, "report.pdf", .coming), entry(2, "notes.txt"), entry(1, "photos.zip", .failed, code: "download.network")])
+        let model = DownloadsModel(core: core, windowID: 7)
+
+        await model.open(entry(2, "notes.txt"))
+        await model.open(entry(3, "report.pdf", .coming))
+        await model.open(entry(1, "photos.zip", .failed, code: "download.network"))
+
+        XCTAssertEqual(opened(core), [[7, 2]], "the window's own list, and the download")
+        XCTAssertTrue(model.refusals.isEmpty, "it opened: nothing is said")
+    }
+
+    func testWhyAFileDidNotOpenIsKeptByTheCoresCodeUntilItIsPressedAgain() async {
+        let says = Says()
+        let core = ScriptedCore { request in
+            guard case .openDownload = request, let code = says.code else { return .ack(WTAck()) }
+            var refused = WTError()
+            refused.code = code
+            return .error(refused)
+        }
+        let model = DownloadsModel(core: core, windowID: 7)
+
+        says.code = "download.missing"
+        await model.open(entry(2, "notes.txt"))
+        XCTAssertEqual(model.refusals, [2: "download.missing"])
+
+        // Another's refusal is its own.
+        says.code = "system.no_handler"
+        await model.open(entry(1, "data.bin"))
+        XCTAssertEqual(model.refusals, [2: "download.missing", 1: "system.no_handler"])
+
+        // Pressed again and opened: what was said of it goes.
+        says.code = nil
+        await model.open(entry(2, "notes.txt"))
+        XCTAssertEqual(model.refusals, [1: "system.no_handler"])
+        XCTAssertEqual(opened(core).count, 3)
+    }
+
+    /// What a scripted core says when it is asked to open a download: nothing, when it opens.
+    private final class Says: @unchecked Sendable {
+        private let lock = NSLock()
+        private var said: String?
+
+        var code: String? {
+            get { lock.withLock { said } }
+            set { lock.withLock { said = newValue } }
+        }
+    }
+
+    func testWhyAFileDidNotOpenIsSaidInWordsAndNeverByItsCode() {
+        XCTAssertEqual(DownloadsView.notOpened("download.missing"), "The file isn’t where it was saved any more.")
+        XCTAssertEqual(DownloadsView.notOpened("system.no_handler"), "Nothing on this device opens this kind of file.")
+        for code in ["download.something_new", "", "download.not_finished"] {
+            XCTAssertEqual(DownloadsView.notOpened(code), "The file couldn’t be opened.", code)
+        }
     }
 }

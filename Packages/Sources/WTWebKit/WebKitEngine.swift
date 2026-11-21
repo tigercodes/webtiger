@@ -152,9 +152,9 @@ public final class WebKitEngine: HostServices {
                 }
             }
             return .ack(WTAck())
-        case .openOutside:
-            // The System service's, which the shell answers itself (007): opening a link
-            // with another app is nothing to do with a web engine.
+        case .openOutside, .openFile:
+            // The System service's, which the shell answers itself (007, 030): opening a
+            // link or a file with another app is nothing to do with a web engine.
             return failure("host.unsupported")
         case let .webViewFind(find):
             guard let page = pages[find.webViewID] else { return failure("webview.unknown") }
