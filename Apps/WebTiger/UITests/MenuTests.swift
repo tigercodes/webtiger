@@ -31,6 +31,26 @@ final class MenuTests: AppTestCase {
         return said
     }
 
+    /// A file that is whole can be opened from the list (030). The core says it may be, and
+    /// asks the shell; in fake mode the shell opens nothing and shows nothing, and says it
+    /// did: no other app starts, no preview of the system's comes up, and nothing is said
+    /// under the download of its not opening. `said`: what the download's row says.
+    private func pressOpen(whereTheRowSays said: String, in app: XCUIApplication) {
+        let open = app.buttons["download-open"]
+        XCTAssertTrue(open.exists, "a download that is whole has the button that opens it")
+        press(open)
+        let row = app.descendants(matching: .any).matching(identifier: "download-entry").firstMatch
+        func words() -> String {
+            row.label.isEmpty ? value(of: row) : row.label
+        }
+        let waitedSince = Date()
+        while words() == said, Date().timeIntervalSince(waitedSince) < 3 {
+            usleep(200_000)
+        }
+        XCTAssertEqual(words(), said, "the row says what it said")
+        XCTAssertTrue(open.isHittable, "and the list is still what is there, with nothing over it")
+    }
+
     #if os(macOS)
         /// The items of WebKit's own in the menu that is open, each by WebKit's name for it
         /// and its words: what a failure says. Only WebKit's: never the menu bar's, which has
@@ -65,19 +85,7 @@ final class MenuTests: AppTestCase {
             )
             XCTAssertFalse(app.buttons["prompt-allow"].exists, "nobody was asked")
 
-            // A file that is whole can be opened from the list (030). The core says it may
-            // be, and asks the shell; in fake mode the shell opens nothing and says it did:
-            // no other app starts, and nothing is said under the download of its not opening.
-            let open = app.buttons["download-open"]
-            XCTAssertTrue(open.exists, "a download that is whole has the button that opens it")
-            press(open)
-            let row = app.descendants(matching: .any).matching(identifier: "download-entry").firstMatch
-            let waitedSince = Date()
-            while value(of: row) == said, Date().timeIntervalSince(waitedSince) < 3 {
-                usleep(200_000)
-            }
-            XCTAssertEqual(value(of: row), said, "the row says what it said")
-            XCTAssertTrue(open.exists, "and the file can be asked for again")
+            pressOpen(whereTheRowSays: said, in: app)
 
             press(app.buttons["downloads-done"])
             XCTAssertTrue(pageShows("Pictures", in: app), "and the page is where it was")
@@ -129,9 +137,70 @@ final class MenuTests: AppTestCase {
             let said = listed("landed", in: app)
             XCTAssertTrue(said.contains("landed") && said.contains("bytes") && !said.contains(" of "), "it finished: the row says \(said)")
             XCTAssertFalse(app.buttons["prompt-allow"].exists, "nobody was asked")
+            pressOpen(whereTheRowSays: said, in: app)
             press(app.buttons["downloads-done"])
             XCTAssertTrue(pageShows("Links", in: app), "and the page is where it was")
             XCTAssertEqual(app.buttons.matching(identifier: "tab").count, 1)
+        }
+
+        /// A download opened from the list on an iPhone (030), in the app started for real
+        /// on a profile of the suite's own: the system's own preview of the file comes up
+        /// over the list, and goes when the person has done with it. The file is the test
+        /// site's, and is saved in the profile's own folder: nobody's data is touched, and no
+        /// other app is started.
+        func testAFileThatWasDownloadedIsShownInTheSystemsPreview() {
+            let app = launch(onProfile: "ui-test-preview", fresh: true)
+            let keep = app.buttons["search-keep"]
+            XCTAssertTrue(keep.waitForExistence(timeout: 30), "a fresh profile is asked where searches go")
+            press(keep)
+            XCTAssertTrue(app.staticTexts["empty-tab"].waitForExistence(timeout: 30), "a fresh profile opens one empty tab")
+            let field = app.textFields["address-field"]
+            openLocation(field, in: app)
+            field.typeText("127.0.0.1:\(site.port)/downloads\n")
+            XCTAssertTrue(pageShows("Downloads", in: app), "the page of links loaded")
+            let link = app.webViews.links["a file that says it is to be saved"]
+            XCTAssertTrue(link.waitForExistence(timeout: 30))
+            press(link)
+            // The site's first download: the person is asked (015), and says yes, not at once.
+            let allow = app.buttons["prompt-allow"]
+            XCTAssertTrue(allow.waitForExistence(timeout: 300), "the tab asks whether the site may download")
+            usleep(700_000)
+            press(allow)
+            let said = listed("notes.txt", in: app)
+            XCTAssertTrue(said.contains("26 bytes") && !said.contains(" of "), "it finished: the row says \(said)")
+
+            // Opened: the system's preview, with the file's name over it (as the system
+            // writes it: without its ending) and the system's own button to be done with it.
+            // What it draws of the file is the system's.
+            press(app.buttons["download-open"])
+            let previewed = app.navigationBars["notes"]
+            let shown = previewed.waitForExistence(timeout: 30)
+            XCTAssertTrue(
+                shown,
+                "the system's preview of the file; the bars are \(app.navigationBars.allElementsBoundByIndex.map(\.identifier))"
+            )
+            // A picture of it is kept with the run's results: the simulator's screen only.
+            let picture = XCTAttachment(screenshot: app.screenshot())
+            picture.name = "the system's preview of a download"
+            picture.lifetime = .keepAlways
+            add(picture)
+            let buttons = previewed.buttons.allElementsBoundByIndex.map(\.label)
+            // The system's own way to hand the file to another app, or to save it elsewhere.
+            XCTAssertTrue(previewed.buttons["Share"].exists, "the preview's buttons are \(buttons)")
+            // And its way out, which this system calls "close" and others have called "Done".
+            let finished = previewed.buttons["close"].exists ? previewed.buttons["close"] : previewed.buttons["Done"]
+            XCTAssertTrue(finished.exists, "the preview's buttons are \(buttons)")
+            finished.tap()
+
+            // Done with: the list is what is there again, the download as it was, with
+            // nothing said of its not opening; and it can be opened again.
+            let open = app.buttons["download-open"]
+            XCTAssertTrue(open.waitForExistence(timeout: 30) && open.isHittable, "the list is back")
+            XCTAssertFalse(previewed.exists)
+            let row = app.descendants(matching: .any).matching(identifier: "download-entry").firstMatch
+            XCTAssertEqual(row.label, said, "the row says what it said")
+            press(app.buttons["downloads-done"])
+            XCTAssertTrue(pageShows("Downloads", in: app), "and the page that offered the file is still the page")
         }
     #endif
 }

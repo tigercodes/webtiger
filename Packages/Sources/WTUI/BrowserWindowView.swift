@@ -2,6 +2,9 @@
 // in front (005). The strip is one plain row on every size of window; the sidebar and the tab
 // strip proper arrive in W2.
 public import SwiftUI
+#if !os(macOS)
+    import QuickLook
+#endif
 import WTContract
 import WTDesign
 
@@ -140,6 +143,11 @@ public struct BrowserWindowView: View {
         #if os(macOS)
         // Wide enough for the switch's three names on one line beside the list's buttons.
         .frame(minWidth: 480, idealWidth: 520, minHeight: 420, idealHeight: 560)
+        #else
+        // A downloaded file a person opened (030): the system's own preview, over the list.
+        // It is there while the session's opener has a file to show, and takes the file
+        // away when the person has done with it.
+        .quickLookPreview(Bindable(session.preview).file)
         #endif
     }
 

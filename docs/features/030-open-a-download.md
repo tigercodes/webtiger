@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built and tested in the core, the Android shell and the Mac. On Android it was seen by hand in the app started for real, on an emulator. On the Mac the file itself is never opened by a test (that starts another app); in the Mac's app, in fake mode, the button is pressed, and the core and the shell answer with nothing opened. The iPhone is not built: its list does not offer it |
+| **Status** | Built and tested in the core and in the Android, Mac, iPhone and iPad shells. On Android it was seen by hand in the app started for real, on an emulator. On the Mac the file itself is never opened by a test (that starts another app); in the Mac's app, in fake mode, the button is pressed, and the core and the shell answer with nothing opened. On the iPhone the system's own preview shows the file: seen in the app started for real on a profile of the tests' own, on the simulator |
 | **Phase** | Brought forward from W3 ([013](013-downloads.md) §2: "Opening a file, or showing it in its folder, from the list: the System service again, with the Library"). Since [027](027-cookies-stay-with-their-site.md), Android has no notice of the system's to open a file from: the list is the only way inside WebTiger |
 | **Contract** | 1.22: `OpenDownload`; the host service `OpenFile` |
 | **Builds on** | 013: the list of downloads, and the name each file is saved under. [007](007-outside-links.md): the System service, which hands something to whatever the system has for it |
@@ -21,7 +21,7 @@ A file I downloaded is in the list. I press it, and it opens: in whatever my dev
 - **Showing the file in its folder**, and the rest of the Library (W3).
 - **Opening it inside WebTiger** (a picture or a PDF in a tab): a file on the device is not a page, and opening one as a page is a decision of its own.
 - **Opening a file as soon as it has come.** Nothing opens unasked.
-- **Choosing what opens it.** The system's choice, and where there are several the system asks.
+- **Choosing what opens it.** The system's choice, and where there are several the system asks. (An iPhone has no such choice to make: its preview shows the file, §5.)
 
 ## 3. The rule
 
@@ -88,7 +88,16 @@ message OpenFile {
 - **A download that has finished has a button, "Open"**, beside the one that takes it off the list. (A button of its own, and not the row: the row is what the app's tests read. When this was built the Mac's UI suite could not run to say what changing the row does; it has run since, with the button, and the button stays.)
 - **The file is the one of that name in the folder the app saves downloads in.** A name is a name: one that is a path, or that leads out of the folder, is no file. The Mac opens it with whatever it has for its kind; where it has nothing, the Mac says so itself, in its own dialog, and offers to choose an app.
 
-**The iPhone and iPad**: not built. An iPhone has no way to hand a file of an app's to whatever opens its kind; what it has is a preview and a sheet for sharing, which are a design of their own. The list offers nothing there.
+**The iPhone and iPad** (`FileOpener.preview`, `FilePreview`; the same model and list).
+
+> **The owner's word (2026-11-20): "use suggestions".** The question put to them was whether the iPhone should open a download with the system's preview. They did not answer it, and said to keep going: this is the suggestion, built, and theirs to change.
+
+- **An iPhone has no way to hand a file of an app's to whatever opens its kind.** What it has is the system's own preview of a file (Quick Look): the file is shown inside WebTiger, as far as the system can show its kind, with the system's own button for sharing it, which is how it is handed to another app or saved somewhere else.
+- **A download that has finished has the same button, "Open"**, as on the Mac. The core is asked in the same way, and asks the shell in the same way (§3).
+- **The shell's System service finds the file** as the Mac's does (by its name, in the folder the app saves downloads in; a name is never a path), and **shows it in the system's preview**, over the list. It answers that the system took it once the preview has been asked for. A file that is not there is `download.missing`, and nothing is shown.
+- **Nothing on an iPhone answers "no handler"**: the preview shows something of every file, if only its name, its kind and its size.
+- **What the preview does with a file is the system's**: what it draws of it, and what it offers to do with it. WebTiger hands it the file and nothing else.
+- **In fake mode nothing is shown**, as nothing is opened on the other systems.
 
 ## 6. Decisions
 
@@ -97,6 +106,7 @@ message OpenFile {
 | D1 | The core is asked, and asks the shell back | Which downloads may be opened (finished, the Space's own) is the core's to say; where the file is and how the system is asked is the shell's. The same shape as a link for the system (007) |
 | D2 | By the file's name, not by a path | The core knows the name the shell saved under and nothing of the device's folders. Each shell knows where it saves |
 | D3 | The system opens it, not WebTiger | A downloaded file is not a page. What may open which kind of file, and what is warned about, is the system's |
+| D4 | On an iPhone and an iPad, the system's preview (provisional: the owner was asked, and said only to go on with what was suggested) | It is the one way the system gives an app to show a file it holds, and its button for sharing is the way to another app. The other course was to leave the list with nothing to press, and the Files app as the only way to a download |
 
 ## 7. Tests
 
@@ -107,6 +117,8 @@ message OpenFile {
 | The Apple shell (`ShellHostTests`, 3 more; `DownloadsModelTests`, 3 more) | The same of the host and the model. And the Mac's own opener, about files that are not there: a file that is gone, a folder, an empty name, and a name that is a path or leads out of the folder are each no file, and are answered "missing". Why a file did not open is said in words. The Mac's picture of the list was made again, light and dark, with the button on the finished download and on no other: each looked at |
 | The Android app, on the emulator (`AppWindowTest`, in its test of a download) | With the real core, in fake mode: the finished download's row is pressed; the core says it may be opened and asks the shell, which in fake mode opens nothing and says it did; nothing is said under the download; Android's accessibility checks pass over the list with the row that can be pressed |
 | The Mac's app (`MenuTests`, in its test of a picture saved from the menu; 2026-11-21) | With the real core and real WebKit, in fake mode: the picture that was saved is whole in the list, and has the button that opens it; pressed, the core says the file may be opened and asks the shell, which in fake mode opens nothing and says it did; the row says what it said, and the button is still there. Not checked by breaking it: that a refusal is said in the row is the model's test |
+| The iPhone's opener (`ShellHostTests`, 1 more; `ProfileTests`, 1 more; on the Mac and the iPhone simulator) | The file is given to the preview as the file it is in the folder, and the core is told the system took it; one of a kind nothing knows is given too. What is not there, a folder, an empty name, and a name that is a path or leads out of the folder are each "missing", and the preview is given nothing. No engine is asked anything. By how the app was started: in fake mode no file is opened or shown though it is there, and none is looked for; started for real on an iPhone, the preview has the file. Four parts checked by breaking them, all caught: the one that would have a Mac hand a real file to another app was run on the iPhone simulator only. The iPhone's picture of the list was made again, light and dark, with the button on the finished download and on no other: each looked at |
+| The iPhone's app (`MenuTests`, in its test of a link's file saved from the menu, and 1 more; 2026-11-21, the simulator) | In fake mode: the saved file has the button; pressed, nothing of the system's comes up, the row says what it said, and the list is still what is there. **Started for real, on a profile of the suite's own**: a file of the test site's is downloaded (the site's first: the person is asked, and says yes), and is in the list, whole; pressed, the system's own preview comes up over the list with the file's name over it, its own button for sharing, and its own way out; out of it, the list is back, the row as it was, and the page still the page. Passed four runs one after another. A picture of the preview was kept from one run and looked at: the file's own words in the system's preview |
 | By hand (2026-11-20, the emulator, the app started for real, the test site served from the Mac) | Two files downloaded: a text file and one of a kind nothing shows. In the list, the text file pressed: the system's own "Open with" came up, offering its apps; nothing was chosen, and Back returned to WebTiger. The other file pressed: the system took it (a part of the system on that emulator claims every file of that kind, and did nothing visible with it). The text file removed from the device, then pressed: "The file isn't where it was saved any more." under it. The files and the app's data were removed afterwards |
 
 ## 8. What is not verified
@@ -116,7 +128,10 @@ message OpenFile {
 - **The Mac: a file opened.** In the app the button is pressed only in fake mode, where nothing is opened; started for real it would hand the file to another app, which no test does and which was not done by hand either. What is tested of the Mac's own opener is its refusal of what is not a file in its folder.
 - **A phone**; and what a phone's own apps make of being handed a file this way.
 - **A kind of file the system warns about** (an app to install): what the system then says is the system's, and was not looked at. WebTiger asks for no leave to install anything.
-- **iPhone and iPad**: not built.
+- **The iPhone: what the preview makes of other kinds of file.** A text file was shown. A picture, a PDF, an archive, a page of the web saved as a file, and a kind nothing knows were not tried in the app: what the preview draws of each, and whether it runs anything in a page it shows, is the system's and was not looked at.
+- **The iPhone: sharing from the preview.** Its button is there; pressing it brings up the system's sheet of other apps, which no test does.
+- **The iPad**: the same code; no test ran on an iPad's simulator.
+- **A phone of Apple's**: the simulator only.
 
 ## 9. Done checklist
 
@@ -124,5 +139,5 @@ message OpenFile {
 - [x] The core: the rule of §3 (4 tests).
 - [x] Android: the list's press, and the System service's part; by hand on the emulator.
 - [x] The Mac: the list's button, and the System service's part; in the app, in fake mode, the button pressed with nothing opened.
-- [ ] iPhone and iPad.
-- [x] `Tools/test.sh all` green, stage by stage, and `android-device` (144 on the emulator), on 2026-11-21. The Mac's UI suite, which had not run when this was built (a dialog of the system's was on the Mac's screen), ran with it.
+- [x] iPhone and iPad: the system's preview; in the app on the iPhone simulator, in fake mode and started for real on a profile.
+- [x] `Tools/test.sh all` green, stage by stage, and `android-device` (144 on the emulator), on 2026-11-21. The Mac's UI suite, which had not run when this was built (a dialog of the system's was on the Mac's screen), ran with it. And again after the iPhone's part, the same day: `lint`, `core` (505), `unit` (263 on the Mac), `build`, the Mac's UI suite (28), `ios` (245 on the iPhone simulator, one skipped as before), the iPhone's UI suite (26), `android` (348 and 32 on the JVM) and `android-device` (145 on the emulator).

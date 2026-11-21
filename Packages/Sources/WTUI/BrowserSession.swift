@@ -9,6 +9,9 @@ import WTContract
 public final class BrowserSession {
     public let core: any CoreClient
     public let engine: WebKitEngine
+    /// The file the system's preview shows over a window (030): an iPhone's and an iPad's way
+    /// to open a download.
+    public let preview: FilePreview
     private var windows: [UInt64: @MainActor (WTWindowSnapshot) -> Void] = [:]
     /// Windows being opened, and the snapshots that came for subscriptions not yet known to be
     /// theirs.
@@ -18,9 +21,11 @@ public final class BrowserSession {
 
     /// A session over a core that is already running. Tests pass a `ScriptedCore`. A link is
     /// copied to a clipboard of the app's own unless the session is given the system's (018).
-    public init(core: any CoreClient, engine: WebKitEngine, clipboard: LinkClipboard = .ownOfTheApp) {
+    /// `preview`: what the session's opener of files shows a file in, where it has one (030).
+    public init(core: any CoreClient, engine: WebKitEngine, clipboard: LinkClipboard = .ownOfTheApp, preview: FilePreview = FilePreview()) {
         self.core = core
         self.engine = engine
+        self.preview = preview
         engine.linkMenu = .words(copyingTo: clipboard)
         engine.attach(core)
         let events = core.events
@@ -84,12 +89,28 @@ public final class BrowserSession {
                     engine.filePicker = .system
                 }
             #endif
-            // A file is opened from where the app saves (030). Not in fake mode: no test
-            // starts another app.
-            let files: FileOpener = config.testMode == .fake ? .nothing : .system(in: engine.downloadsFolder)
+            let preview = FilePreview()
+            let files = filesOpener(fake: config.testMode == .fake, folder: engine.downloadsFolder, preview: preview)
             let core = try NativeCore.start(config: config, host: ShellHost(engine: engine, opener: opener, files: files))
             // In fake mode nothing of the person's is touched: not their clipboard either.
-            return BrowserSession(core: core, engine: engine, clipboard: config.testMode == .fake ? .ownOfTheApp : .system)
+            return BrowserSession(
+                core: core, engine: engine, clipboard: config.testMode == .fake ? .ownOfTheApp : .system, preview: preview
+            )
+        }
+
+        /// What opens a downloaded file from where the app saves (030). On a Mac the system
+        /// opens it with whatever it has for its kind; on an iPhone and an iPad the system's
+        /// preview shows it. Not in fake mode: no test starts another app, and none shows
+        /// anything of the system's.
+        static func filesOpener(fake: Bool, folder: URL, preview: FilePreview) -> FileOpener {
+            if fake {
+                return .nothing
+            }
+            #if os(macOS)
+                return .system(in: folder)
+            #else
+                return .preview(in: folder, showing: preview)
+            #endif
         }
 
         /// Whether a page is let have what the core grants it of the device's (014). Not in

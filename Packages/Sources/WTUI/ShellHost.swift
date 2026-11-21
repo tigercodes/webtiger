@@ -1,6 +1,7 @@
 // What the core asks of the shell (000 §5.5), sorted by who answers: the System service is the
 // shell's own, and everything else is a web engine's.
 public import Foundation
+public import Observation
 public import WTContract
 public import WTCoreClient
 #if os(macOS)
@@ -56,6 +57,18 @@ public enum FileOpened: Sendable {
     case missing
 }
 
+/// The file the system's own preview shows over the window (030): a downloaded file a person
+/// opened on an iPhone or an iPad, which have no way to hand an app's file to whatever opens
+/// its kind. The window's view shows the preview while there is a file here, and takes it
+/// away when the person has done with it.
+@MainActor
+@Observable
+public final class FilePreview {
+    public var file: URL?
+
+    public init() {}
+}
+
 /// Opens a file that was downloaded, by the name it was saved under, with whatever the system
 /// has for its kind (030).
 ///
@@ -82,6 +95,17 @@ public struct FileOpener: Sendable {
         FileOpener { name, _ in await openWithTheSystem(name, in: folder, prompting: false) }
     }
 
+    /// An iPhone's and an iPad's: the file in the folder this shell saves downloads in is
+    /// given to the system's own preview, which the window shows. The system took it once
+    /// the preview has been asked for; a file that is not there is shown by nothing.
+    public static func preview(in folder: URL, showing preview: FilePreview) -> FileOpener {
+        FileOpener { name, _ in
+            guard let file = file(named: name, in: folder) else { return .missing }
+            preview.file = file
+            return .taken
+        }
+    }
+
     /// The file of that name in the folder, when it is there and is a file. A name is a name:
     /// one that is a path, or that leads out of the folder, is no file of this shell's.
     static func file(named name: String, in folder: URL) -> URL? {
@@ -100,8 +124,8 @@ public struct FileOpener: Sendable {
             // The file and nothing else: the system chooses what opens it.
             return await (try? NSWorkspace.shared.open(file, configuration: configuration)) != nil ? .taken : .noHandler
         #else
-            // An iPhone has no way to hand a file of an app's to whatever opens its kind: the
-            // list does not offer it there yet (030 §5).
+            // An iPhone has no way to hand a file of an app's to whatever opens its kind: its
+            // opener is the preview's (030 §5), and this one opens nothing there.
             _ = file
             _ = prompting
             return .noHandler

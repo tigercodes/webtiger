@@ -129,9 +129,9 @@ public struct DownloadsView: View {
             if entry.state == .coming {
                 button("downloads.stop", symbol: "xmark.circle", identifier: "download-stop") { model.stop(entry) }
             } else {
-                // A file that is whole is opened with whatever the Mac has for its kind (030).
-                // Not on an iPhone yet, which has no way to hand a file of an app's on.
-                if Self.opensFiles, entry.state == .finished {
+                // A file that is whole is opened (030): with whatever a Mac has for its kind;
+                // in the system's own preview on an iPhone and an iPad.
+                if entry.state == .finished {
                     button("downloads.open", symbol: "arrow.up.forward.square", identifier: "download-open") {
                         Task { await model.open(entry) }
                     }
@@ -141,15 +141,6 @@ public struct DownloadsView: View {
         }
         .padding(.horizontal, Tokens.Space.m)
         .padding(.vertical, Tokens.Space.xs)
-    }
-
-    /// Whether this system's list can open a file (030): a Mac's.
-    static var opensFiles: Bool {
-        #if os(macOS)
-            true
-        #else
-            false
-        #endif
     }
 
     /// Why a file did not open, in words, by the core's code (030). A code this build has no

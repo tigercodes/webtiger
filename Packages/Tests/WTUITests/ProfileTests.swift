@@ -31,6 +31,40 @@
             XCTAssertEqual(WebKitEngine().deviceAccess, .never, "and an engine nobody made otherwise is a test's")
         }
 
+        /// What opens a downloaded file (030), by how the app was started. In fake mode nothing
+        /// does, and nothing of the system's is shown, though the file is there; started for
+        /// real, an iPhone's preview is given the file. (A Mac started for real hands the file
+        /// to another app, which no test does.)
+        func testInFakeModeNoFileIsOpenedOrShownThoughItIsThere() async throws {
+            let folder = FileManager.default.temporaryDirectory.appendingPathComponent(
+                "webtiger-opener-\(UUID().uuidString)",
+                isDirectory: true
+            )
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: folder) }
+            try Data("inside".utf8).write(to: folder.appendingPathComponent("notes.txt"))
+            let preview = FilePreview()
+
+            let fake = BrowserSession.filesOpener(fake: true, folder: folder, preview: preview)
+            let opened = await fake.open("notes.txt", "text/plain")
+            XCTAssertEqual(opened, .taken, "fake mode answers as if the system had taken it")
+            XCTAssertNil(preview.file, "and shows nothing")
+            // A file that is not there is "taken" too: fake mode looks at no file at all.
+            let gone = await fake.open("gone.txt", "text/plain")
+            XCTAssertEqual(gone, .taken)
+
+            #if !os(macOS)
+                let real = BrowserSession.filesOpener(fake: false, folder: folder, preview: preview)
+                let shown = await real.open("notes.txt", "text/plain")
+                XCTAssertEqual(shown, .taken)
+                XCTAssertEqual(preview.file?.lastPathComponent, "notes.txt", "started for real, the preview has the file")
+                preview.file = nil
+                let missing = await real.open("gone.txt", "text/plain")
+                XCTAssertEqual(missing, .missing)
+                XCTAssertNil(preview.file)
+            #endif
+        }
+
         func testAnEngineNobodyGaveAFolderSavesAmongTheTemporaryFiles() {
             // What every test's engine is, and fake mode's: it cannot write into anybody's Downloads.
             let folder = WebKitEngine().downloadsFolder

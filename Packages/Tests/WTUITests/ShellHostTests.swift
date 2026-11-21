@@ -200,4 +200,47 @@ final class ShellHostTests: XCTestCase {
             XCTAssertEqual(code(answer), "download.missing", name)
         }
     }
+
+    /// An iPhone's and an iPad's opener (030): the file is given to the system's own preview,
+    /// which the window shows, and the core is told the system took it. Nothing is shown by a
+    /// test: the preview here is only what holds the file for a window to show.
+    func testAnIPhonesOpenerGivesTheFileToThePreviewAndAFileThatIsNotThereToNothing() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "webtiger-preview-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        let inside = folder.appendingPathComponent("saved", isDirectory: true)
+        try FileManager.default.createDirectory(at: inside, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try Data("outside".utf8).write(to: folder.appendingPathComponent("secret.txt"))
+        try Data("inside".utf8).write(to: inside.appendingPathComponent("notes.txt"))
+        try Data("more".utf8).write(to: inside.appendingPathComponent("data.bin"))
+        try FileManager.default.createDirectory(at: inside.appendingPathComponent("a folder"), withIntermediateDirectories: true)
+        let preview = FilePreview()
+        let engine = Engine()
+        let host = ShellHost(engine: engine, opener: .nothing, files: .preview(in: inside, showing: preview))
+        XCTAssertNil(preview.file, "nothing is shown until a file is opened")
+
+        // A file that is there: the preview has it, as the file it is in the folder, and the
+        // system is said to have taken it.
+        guard case .ack = await host.answer(openFile("notes.txt", kind: "text/plain")) else {
+            return XCTFail("the preview took it")
+        }
+        XCTAssertEqual(preview.file?.standardizedFileURL, inside.appendingPathComponent("notes.txt").standardizedFileURL)
+        // One of a kind nothing knows is shown too: the preview shows something of every file.
+        guard case .ack = await host.answer(openFile("data.bin")) else {
+            return XCTFail("the preview took it")
+        }
+        XCTAssertEqual(preview.file?.lastPathComponent, "data.bin")
+
+        // The person has done with the preview. What is not there, what is a folder, and a
+        // name that is a path or leads out of the folder: each is missing, and nothing is shown.
+        preview.file = nil
+        for name in ["gone.txt", "a folder", "", "..", "../secret.txt", "sub/notes.txt", inside.appendingPathComponent("notes.txt").path] {
+            let answer = await host.answer(openFile(name, kind: "text/plain"))
+            XCTAssertEqual(code(answer), "download.missing", name)
+            XCTAssertNil(preview.file, name)
+        }
+        XCTAssertTrue(engine.asked.isEmpty, "an engine is asked nothing about it")
+    }
 }
