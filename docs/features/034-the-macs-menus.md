@@ -64,7 +64,7 @@ On the Mac I look in the menu bar for what a browser can do, and it is there, ea
 
 | Where | What |
 |---|---|
-| The Mac's app (`CommandTests`, 3, fake mode: the real core and real WebKit; only the app's own menus are asked about, each item by its name) | **The menus.** With one page and nothing closed: Reopen Closed Tab, Back, Forward and Next Match are grey. New Tab, from the File menu, opens a tab; in the empty tab Reload, Find on Page and Zoom In are grey. Close Tab closes the tab in front; Reopen Closed Tab brings it back, its page loaded again; Reload asks the site for the page once more; Find on Page opens the find bar, and Next Match can then be chosen; History and Downloads opens the lists. **The keys.** ⌘[ goes back, and Back is then grey; ⌘] goes forward; Back and Forward from the History menu do the same; ⌘R asks the site for the page again; ⇧⌘W closes a window that has two tabs. **A window that is no browser's** (the design catalogue) still closes with ⇧⌘W |
+| The Mac's app (`CommandTests`, 4, fake mode: the real core and real WebKit; only the app's own menus are asked about, each item by its name) | **The menus.** With one page and nothing closed: Reopen Closed Tab, Back, Forward and Next Match are grey. New Tab, from the File menu, opens a tab; in the empty tab Reload, Find on Page and Zoom In are grey. Close Tab closes the tab in front; Reopen Closed Tab brings it back, its page loaded again; Reload asks the site for the page once more; Find on Page opens the find bar, and Next Match can then be chosen; History and Downloads opens the lists. **The keys.** ⌘[ goes back, and Back is then grey; ⌘] goes forward; Back and Forward from the History menu do the same; ⌘R asks the site for the page again; ⇧⌘W closes a window that has two tabs. **A window that is no browser's** (the design catalogue) still closes with ⇧⌘W. **Two windows**: ⌘N opens a second, in front; sent to another page, it has a way back and the menu says so; New Tab opens a tab in it and not in the first; ⌘W closes that tab, ⇧⌘W the window; the menu then speaks for the first window, which has no way back, and New Tab opens a tab there |
 | The keys there were | The app's older tests of ⌘T, ⌘W, ⇧⌘T, ⌘L, ⌘F and the rest pass unchanged, with the keys now the menu's |
 | By breaking it | Six parts, each then run against `CommandTests` in the app: Reopen Closed Tab, Back, Reload and Next Match never grey; Close Window closing a tab; Forward going back. All caught |
 
@@ -75,7 +75,8 @@ On the Mac I look in the menu bar for what a browser can do, and it is there, ea
 - **Stop (⌘.), Zoom Out, Actual Size, Previous Match, and ⌘G.** In the menu, calling what their buttons call; no test chooses them from the menu. Their buttons and their older keys are tested.
 - **Open Location from the menu.** ⌘L is pressed by many tests; the item was not clicked.
 - **Other languages.** The menus File, Edit and View are the system's and take its language; the items are the app's words, of which there is English only.
-- **Two browser windows.** The menu speaks for the one in front; no test has two.
+- **Which window is in front when a person clicks one.** The test's second window was in front because it had just opened; no test brings a window forward by clicking it.
+- **What a second window keeps.** It starts on the page a new window starts on and is not in the session ([009](009-session-restore.md)): several windows as a feature of their own are still to come.
 
 ## 7. Done checklist
 
@@ -84,3 +85,4 @@ On the Mac I look in the menu bar for what a browser can do, and it is there, ea
 - [x] ⌘R, ⌘[ and ⌘], and ⇧⌘W.
 - [x] The keys there were still work: the app's tests of them pass unchanged.
 - [x] `Tools/test.sh all` green, on 2026-11-21, in one run: `lint`, `core` (519), `unit` (267 on the Mac), `build`, the Mac's UI suite (34), `ios` (249 on the iPhone simulator, one skipped as before), the iPhone's UI suite (27) and `android` (354 and 32 on the JVM). `android-device` (148 on the emulator) is not part of `all`: in the same run one of its tests failed, a certificate test of the WebView adapter's, in code this feature does not touch ([003](003-android-shell.md) §8.1); run twice more, the whole suite passed both times.
+- [x] Two windows (added after): lint and the Mac's whole UI suite (35) run again, 2026-11-21; nothing else changed since the run above.

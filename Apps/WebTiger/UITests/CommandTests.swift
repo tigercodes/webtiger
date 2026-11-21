@@ -132,6 +132,54 @@ import XCTest
             XCTAssertEqual(closed, .completed, "⇧⌘W closed the window with both its tabs")
         }
 
+        /// Two browser windows: each has its own tabs, and the menu bar and the keys speak for
+        /// the one in front.
+        func testWithTwoWindowsTheMenuSpeaksForTheOneInFront() {
+            let app = launch(start: site.url("/landed"))
+            XCTAssertTrue(pageShows("Landed", in: app), "the first window's page loaded")
+            let everyTab = app.buttons.matching(identifier: "tab")
+            // Waits for the app to have so many windows, and so many tabs in them all.
+            func expect(windows: Int, tabs: Int, _ what: String, line: UInt = #line) {
+                let deadline = Date().addingTimeInterval(30)
+                while app.windows.count != windows || everyTab.count != tabs, Date() < deadline {
+                    usleep(200_000)
+                }
+                XCTAssertEqual(app.windows.count, windows, "\(what): windows", line: line)
+                XCTAssertEqual(everyTab.count, tabs, "\(what): tabs in them all", line: line)
+            }
+
+            // A second window, from the system's own item: it opens in front, on the page a
+            // new window opens on in fake mode, and is sent somewhere else to tell them apart.
+            app.typeKey("n", modifierFlags: .command)
+            expect(windows: 2, tabs: 2, "⌘N opened a window")
+            app.typeKey("l", modifierFlags: .command)
+            app.typeText("127.0.0.1:\(site.port)/\n")
+            XCTAssertTrue(pageShows("Home", in: app), "the window in front went where it was sent")
+            let first = app.windows["Landed"]
+            XCTAssertTrue(first.exists, "the first window is where it was")
+            XCTAssertEqual(first.buttons.matching(identifier: "tab").count, 1)
+
+            // The window in front has been somewhere before; the menu says so, for it.
+            XCTAssertTrue(canChoose("Back", in: "History", of: app), "the window in front has a way back")
+
+            // New Tab is the front window's: the first window keeps its one tab.
+            choose("New Tab", in: "File", of: app)
+            expect(windows: 2, tabs: 3, "New Tab opened a tab in the window in front")
+            XCTAssertEqual(first.buttons.matching(identifier: "tab").count, 1, "and not in the other")
+
+            // ⌘W closes that tab; ⇧⌘W then closes the window in front, and the first is left.
+            app.typeKey("w", modifierFlags: .command)
+            expect(windows: 2, tabs: 2, "⌘W closed the tab in front")
+            app.typeKey("w", modifierFlags: [.command, .shift])
+            expect(windows: 1, tabs: 1, "⇧⌘W closed the window in front")
+            XCTAssertTrue(first.exists, "the first window is the one that is left")
+
+            // The menu now speaks for the first window, which has been nowhere else.
+            XCTAssertFalse(canChoose("Back", in: "History", of: app), "the first window has no way back")
+            choose("New Tab", in: "File", of: app)
+            expect(windows: 1, tabs: 2, "New Tab opened a tab in the window that is left")
+        }
+
         /// The system's own Close gave way to Close Tab and Close Window: a window that is not
         /// a browser's must still close by key. The design catalogue is such a window.
         func testAWindowThatIsNoBrowsersStillClosesByKey() {
