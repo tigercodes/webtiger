@@ -797,6 +797,10 @@ W1 to W4 are the critical path. W5 to W9 can be reordered by what is wanted firs
 | WT-D16 | Phasing | Parity per phase, the Mac leading; the Arc importer first | The Mac to 1.0, the others after |
 | WT-D17 | Search and money | DuckDuckGo is the default search engine, shown at first run with the others to pick instead (Google and Bing among them); suggestions off; no search deal, no telemetry, opt-in crash reports. (The default is the owner's decision of 2026-11-20; before it, the user had to pick one at first run) | A default search partner: an engine that pays to be the default |
 | WT-D18 | Names | Guard, Tweaks, Preview, Quick window, Link rules; "core" for Rust, "engine" for the web | — |
+| WT-D19 | A certificate that is not trusted | A person may go on past one, after a warning, by two deliberate presses; the exception is one certificate, one site, one login set, until the app quits, and the page is marked not secure ([026](026-past-a-certificate.md)). The owner's decision, 2026-11-20 | No way past: a router or a device of one's own could not be reached at all |
+| WT-D20 | Cookies | A cookie is sent to the site it belongs to and to no other, on every system, whoever moves the bytes. Where a shell fetches something itself it follows whoever sends it on by hand ([027](027-cookies-stay-with-their-site.md)). The owner's decision, 2026-11-20 | The system's downloader on Android, which hands one site's cookies to the next |
+| WT-D21 | Searching from other apps | On Android, "Search with WebTiger" is in other apps' menu of selected text; the words are only ever searched for, with the engine the person chose ([028](028-search-from-other-apps.md)). The owner's decision, 2026-11-20 | Nothing of WebTiger's that other apps can start |
+| WT-D22 | The mark beside the address | It speaks of a page that has arrived: nothing is said of an address on its way, or of one that failed ([029](029-the-mark-waits-for-the-page.md), [026](026-past-a-certificate.md)). The owner's word, 2026-11-20 ("use suggestions"), on a question put to them | A padlock from the address's scheme alone, before any connection is made |
 
 ---
 
