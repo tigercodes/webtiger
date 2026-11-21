@@ -85,4 +85,4 @@ The system's `DownloadManager` is no longer used. A fetcher of the adapter's own
 - [x] By hand, in the app started for real: the device's Downloads.
 - [x] Apple: a download a page starts that is sent on to another site, against real WebKit.
 - [x] 013 and 022 say what changed.
-- [ ] `Tools/test.sh all` green, and `android-device`. Run on 2026-11-20 with everything but the Mac's UI suite, as [028](028-search-from-other-apps.md) §9 says: all passed. (The first whole run on the emulator failed one of this feature's own tests, which pressed a link when the page's title had come and before the page was whole: the test now waits for the load to end, on both systems.)
+- [x] `Tools/test.sh all` green, stage by stage, and `android-device` (144 on the emulator), on 2026-11-21. The Mac's UI suite, which had not run when this was built (a dialog of the system's was on the Mac's screen), ran with it. (The first whole run on the emulator, on 2026-11-20, failed one of this feature's own tests, which pressed a link when the page's title had come and before the page was whole: the test now waits for the load to end, on both systems.)

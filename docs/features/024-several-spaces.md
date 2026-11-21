@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress. The store and the core are built and tested: Spaces are made, named and listed, a window is switched between them, a tab is in the Space it was opened in, and each Space's tabs come back (§3 to §5). The Apple and Android shells have the chip, the list and the page that makes a Space (§6): tested in the apps on the iPhone simulator against real WebKit and on the Android emulator against the real System WebView, where two Spaces' logins are apart and a shared one's are shared; the Mac's app has not been run (§9) |
+| **Status** | In progress. The store and the core are built and tested: Spaces are made, named and listed, a window is switched between them, a tab is in the Space it was opened in, and each Space's tabs come back (§3 to §5). The Apple and Android shells have the chip, the list and the page that makes a Space (§6): tested in the apps on the iPhone simulator against real WebKit and on the Android emulator against the real System WebView, where two Spaces' logins are apart and a shared one's are shared; and in the Mac's app, whose UI suite first ran over this on 2026-11-21 |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "Spaces with their login sets … shared logins". The first of W2: the model has several Spaces, and a window shows one of them. Colours and icons, the tree of Groups and Sites, Favourites, both layouts, several windows and private windows are W2's later features |
 | **Contract** | 1.18: `QuerySpaces`, `SpacesPage`, `SpaceSummary`, `CreateSpace`, `SpaceCreated`, `RenameSpace`, `SwitchSpace`; `WindowSnapshot.space_id` and `space_name` |
 | **Builds on** | [001](001-foundations.md): the store's `space` and `login_set`, many Spaces to one login set from the first schema (000 WT-D9). [005](005-tabs.md): a window's tabs. [009](009-session-restore.md): the tabs come back |
@@ -167,7 +167,6 @@ In the list, beside "New Space…": "Rename…" (since [025](025-space-colours.m
 
 ## 9. What is not verified
 
-- **The Mac's app.** Its UI suite has not run with any of this: a dialog of the system's, about a simulator's daemon and none of WebTiger's, is on this Mac's screen, and the suite does not start while one is (001). The same test passes on the iPhone simulator, and the Mac's pictures and model tests pass.
 - **An iPhone, and an iPad.** The simulator is not a device; and no picture or test here is of an iPad's width.
 - **An Android phone.** The emulator (Android 16, WebView 133) is not a phone, and one version of the WebView is not the others.
 - **The iPhone's pictures are wider than an iPhone.** They are drawn 480 points wide, and an iPhone is some 400: with the name in the chip they looked well, and it was Android's pictures, at a phone's own width, and its app's tests on the emulator, that showed the strip was too full. The iPhone's pictures say that a state is drawn, not that it fits a phone.
@@ -184,8 +183,8 @@ In the list, beside "New Space…": "Rename…" (since [025](025-space-colours.m
 - [x] Contract 1.18 and its version in every place it is written.
 - [x] The core: the rule of §3 (20 tests, and 2 for a name).
 - [x] iPhone: the chip, the list, making a Space; model tests, pictures, and the app's test on the simulator.
-- [ ] The Mac: the same code, model tests and pictures; **the app's UI suite has not run**.
+- [x] The Mac: the same code, model tests, pictures and the app's test (first run on 2026-11-21: a dialog of the system's had kept the Mac's UI suite from starting).
 - [x] Android: the chip, the list, making a Space; the window's tests, pictures, and the app's test on the emulator.
 - [x] Naming a Space, in the shells: the one the window shows.
-- [ ] `Tools/test.sh all` green, and `android-device`.
+- [x] `Tools/test.sh all` green, stage by stage, and `android-device` (144 on the emulator), on 2026-11-21. The Mac's UI suite, which had not run when this was built (a dialog of the system's was on the Mac's screen), ran with it.
 - [ ] Windows shell.

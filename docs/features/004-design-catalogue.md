@@ -117,7 +117,7 @@ The empty tab, the failed page and the start failure now keep their words in the
 - [x] Tokens by name from `Tools/design/tokens.py`; `--check` covers them.
 - [x] `CatalogueView` with the token sections and the window's states.
 - [x] `WEBTIGER_CATALOGUE=1` opens it; the UI tests audit it.
-- [x] Snapshot helper and tests; pictures recorded for macOS 27 and iOS 27 (122 pictures since the list of search engines, 020; what is taller than a window's picture, one state of the sign-in bar and that list, is drawn in a taller one), each looked at.
+- [x] Snapshot helper and tests; pictures recorded for macOS 27 and iOS 27 (150 pictures since the warning before going on past a certificate, 026; what is taller than a window's picture, one state of the sign-in bar, the list of search engines and the list of Spaces, is drawn in a taller one), each looked at.
 - [x] `Tools/test.sh all` green.
-- [x] Android catalogue: the screen, `--ez webtiger.catalogue true`, 63 pictures drawn on the JVM (since the list of search engines, 020; what is taller than a window's picture, one state of the sign-in bar and that list, is drawn at a list's height), each looked at; a device test opens it.
+- [x] Android catalogue: the screen, `--ez webtiger.catalogue true`, 83 pictures drawn on the JVM (since the warning before going on past a certificate, 026; what is taller than a window's picture, one state of the sign-in bar, the lists of search engines and of Spaces and the menus of a link and a picture, is drawn at a list's height; and one window at a tablet's width), each looked at; a device test opens it.
 - [ ] Windows catalogue.

@@ -139,5 +139,5 @@ message DownloadRequested {
 - [x] The Mac: the script; the menu's items; the adapter suite (12); a UI test.
 - [x] Android: the picture's menu and "Download Linked File"; the adapter suite on the emulator (2 more); pictures; a device test of the app.
 - [x] iPhone: "Download Linked File" in the link's menu; the adapter suite on the simulator (6); a UI test.
-- [ ] `Tools/test.sh all` green, and `android-device`.
+- [x] `Tools/test.sh all` green, stage by stage, and `android-device` (144 on the emulator), on 2026-11-21. The Mac's UI suite, which had not run when this was built (a dialog of the system's was on the Mac's screen), ran with it.
 - [ ] Windows shell.

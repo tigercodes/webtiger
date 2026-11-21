@@ -100,4 +100,4 @@ The item is also kept out of the list of recent apps, and out of the history of 
 - [x] The core: the rule of §3 (6 tests).
 - [x] Android: the item, what it hands on, and what the window asks of the core (7 tests, and 1 through the real core).
 - [x] On the emulator: the system lists the item for selected text; the whole road by hand, offline.
-- [ ] `Tools/test.sh all` green, and `android-device`. Run on 2026-11-20, stage by stage, with everything but the Mac's UI suite (a dialog of the system's is on this Mac's screen, 024 §9): `lint`, `core` (490), `unit` (254 on the Mac), `ios` (236 on the iPhone simulator, one skipped as before), `build`, the iPhone's UI suite (25), `android` (333 and 32 on the JVM) and `android-device` (144 on the emulator) all passed.
+- [x] `Tools/test.sh all` green, stage by stage, and `android-device` (144 on the emulator), on 2026-11-21. The Mac's UI suite, which had not run when this was built (a dialog of the system's was on the Mac's screen), ran with it.

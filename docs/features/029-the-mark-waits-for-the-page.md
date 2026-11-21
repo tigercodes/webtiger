@@ -47,4 +47,4 @@ What that means in each case:
 
 - [x] The core's rule, and its tests (4).
 - [x] Both shells' catalogues say what a core now says of a load on its way; pictures recorded again and looked at.
-- [ ] `Tools/test.sh all` green. Run on 2026-11-20, stage by stage, with everything but the Mac's UI suite (a dialog of the system's is on this Mac's screen, 024 §9): `lint`, `core` (494), `unit` (254 on the Mac), `ios` (236 on the iPhone simulator, one skipped as before), `build`, the iPhone's UI suite (25), `android` (333 and 32 on the JVM) and `android-device` (144 on the emulator) all passed.
+- [x] `Tools/test.sh all` green, stage by stage, and `android-device` (144 on the emulator), on 2026-11-21. The Mac's UI suite, which had not run when this was built (a dialog of the system's was on the Mac's screen), ran with it.
