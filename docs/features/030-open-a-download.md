@@ -90,7 +90,7 @@ message OpenFile {
 
 **The iPhone and iPad** (`FileOpener.preview`, `FilePreview`; the same model and list).
 
-> **The owner's word (2026-11-20): "use suggestions".** The question put to them was whether the iPhone should open a download with the system's preview. They did not answer it, and said to keep going: this is the suggestion, built, and theirs to change.
+> **The owner's decision (2026-11-21): the iPhone opens a download in the system's preview.** It was built first as a suggestion, under their word of the day before to go on with what was suggested; asked whether to keep it, they said yes.
 
 - **An iPhone has no way to hand a file of an app's to whatever opens its kind.** What it has is the system's own preview of a file (Quick Look): the file is shown inside WebTiger, as far as the system can show its kind, with the system's own button for sharing it, which is how it is handed to another app or saved somewhere else.
 - **A download that has finished has the same button, "Open"**, as on the Mac. The core is asked in the same way, and asks the shell in the same way (§3).
@@ -106,7 +106,7 @@ message OpenFile {
 | D1 | The core is asked, and asks the shell back | Which downloads may be opened (finished, the Space's own) is the core's to say; where the file is and how the system is asked is the shell's. The same shape as a link for the system (007) |
 | D2 | By the file's name, not by a path | The core knows the name the shell saved under and nothing of the device's folders. Each shell knows where it saves |
 | D3 | The system opens it, not WebTiger | A downloaded file is not a page. What may open which kind of file, and what is warned about, is the system's |
-| D4 | On an iPhone and an iPad, the system's preview (provisional: the owner was asked, and said only to go on with what was suggested) | It is the one way the system gives an app to show a file it holds, and its button for sharing is the way to another app. The other course was to leave the list with nothing to press, and the Files app as the only way to a download |
+| D4 | On an iPhone and an iPad, the system's preview (the owner's, 2026-11-21) | It is the one way the system gives an app to show a file it holds, and its button for sharing is the way to another app. The other course was to leave the list with nothing to press, and the Files app as the only way to a download |
 
 ## 7. Tests
 

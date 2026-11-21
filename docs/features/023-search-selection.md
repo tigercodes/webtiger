@@ -89,7 +89,9 @@ message SearchRequested {
 - **The menu**: in place of WebKit's item that searches stands one of the adapter's own, under WebKit's name for it and the shell's words, "Search with DuckDuckGo", which reports `SearchRequested` with the words as they were selected. It is there only when words were selected and the shell has said where searches go. **Otherwise WebKit's item is taken out**: it is never left in the menu, since what it does is go elsewhere.
 - **The item's words follow the choice**: the shell gives the adapter "Search with" and the engine's name when the core says where searches go, and again when another engine is chosen. Until the core has said, there are none, and no search is offered.
 
-**The iPhone**: not built. What its menu of selected words offers was not established: with the app's test holding a finger on a word in the simulator, and tapping it twice, nothing of a menu of selected words was in what the app shows a test (no "Copy", no "Look Up", no search). Whether the simulator showed no such menu, or shows it where a test cannot see, is not known.
+> **The owner's decision (2026-11-21): the iPhone's own search for selected words is left as it is for now.** The question put to them was whether taking out only that item, which may mean knowing it by a name Apple does not publish, is within the rule against private interfaces; the other courses were to take out the whole of the system's group of items it is in, or to leave it.
+
+**The iPhone**: not built, and left so for now. What its menu of selected words offers was not established: with the app's test holding a finger on a word in the simulator, and tapping it twice, nothing of a menu of selected words was in what the app shows a test (no "Copy", no "Look Up", no search). Whether the simulator showed no such menu, or shows it where a test cannot see, is not known.
 
 ## 6. Tests
 
@@ -122,7 +124,7 @@ message SearchRequested {
 - **The Mac: the item chosen, in the app.** No test chooses it: the tab would load the search engine. That choosing it tells the adapter the words is the adapter suite's, with a menu the test made; that the core then opens the search is the core's.
 - **The Mac: that the script's word of what is selected always comes before the menu** (as 022 §8). Late, the search would be missing from that menu, not wrong.
 - **The Mac: words selected in a frame.** The script is in every frame; no test has one.
-- **The iPhone**: not built, and what its menu offers not established.
+- **The iPhone**: not built, by the owner's decision for now (§5), and what its menu offers not established. Words selected on an iPhone and searched for from the system's menu go to the system's choice of engine, in another app.
 
 ## 9. Done checklist
 
