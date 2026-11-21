@@ -12,7 +12,7 @@ Tools/test.sh core     # cargo test (Core/)
 Tools/test.sh unit     # Swift package tests on macOS: the real core, real WKWebView
 Tools/test.sh ios      # the same on the iOS simulator
 Tools/test.sh build    # the apps, macOS and iOS simulator
-Tools/test.sh ui       # the apps' UI tests in fake mode
+Tools/test.sh ui       # the apps' UI tests in fake mode (`ui-mac` and `ui-ios` are its halves)
 Tools/test.sh all      # everything above, and `android` where a JDK and the Android SDK are found
 Tools/test.sh android  # the Android shell: JVM tests against the real core, its pictures, and the debug APK
 Tools/test.sh android-device  # the Android shell on a device: adapter suite, isolation, the window (not in `all`)
@@ -66,7 +66,7 @@ Android/app              the System WebView adapter, the Compose window; src/and
 - **Fake mode**: `WEBTIGER_FAKE=1` keeps the store in memory and makes ids deterministic; `WEBTIGER_FAKE_START=<address>` is opened in every new window. UI suites run in it. It keeps no session and opens no other app.
 - **A profile** (Apple): `WEBTIGER_PROFILE=<name>` runs the real app with its data in a folder of that name, apart from the usual one; `WEBTIGER_PROFILE_FRESH=1` empties it first. For a test that must outlive a quit (009), and for running the app without touching your own data.
 - Test hostnames must sit under a real public suffix (`shop.example.com`, not `shop.example`): the address fix-up treats an unknown suffix as a search.
-- No test may put a dialog of the system's on the screen, or start another app. XCUITest presses Cancel on a system dialog that is in its way, whoever it was for, and hangs on two: `Tools/test.sh ui` does not start the Mac's suite while one is there (`Tools/apple/system-dialogs.swift` counts them). Answer it by hand.
+- No test may put a dialog of the system's on the screen, or start another app. XCUITest presses Cancel on a system dialog that is in its way, whoever it was for, and hangs on two: `Tools/test.sh ui` does not start the Mac's suite while one is there (`Tools/apple/system-dialogs.swift` counts them). Answer it by hand. `all` runs the Mac's suite before anything starts the iPhone simulator: a process of the simulator's own crashes now and then, and the Mac says so in such a dialog.
 - Never dump a whole macOS accessibility tree in a UI test (`app.debugDescription`): it includes the system menu bar and its recent items. Query the app's own window.
 
 ## Definition of done

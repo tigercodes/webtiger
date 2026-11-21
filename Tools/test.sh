@@ -6,11 +6,13 @@
 #   Tools/test.sh unit     the Swift package's tests on macOS, against the real core and WKWebView
 #   Tools/test.sh ios      the Swift package's tests on the iOS simulator
 #   Tools/test.sh build    build the apps (macOS and the iOS simulator)
-#   Tools/test.sh ui       the apps' UI tests in fake mode (macOS and the iOS simulator)
+#   Tools/test.sh ui       the apps' UI tests in fake mode (macOS and the iOS simulator);
+#                          `ui-mac` and `ui-ios` are its two halves
 #   Tools/test.sh android  the Android shell: its JVM tests against the real core, and the debug APK
 #   Tools/test.sh android-device  the Android shell on a device: the adapter suite against the
 #                          real WebView, isolation, and the app's window
-#   Tools/test.sh all      lint, core, unit, build, ios, ui, and android where its tools are
+#   Tools/test.sh all      lint, core, unit, build, ui-mac, ios, ui-ios, and android where its
+#                          tools are
 #
 # Exits non-zero on the first failing step. Set IOS_SIM to pick a simulator.
 # The Windows shell's checks are Tools/test.ps1's, on the Windows PC. `android` needs a JDK,
@@ -110,7 +112,7 @@ run_build() {
   "${XC[@]}" -scheme WebTiger-iOS -destination "platform=iOS Simulator,name=$IOS_SIM" CODE_SIGNING_ALLOWED=NO build 2>&1 | xcbeautify --quiet
 }
 
-run_ui() {
+run_ui_mac() {
   ensure_tools
   ensure_core
   step "app UI tests (fake mode), macOS"
@@ -125,8 +127,18 @@ run_ui() {
     exit 1
   fi
   "${XC[@]}" -scheme WebTiger-macOS -destination 'platform=macOS,arch=arm64' "${DIAG[@]}" test 2>&1 | xcbeautify --quiet
+}
+
+run_ui_ios() {
+  ensure_tools
+  ensure_core
   step "app UI tests (fake mode), $IOS_SIM"
   "${XC[@]}" -scheme WebTiger-iOS -destination "platform=iOS Simulator,name=$IOS_SIM" CODE_SIGNING_ALLOWED=NO "${DIAG[@]}" test 2>&1 | xcbeautify --quiet
+}
+
+run_ui() {
+  run_ui_mac
+  run_ui_ios
 }
 
 # A JDK and the Android SDK for Gradle, where the environment does not name them already.
@@ -220,9 +232,14 @@ case "${1:-all}" in
   ios) run_ios ;;
   build) run_build ;;
   ui) run_ui ;;
+  ui-mac) run_ui_mac ;;
+  ui-ios) run_ui_ios ;;
   android) run_android ;;
   android-device) run_android_device ;;
-  all) ensure_tools; run_lint; run_core; run_unit; run_build; run_ios; run_ui; run_android_if_possible ;;
-  *) echo "usage: Tools/test.sh [lint|core|unit|ios|build|ui|android|android-device|all]" >&2; exit 2 ;;
+  # The Mac's UI suite goes before anything starts the iPhone simulator: a process of the
+  # simulator's own crashes now and then, the Mac puts "… quit unexpectedly" on the screen,
+  # and the Mac's suite does not start while a dialog of the system's is there.
+  all) ensure_tools; run_lint; run_core; run_unit; run_build; run_ui_mac; run_ios; run_ui_ios; run_android_if_possible ;;
+  *) echo "usage: Tools/test.sh [lint|core|unit|ios|build|ui|ui-mac|ui-ios|android|android-device|all]" >&2; exit 2 ;;
 esac
 printf '\n\033[1;32mOK: %s\033[0m\n' "${1:-all}"
