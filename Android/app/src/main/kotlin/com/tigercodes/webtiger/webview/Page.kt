@@ -50,7 +50,7 @@ internal interface Page {
  */
 data class Pressed(val link: String = "", val picture: String = "")
 
-/** An address of the web: one a tab can start from, and the system's downloader can fetch. */
+/** An address of the web: one a tab can start from, and a download can be fetched from. */
 internal fun isOfTheWeb(url: String): Boolean = url.startsWith("http://", ignoreCase = true) || url.startsWith("https://", ignoreCase = true)
 
 /** What a page needs of the engine: where its reports go, and who answers its questions. */

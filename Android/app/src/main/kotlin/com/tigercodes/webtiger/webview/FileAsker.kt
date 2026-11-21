@@ -11,8 +11,9 @@
 //
 // So the adapter asks first, without fetching: each site on the way with that site's own
 // cookies and no other's, following by hand whoever sends it on. What it then offers is where
-// the file is, with what the site there says of it; and the downloader is handed that address,
-// with that site's cookies.
+// the file is, with what the site there says of it. (The system's downloader is gone since
+// (027): the adapter fetches the file itself, the same way, AppFetcher.kt. The asking stays,
+// for what the core needs to know before it names the file.)
 package com.tigercodes.webtiger.webview
 
 import android.os.Handler
@@ -92,10 +93,10 @@ internal fun whereTheFileIs(
     return Told(at)
 }
 
-/** Where an answer sends on, as a whole address: it may have said only a path. Null for what is no address. */
-private fun resolved(from: String, location: String): String? =
+/** Where an answer sends on, as a whole address: it may have said only a path. Null for what is no address, and for one that says nothing. */
+internal fun resolved(from: String, location: String): String? =
     try {
-        URI(from).resolve(location.trim()).toString()
+        location.trim().takeIf { it.isNotEmpty() }?.let { URI(from).resolve(it).toString() }
     } catch (_: URISyntaxException) {
         null
     } catch (_: IllegalArgumentException) {

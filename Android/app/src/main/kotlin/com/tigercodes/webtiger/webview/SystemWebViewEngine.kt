@@ -69,7 +69,7 @@ class SystemWebViewEngine internal constructor(
         files: FileChooser = NoFiles,
     ) : this(
         WebViewPages(context.applicationContext),
-        SystemFetcher(context.applicationContext, downloads),
+        AppFetcher(context.applicationContext, downloads),
         system,
         files,
         SystemAsker(),

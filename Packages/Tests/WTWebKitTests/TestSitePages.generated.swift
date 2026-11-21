@@ -373,6 +373,24 @@ enum TestSitePages {
             authorization: ""
         ),
         TestSitePage(
+            path: "/signs-in-and-sends",
+            status: "302 Found",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")], [.text("Set-Cookie: who="), .query("v", or: "someone"), .text("; Path=/")], [.text("Location: /whose-file")]],
+            body: [],
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
+        TestSitePage(
+            path: "/downloads-elsewhere",
+            status: "200 OK",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("<!doctype html><title>Downloads elsewhere</title><h1>Downloads elsewhere</h1><p><a id=\"elsewhere\" href=\"/to-whose-file?port="), .query("port", or: "80"), .text("\">a file that is at another site</a></p>")],
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
+        TestSitePage(
             path: "/clip.mp4",
             status: "200 OK",
             type: "video/mp4",

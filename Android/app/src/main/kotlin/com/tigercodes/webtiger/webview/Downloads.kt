@@ -35,7 +35,7 @@ internal sealed interface FetchStatus {
     data class Failed(val code: String) : FetchStatus
 }
 
-/** What fetches a download's bytes. [SystemFetcher] is the real one: the system's own. */
+/** What fetches a download's bytes. [AppFetcher] is the real one: the adapter's own (027). */
 internal interface Fetcher {
     /**
      * Starts fetching an offer's address, with the login set's cookies for it, into a file

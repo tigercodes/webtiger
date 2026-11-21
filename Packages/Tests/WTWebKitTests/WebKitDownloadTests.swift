@@ -196,6 +196,47 @@ final class WebKitDownloadTests: AdapterTestCase {
         XCTAssertEqual(saved(other), "who=none")
     }
 
+    /// Cookies stay with their site (027), for a download a page starts: a link of this site
+    /// leads to a file that is at another site (the server by its other name). The person is
+    /// nobody there, and is not made somebody by what this site knows them by; signed in
+    /// there too, as somebody else, the file is fetched as that site knows them. WebKit moves
+    /// the bytes itself, and this is its own doing: the shell sends no cookie anywhere.
+    func testADownloadAPageStartsThatIsAtAnotherSiteIsFetchedThereAsThatSiteKnowsThePerson() async {
+        await create(1)
+        await load(1, site.url("/set?v=ada"))
+        await wait(1, "the cookie to be set") { self.finished($0) && self.hasTitle("Set")($0) }
+        await load(1, site.url("/downloads-elsewhere?port=\(site.port)"))
+        await wait(1, "the page of links") { self.hasTitle("Downloads elsewhere")($0) }
+
+        let download = await click("elsewhere")
+
+        XCTAssertEqual(download.url, "http://localhost:\(site.port)/whose-file", "reported as where the file is")
+        let elsewhere = await save(download, as: "elsewhere.txt")
+        XCTAssertEqual(saved(elsewhere), "who=none", "what this site knows the person by was not sent to the other")
+
+        // Signed in at the other site as somebody else, in the same login set.
+        await load(1, "http://localhost:\(site.port)/set?v=grace")
+        await wait(1, "the other site's cookie to be set") { reports in self.titled("Set", in: reports) == 2 }
+        await load(1, site.url("/downloads-elsewhere?port=\(site.port)"))
+        await wait(1, "the page of links again") { reports in self.titled("Downloads elsewhere", in: reports) == 2 }
+        let theirs = await save(click("elsewhere"), as: "theirs.txt")
+        XCTAssertEqual(saved(theirs), "who=grace", "fetched there as that site knows the person")
+        // And this site still knows them as it did.
+        await load(1, site.url("/whoami"))
+        await wait(1, "who this site says is signed in") { self.hasTitle("who=ada")($0) }
+    }
+
+    /// How many times a page of that title has been reported.
+    private func titled(_ title: String, in reports: [WTEngineEvent.OneOf_Kind]) -> Int {
+        reports.count(where: {
+            if case let .titleChanged(changed) = $0 {
+                changed.title == title
+            } else {
+                false
+            }
+        })
+    }
+
     func testAWordAboutADownloadThereIsNot() async {
         guard case let .error(error) = await start(99, as: "nothing.txt") else { return XCTFail("expected a refusal") }
         XCTAssertEqual(error.code, "download.unknown")

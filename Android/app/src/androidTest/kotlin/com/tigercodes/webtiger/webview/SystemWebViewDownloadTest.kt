@@ -1,8 +1,8 @@
 // The adapter suite's System WebView run, for downloads (013): what the adapter reports when
 // a page offers a file, and what is fetched, where and under what name, once the core has
-// said. The WebView does not download: the system's DownloadManager fetches the address again,
-// with the login set's cookies. The files go to the app's own folder for downloads, which is
-// emptied around each test; never to the device's.
+// said. The WebView does not download: the adapter fetches the address again itself, each
+// address on the way with the login set's cookies for it and no other's (027). The files go to
+// the app's own folder for downloads, which is emptied around each test; never to the device's.
 package com.tigercodes.webtiger.webview
 
 import android.content.Context
@@ -170,6 +170,76 @@ internal class SystemWebViewDownloadTest : AdapterTestCase() {
         assertEquals("who.txt", asked().last().suggested_filename)
         assertEquals("text/plain", asked().last().mime_type)
         assertEquals("who=none", saved(save(asked().last(), "elsewhere.txt")))
+    }
+
+    /**
+     * Cookies stay with their site (027), for a download a page starts: a link of this site
+     * leads to a file that is at another site (the server by its other name). The person is
+     * nobody there, and is not made somebody by what this site knows them by; signed in there
+     * too, as somebody else, the file is fetched as that site knows them.
+     */
+    @Test
+    fun aDownloadAPageStartsThatIsAtAnotherSiteIsFetchedThereAsThatSiteKnowsThePerson() {
+        create(1)
+        load(1, site.url("/set?v=ada"))
+        await(1, "the cookie to be set") { finished(it) && hasTitle("Set")(it) }
+        load(1, site.url("/downloads-elsewhere?port=${site.port}"))
+        await(1, "the page of links") { hasTitle("Downloads elsewhere")(it) }
+
+        val download = tapLink("elsewhere")
+
+        assertEquals("http://localhost:${site.port}/whose-file", download.url)
+        assertEquals("who=none", saved(save(download, "elsewhere.txt")))
+
+        // Signed in at the other site as somebody else, in the same login set.
+        load(1, "http://localhost:${site.port}/set?v=grace")
+        await(1, "the other site's cookie to be set") { reports -> reports.count { it.title_changed?.title == "Set" } == 2 }
+        load(1, site.url("/downloads-elsewhere?port=${site.port}"))
+        await(1, "the page of links again") { reports -> reports.count { it.title_changed?.title == "Downloads elsewhere" } == 2 }
+        assertEquals("who=grace", saved(save(tapLink("elsewhere"), "theirs.txt")))
+        // And this site still knows them as it did.
+        load(1, site.url("/whoami"))
+        await(1, "who this site says is signed in") { hasTitle("who=ada")(it) }
+    }
+
+    /**
+     * The fetcher itself (027), with the WebView's own cookie store: given an address of this
+     * site that sends it on to another site, it follows by hand, and what this site knows the
+     * person by is not sent there. (The system's downloader, which the adapter used before,
+     * sent it: the file said "who=ada".) A cookie a site sets on the way is kept for that site,
+     * in the login set: the file is fetched with it, and a page of that site then sees it.
+     */
+    @Test
+    fun theFetcherFollowsWhoeverSendsOnWithEachSitesOwnCookies() {
+        val loginSet = newLoginSet()
+        create(1, loginSet)
+        load(1, site.url("/set?v=ada"))
+        await(1, "the cookie to be set") { finished(it) && hasTitle("Set")(it) }
+        val fetcher = AppFetcher(ApplicationProvider.getApplicationContext<Context>(), DownloadPlace.APP)
+
+        fun fetch(address: String, name: String): String? {
+            val handle = checkNotNull(onMain { fetcher.start(DownloadOffer(address, "", "", "", 0), loginSet, name) })
+            repeat(600) {
+                when (val status = fetcher.status(handle)) {
+                    is FetchStatus.Finished -> return saved(status.fileName)
+                    is FetchStatus.Coming -> Thread.sleep(50)
+                    else -> error("the fetch ended as $status")
+                }
+            }
+            error("the fetch never ended")
+        }
+
+        assertEquals("this site's file, as this site knows the person", "who=ada", fetch(site.url("/whose-file"), "here.txt"))
+        assertEquals("the other site's file, as nobody", "who=none", fetch(site.url("/to-whose-file?port=${site.port}"), "followed.txt"))
+
+        // A cookie set on the way: the file is fetched with it, and the login set keeps it.
+        assertEquals("who=lin", fetch(site.url("/signs-in-and-sends?v=lin"), "signed.txt"))
+        load(1, site.url("/whoami"))
+        await(1, "who this site now says is signed in") { hasTitle("who=lin")(it) }
+        // A web view of another login set is nobody still.
+        create(2)
+        load(2, site.url("/whoami"))
+        await(2, "who another login set is") { hasTitle("who=none")(it) }
     }
 
     @Test

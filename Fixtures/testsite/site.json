@@ -373,6 +373,24 @@
       "note": "Sends whoever fetches it on to /whose-file at the server's other name (localhost), on the port ?port= says: another site. For what is sent along when a file a person chose to save turns out to be somewhere else."
     },
     {
+      "path": "/signs-in-and-sends",
+      "status": "302 Found",
+      "headers": [
+        "Set-Cookie: who={query:v|someone}; Path=/",
+        "Location: /whose-file"
+      ],
+      "content": "",
+      "note": "Sets the cookie ?v= says, and sends whoever fetches it on to /whose-file at the same site: for a cookie a site sets on the way to a file (027)."
+    },
+    {
+      "path": "/downloads-elsewhere",
+      "title": "Downloads elsewhere",
+      "body": [
+        "<p><a id=\"elsewhere\" href=\"/to-whose-file?port={query:port|80}\">a file that is at another site</a></p>"
+      ],
+      "note": "A link to a file that says who is signed in, at an address that sends on to the server's other name (localhost), on the port ?port= says: a download a page starts, whose file is at another site (027)."
+    },
+    {
       "path": "/clip.mp4",
       "type": "video/mp4",
       "content": "not a film",
