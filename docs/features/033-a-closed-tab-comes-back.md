@@ -87,7 +87,7 @@ An entry that is undone is deleted, and so are a Space's entries beyond its fift
 
 **The Apple shell's model** (`UndoModel.swift`) keeps what the core says an undo would undo, offers a closed tab back only while that is `tab.closed` (a kind this shell does not know is not offered as a closed tab), and asks the core to undo, with the window.
 
-**The Mac**: "Reopen Closed Tab", ⇧⌘T, as every browser has it; there while the window is told there is a closed tab to bring back, and doing nothing otherwise. It is one of the window's commands that have a key and no menu yet (005: the app's menus are W2's). An iPad with a keyboard has the same key.
+**The Mac**: "Reopen Closed Tab", ⇧⌘T, as every browser has it; there while the window is told there is a closed tab to bring back, and doing nothing otherwise. It is in the File menu, with the window's other commands ([034](034-the-macs-menus.md)). An iPad with a keyboard has the same key.
 
 **What the Mac's app test found.** The rule as first built took away any empty tab that was the row's only tab when a closed tab came back. In the app: a new tab opened with ⌘T, the page's tab closed, ⇧⌘T; the page's tab came back and the new tab the person had just opened was gone. Only the empty tab that the core itself puts in the place of a row's last tab makes way now (§3).
 
@@ -135,7 +135,7 @@ An entry that is undone is deleted, and so are a Space's entries beyond its fift
 - **A screen reader.** The button says it has the action, in code, on every system (Android's is tested as what the system is told; Apple's is not tested at all: its tests cannot ask what actions a control has). Nobody listened to one.
 - **The iPad.** It has the iPhone's code; no test ran at its size.
 - **Why a button on the Mac gives no menu for a right-click.** Seen, in the app's test, three ways; not explained. The Mac's menu is on the strip because that is where one came.
-- **A strip full of tabs on the Mac**: nowhere beside the tabs to right-click. ⇧⌘T is there; the app's menus (W2) will have the command.
+- **A strip full of tabs on the Mac**: nowhere beside the tabs to right-click. ⇧⌘T is there, and the File menu has the command ([034](034-the-macs-menus.md)).
 - **A journal that cannot be written** (a disk that is full). The rule is that the tab closes all the same and cannot be brought back; no test has a store that refuses.
 - **Very many closed tabs.** Fifty are kept for a Space; fifty-three were written in a test.
 - **What sync will want of the journal** (W9). Its columns are what one kind of entry needs.

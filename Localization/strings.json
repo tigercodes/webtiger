@@ -15,6 +15,8 @@
     "tabs.untitled": { "en": "New Tab", "note": "The name the strip gives a tab that has no page yet." },
     "tabs.new": { "en": "New Tab", "note": "Button at the end of the strip of tabs, and command (Command-T on a Mac): open an empty tab." },
     "tabs.close": { "en": "Close Tab", "note": "Button on a tab in the strip, and command (Command-W on a Mac): close the tab." },
+    "menu.history": { "en": "History", "note": "Name of a menu in the Mac's menu bar: going back and forward, and the list of pages visited." },
+    "menu.close_window": { "en": "Close Window", "note": "Command in the Mac's File menu (Shift-Command-W): close the window, however many tabs it has." },
     "tabs.reopen": { "en": "Reopen Closed Tab", "note": "Command (Shift-Command-T on a Mac): bring back the tab that was last closed, where it was." },
     "suggestions.list": { "en": "Suggestions", "note": "Accessibility label of the list of places offered under the address field as it is typed in." },
     "zoom.open": { "en": "Zoom", "note": "Label of the button, beside the tabs, that opens the zoom bar." },

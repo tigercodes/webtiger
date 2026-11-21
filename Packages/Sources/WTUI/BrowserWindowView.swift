@@ -77,7 +77,9 @@ public struct BrowserWindowView: View {
                     }
                 }
         }
-        .background { tabShortcuts }
+        .background { KeysNobodySees(window: commands) }
+        // The menu bar speaks for the window in front (034).
+        .focusedSceneValue(\.windowCommands, commands)
         .task { await model.open() }
         .onDisappear { model.close() }
         .modifier(OutsideLinks(model: model))
@@ -179,7 +181,6 @@ public struct BrowserWindowView: View {
             }
             addressField
         }
-        .background { openLocationShortcut }
         .padding(.horizontal, Tokens.Space.m)
         .frame(minHeight: Tokens.Size.toolbarHeight)
     }
@@ -272,84 +273,19 @@ public struct BrowserWindowView: View {
         .accessibilityIdentifier(identifier)
     }
 
-    /// ⌘T and ⌘W, as in every browser. The buttons draw nothing; they carry the shortcuts until
-    /// the app has its menus (W2).
-    private var tabShortcuts: some View {
-        Group {
-            Button {
-                model.openTab()
-            } label: {
-                Text("tabs.new", bundle: .module)
-            }
-            .keyboardShortcut("t", modifiers: .command)
-            // ⇧⌘T, as in every browser: the tab that was last closed comes back (033).
-            Button { model.reopenClosedTab() } label: { Text("tabs.reopen", bundle: .module) }
-                .keyboardShortcut("t", modifiers: [.command, .shift])
-                .disabled(!model.canReopenClosedTab)
-            Button {
-                showingHistory = true
-            } label: {
-                Text("history.open", bundle: .module)
-            }
-            .keyboardShortcut("y", modifiers: .command)
-            Button {
+    /// What this window offers by key and by menu (034): its model, and what only the window
+    /// can do.
+    private var commands: WindowCommands {
+        WindowCommands(
+            model: model,
+            openLocation: { addressFocused = true },
+            find: {
                 model.openFind()
                 findFocused = true
-            } label: {
-                Text("find.open", bundle: .module)
-            }
-            .keyboardShortcut("f", modifiers: .command)
-            // Zoom (012): ⌘+ (and ⌘=, the same key without Shift), ⌘− and ⌘0, bar or no bar.
-            Button { model.zoom(.in) } label: { Text("zoom.in", bundle: .module) }
-                .keyboardShortcut("+", modifiers: .command)
-            Button { model.zoom(.in) } label: { Text("zoom.in", bundle: .module) }
-                .keyboardShortcut("=", modifiers: .command)
-            Button { model.zoom(.out) } label: { Text("zoom.out", bundle: .module) }
-                .keyboardShortcut("-", modifiers: .command)
-            Button { model.zoom(.reset) } label: { Text("zoom.reset", bundle: .module) }
-                .keyboardShortcut("0", modifiers: .command)
-            Button {
-                model.findNext()
-            } label: {
-                Text("find.next", bundle: .module)
-            }
-            .keyboardShortcut("g", modifiers: .command)
-            Button {
-                model.findPrevious()
-            } label: {
-                Text("find.previous", bundle: .module)
-            }
-            .keyboardShortcut("g", modifiers: [.command, .shift])
-            Button {
-                // On a window's last tab ⌘W closes the window, as it does everywhere on a Mac.
-                // The core's own rule is only that a window is never left empty (005, T1).
-                if model.tabs.count > 1 {
-                    model.closeTab(model.tab.tabID)
-                } else {
-                    dismiss()
-                }
-            } label: {
-                Text("tabs.close", bundle: .module)
-            }
-            .keyboardShortcut("w", modifiers: .command)
-        }
-        .opacity(0)
-        .frame(width: 0, height: 0)
-        .accessibilityHidden(true)
-    }
-
-    /// ⌘L, as in every browser: the keyboard goes to the address field, whole address selected.
-    /// The button draws nothing; it is here to carry the shortcut.
-    private var openLocationShortcut: some View {
-        Button {
-            addressFocused = true
-        } label: {
-            Text("toolbar.open_location", bundle: .module)
-        }
-        .keyboardShortcut("l", modifiers: .command)
-        .opacity(0)
-        .frame(width: 0, height: 0)
-        .accessibilityHidden(true)
+            },
+            showHistory: { showingHistory = true },
+            closeWindow: { dismiss() }
+        )
     }
 
     /// The least a toolbar button measures: a finger's width on a touch screen, less under a pointer.

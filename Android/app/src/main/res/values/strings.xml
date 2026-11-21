@@ -257,6 +257,10 @@
     <string name="link_open_link_new_tab">Open Link in New Tab</string>
     <!-- In a link's menu: open the link in a new tab, behind the one being read. -->
     <string name="link_open_new_tab">Open in New Tab</string>
+    <!-- Command in the Mac's File menu (Shift-Command-W): close the window, however many tabs it has. -->
+    <string name="menu_close_window">Close Window</string>
+    <!-- Name of a menu in the Mac's menu bar: going back and forward, and the list of pages visited. -->
+    <string name="menu_history">History</string>
     <!-- Android: the item WebTiger adds to other apps' menu of selected text. Choosing it opens the words as a search in WebTiger, with the search engine the person chose. Short: it sits in a small bar. -->
     <string name="outside_search">Search with WebTiger</string>
     <!-- Button in the Permissions list that takes back what every site was allowed. Each will ask again. -->

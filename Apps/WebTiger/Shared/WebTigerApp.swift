@@ -21,6 +21,8 @@ struct WebTigerApp: App {
         }
         #if os(macOS)
         .defaultSize(width: 1100, height: 760)
+        // The window's commands in the menu bar, with their keys (034).
+        .commands { BrowserCommands() }
         #endif
     }
 }
