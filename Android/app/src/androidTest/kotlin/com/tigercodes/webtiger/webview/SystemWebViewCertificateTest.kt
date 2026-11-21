@@ -18,6 +18,22 @@ internal class SystemWebViewCertificateTest : AdapterTestCase() {
     private fun failures(id: Long = 1): List<String> = reports(id).mapNotNull { it.navigation_failed?.code }
 
     /**
+     * What the adapter said of a web view, in order, by kind: for a failure's message. A load
+     * that started, committed, finished or failed, with a failure's code; anything else is
+     * "other". No address is in it.
+     */
+    private fun said(id: Long = 1): String =
+        reports(id).joinToString(", ") { report ->
+            when {
+                report.navigation_started != null -> "started"
+                report.navigation_committed != null -> "committed"
+                report.navigation_finished != null -> "finished"
+                report.navigation_failed != null -> "failed(${report.navigation_failed?.code})"
+                else -> "other"
+            }
+        }
+
+    /**
      * No page of the site came of a load that failed: once the engine has had the time to show
      * its own error page, which it commits at the address that failed, the load has not
      * finished, no title is the site's, and no other address was named.
@@ -131,7 +147,7 @@ internal class SystemWebViewCertificateTest : AdapterTestCase() {
         SelfSignedSite(port).use { second ->
             load(1, address)
             await(1, "the second load to fail") { reports -> reports.count { it.navigation_failed != null } >= 2 }
-            assertEquals(listOf("net.tls.untrusted", "net.tls.untrusted"), failures(1))
+            assertEquals("the adapter said: ${said(1)}", listOf("net.tls.untrusted", "net.tls.untrusted"), failures(1))
             assertEquals("held, to be gone on with afresh", listOf(true, true), held(1))
             Thread.sleep(500)
             assertEquals("its page was never asked for", 0, second.served.get())
