@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What the device tests' own package adds to the device. Nothing here is in the app. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- An Autofill service of the tests' own (032). The test of a page's sign-in form
+             makes it the device's for as long as the test runs, and puts the device's own
+             back. The system asks it about the form the cursor is in; it says what it was
+             asked to the test, and offers nothing, so the system shows nothing. Only the
+             system can bind it. -->
+        <service
+            android:name="com.tigercodes.webtiger.AskedAutofillService"
+            android:exported="true"
+            android:label="WebTiger tests"
+            android:permission="android.permission.BIND_AUTOFILL_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.autofill.AutofillService" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

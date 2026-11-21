@@ -4,11 +4,13 @@ package com.tigercodes.webtiger
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.os.Bundle
+import android.view.ViewGroup
 import android.webkit.MimeTypeMap
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.tigercodes.webtiger.design.WebTigerTheme
@@ -16,6 +18,7 @@ import com.tigercodes.webtiger.ui.BrowserModel
 import com.tigercodes.webtiger.ui.BrowserSession
 import com.tigercodes.webtiger.ui.BrowserWindow
 import com.tigercodes.webtiger.ui.CatalogueScreen
+import com.tigercodes.webtiger.ui.FillableWindow
 import com.tigercodes.webtiger.ui.LaunchOptions
 import com.tigercodes.webtiger.ui.StartFailed
 import com.tigercodes.webtiger.webview.AppPermissions
@@ -81,14 +84,20 @@ class MainActivity : ComponentActivity() {
         // to open (031): the core is asked once the window is open. Not when the window is
         // being made again from what it was: it was asked then.
         if (savedInstanceState == null) session.getOrNull()?.let { running -> handedOver(intent, window.model(running)) }
-        setContent {
-            WebTigerTheme {
-                session.fold(
-                    onSuccess = { running -> BrowserWindow(running, window.model(running)) },
-                    onFailure = { failure -> StartFailed(WebTigerApp.startCode(failure)) },
-                )
+        // The window is drawn by Compose, inside a view of the app's own that lets the system's
+        // Autofill reach the page it shows (032, ui/FillableWindow.kt).
+        val drawn =
+            ComposeView(this).apply {
+                setContent {
+                    WebTigerTheme {
+                        session.fold(
+                            onSuccess = { running -> BrowserWindow(running, window.model(running)) },
+                            onFailure = { failure -> StartFailed(WebTigerApp.startCode(failure)) },
+                        )
+                    }
+                }
             }
-        }
+        setContentView(FillableWindow(this).apply { addView(drawn, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)) })
     }
 
     /**
