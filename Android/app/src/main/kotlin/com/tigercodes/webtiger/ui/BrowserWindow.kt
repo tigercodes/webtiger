@@ -8,8 +8,10 @@ import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -39,11 +41,14 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -240,9 +245,7 @@ private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit
                     TabChip(tab, inFront = tab.tab_id == model.tab.tab_id, onActivate = { model.activate(tab.tab_id) }, onClose = { model.closeTab(tab.tab_id) })
                 }
             }
-            IconButton(onClick = model::openTab, modifier = Modifier.testTag("new-tab")) {
-                Icon(painter = painterResource(R.drawable.ic_add), contentDescription = stringResource(R.string.tabs_new))
-            }
+            NewTabButton(model)
         }
         // The find bar's button (010), the zoom bar's (012) and the History list's (008):
         // beside the tabs and not among them, where they stay when the tabs scroll. There is
@@ -611,6 +614,51 @@ private fun AddressField(model: BrowserModel, focus: FocusRequester, onSubmitted
                         }
                         .testTag("address-field")
                         .semantics { contentDescription = label },
+            )
+        }
+    }
+}
+
+/**
+ * The button that opens a new tab; held, it offers the tab that was last closed back (033).
+ *
+ * A finger held on it brings up a menu with "Reopen Closed Tab", while the core says there is
+ * one to bring back. With none, the button held is only a button: an item that does nothing is
+ * not shown. A screen reader is told of the held action by its name while it is there.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun NewTabButton(model: BrowserModel) {
+    var offering by remember { mutableStateOf(false) }
+    val reopen = stringResource(R.string.tabs_reopen)
+    val canReopen = model.canReopenClosedTab
+    Box {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier =
+                Modifier
+                    .minimumInteractiveComponentSize()
+                    // What an icon's button is in this design: 40 across, in a touch target of 48.
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .combinedClickable(
+                        role = Role.Button,
+                        onClick = model::openTab,
+                        onLongClick = if (canReopen) ({ offering = true }) else null,
+                        onLongClickLabel = if (canReopen) reopen else null,
+                    ).testTag("new-tab"),
+        ) {
+            Icon(painter = painterResource(R.drawable.ic_add), contentDescription = stringResource(R.string.tabs_new))
+        }
+        // Gone when there is nothing to bring back any more, whoever brought it back.
+        DropdownMenu(expanded = offering && canReopen, onDismissRequest = { offering = false }) {
+            DropdownMenuItem(
+                text = { Text(reopen) },
+                onClick = {
+                    offering = false
+                    model.reopenClosedTab()
+                },
+                modifier = Modifier.testTag("reopen-closed-tab"),
             )
         }
     }

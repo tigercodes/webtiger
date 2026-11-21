@@ -83,7 +83,17 @@ struct TabStrip: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.borderless)
-                    .accessibilityIdentifier("new-tab")
+                    #if !os(macOS)
+                        // Held, it offers the tab that was last closed back (033).
+                        .modifier(OffersClosedTab(model: model))
+                    #endif
+                        // A screen reader is told of it by its name, while it is there.
+                        .accessibilityActions {
+                            if model.canReopenClosedTab {
+                                ReopenClosedTab(model: model)
+                            }
+                        }
+                        .accessibilityIdentifier("new-tab")
                 }
                 .padding(.horizontal, Tokens.Space.m)
             }
@@ -93,9 +103,16 @@ struct TabStrip: View {
             }
         }
         .frame(minHeight: BrowserWindowView.hitSize + Tokens.Space.s)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text("tabs.list", bundle: .module))
-        .accessibilityIdentifier("tab-strip")
+        #if os(macOS)
+            // A right-click in the strip, beside the tabs, offers the tab that was last closed
+            // back (033). Not on a button: on the Mac a button takes a right-click for itself,
+            // and no menu comes of it, its own or the strip's.
+            .contentShape(Rectangle())
+            .modifier(OffersClosedTab(model: model))
+        #endif
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(Text("tabs.list", bundle: .module))
+            .accessibilityIdentifier("tab-strip")
     }
 
     private func chip(_ tab: WTTabSummary) -> some View {
@@ -148,5 +165,32 @@ struct TabStrip: View {
         } else {
             Text("tabs.untitled", bundle: .module)
         }
+    }
+}
+
+/// A menu with "Reopen Closed Tab" (033): on a phone, of the button for a new tab, held; on the
+/// Mac, of the strip of tabs, right-clicked.
+///
+/// With no closed tab to bring back there is no menu at all: an item that does nothing is not
+/// shown. The menu is put on and taken off as a whole, and not left there with nothing in it.
+private struct OffersClosedTab: ViewModifier {
+    let model: BrowserModel
+
+    func body(content: Content) -> some View {
+        if model.canReopenClosedTab {
+            content.contextMenu { ReopenClosedTab(model: model) }
+        } else {
+            content
+        }
+    }
+}
+
+/// "Reopen Closed Tab": the core is asked to undo.
+private struct ReopenClosedTab: View {
+    let model: BrowserModel
+
+    var body: some View {
+        Button { model.reopenClosedTab() } label: { Text("tabs.reopen", bundle: .module) }
+            .accessibilityIdentifier("reopen-closed-tab")
     }
 }

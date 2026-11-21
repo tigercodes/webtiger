@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built, and **run on an emulator** (Android 16, System WebView 133): the app starts, a page loads through the core, and 147 tests pass on the device, among them the adapter suite against the real WebView and isolation between login sets. 383 more pass on the JVM, 28 of them driving the real core through JNI. **Not yet run on a physical device, on any other WebView version, or folded** (§8) |
+| **Status** | Built, and **run on an emulator** (Android 16, System WebView 133): the app starts, a page loads through the core, and 148 tests pass on the device, among them the adapter suite against the real WebView and isolation between login sets. 386 more pass on the JVM, 28 of them driving the real core through JNI. **Not yet run on a physical device, on any other WebView version, or folded** (§8) |
 | **Phase** | W0 of [000](000-master-plan.md) §9; item 1 of [001](001-foundations.md) §12 |
 | **Stack** | 000 §5.1: Kotlin, Jetpack Compose, Material 3, `androidx.webkit`, Wire, JNI through `wt-ffi` |
 | **Last updated** | 2026-11-18 (run on an emulator; the device suite) |
@@ -235,7 +235,7 @@ The line above was run against the emulator, with a page served from the Mac (`1
 
 An emulator without a window, made by `Tools/android/emulator.sh` from the Google APIs image for Android 16 (API 36, `arm64-v8a`, revision 7) with the Pixel 8 profile, on a Mac with Apple silicon; its System WebView is **133.0.6943.137**. 2026-11-18.
 
-`Tools/test.sh android-device` runs the tests in `Android/app/src/androidTest` there: 147 pass. From a cold emulator the whole step took 40 s, the boot included.
+`Tools/test.sh android-device` runs the tests in `Android/app/src/androidTest` there: 148 pass. From a cold emulator the whole step took 40 s, the boot included.
 
 | Suite | Count | What it shows |
 |---|---|---|
@@ -260,6 +260,7 @@ An emulator without a window, made by `Tools/android/emulator.sh` from the Googl
 | `AppCertificateTest` | 1 | Going on past a certificate in the app ([026](026-past-a-certificate.md)): refused, with the words and no padlock; the warning names the site, and nothing is asked of it; gone on, the page loads and is marked not secure. Android's accessibility checks over the failed page and the warning |
 | `AppLinksTest` | 1 | A link from another app, in the app ([031](031-links-from-other-apps.md)): the window, asked as the system asks it, opens the link in a new tab in front; the same link again opens again; six requests at once are each answered, in order, and what is no address of the web opens nothing |
 | `AppAutofillTest`, `AppChoicesTest` | 1, 1 | Passwords ([032](032-passwords-android.md)): with an Autofill service of the tests' own as the device's for the test, the system asks it about a page's sign-in form in the app's window, once, with the form's site and its two fields, and nothing of the system's is shown. And a page's list of choices opens over the page, in a window of the WebView's own, and the choice is the page's: the web view has the window's activity while it is shown |
+| `AppUndoTest` | 1 | Undo ([033](033-a-closed-tab-comes-back.md)): a page's tab closed; the button for a new tab, held, offers it back, and no tab is opened by the hold; chosen, the tab is where it was, in front, with its page and its address |
 
 Also done by hand there, and looked at in screenshots: the app started with the `am start` line of §7 and a page served from the Mac; a link, back and forward; the keyboard that comes up is the address one, with Go; a load that timed out (the emulator's network was not up yet, seconds after its boot) showed the failed page in words, and Try Again loaded the page; `example.com` typed into the field loaded over https with the padlock and the short form of the address; the dark theme, switched while the app ran, redrew the window without making the activity again.
 
@@ -296,7 +297,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | `cd Core && cargo test --workspace --locked` | 139 passed |
 | `Tools/test.sh android`, from nothing | OK, 48 s |
 | … `:core-engine:testDebugUnitTest` | 32 passed |
-| … `:app:testDebugUnitTest` | 351 passed |
+| … `:app:testDebugUnitTest` | 354 passed |
 | … `:app:assembleDebug` | `app-debug.apk`, with `libwebtiger_core.so` for `arm64-v8a` and `x86_64` |
 | `Tools/strings/strings.py --check`, `Tools/design/tokens.py --check` | up to date; the Apple outputs' checksums unchanged |
 | `./gradlew :app:lintDebug` | no errors. Apart from notices that newer versions exist, two warnings are left on purpose: no launcher icon (the brand is not settled, 001 F10), and `toolbar_open_location` unused (it is the Mac's ⌘L) |
@@ -334,6 +335,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | `SearchWordsTest` | 7 | "Search with WebTiger" in other apps' menu of selected text ([028](028-search-from-other-apps.md)): what the item reads of what it is handed, what it starts, what the window asks of the core, and what the system is told of the item and of the window |
 | `ViewAddressTest` | 6 | A link pressed in another app ([031](031-links-from-other-apps.md)): what the window reads of the system's request and hands to the core, that nothing is handed over twice, that every address which comes before the window is open is kept, and what the system is told the window shows |
 | `WebViewHostTest` | 3 | What the window lends its activity to (032): found inside whatever the adapter wrapped a web view's context in; none where a view's context can be lent nothing; lent, and given back |
+| `UndoTest` | 3 | Undo (033): the window's model offers a closed tab back only while the core says there is one, and asks with the window; the button for a new tab, held, brings the menu, and a screen reader is told so by name; with nothing to bring back the button is only a button |
 | `CatalogueSnapshotTest` | 23 | The design catalogue as pictures, drawn on the JVM, and the failed page at twice the text size (004) |
 | `ThroughTheCoreTest` | 11 | The model, the session, the engine and the tracker over the **real core**: a page loads in the Space's login set; a page cannot put an address in the field it has not become; a failure by its code; fake mode, where each mode saves a download (013), and that only the app started for real may have the system ask the person (014); no profiles; a Space's colour ([025](025-space-colours.md)); words another app hands over are searched for in a new tab ([028](028-search-from-other-apps.md)); an address another app hands over opens in a new tab, and what is no address of the web opens nothing ([031](031-links-from-other-apps.md)) |
 

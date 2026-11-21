@@ -34,6 +34,7 @@ import com.tigercodes.webtiger.core.v1.SwitchSpace
 import com.tigercodes.webtiger.core.v1.TabCommand
 import com.tigercodes.webtiger.core.v1.TabSummary
 import com.tigercodes.webtiger.core.v1.TabView
+import com.tigercodes.webtiger.core.v1.Undo
 import com.tigercodes.webtiger.core.v1.WindowSnapshot
 import com.tigercodes.webtiger.core.v1.ZoomChange
 import com.tigercodes.webtiger.core.v1.ZoomPage
@@ -449,6 +450,27 @@ class BrowserModel(
     var spaceColour by mutableStateOf("")
         private set
 
+    /**
+     * What an undo would undo now in the Space the window shows (033), by the core's word for
+     * it. Empty: there is nothing to undo.
+     */
+    var undoKind by mutableStateOf("")
+        private set
+
+    /** A closed tab can be brought back in the Space the window shows: the core says so. */
+    val canReopenClosedTab: Boolean get() = undoKind == UNDO_CLOSED_TAB
+
+    /**
+     * Brings back the tab that was last closed in the Space the window shows (033). The core
+     * is asked to undo, and says what comes of it; nothing is asked while the window has been
+     * told there is nothing to bring back.
+     */
+    fun reopenClosedTab() {
+        val open = window ?: return
+        if (!canReopenClosedTab) return
+        session.send(Request(undo = Undo(window_id = open.windowId)))
+    }
+
     /** The colours a Space can have, as the core lists them with the Spaces. */
     var spaceColours by mutableStateOf<List<String>>(emptyList())
         private set
@@ -723,6 +745,7 @@ class BrowserModel(
         spaceId = snapshot.space_id
         spaceName = snapshot.space_name
         spaceColour = snapshot.space_colour
+        undoKind = snapshot.undo
         // The zoom bar is the window's, and says the level of the page in front: with no page
         // there that can be zoomed, it has nothing to say.
         if (isZooming && front.zoom == null) isZooming = false
@@ -739,6 +762,9 @@ class BrowserModel(
         addressText = shownText
     }
 }
+
+/** What the core says an undo would undo when a closed tab can be brought back (033). */
+private const val UNDO_CLOSED_TAB = "tab.closed"
 
 /** The web view a picture's link menu is said to be of: none of the core's, whose ids count up from one, and none of a shell's. */
 private const val PICTURED = -1L

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built and tested in the store, the core and the Apple shell: the journal, undo for a closed tab, and the Mac's command (⇧⌘T), in the Mac's app. The iPhone, the iPad and Android have no way to ask for it yet (§6): the core does it for them all the same |
+| **Status** | Built and tested in the store, the core and every shell there is: the journal, undo for a closed tab, and a way to ask on each system. The Mac: ⇧⌘T, and a right-click in the strip of tabs. The iPhone, the iPad and Android: the button for a new tab, held (provisional, §6). Not run on a phone, nor with a screen reader (§9) |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "the store and journal", the journal's first form. W2: "undo", for the one organising action there is to undo so far, closing a tab (000 §6.2: "Undo for every organising action, including closing a tab") |
 | **Contract** | 1.24: `Undo`; `WindowSnapshot.undo` |
 | **Builds on** | [005](005-tabs.md): a tab closed. [009](009-session-restore.md): a tab kept by its address and its title, and brought back asleep. [024](024-several-spaces.md): a window shows one Space's tabs. [008](008-history.md): forgetting |
@@ -24,7 +24,6 @@ I close a tab I did not mean to close. I ask for it back, and it is where it was
 - **A tab a page closed itself.** The person did not close it.
 - **A private Space's tabs.** Nothing of a private Space is written (000 §5.6).
 - **Sync.** W9 reads the journal; what of it travels, and in what form, is W9's to say.
-- **The shells' way to ask**, beyond the Mac's: §6.
 
 ## 3. The rule
 
@@ -92,7 +91,18 @@ An entry that is undone is deleted, and so are a Space's entries beyond its fift
 
 **What the Mac's app test found.** The rule as first built took away any empty tab that was the row's only tab when a closed tab came back. In the app: a new tab opened with ⌘T, the page's tab closed, ⇧⌘T; the page's tab came back and the new tab the person had just opened was gone. Only the empty tab that the core itself puts in the place of a row's last tab makes way now (§3).
 
-**The iPhone, the iPad and Android**: where the command lives on a phone is a design of its own (a long press on the button for a new tab, as one browser has it; or a line that says a tab was closed, with "Undo", as another has). Not decided here.
+**The iPhone, the iPad and Android: the button for a new tab, held.** A finger held on the button that opens a new tab brings up a menu with "Reopen Closed Tab". Chosen, the core is asked to undo.
+
+> **Provisional (2026-11-21), under the owner's word to go on with what is suggested:** the other course was a line across the window when a tab is closed ("Tab closed", with "Undo"), as one browser has it. The held button was taken because it adds nothing to a strip that is already full on a phone ([024](024-several-spaces.md) found how little room there is), and because a line that goes away by itself after some seconds is one a person who reads slowly, or by ear, may miss. The owner's to change.
+
+- **Nothing is offered when there is nothing to bring back**: the button held is then only a button, and a finger held on it and lifted is a press of it. An item that does nothing is not shown ([022](022-picture-menu.md) D5).
+- **A screen reader is told**: the button says it has the action, by name, while there is a closed tab to bring back.
+- **Android** (`NewTabButton` in `BrowserWindow.kt`): the button is the app's own, with a press and a hold, and the menu is Compose's own over the window.
+- **The iPhone and the iPad** (`TabStrip.swift`): the system's own menu for a held control.
+
+**The Mac, with the mouse: a right-click in the strip of tabs**, beside the tabs, brings up the same menu. Not on the button for a new tab, as was first built, nor on a tab: on the Mac a button takes a right-click for itself, and no menu comes of it, the button's own or the strip's. (Found by the app's test: with the menu on the button nothing came, however it was put there; a menu on the strip came when the strip was right-clicked, and not when a button in it was.) A window whose strip is full of tabs has nowhere to right-click; ⇧⌘T is always there.
+
+**Where the menu is put on and taken off.** With nothing to bring back there is no menu at all, on any system: it is not left there with nothing in it.
 
 ## 7. Decisions
 
@@ -103,6 +113,8 @@ An entry that is undone is deleted, and so are a Space's entries beyond its fift
 | D3 | The page is loaded again | What the address is, the core knows. What else a page was is the engine's to keep, and that is W3 |
 | D4 | The journal has the columns its one kind needs | As the store's other tables began (009, 012). A general shape for entries is better made when there is a second kind to make it for |
 | D5 | Forgetting history forgets the closed tabs, all of them for those logins | The person asked for something not to be kept. Working out which closed tabs a time or one visit covers gains little, and getting it wrong keeps what was to be forgotten |
+| D6 | On a phone, the button for a new tab, held (provisional) | §6: no new chrome on a narrow strip, and nothing that is there only for a moment |
+| D7 | On the Mac the menu is the strip's, not the button's | §6: a button on the Mac gives no menu for a right-click. A right-click in the strip of tabs is where other browsers on the Mac have it |
 
 ## 8. Tests
 
@@ -111,11 +123,19 @@ An entry that is undone is deleted, and so are a Space's entries beyond its fift
 | Store (`wt-store`, 6 more: `journal.rs`) | A closed tab is written, and taken newest first, once; each Space has its own, and a Space there is not has none and is written nothing; only the fifty newest of a Space are kept, and tidying one Space leaves another's; forgetting takes every Space of a login set and no other's, and leaves nothing of them in the table; closed tabs outlive a restart; a store from before the journal gains it and keeps its tabs |
 | Core (`wt-app/tests/undo.rs`, 8, through `FakeShell`) | A closed tab comes back at its place, in front, with the title it had and its address in the field from the start, no mark until the page arrives, loaded once; there is then nothing more to undo. Closed twice, they come back newest first, each where it was, and at the end when the row is shorter. The row's only tab closed and brought back leaves no empty tab; an empty tab the person opened stays, and so does the stand-in once they have gone somewhere in it. An empty tab closed is nothing to undo; nothing to undo is refused, and a window there is not is refused first. Each Space has its own closed tabs. Forgetting history forgets them, whatever was named: everything, since a time, or one visit that is not even there. Closed before a quit, a tab comes back after it (over a store on disk, started three times), and the window is told so from its first snapshot. A tab a page closed itself is not brought back. Eighteen parts of the rule checked by breaking them: all caught |
 | The Apple shell's model (`UndoModelTests`, 2, on the Mac and the iPhone simulator) | A closed tab is offered back only while the core says there is one, and asked for with the window, with one request; a kind of undo this shell does not know is not offered as a closed tab. Four parts checked by breaking them: all caught |
+| The Mac's and the iPhone's apps (`UndoTests`, 1 on each, fake mode: the real core and real WebKit) | A page's tab, a new tab opened beside it, the page's tab closed with its button. The menu is asked for (a right-click in the strip beside the tabs on the Mac; a finger held on the button for a new tab on the iPhone): "Reopen Closed Tab" is there, and asking opened no tab. Chosen: the tab is back where it was, the first of the two, in front, its page loaded again, the field saying where it is. Asked for again, there is no menu; on the Mac there was none before anything was closed either. With the menu always there, both fail |
+| Android's window (`UndoTest`, 3, on the JVM, over a scripted core) | The model: a closed tab is offered back only while the core says there is one; asked for with the window, in one request; a kind of undo this shell does not know is not offered. The button for a new tab: a screen reader is told what holding it does, by name; held, the menu comes, nothing is asked yet and no tab is opened; chosen, the core is asked to undo and the menu goes; a press is still a new tab. With nothing to bring back, the button cannot be held for anything and a screen reader is told of nothing; and the menu goes when the core says there is nothing more. Eleven parts checked by breaking them: all caught |
+| Android's app, on the emulator (`AppUndoTest`, 1, fake mode: the real core and the real WebView) | A page's tab closed with its button, an empty one left; the button for a new tab held: the menu, and no new tab; chosen: two tabs, the first in front, its page loaded again and its address in the field. Passed three runs one after another, each in a process of its own |
+| By hand (2026-11-21, the emulator, the app in fake mode, an address on the device's own loopback that refuses) | The window's only tab closed; the button held: the menu at the button, one line, well inside a phone's width. Chosen: the tab back with its address, and the empty tab that had taken its place gone. Held again with nothing more to bring back: no menu, and a new tab (the hold is then a press). The app's data was cleared afterwards |
 | The Mac's app (`LaunchTests`, 1, fake mode: the real core and real WebKit) | ⇧⌘T with nothing closed does nothing. A page's tab, a new tab opened beside it, the page's tab closed: ⇧⌘T brings it back where it was, the first of the two, in front, its page loaded again (the site was asked for it a second time), the field saying where it is; the new tab is still there. Asked again, nothing comes. Passed three runs one after another. Its first run found the fault of §6 |
 
 ## 9. What is not verified
 
-- **The iPhone, the iPad and Android in their apps.** Their windows have no way to ask (§6). The core's part is the same for every shell and is tested without one; Android's client was not made to send the request at all.
+- **A phone.** Android ran on an emulator; the iPhone on the simulator.
+- **A screen reader.** The button says it has the action, in code, on every system (Android's is tested as what the system is told; Apple's is not tested at all: its tests cannot ask what actions a control has). Nobody listened to one.
+- **The iPad.** It has the iPhone's code; no test ran at its size.
+- **Why a button on the Mac gives no menu for a right-click.** Seen, in the app's test, three ways; not explained. The Mac's menu is on the strip because that is where one came.
+- **A strip full of tabs on the Mac**: nowhere beside the tabs to right-click. ⇧⌘T is there; the app's menus (W2) will have the command.
 - **A journal that cannot be written** (a disk that is full). The rule is that the tab closes all the same and cannot be brought back; no test has a store that refuses.
 - **Very many closed tabs.** Fifty are kept for a Space; fifty-three were written in a test.
 - **What sync will want of the journal** (W9). Its columns are what one kind of entry needs.
@@ -127,5 +147,6 @@ An entry that is undone is deleted, and so are a Space's entries beyond its fift
 - [x] The store's journal (its ninth version).
 - [x] The core: the rule of §3.
 - [x] The Mac: the command, in the app.
-- [ ] The iPhone, the iPad and Android: a way to ask.
+- [x] The iPhone, the iPad and Android: a way to ask (provisional, §6); the Mac: a right-click in the strip.
 - [x] `Tools/test.sh all` green, and `android-device`, on 2026-11-21: `lint`, `core` (519), `unit` (267 on the Mac), `build`, the Mac's UI suite (30), `ios` (249 on the iPhone simulator, one skipped as before), the iPhone's UI suite (26), `android` (351 and 32 on the JVM) and `android-device` (147 on the emulator).
+- [x] `Tools/test.sh all` green, and `android-device`, with the shells' ways to ask, on 2026-11-21: `lint`, `core` (519), `unit` (267 on the Mac), `build`, the Mac's UI suite (31), `ios` (249 on the iPhone simulator, one skipped as before), the iPhone's UI suite (27), `android` (354 and 32 on the JVM) and `android-device` (148 on the emulator).
