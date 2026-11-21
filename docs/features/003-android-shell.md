@@ -264,6 +264,8 @@ Also done by hand there, and looked at in screenshots: the app started with the 
 
 Faults found by running it, all fixed with tests: the refused navigation's progress (§5.1), and the three in the address field (§6). The first launch of the core's library, the JNI glue, `setProfile`, the two WebView clients and the request callback found none.
 
+**How the tests touch a page, and what that found (2026-11-21).** The tests' finger (`PageTouch`) asks the page where an element is and gives the WebView a touch there. It aimed by the width the page was laid out at. A page with no viewport of its own is laid out 980 wide; the WebView usually shows all of that, shrunk to fit, and now and then shows it at its own size, 412 of the 980 across. Then the touch landed on the page's heading and not its link, and a test that loads such a page twice ([027](027-cookies-stay-with-their-site.md)) failed about one run in four with nothing to say why (the page said it had been clicked: on the wrong thing). The finger now aims by the part of the page that is on the screen (its visual viewport): ten runs of that test's class and two of the whole suite passed. Why the WebView shows the same page at two sizes from run to run was not looked into: the adapter asks for a wide viewport shown in overview (§5.5), the test site's pages mostly declare no viewport, and a page shown at its own size where it should be shrunk to fit is something a person would see too. Not seen in the app.
+
 ### 8.2 Not verified
 
 - **A physical device.** Everything above is one emulator image. No phone, tablet or foldable has run the app.

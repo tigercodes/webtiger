@@ -37,16 +37,24 @@ internal object PageTouch {
     /**
      * Where an element is in a WebView: its middle in the view's own pixels, with the view's
      * size, read together. Null when the page has no such element or the view has no size.
+     *
+     * By the part of the page that is on the screen (its visual viewport), not by the width
+     * the page was laid out at. A page with no viewport of its own is laid out 980 wide; the
+     * WebView usually shows all of that, shrunk to fit, and now and then shows it at its own
+     * size, 412 of the 980 across. Measured against the laid-out width, a touch then landed
+     * up and to the left of what it was aimed at: on the page's heading, not its link (seen:
+     * about one run in four of a test that loads such a page twice).
      */
     private fun place(view: WebView, element: String): List<Float>? {
-        // Where the element is, in the page's own measure, and how much of the page the view shows.
+        // Where the element is in what the view shows of the page, and how much that is.
         val script =
             """
             (() => {
                 const element = document.getElementById('$element');
                 if (!element) return '';
                 const box = element.getBoundingClientRect();
-                return [box.left + box.width / 2, box.top + box.height / 2, window.innerWidth, window.innerHeight].join(' ');
+                const shown = window.visualViewport;
+                return [box.left + box.width / 2 - shown.offsetLeft, box.top + box.height / 2 - shown.offsetTop, shown.width, shown.height].join(' ');
             })()
             """.trimIndent()
         val page = evaluate(view, script).orEmpty().split(' ').mapNotNull { it.toFloatOrNull() }
