@@ -2461,6 +2461,18 @@
         }
       }
     },
+    "tabs.reopen": {
+      "comment": "Command (Shift-Command-T on a Mac): bring back the tab that was last closed, where it was.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reopen Closed Tab"
+          }
+        }
+      }
+    },
     "tabs.untitled": {
       "comment": "The name the strip gives a tab that has no page yet.",
       "extractionState": "manual",

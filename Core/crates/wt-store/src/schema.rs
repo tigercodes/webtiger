@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use crate::StoreError;
 
 /// The version this build's store is at.
-pub const SCHEMA_VERSION: u32 = 8;
+pub const SCHEMA_VERSION: u32 = 9;
 
 /// The migrations, in order: `MIGRATIONS[n]` takes version `n` to `n + 1`.
 const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
@@ -115,6 +115,22 @@ const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
     // 8 (W2, 025): a Space's colour, by the core's name for it. Empty: none,
     // which is what every Space from before has.
     "ALTER TABLE space ADD COLUMN colour TEXT NOT NULL DEFAULT '';",
+    // 9 (W1, 033): the journal, in its first form. What the person did to
+    // organise their browsing, written before it is done, so that it can
+    // be undone. The table 000 §5.6 names, with the columns its one kind
+    // of entry needs so far: a tab that was closed, by the Space it was
+    // in, its place in the row, its address and its title. Ids are never
+    // used twice: the newest entry is the one with the largest.
+    "CREATE TABLE journal (
+         id INTEGER PRIMARY KEY AUTOINCREMENT,
+         at INTEGER NOT NULL,
+         kind TEXT NOT NULL CHECK (kind IN ('tab.closed')),
+         space_id INTEGER NOT NULL REFERENCES space (id),
+         position INTEGER NOT NULL CHECK (position >= 0),
+         url TEXT NOT NULL,
+         title TEXT NOT NULL
+     ) STRICT;
+     CREATE INDEX journal_space ON journal (space_id, id);",
 ];
 
 pub(crate) fn version(connection: &Connection) -> Result<u32, StoreError> {

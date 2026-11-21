@@ -339,6 +339,11 @@ public nonisolated struct WTWindowSnapshot: Sendable {
   /// empty for none.
   public var spaceColour: String = String()
 
+  /// Since 1.24. What Undo would undo now in the Space the window shows
+  /// (033), by its kind: "tab.closed" when a closed tab can be brought back;
+  /// empty when there is nothing to undo.
+  public var undo: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1558,6 +1563,23 @@ public nonisolated struct WTOpenAddress: Sendable {
   public init() {}
 }
 
+/// Since 1.24. Undoes the last organising action of the Space a window shows
+/// (033): so far, brings back the tab the person last closed there, at the
+/// place it had, in front, loading its address. What it would undo is in
+/// WindowSnapshot.undo. Answered with TabOpened for a tab brought back;
+/// "window.unknown"; or "undo.nothing" when there is nothing to undo.
+public nonisolated struct WTUndo: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var windowID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
@@ -1865,7 +1887,7 @@ nonisolated extension WTActivateTab: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".WindowSnapshot"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0\u{3}downloads_active\0\u{3}space_id\0\u{3}space_name\0\u{3}space_colour\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0\u{3}downloads_active\0\u{3}space_id\0\u{3}space_name\0\u{3}space_colour\0\u{1}undo\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1880,6 +1902,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 5: try { try decoder.decodeSingularUInt64Field(value: &self.spaceID) }()
       case 6: try { try decoder.decodeSingularStringField(value: &self.spaceName) }()
       case 7: try { try decoder.decodeSingularStringField(value: &self.spaceColour) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.undo) }()
       default: break
       }
     }
@@ -1911,6 +1934,9 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
     if !self.spaceColour.isEmpty {
       try visitor.visitSingularStringField(value: self.spaceColour, fieldNumber: 7)
     }
+    if !self.undo.isEmpty {
+      try visitor.visitSingularStringField(value: self.undo, fieldNumber: 8)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1922,6 +1948,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.spaceID != rhs.spaceID {return false}
     if lhs.spaceName != rhs.spaceName {return false}
     if lhs.spaceColour != rhs.spaceColour {return false}
+    if lhs.undo != rhs.undo {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3943,6 +3970,36 @@ nonisolated extension WTOpenAddress: SwiftProtobuf.Message, SwiftProtobuf._Messa
   public static func ==(lhs: WTOpenAddress, rhs: WTOpenAddress) -> Bool {
     if lhs.windowID != rhs.windowID {return false}
     if lhs.url != rhs.url {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTUndo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".Undo"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.windowID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.windowID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.windowID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTUndo, rhs: WTUndo) -> Bool {
+    if lhs.windowID != rhs.windowID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

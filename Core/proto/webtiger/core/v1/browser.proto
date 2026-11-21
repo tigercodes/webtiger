@@ -97,6 +97,10 @@ message WindowSnapshot {
   // Since 1.19. That Space's colour (025): one of SpacesPage.colours, or
   // empty for none.
   string space_colour = 7;
+  // Since 1.24. What Undo would undo now in the Space the window shows
+  // (033), by its kind: "tab.closed" when a closed tab can be brought back;
+  // empty when there is nothing to undo.
+  string undo = 8;
 }
 
 // A tab as a strip of tabs shows it: enough to name it, and no more.
@@ -682,4 +686,13 @@ message SearchWords {
 message OpenAddress {
   uint64 window_id = 1;
   string url = 2 [(wt.redact) = true];
+}
+
+// Since 1.24. Undoes the last organising action of the Space a window shows
+// (033): so far, brings back the tab the person last closed there, at the
+// place it had, in front, loading its address. What it would undo is in
+// WindowSnapshot.undo. Answered with TabOpened for a tab brought back;
+// "window.unknown"; or "undo.nothing" when there is nothing to undo.
+message Undo {
+  uint64 window_id = 1;
 }

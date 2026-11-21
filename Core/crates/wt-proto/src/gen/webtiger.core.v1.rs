@@ -264,6 +264,11 @@ pub struct WindowSnapshot {
     /// empty for none.
     #[prost(string, tag = "7")]
     pub space_colour: ::prost::alloc::string::String,
+    /// Since 1.24. What Undo would undo now in the Space the window shows
+    /// (033), by its kind: "tab.closed" when a closed tab can be brought back;
+    /// empty when there is nothing to undo.
+    #[prost(string, tag = "8")]
+    pub undo: ::prost::alloc::string::String,
 }
 /// A tab as a strip of tabs shows it: enough to name it, and no more.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -1017,6 +1022,16 @@ pub struct OpenAddress {
     pub window_id: u64,
     #[prost(string, tag = "2")]
     pub url: ::prost::alloc::string::String,
+}
+/// Since 1.24. Undoes the last organising action of the Space a window shows
+/// (033): so far, brings back the tab the person last closed there, at the
+/// place it had, in front, loading its address. What it would undo is in
+/// WindowSnapshot.undo. Answered with TabOpened for a tab brought back;
+/// "window.unknown"; or "undo.nothing" when there is nothing to undo.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct Undo {
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -1923,7 +1938,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -2013,6 +2028,9 @@ pub mod request {
         /// Since 1.23
         #[prost(message, tag = "33")]
         OpenAddress(super::OpenAddress),
+        /// Since 1.24
+        #[prost(message, tag = "34")]
+        Undo(super::Undo),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.

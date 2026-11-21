@@ -23,6 +23,9 @@ public final class BrowserModel {
     /// The Spaces as the core last listed them: asked for when the list is opened. `nil`
     /// until it has answered.
     public internal(set) var spaces: [WTSpaceSummary]?
+    /// What an undo would undo now in the Space the window shows (033), by the core's word
+    /// for it; empty when there is nothing to undo.
+    public internal(set) var undoKind = ""
     /// Why the core would not make a Space, by its code: said on the page that asked.
     public internal(set) var spaceRefusal: String?
     /// The warning before going on past a certificate is open (026): for this failure of the
@@ -387,6 +390,7 @@ public final class BrowserModel {
         spaceID = snapshot.spaceID
         spaceName = snapshot.spaceName
         spaceColour = snapshot.spaceColour
+        undoKind = snapshot.undo
         // The zoom bar is the window's, and says the level of the page in front: with no page
         // there that can be zoomed, it has nothing to say.
         if isZooming, !tab.hasZoom {

@@ -371,8 +371,10 @@ mod tests {
             store.spaces().unwrap()
         };
         let old = rusqlite::Connection::open(&path).unwrap();
-        old.execute_batch("ALTER TABLE space DROP COLUMN colour; PRAGMA user_version = 7;")
-            .unwrap();
+        old.execute_batch(
+            "DROP TABLE journal; ALTER TABLE space DROP COLUMN colour; PRAGMA user_version = 7;",
+        )
+        .unwrap();
         drop(old);
 
         let mut store = Store::open(&path).unwrap();

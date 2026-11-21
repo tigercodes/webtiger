@@ -16,12 +16,12 @@ use wt_proto::v1::{
     Ack, ActivateTab, AddressSuggestion, AddressSuggestions, CloseTab, CloseWindow, EngineEvent,
     EngineKind, FindInPage, ForgetHistory, HistoryEntry, HistoryPage, LinkOpenRequested, LoginSet,
     NavigationCommand, OpenAddress, OpenOutside, OpenTab, OutsideLinkRequested, QueryHistory,
-    SearchRequested, SearchWords, SubmitAddress, SuggestAddresses, TabCommand, TabOpened,
+    SearchRequested, SearchWords, SubmitAddress, SuggestAddresses, TabCommand, TabOpened, Undo,
     WebViewCommand, WebViewCreate, WebViewDestroy, WebViewFind, WebViewLoad, WebViewSetZoom,
     WindowOpened, WindowSnapshot, ZoomChange, ZoomPage, engine_event, forget_history, host_request,
     request, response,
 };
-use wt_store::{Space, Store};
+use wt_store::{ClosedTab, SavedTab, Space, Store};
 
 use crate::downloads::{Downloading, Wanted};
 use crate::error::AppError;
@@ -123,14 +123,20 @@ impl App {
         }
         // Where searches go (020): what the store has of a choice, if any.
         let search = crate::search::kept(&store.borrow(), options.search_settled);
+        // What the journal has of each Space's closed tabs (033): what was
+        // closed before the app was, can be brought back after.
+        let closed: Vec<_> = kept
+            .spaces
+            .iter()
+            .map(|space| (space.id, store.borrow().closed_tabs(space.id).unwrap_or(0)))
+            .collect();
+        let mut state = State::new(kept.spaces, &kept.start, options.engine, kept.saved);
+        for (space, count) in closed {
+            state.set_closed_tabs(space, count);
+        }
         App {
             written: Rc::new(RefCell::new(kept.written)),
-            state: Rc::new(RefCell::new(State::new(
-                kept.spaces,
-                &kept.start,
-                options.engine,
-                kept.saved,
-            ))),
+            state: Rc::new(RefCell::new(state)),
             new_login_set: options.new_login_set,
             host,
             search: Rc::new(Cell::new(search)),
@@ -192,6 +198,7 @@ impl App {
             }
             request::Kind::SearchWords(asked) => self.search_words(&asked),
             request::Kind::OpenAddress(asked) => self.open_address(&asked),
+            request::Kind::Undo(undo) => self.undo(&undo),
             request::Kind::OpenDownload(open) => self.open_download(&open),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
@@ -414,7 +421,17 @@ impl App {
             }
         };
         forgotten.map_err(|error| AppError::new(error.code()))?;
+        // A closed tab is a place that was visited (033): whatever was named
+        // to be forgotten, every closed tab of these logins goes with it.
+        // What was asked to be forgotten does not come back by undo.
+        store
+            .forget_closed_tabs(login_set)
+            .map_err(|error| AppError::new(error.code()))?;
         drop(store);
+        let spaces = self.state.borrow().spaces_of(login_set);
+        for space in spaces {
+            self.count_closed_tabs(space);
+        }
         // No tab's page is a visit any more, as far as writing its title
         // goes: one that was forgotten must stay forgotten.
         self.state.borrow_mut().visits_forgotten();
@@ -544,6 +561,59 @@ impl App {
             let _ = loading.await;
             Ok(opened)
         })
+    }
+
+    /// Undoes the last organising action of the Space a window shows (033):
+    /// so far, brings back the tab the person last closed there.
+    fn undo(&self, undo: &Undo) -> AppFuture {
+        let window = WindowId(undo.window_id);
+        let Some(space) = self.state.borrow().space_shown(window) else {
+            return refuse(AppError::new("window.unknown").field("window_id"));
+        };
+        // Taken out of the journal: what is undone is not undone twice. A
+        // journal that cannot be read has nothing to undo.
+        let taken = self
+            .store
+            .borrow_mut()
+            .take_closed_tab(space)
+            .ok()
+            .flatten();
+        self.count_closed_tabs(space);
+        let Some(closed) = taken else {
+            return refuse(AppError::new("undo.nothing"));
+        };
+        let saved = SavedTab {
+            url: closed.url,
+            title: closed.title,
+            front: true,
+        };
+        let reopened = self
+            .state
+            .borrow_mut()
+            .reopen(window, closed.position, &saved);
+        let Some(tab) = reopened else {
+            return refuse(AppError::new("window.unknown").field("window_id"));
+        };
+        let opened = response::Kind::TabOpened(TabOpened { tab_id: tab.get() });
+        // It came back asleep and in front, as a tab of the session does
+        // (009): waking it loads it, as the person's own.
+        let waking = self.wake();
+        Box::pin(async move {
+            // The tab is back whatever becomes of its page: a failed load
+            // shows in the tab.
+            for loading in waking {
+                let _ = loading.await;
+            }
+            Ok(opened)
+        })
+    }
+
+    /// Asks the journal how many closed tabs of a Space it has (033), for
+    /// what the windows that show it are told. A journal that cannot be
+    /// asked is one with nothing to undo.
+    fn count_closed_tabs(&self, space: wt_core::SpaceId) {
+        let count = self.store.borrow().closed_tabs(space).unwrap_or(0);
+        self.state.borrow_mut().set_closed_tabs(space, count);
     }
 
     fn outside_link(&self, web_view: WebViewId, asked: &OutsideLinkRequested) {
@@ -712,6 +782,25 @@ impl App {
     }
 
     fn close_tab(&self, close: &CloseTab) -> AppFuture {
+        // The journal first (033): a tab the person closes is written down
+        // before it is closed, so that it can be brought back. A journal
+        // that cannot be written does not keep the tab open: it closes, and
+        // cannot be brought back.
+        let closing = self.state.borrow_mut().closing(TabId(close.tab_id));
+        if let Some((space, position, saved)) = closing {
+            let entry = ClosedTab {
+                position,
+                url: saved.url,
+                title: saved.title,
+            };
+            let written =
+                self.store
+                    .borrow_mut()
+                    .journal_closed_tab(space, &entry, self.clock.now());
+            if written.is_ok() {
+                self.count_closed_tabs(space);
+            }
+        }
         let closed = self.state.borrow_mut().close_tab(TabId(close.tab_id));
         let Some(web_view) = closed else {
             return refuse(AppError::new("tab.unknown").field("tab_id"));

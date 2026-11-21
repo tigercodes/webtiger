@@ -282,6 +282,10 @@ public struct BrowserWindowView: View {
                 Text("tabs.new", bundle: .module)
             }
             .keyboardShortcut("t", modifiers: .command)
+            // ⇧⌘T, as in every browser: the tab that was last closed comes back (033).
+            Button { model.reopenClosedTab() } label: { Text("tabs.reopen", bundle: .module) }
+                .keyboardShortcut("t", modifiers: [.command, .shift])
+                .disabled(!model.canReopenClosedTab)
             Button {
                 showingHistory = true
             } label: {

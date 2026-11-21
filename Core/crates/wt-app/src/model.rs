@@ -24,6 +24,10 @@ pub(crate) enum Load {
     Failed,
 }
 
+/// What a window is told an undo would undo when a closed tab can be brought
+/// back (033): `WindowSnapshot.undo`.
+pub(crate) const UNDO_CLOSED_TAB: &str = "tab.closed";
+
 /// The most a tab asks at once (014 §3): the prompt it shows, and three
 /// waiting behind it. A page that asks for more is told no.
 pub(crate) const MOST_PROMPTS: usize = 4;
@@ -272,6 +276,10 @@ pub(crate) struct Tab {
     /// The person stopped this page's messages: it says no more until
     /// another page has committed.
     silenced: bool,
+    /// The empty tab that took the place of a row's last tab when that was
+    /// closed (005). It makes way when the closed tab is brought back (033);
+    /// an empty tab the person opened does not.
+    stands_in: bool,
 }
 
 /// The visit a tab's page is in the store, and what has been written of it.
@@ -323,6 +331,7 @@ impl Tab {
             passable: None,
             spoke: false,
             silenced: false,
+            stands_in: false,
         }
     }
 
@@ -709,6 +718,10 @@ pub(crate) struct State {
     /// the origin whose certificate it was. Until the app quits, and kept
     /// nowhere else. A page of one is never shown as secure.
     exceptions: BTreeSet<(LoginSetId, String)>,
+    /// How many closed tabs of each Space the journal has (033), for the
+    /// snapshots of the windows that show it: whether there is something
+    /// to undo. A Space that is not here has none.
+    closed_tabs: BTreeMap<SpaceId, usize>,
 }
 
 impl State {
@@ -727,6 +740,7 @@ impl State {
             session_window: None,
             downloads_active: BTreeMap::new(),
             exceptions: BTreeSet::new(),
+            closed_tabs: BTreeMap::new(),
             spaces,
             start: (start.id, start.login_set),
             engine,
@@ -1009,10 +1023,9 @@ impl State {
             row.tabs.retain(|id| *id != tab_id);
             if row.tabs.is_empty() {
                 let fresh = TabId(self.ids.mint());
-                self.tabs.insert(
-                    fresh,
-                    Tab::new(tab.window, tab.space, self.engine, tab.login_set),
-                );
+                let mut stand_in = Tab::new(tab.window, tab.space, self.engine, tab.login_set);
+                stand_in.stands_in = true;
+                self.tabs.insert(fresh, stand_in);
                 row.tabs.push(fresh);
                 row.front = fresh;
             } else if row.front == tab_id {
@@ -1480,6 +1493,93 @@ impl State {
         ended
     }
 
+    /// The journal has so many closed tabs of a Space now (033): the
+    /// snapshots of the windows that show it say whether there is one to
+    /// bring back.
+    pub(crate) fn set_closed_tabs(&mut self, space: SpaceId, count: usize) {
+        let before = self.closed_tabs.insert(space, count).unwrap_or(0);
+        if (before == 0) != (count == 0) {
+            let showing: Vec<WindowId> = self
+                .windows
+                .iter()
+                .filter(|(_, window)| window.space == space)
+                .map(|(window, _)| *window)
+                .collect();
+            self.dirty.extend(showing);
+        }
+    }
+
+    /// The Space a window shows.
+    pub(crate) fn space_shown(&self, window: WindowId) -> Option<SpaceId> {
+        self.windows.get(&window).map(|window| window.space)
+    }
+
+    /// The Spaces whose logins are `login_set`.
+    pub(crate) fn spaces_of(&self, login_set: LoginSetId) -> Vec<SpaceId> {
+        self.spaces
+            .iter()
+            .filter(|space| space.login_set == login_set)
+            .map(|space| space.id)
+            .collect()
+    }
+
+    /// What the journal is to keep of a tab the person is closing (033):
+    /// its Space, its place in the row, and its address and title as the
+    /// session keeps them (009). `None` for a tab there is not, and for one
+    /// with no address of the web's: an empty tab is nothing to bring back.
+    pub(crate) fn closing(&mut self, tab_id: TabId) -> Option<(SpaceId, u32, SavedTab)> {
+        let tab = self.tabs.get_mut(&tab_id)?;
+        let (window, space) = (tab.window, tab.space);
+        let saved = tab.saved(false);
+        if saved.url.is_empty() {
+            return None;
+        }
+        let row = self.windows.get(&window)?.rows.get(&space)?;
+        let place = row.tabs.iter().position(|id| *id == tab_id)?;
+        Some((space, u32::try_from(place).ok()?, saved))
+    }
+
+    /// Brings a closed tab back into the row of the Space a window shows
+    /// (033): at the place it had, or at the end when the row is shorter
+    /// now; in front; asleep at its address, with the title it had, as a
+    /// tab of the session comes back (009), so that waking it loads it.
+    /// When the row's only tab is the empty one that was put there when the
+    /// row's last tab was closed, the tab takes its place. An empty tab the
+    /// person opened stays. `None` when there is no such window.
+    pub(crate) fn reopen(
+        &mut self,
+        window_id: WindowId,
+        place: u32,
+        saved: &SavedTab,
+    ) -> Option<TabId> {
+        let window = self.windows.get_mut(&window_id)?;
+        let space = window.space;
+        let login_set = self.spaces.iter().find(|s| s.id == space)?.login_set;
+        let row = window.rows.get_mut(&space)?;
+        let only_a_stand_in = match row.tabs.as_slice() {
+            [only] => self.tabs.get(only).is_some_and(|tab| {
+                tab.stands_in && tab.shown().is_none() && tab.web_view.is_none()
+            }),
+            _ => false,
+        };
+        if only_a_stand_in {
+            for gone in row.tabs.drain(..) {
+                self.tabs.remove(&gone);
+            }
+        }
+        let tab = TabId(self.ids.mint());
+        let place =
+            usize::try_from(place).map_or(row.tabs.len(), |place| place.min(row.tabs.len()));
+        row.tabs.insert(place, tab);
+        row.front = tab;
+        self.tabs.insert(
+            tab,
+            Tab::restored(window_id, space, self.engine, login_set, saved),
+        );
+        self.dirty.insert(window_id);
+        Some(tab)
+    }
+
     /// So many downloads of a login set are coming now: the snapshots of
     /// the windows that show a Space of it say so.
     pub(crate) fn set_downloads_active(&mut self, login_set: LoginSetId, coming: u32) {
@@ -1871,6 +1971,12 @@ impl State {
             space_id: space.id.get(),
             space_name: space.name.clone(),
             space_colour: space.colour.clone(),
+            // What an undo would undo here (033): a closed tab, or nothing.
+            undo: if self.closed_tabs.get(&space.id).copied().unwrap_or(0) > 0 {
+                UNDO_CLOSED_TAB.to_owned()
+            } else {
+                String::new()
+            },
         })
     }
 

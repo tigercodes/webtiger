@@ -411,6 +411,8 @@
     <string name="tabs_list">Tabs</string>
     <!-- Button at the end of the strip of tabs, and command (Command-T on a Mac): open an empty tab. -->
     <string name="tabs_new">New Tab</string>
+    <!-- Command (Shift-Command-T on a Mac): bring back the tab that was last closed, where it was. -->
+    <string name="tabs_reopen">Reopen Closed Tab</string>
     <!-- The name the strip gives a tab that has no page yet. -->
     <string name="tabs_untitled">New Tab</string>
     <!-- Button: go back one page. -->

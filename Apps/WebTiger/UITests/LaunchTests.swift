@@ -312,6 +312,47 @@ final class LaunchTests: AppTestCase {
             let closed = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: none, object: app.windows.firstMatch)], timeout: 30)
             XCTAssertEqual(closed, .completed, "⌘W on the last tab closes the window")
         }
+
+        /// A tab closed by mistake comes back (033): ⇧⌘T, as in every browser. With the real
+        /// core, in fake mode: the tab that was closed is back where it was, in front, with
+        /// its page; asked again with nothing more to bring back, nothing happens.
+        func testAClosedTabComesBackWithItsPage() {
+            let app = launch(start: site.url("/landed"))
+            XCTAssertTrue(pageShows("Landed", in: app), "the window's page loaded")
+            let tabs = app.buttons.matching(identifier: "tab")
+            // Waits for the window to have so many tabs.
+            func awaitTabs(_ count: Int, _ what: String) {
+                let reached = NSPredicate(format: "count == %d", count)
+                let waited = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: reached, object: tabs)], timeout: 30)
+                XCTAssertEqual(waited, .completed, "\(what): the window has \(tabs.count) tabs")
+            }
+
+            // Nothing was closed yet: asked for, nothing comes.
+            app.typeKey("t", modifierFlags: [.command, .shift])
+            // A second tab, empty; then the page's tab is brought in front and closed.
+            app.typeKey("t", modifierFlags: .command)
+            awaitTabs(2, "⌘T opened a tab, and ⇧⌘T had opened none")
+            press(tabs.element(boundBy: 0))
+            XCTAssertTrue(pageShows("Landed", in: app))
+            app.typeKey("w", modifierFlags: .command)
+            awaitTabs(1, "⌘W closed the page's tab")
+            XCTAssertTrue(app.staticTexts["empty-tab"].waitForExistence(timeout: 30), "the empty tab is what is left")
+
+            app.typeKey("t", modifierFlags: [.command, .shift])
+
+            // Back where it was, the first of the two, in front, and its page loads again.
+            awaitTabs(2, "⇧⌘T brought the tab back")
+            XCTAssertTrue(pageShows("Landed", in: app), "with its page")
+            XCTAssertTrue(tabs.element(boundBy: 0).isSelected, "where it was, and in front")
+            expect(app.textFields["address-field"], toShow: "http://127.0.0.1:\(site.port)/landed")
+            // The page was asked for twice: when the window opened, and when the tab came back.
+            XCTAssertEqual(site.requests.filter { $0 == "/landed" }.count, 2, "\(site.requests)")
+
+            // Nothing more was closed: asked again, nothing comes.
+            app.typeKey("t", modifierFlags: [.command, .shift])
+            usleep(700_000)
+            XCTAssertEqual(tabs.count, 2)
+        }
     #endif
 
     func testAPageThatCannotBeReachedSaysSoInWords() {

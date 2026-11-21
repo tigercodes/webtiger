@@ -2,14 +2,16 @@
 //!
 //! W0 has the first two tables, `login_set` and `space`, because a web view
 //! cannot be created without knowing whose logins it runs in, and that
-//! answer has to be the same tomorrow. W1 adds history (`visit`, 008) and
-//! the tabs a window had (`tab`, 009). The journal and the
-//! one-writer-many-readers arrangement are still to come.
+//! answer has to be the same tomorrow. W1 adds history (`visit`, 008), the
+//! tabs a window had (`tab`, 009) and the journal in its first form
+//! (`journal`, 033). The one-writer-many-readers arrangement is still to
+//! come.
 //!
 //! Private login sets are never written here: they live and die in memory.
 
 mod download;
 mod history;
+mod journal;
 mod permission;
 mod schema;
 mod session;
@@ -25,6 +27,7 @@ use wt_core::{LoginSetId, SpaceId, Timestamp, Uuid};
 
 pub use download::{COMING, Download, DownloadPage, FINISHED, INTERRUPTED};
 pub use history::{MAX_VISITS_PER_PAGE, Visit, VisitPage};
+pub use journal::{CLOSED_TABS_KEPT, ClosedTab};
 pub use permission::Allowed;
 pub use schema::SCHEMA_VERSION;
 pub use session::SavedTab;
