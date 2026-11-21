@@ -25,6 +25,7 @@ import com.tigercodes.webtiger.core.v1.QuerySpaces
 import com.tigercodes.webtiger.core.v1.RenameSpace
 import com.tigercodes.webtiger.core.v1.Request
 import com.tigercodes.webtiger.core.v1.SearchSettings
+import com.tigercodes.webtiger.core.v1.SearchWords
 import com.tigercodes.webtiger.core.v1.SpaceSummary
 import com.tigercodes.webtiger.core.v1.SubmitAddress
 import com.tigercodes.webtiger.core.v1.SuggestAddresses
@@ -130,6 +131,8 @@ class BrowserModel(
             // Where searches go, and whether anybody chose it (020): asked once, when the
             // window has opened.
             askWhereSearchesGo()
+            // Words another app handed over before there was a window to search in (028).
+            wordsWaiting.also { wordsWaiting = null }?.let(::searchFor)
         } catch (_: CoreError) {
             // The core would not open a window: the tab stays empty.
         } finally {
@@ -141,6 +144,24 @@ class BrowserModel(
         val closing = window ?: return
         window = null
         session.closeWindow(closing)
+    }
+
+    /** Words handed over while the window was not open yet: searched for when it is (028). */
+    private var wordsWaiting: String? = null
+
+    /**
+     * Another app handed the app words to search for (028). The core is told, with the window
+     * they are for: what they are, and where the search goes, is the core's. Nothing is made
+     * of them here.
+     */
+    fun searchFor(words: String) {
+        val opened = window
+        if (opened == null) {
+            // The last words asked for are the ones searched for.
+            wordsWaiting = words
+            return
+        }
+        session.send(Request(search_words = SearchWords(window_id = opened.windowId, text = words)))
     }
 
     /**

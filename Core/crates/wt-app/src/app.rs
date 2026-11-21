@@ -16,9 +16,10 @@ use wt_proto::v1::{
     Ack, ActivateTab, AddressSuggestion, AddressSuggestions, CloseTab, CloseWindow, EngineEvent,
     EngineKind, FindInPage, ForgetHistory, HistoryEntry, HistoryPage, LinkOpenRequested, LoginSet,
     NavigationCommand, OpenOutside, OpenTab, OutsideLinkRequested, QueryHistory, SearchRequested,
-    SubmitAddress, SuggestAddresses, TabCommand, TabOpened, WebViewCommand, WebViewCreate,
-    WebViewDestroy, WebViewFind, WebViewLoad, WebViewSetZoom, WindowOpened, WindowSnapshot,
-    ZoomChange, ZoomPage, engine_event, forget_history, host_request, request, response,
+    SearchWords, SubmitAddress, SuggestAddresses, TabCommand, TabOpened, WebViewCommand,
+    WebViewCreate, WebViewDestroy, WebViewFind, WebViewLoad, WebViewSetZoom, WindowOpened,
+    WindowSnapshot, ZoomChange, ZoomPage, engine_event, forget_history, host_request, request,
+    response,
 };
 use wt_store::{Space, Store};
 
@@ -189,6 +190,7 @@ impl App {
             request::Kind::ProceedPastCertificate(proceed) => {
                 self.proceed_past_certificate(&proceed)
             }
+            request::Kind::SearchWords(asked) => self.search_words(&asked),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
             | request::Kind::Unsubscribe(_)
@@ -484,6 +486,39 @@ impl App {
                 let _ = loading.await;
             });
         }
+    }
+
+    /// Words the person chose outside any page, handed to a shell to search
+    /// for (028): another app's selected text. Tidied as a page's selected
+    /// words are, and always searched for, in a new tab in front.
+    fn search_words(&self, asked: &SearchWords) -> AppFuture {
+        let window = WindowId(asked.window_id);
+        let Some(front) = self.state.borrow().front_tab(window) else {
+            return refuse(AppError::new("window.unknown").field("window_id"));
+        };
+        // Always a search: another app's words are never taken for an
+        // address, whatever they look like.
+        let searched =
+            searched_words(&asked.text).and_then(|words| self.search.get().0.search(&words));
+        let Some(address) = searched else {
+            return refuse(AppError::new("search.no_words").field("text"));
+        };
+        let opened = self.state.borrow_mut().open_tab(window, Some(front), false);
+        let Some(tab) = opened else {
+            return refuse(AppError::new("window.unknown").field("window_id"));
+        };
+        let opened = response::Kind::TabOpened(TabOpened { tab_id: tab.get() });
+        // The person's own search, as one typed in the address field is:
+        // the tab says where it goes from the start.
+        let Some(loading) = self.begin_load_as(tab, address, true) else {
+            return Box::pin(std::future::ready(Ok(opened)));
+        };
+        Box::pin(async move {
+            // The tab opened whatever became of its page: a failed load
+            // shows in the tab.
+            let _ = loading.await;
+            Ok(opened)
+        })
     }
 
     fn outside_link(&self, web_view: WebViewId, asked: &OutsideLinkRequested) {

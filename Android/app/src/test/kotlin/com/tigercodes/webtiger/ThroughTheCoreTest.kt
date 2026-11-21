@@ -164,6 +164,36 @@ class ThroughTheCoreTest {
             }
         }
 
+    /**
+     * Words another app handed over (028), through the real core: the window's model hands
+     * them on, and the core opens a new tab in front and asks its web view for the chosen
+     * engine's search for them. Words that look like an address are searched for all the same.
+     * Nothing is fetched: the web view here is the test's.
+     */
+    @Test
+    fun wordsFromAnotherAppAreSearchedForInANewTabAndNeverTakenForAnAddress() =
+        runBlocking {
+            val model = BrowserModel(session())
+            onMain { model.open() }
+            await("the window's first snapshot") { model.tab.tab_id != 0L }
+            val first = onMain { model.tab.tab_id }
+
+            onMain { model.searchFor("  tigers in\nthe wild ") }
+
+            await("the search reaching a web view") { pages.made.size == 1 && pages.made[0].loaded.isNotEmpty() }
+            assertEquals(listOf("https://duckduckgo.com/?q=tigers+in+the+wild"), pages.made[0].loaded)
+            await("the new tab in front, saying where the search went") {
+                model.tabs.size == 2 && model.tab.tab_id != first && model.address.url == "https://duckduckgo.com/?q=tigers+in+the+wild"
+            }
+            assertEquals("after the tab that was in front", first, onMain { model.tabs.first().tab_id })
+
+            onMain { model.searchFor("example.com") }
+
+            await("the second search reaching its web view") { pages.made.size == 2 && pages.made[1].loaded.isNotEmpty() }
+            assertEquals("searched for, not gone to", listOf("https://duckduckgo.com/?q=example.com"), pages.made[1].loaded)
+            assertEquals(3, onMain { model.tabs.size })
+        }
+
     @Test
     fun aPageCannotPutAnAddressInTheFieldItHasNotBecome() =
         runBlocking {

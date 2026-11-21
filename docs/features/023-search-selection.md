@@ -106,7 +106,7 @@ message SearchRequested {
 | # | Decision | Why |
 |---|---|---|
 | D1 | No item of the menu sends the words anywhere but to the core. The system's item is replaced where the shell can put its own; on Android it is kept, and answered | Two items that search, one of which leaves the app for another engine, is a trap. On Android the WebView's item, heard by the adapter, is the one way that keeps the WebView's own judgement of when a search may be offered and of what the words are |
-| D5 | On Android nothing is offered to other apps | An exported entry ("search with WebTiger" in every app's menu of selected text) is what the system's other way of adding to that bar needs. It is a thing a person may want, and a part of the app that other apps can start: the owner's to decide, and not needed for this |
+| D5 | On Android nothing is offered to other apps (in this feature: the owner has since decided it is, and it is [028](028-search-from-other-apps.md)) | An exported entry ("search with WebTiger" in every app's menu of selected text) is what the system's other way of adding to that bar needs. It is a thing a person may want, and a part of the app that other apps can start: the owner's to decide, and not needed for this |
 | D2 | A new tab, in front | The person asked to see the search now, and has not finished with the page: Chrome does the same. Safari replaces the page |
 | D3 | Always a search | The item says "Search". Words that happen to look like an address are still what the person wants to know about |
 | D4 | The core cuts long words; the shell does not | One rule for every shell |

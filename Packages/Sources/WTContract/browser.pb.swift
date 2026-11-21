@@ -1493,6 +1493,28 @@ public nonisolated struct WTProceedPastCertificate: Sendable {
   public init() {}
 }
 
+/// Since 1.21. A search for words the person chose somewhere a shell can hear
+/// of, outside any page (028): another app's selected text. The words are
+/// tidied as selected words of a page are (023), and are always searched for
+/// with the engine the person chose: never taken for an address, whatever
+/// they look like. The search opens in a new tab, after the tab in front, in
+/// front, in the Space the window shows. Answered with TabOpened;
+/// "window.unknown"; or "search.no_words" when nothing is left of the words,
+/// which opens nothing.
+public nonisolated struct WTSearchWords: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var windowID: UInt64 = 0
+
+  public var text: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
@@ -3773,6 +3795,41 @@ nonisolated extension WTProceedPastCertificate: SwiftProtobuf.Message, SwiftProt
 
   public static func ==(lhs: WTProceedPastCertificate, rhs: WTProceedPastCertificate) -> Bool {
     if lhs.tabID != rhs.tabID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTSearchWords: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SearchWords"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}text\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.windowID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.text) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.windowID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.windowID, fieldNumber: 1)
+    }
+    if !self.text.isEmpty {
+      try visitor.visitSingularStringField(value: self.text, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTSearchWords, rhs: WTSearchWords) -> Bool {
+    if lhs.windowID != rhs.windowID {return false}
+    if lhs.text != rhs.text {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -951,6 +951,15 @@ impl State {
         Some(web_views)
     }
 
+    /// The tab in front in a window, in the Space it shows. `None` when
+    /// there is no such window.
+    pub(crate) fn front_tab(&self, window_id: WindowId) -> Option<TabId> {
+        self.windows
+            .get(&window_id)
+            .and_then(Window::shown)
+            .map(|row| row.front)
+    }
+
     /// Opens an empty tab in a window, in the Space it shows: after `after`
     /// when that is one of the tabs shown, at the end otherwise; in front
     /// unless `background`. `None` when there is no such window.

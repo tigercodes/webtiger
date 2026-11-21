@@ -77,6 +77,10 @@ class MainActivity : ComponentActivity() {
             if (asked.several) picksSeveral.launch(types) else picksOne.launch(types)
         }
         val window = ViewModelProvider(this)[WindowHolder::class.java]
+        // Started with words another app handed over (028): searched for once the window is
+        // open. Not when the window is being made again from what it was: they were searched
+        // for then.
+        if (savedInstanceState == null) session.getOrNull()?.let { running -> searchWords(intent, window.model(running)) }
         setContent {
             WebTigerTheme {
                 session.fold(
@@ -84,6 +88,16 @@ class MainActivity : ComponentActivity() {
                     onFailure = { failure -> StartFailed(WebTigerApp.startCode(failure)) },
                 )
             }
+        }
+    }
+
+    /** Words another app handed over while the window is there (028): it comes forward, and they are searched for. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        val launch = launchOptions(this.intent, applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0)
+        if (launch.catalogue) return
+        (application as WebTigerApp).session(launch).getOrNull()?.let { running ->
+            searchWords(intent, ViewModelProvider(this)[WindowHolder::class.java].model(running))
         }
     }
 
@@ -105,6 +119,22 @@ class MainActivity : ComponentActivity() {
 
         /** `--ez webtiger.fake.first_run true`: in fake mode, nobody has chosen where searches go yet (020). */
         const val EXTRA_FAKE_FIRST_RUN = "webtiger.fake.first_run"
+
+        /** The words of [ACTION_SEARCH_WORDS]. */
+        const val EXTRA_WORDS = "webtiger.search.words"
+
+        /**
+         * Search for [EXTRA_WORDS] in a new tab (028): what [SearchWordsActivity] starts the
+         * window with. The words are handed to the core as words to search for, and are never
+         * anything else.
+         */
+        const val ACTION_SEARCH_WORDS = "com.tigercodes.webtiger.action.SEARCH_WORDS"
+
+        /** Hands the words an intent carries to a window's model. An intent that carries none does nothing. */
+        fun searchWords(intent: Intent?, model: BrowserModel) {
+            if (intent?.action != ACTION_SEARCH_WORDS) return
+            intent.getStringExtra(EXTRA_WORDS)?.takeIf { it.isNotBlank() }?.let(model::searchFor)
+        }
 
         /** `--ez webtiger.catalogue true`: the design catalogue instead of a browser (004). Debuggable builds only. */
         const val EXTRA_CATALOGUE = "webtiger.catalogue"

@@ -974,6 +974,21 @@ pub struct ProceedPastCertificate {
     #[prost(uint64, tag = "1")]
     pub tab_id: u64,
 }
+/// Since 1.21. A search for words the person chose somewhere a shell can hear
+/// of, outside any page (028): another app's selected text. The words are
+/// tidied as selected words of a page are (023), and are always searched for
+/// with the engine the person chose: never taken for an address, whatever
+/// they look like. The search opens in a new tab, after the tab in front, in
+/// front, in the Space the window shows. Answered with TabOpened;
+/// "window.unknown"; or "search.no_words" when nothing is left of the words,
+/// which opens nothing.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SearchWords {
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
+    #[prost(string, tag = "2")]
+    pub text: ::prost::alloc::string::String,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum LoadState {
@@ -1858,7 +1873,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -1939,6 +1954,9 @@ pub mod request {
         /// Since 1.20
         #[prost(message, tag = "30")]
         ProceedPastCertificate(super::ProceedPastCertificate),
+        /// Since 1.21
+        #[prost(message, tag = "31")]
+        SearchWords(super::SearchWords),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.

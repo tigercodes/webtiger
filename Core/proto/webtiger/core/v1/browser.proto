@@ -645,3 +645,16 @@ message ColourSpace {
 message ProceedPastCertificate {
   uint64 tab_id = 1;
 }
+
+// Since 1.21. A search for words the person chose somewhere a shell can hear
+// of, outside any page (028): another app's selected text. The words are
+// tidied as selected words of a page are (023), and are always searched for
+// with the engine the person chose: never taken for an address, whatever
+// they look like. The search opens in a new tab, after the tab in front, in
+// front, in the Space the window shows. Answered with TabOpened;
+// "window.unknown"; or "search.no_words" when nothing is left of the words,
+// which opens nothing.
+message SearchWords {
+  uint64 window_id = 1;
+  string text = 2 [(wt.redact) = true];
+}

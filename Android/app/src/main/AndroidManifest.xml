@@ -35,11 +35,16 @@
         android:usesCleartextTraffic="true">
         <!-- configChanges: the activity is not recreated when the window's size, the fold, the
              density, the keyboard, the theme or the language changes (000 §6.5). Compose
-             redraws; the web views, held outside the composition, keep their pages. -->
+             redraws; the web views, held outside the composition, keep their pages.
+             launchMode singleTask: there is one window, however it is asked for. Started
+             again (its icon, or words another app handed over, 028), the one there is comes
+             forward and is told; without this the system puts a second window on top of the
+             first whenever the two starts differ. -->
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|keyboard|keyboardHidden|navigation|uiMode|fontScale|layoutDirection|locale"
             android:exported="true"
+            android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -59,6 +64,28 @@
             <intent-filter>
                 <action android:name="android.intent.action.WEB_SEARCH" />
                 <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <!-- "Search with WebTiger" in other apps' menu of selected text (028): the system's
+             "process this text". Exported: being started by other apps is what it is for. It
+             shows nothing: it hands the words to the app's window, to be searched for with the
+             engine the person chose, and goes. The words are never anything but a search.
+             Its label is the item's name in the menu.
+             taskAffinity is empty: it is never part of the window's task, whoever starts it
+             and however. As the first thing in that task, it made the system take a second
+             request for the first one over again, and start nothing (seen on the emulator). -->
+        <activity
+            android:name=".SearchWordsActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:label="@string/outside_search"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
     </application>
