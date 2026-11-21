@@ -671,3 +671,15 @@ message SearchWords {
   uint64 window_id = 1;
   string text = 2 [(wt.redact) = true];
 }
+
+// Since 1.23. An address the system handed the shell from outside WebTiger:
+// a link pressed in another app (031). Opened only when it is an address of
+// the web (http or https, whole, with a host), in a new tab after the tab in
+// front, in front, in the Space the window shows. It is not typed text:
+// never mended, and never searched for; and nothing of it is handed on to
+// the system. Answered with TabOpened; "window.unknown"; or
+// "address.not_web", which opens nothing.
+message OpenAddress {
+  uint64 window_id = 1;
+  string url = 2 [(wt.redact) = true];
+}

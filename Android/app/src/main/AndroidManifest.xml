@@ -37,9 +37,16 @@
              density, the keyboard, the theme or the language changes (000 §6.5). Compose
              redraws; the web views, held outside the composition, keep their pages.
              launchMode singleTask: there is one window, however it is asked for. Started
-             again (its icon, or words another app handed over, 028), the one there is comes
-             forward and is told; without this the system puts a second window on top of the
-             first whenever the two starts differ. -->
+             again (its icon, words another app handed over, 028, or a link pressed in another
+             app, 031), the one there is comes forward and is told; without this the system puts
+             a second window on top of the first whenever the two starts differ.
+             The second filter is the way in for a link pressed in another app (031): the
+             system's "view" for an address of the web, of any site, which is what makes the
+             system count WebTiger among the browsers. The window answers it itself: every such
+             request reaches the one window, in order, however fast they come (an activity put
+             in front of it to carry the address was not always started when several came at
+             once: seen on the emulator). Whether an address is one to open is the core's to
+             say: only http and https are, whatever is handed over. -->
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|keyboard|keyboardHidden|navigation|uiMode|fontScale|layoutDirection|locale"
@@ -49,6 +56,13 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
             </intent-filter>
         </activity>
         <!-- For a search for words that are selected in a page (023). The WebView's bar for

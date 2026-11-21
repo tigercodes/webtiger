@@ -17,6 +17,7 @@ import com.tigercodes.webtiger.core.v1.DialogKind
 import com.tigercodes.webtiger.core.v1.FindInPage
 import com.tigercodes.webtiger.core.v1.LoadState
 import com.tigercodes.webtiger.core.v1.NavigationCommand
+import com.tigercodes.webtiger.core.v1.OpenAddress
 import com.tigercodes.webtiger.core.v1.OpenTab
 import com.tigercodes.webtiger.core.v1.ProceedPastCertificate
 import com.tigercodes.webtiger.core.v1.PromptView
@@ -133,6 +134,7 @@ class BrowserModel(
             askWhereSearchesGo()
             // Words another app handed over before there was a window to search in (028).
             wordsWaiting.also { wordsWaiting = null }?.let(::searchFor)
+            addressesWaiting.toList().also { addressesWaiting.clear() }.forEach(::openFromOutside)
         } catch (_: CoreError) {
             // The core would not open a window: the tab stays empty.
         } finally {
@@ -162,6 +164,24 @@ class BrowserModel(
             return
         }
         session.send(Request(search_words = SearchWords(window_id = opened.windowId, text = words)))
+    }
+
+    /** Addresses handed over while the window was not open yet: opened when it is, in order (031). */
+    private val addressesWaiting = mutableListOf<String>()
+
+    /**
+     * The system handed the app an address from another app (031): a link that was pressed
+     * there. The core is told, with the window it is for, and the address as it was given:
+     * whether it is one to open, and where it opens, is the core's. Nothing is made of it here.
+     */
+    fun openFromOutside(address: String) {
+        val opened = window
+        if (opened == null) {
+            // Each of them is a link somebody pressed: none is dropped for a later one.
+            addressesWaiting += address
+            return
+        }
+        session.send(Request(open_address = OpenAddress(window_id = opened.windowId, url = address)))
     }
 
     /**

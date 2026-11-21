@@ -194,6 +194,43 @@ class ThroughTheCoreTest {
             assertEquals(3, onMain { model.tabs.size })
         }
 
+    /**
+     * A link pressed in another app (031), through the real core: the window's model hands the
+     * address on, and the core opens a new tab in front and asks its web view for that
+     * address, as it was given. What is no address of the web opens nothing: it is not mended,
+     * and not searched for. Nothing is fetched: the web view here is the test's.
+     */
+    @Test
+    fun anAddressFromAnotherAppOpensInANewTabAndWhatIsNoAddressOfTheWebOpensNothing() =
+        runBlocking {
+            val model = BrowserModel(session())
+            onMain { model.open() }
+            await("the window's first snapshot") { model.tab.tab_id != 0L }
+            val first = onMain { model.tab.tab_id }
+
+            onMain { model.openFromOutside("https://example.com/story?id=7") }
+
+            await("the address reaching a web view") { pages.made.size == 1 && pages.made[0].loaded.isNotEmpty() }
+            assertEquals(listOf("https://example.com/story?id=7"), pages.made[0].loaded)
+            await("the new tab in front, saying where it was sent") {
+                model.tabs.size == 2 && model.tab.tab_id != first && model.address.url == "https://example.com/story?id=7"
+            }
+            assertEquals("after the tab that was in front", first, onMain { model.tabs.first().tab_id })
+
+            // What typed in the address field would be mended, or searched for, or run if
+            // anything ran typed text: refused, each of them.
+            for (other in listOf("example.org", "tigers in the wild", "javascript:alert(1)", "file:///sdcard/page.html", "intent://example.org/#Intent;scheme=https;end")) {
+                onMain { model.openFromOutside(other) }
+            }
+            // A second address of the web is asked after them, and is answered after them.
+            onMain { model.openFromOutside("http://example.org/") }
+
+            await("the second address reaching its web view") { pages.made.size == 2 && pages.made[1].loaded.isNotEmpty() }
+            assertEquals("as it was given: not made https", listOf("http://example.org/"), pages.made[1].loaded)
+            assertEquals("the others opened nothing", 3, onMain { model.tabs.size })
+            assertEquals(2, pages.made.size)
+        }
+
     @Test
     fun aPageCannotPutAnAddressInTheFieldItHasNotBecome() =
         runBlocking {

@@ -1004,6 +1004,20 @@ pub struct SearchWords {
     #[prost(string, tag = "2")]
     pub text: ::prost::alloc::string::String,
 }
+/// Since 1.23. An address the system handed the shell from outside WebTiger:
+/// a link pressed in another app (031). Opened only when it is an address of
+/// the web (http or https, whole, with a host), in a new tab after the tab in
+/// front, in front, in the Space the window shows. It is not typed text:
+/// never mended, and never searched for; and nothing of it is handed on to
+/// the system. Answered with TabOpened; "window.unknown"; or
+/// "address.not_web", which opens nothing.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct OpenAddress {
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
+    #[prost(string, tag = "2")]
+    pub url: ::prost::alloc::string::String,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum LoadState {
@@ -1909,7 +1923,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -1996,6 +2010,9 @@ pub mod request {
         /// Since 1.22
         #[prost(message, tag = "32")]
         OpenDownload(super::OpenDownload),
+        /// Since 1.23
+        #[prost(message, tag = "33")]
+        OpenAddress(super::OpenAddress),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.

@@ -57,6 +57,17 @@ impl Address {
             .map_err(|_| AddressError)
     }
 
+    /// An address of the web, as a page's link or another app hands one
+    /// over (018, 031): absolute, and `http` or `https`. `None` for anything
+    /// else. It is not typed text: nothing is mended, no scheme is supplied,
+    /// and what is not an address of the web is not one to search for.
+    #[must_use]
+    pub fn web(text: &str) -> Option<Address> {
+        Address::parse(text)
+            .ok()
+            .filter(|address| matches!(address.scheme(), "http" | "https"))
+    }
+
     /// The whole address, normalised.
     #[must_use]
     pub fn as_str(&self) -> &str {
@@ -350,6 +361,51 @@ mod tests {
         match classify(text) {
             Some(Input::Search(words)) => words,
             other => panic!("{text:?} should be a search, was {other:?}"),
+        }
+    }
+
+    #[test]
+    fn an_address_handed_over_is_one_of_the_web_or_none() {
+        let web = |text: &str| Address::web(text).map(|address| address.as_str().to_owned());
+        assert_eq!(
+            web("https://example.com/a?b=c#d").as_deref(),
+            Some("https://example.com/a?b=c#d")
+        );
+        assert_eq!(
+            web("http://example.com").as_deref(),
+            Some("http://example.com/")
+        );
+        assert_eq!(
+            web("HTTPS://Example.COM/Path").as_deref(),
+            Some("https://example.com/Path")
+        );
+        // Not mended, as typed text would be: no scheme is supplied, and
+        // words are not an address.
+        for not_web in [
+            "",
+            " ",
+            "example.com",
+            "www.example.com/page",
+            "//example.com/",
+            "tigers in the wild",
+            "https://",
+            "http:",
+            "https://exa mple.com/",
+            "javascript:alert(1)",
+            "data:text/html,<p>hello",
+            "file:///etc/passwd",
+            "about:blank",
+            "blob:https://example.com/1234",
+            "content://media/external/file/1",
+            "intent://example.com/#Intent;scheme=https;end",
+            "mailto:somebody@example.com",
+            "tel:+15550100",
+            "ftp://example.com/file",
+            "ws://example.com/",
+            "view-source:https://example.com/",
+            "webtiger://open?url=https://example.com/",
+        ] {
+            assert_eq!(web(not_web), None, "{not_web:?}");
         }
     }
 

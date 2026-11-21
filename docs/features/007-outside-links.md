@@ -23,7 +23,7 @@ Until now such an address was only refused ([001](001-foundations.md) F4): the c
 - **Every other scheme** (another app's own: `zoommtg:`, `spotify:`, a shop's): still only refused. The three above only ever open something the person must then confirm in (a letter is not sent, a number is not rung, by opening it). Another app's scheme can make that app *do* something, so it needs asking first ("Open this in Zoom?"), and the asking arrives with W1's prompts.
 - **Saying that nothing on the device opens it.** There is nowhere to say it yet; that too arrives with the prompts.
 - **An address typed in the address field.** Typed text is never executed (001 §4.2): `mailto:` typed there is a search, as before.
-- **Links from outside into WebTiger** (being the system's browser): the first-run flow and the default-browser state, later in W1.
+- **Links from outside into WebTiger** (being the system's browser): the first-run flow and the default-browser state, later in W1. (The way in itself is since built on Android: [031](031-links-from-other-apps.md).)
 
 ## 3. Who decides
 

@@ -158,8 +158,8 @@ class SearchWordsTest {
         val window = context.packageManager.getActivityInfo(ComponentName(context, MainActivity::class.java), 0)
         assertTrue(window.exported)
         assertEquals(android.content.pm.ActivityInfo.LAUNCH_SINGLE_TASK, window.launchMode)
-        // And it answers nothing of another app's but its own launch.
-        assertFalse(context.packageManager.queryIntentActivities(Intent(Intent.ACTION_VIEW).setData(android.net.Uri.parse("https://example.com/")), 0).any { it.activityInfo.packageName == context.packageName })
+        // And it answers nothing of another app's but its own launch and a link of the web
+        // (031, ViewAddressTest): nothing in the app takes text that is sent.
         assertFalse(context.packageManager.queryIntentActivities(Intent(Intent.ACTION_SEND).setType("text/plain"), 0).any { it.activityInfo.packageName == context.packageName })
     }
 }

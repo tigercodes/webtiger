@@ -15,11 +15,11 @@ use wt_core::{
 use wt_proto::v1::{
     Ack, ActivateTab, AddressSuggestion, AddressSuggestions, CloseTab, CloseWindow, EngineEvent,
     EngineKind, FindInPage, ForgetHistory, HistoryEntry, HistoryPage, LinkOpenRequested, LoginSet,
-    NavigationCommand, OpenOutside, OpenTab, OutsideLinkRequested, QueryHistory, SearchRequested,
-    SearchWords, SubmitAddress, SuggestAddresses, TabCommand, TabOpened, WebViewCommand,
-    WebViewCreate, WebViewDestroy, WebViewFind, WebViewLoad, WebViewSetZoom, WindowOpened,
-    WindowSnapshot, ZoomChange, ZoomPage, engine_event, forget_history, host_request, request,
-    response,
+    NavigationCommand, OpenAddress, OpenOutside, OpenTab, OutsideLinkRequested, QueryHistory,
+    SearchRequested, SearchWords, SubmitAddress, SuggestAddresses, TabCommand, TabOpened,
+    WebViewCommand, WebViewCreate, WebViewDestroy, WebViewFind, WebViewLoad, WebViewSetZoom,
+    WindowOpened, WindowSnapshot, ZoomChange, ZoomPage, engine_event, forget_history, host_request,
+    request, response,
 };
 use wt_store::{Space, Store};
 
@@ -191,6 +191,7 @@ impl App {
                 self.proceed_past_certificate(&proceed)
             }
             request::Kind::SearchWords(asked) => self.search_words(&asked),
+            request::Kind::OpenAddress(asked) => self.open_address(&asked),
             request::Kind::OpenDownload(open) => self.open_download(&open),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
@@ -437,12 +438,9 @@ impl App {
         // Only the web's own addresses are a tab's to start from: not a
         // script, not a page of no address, not a file, and not what is
         // for the system, which pressing the link itself opens (007).
-        let Ok(address) = Address::parse(&asked.url) else {
+        let Some(address) = Address::web(&asked.url) else {
             return;
         };
-        if !matches!(address.scheme(), "http" | "https") {
-            return;
-        }
         let opened = self
             .state
             .borrow_mut()
@@ -504,13 +502,39 @@ impl App {
         let Some(address) = searched else {
             return refuse(AppError::new("search.no_words").field("text"));
         };
+        self.open_in_front(window, front, address)
+    }
+
+    /// The system handed the shell an address from outside WebTiger (031):
+    /// a link pressed in another app. It opens in a new tab, after the tab
+    /// in front, in front, in the Space the window shows; or it is refused
+    /// and nothing opens.
+    fn open_address(&self, asked: &OpenAddress) -> AppFuture {
+        let window = WindowId(asked.window_id);
+        let Some(front) = self.state.borrow().front_tab(window) else {
+            return refuse(AppError::new("window.unknown").field("window_id"));
+        };
+        // Only an address of the web. It is another app's, and it is not
+        // typed text: it is not mended, and what is not an address is not
+        // searched for. Nor is it a page's navigation: nothing of it goes
+        // on to the system (007).
+        let Some(address) = Address::web(&asked.url) else {
+            return refuse(AppError::new("address.not_web").field("url"));
+        };
+        self.open_in_front(window, front, address)
+    }
+
+    /// Opens a tab after `front`, in front, and sends it to an address the
+    /// person asked for from outside any tab: a search for words, or a
+    /// link pressed in another app. Answered with the tab that opened.
+    fn open_in_front(&self, window: WindowId, front: TabId, address: Address) -> AppFuture {
         let opened = self.state.borrow_mut().open_tab(window, Some(front), false);
         let Some(tab) = opened else {
             return refuse(AppError::new("window.unknown").field("window_id"));
         };
         let opened = response::Kind::TabOpened(TabOpened { tab_id: tab.get() });
-        // The person's own search, as one typed in the address field is:
-        // the tab says where it goes from the start.
+        // The person's own, as an address typed in the field is: the tab
+        // says where it goes from the start.
         let Some(loading) = self.begin_load_as(tab, address, true) else {
             return Box::pin(std::future::ready(Ok(opened)));
         };

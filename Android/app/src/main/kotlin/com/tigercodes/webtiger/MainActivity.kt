@@ -77,10 +77,10 @@ class MainActivity : ComponentActivity() {
             if (asked.several) picksSeveral.launch(types) else picksOne.launch(types)
         }
         val window = ViewModelProvider(this)[WindowHolder::class.java]
-        // Started with words another app handed over (028): searched for once the window is
-        // open. Not when the window is being made again from what it was: they were searched
-        // for then.
-        if (savedInstanceState == null) session.getOrNull()?.let { running -> searchWords(intent, window.model(running)) }
+        // Started with what another app handed over, words to search for (028) or an address
+        // to open (031): the core is asked once the window is open. Not when the window is
+        // being made again from what it was: it was asked then.
+        if (savedInstanceState == null) session.getOrNull()?.let { running -> handedOver(intent, window.model(running)) }
         setContent {
             WebTigerTheme {
                 session.fold(
@@ -91,13 +91,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Words another app handed over while the window is there (028): it comes forward, and they are searched for. */
+    /**
+     * What another app handed over while the window is there, words (028) or an address (031):
+     * the window comes forward, and the core is asked.
+     */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         val launch = launchOptions(this.intent, applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0)
         if (launch.catalogue) return
         (application as WebTigerApp).session(launch).getOrNull()?.let { running ->
-            searchWords(intent, ViewModelProvider(this)[WindowHolder::class.java].model(running))
+            handedOver(intent, ViewModelProvider(this)[WindowHolder::class.java].model(running))
         }
     }
 
@@ -134,6 +137,43 @@ class MainActivity : ComponentActivity() {
         fun searchWords(intent: Intent?, model: BrowserModel) {
             if (intent?.action != ACTION_SEARCH_WORDS) return
             intent.getStringExtra(EXTRA_WORDS)?.takeIf { it.isNotBlank() }?.let(model::searchFor)
+        }
+
+        /**
+         * How long an address from another app may be to be handed on (031). One that is longer
+         * is not handed on at all: a part of an address is another address.
+         */
+        const val LONGEST_ADDRESS = 8_000
+
+        /**
+         * The address the system asks the window to show (031): a link pressed in another app.
+         * As it was given. Null for an intent that is not the system's "view", or that names no
+         * address, or one too long. Nothing else of the intent is read: not what else the other
+         * app put in it, and not who sent it.
+         */
+        fun address(from: Intent?): String? {
+            if (from?.action != Intent.ACTION_VIEW) return null
+            return from.dataString?.takeIf { it.isNotBlank() && it.length <= LONGEST_ADDRESS }
+        }
+
+        /**
+         * Hands the address an intent asks to be shown to a window's model, which asks the core:
+         * whether it is one to open is the core's to say, and nothing is made of it here.
+         */
+        fun openAddress(intent: Intent?, model: BrowserModel) {
+            address(intent)?.let(model::openFromOutside)
+        }
+
+        /**
+         * Hands a window's model what an intent carries from another app: words, or an address.
+         * Not when the system is making the window again from the list of recent apps: the
+         * intent it brings then is the one the window was first started with, and what that
+         * carried was handed over the first time.
+         */
+        fun handedOver(intent: Intent?, model: BrowserModel) {
+            if (intent != null && intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
+            searchWords(intent, model)
+            openAddress(intent, model)
         }
 
         /** `--ez webtiger.catalogue true`: the design catalogue instead of a browser (004). Debuggable builds only. */

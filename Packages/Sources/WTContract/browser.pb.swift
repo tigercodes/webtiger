@@ -1537,6 +1537,27 @@ public nonisolated struct WTSearchWords: Sendable {
   public init() {}
 }
 
+/// Since 1.23. An address the system handed the shell from outside WebTiger:
+/// a link pressed in another app (031). Opened only when it is an address of
+/// the web (http or https, whole, with a host), in a new tab after the tab in
+/// front, in front, in the Space the window shows. It is not typed text:
+/// never mended, and never searched for; and nothing of it is handed on to
+/// the system. Answered with TabOpened; "window.unknown"; or
+/// "address.not_web", which opens nothing.
+public nonisolated struct WTOpenAddress: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var windowID: UInt64 = 0
+
+  public var url: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
@@ -3887,6 +3908,41 @@ nonisolated extension WTSearchWords: SwiftProtobuf.Message, SwiftProtobuf._Messa
   public static func ==(lhs: WTSearchWords, rhs: WTSearchWords) -> Bool {
     if lhs.windowID != rhs.windowID {return false}
     if lhs.text != rhs.text {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTOpenAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".OpenAddress"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}url\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.windowID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.windowID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.windowID, fieldNumber: 1)
+    }
+    if !self.url.isEmpty {
+      try visitor.visitSingularStringField(value: self.url, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTOpenAddress, rhs: WTOpenAddress) -> Bool {
+    if lhs.windowID != rhs.windowID {return false}
+    if lhs.url != rhs.url {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
