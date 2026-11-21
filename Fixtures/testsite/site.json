@@ -467,6 +467,34 @@
         "</script>"
       ],
       "note": "A file input for one file and one for several (which says it accepts text). Says in its title what it was given: each file's name and size, and the words of the first; or that the picker was closed with nothing chosen. For uploads."
+    },
+    {
+      "path": "/sign-in-form",
+      "title": "Sign in",
+      "body": [
+        "<form id=\"form\" action=\"/landed\" method=\"get\">",
+        "<p><label>Name <input id=\"user\" name=\"{query:name|username}\" type=\"text\" autocomplete=\"username\"></label></p>",
+        "<p><label>Password <input id=\"pass\" name=\"password\" type=\"password\" autocomplete=\"current-password\"></label></p>",
+        "<p><button id=\"go\" type=\"submit\">Sign in</button></p>",
+        "</form>",
+        "<script>",
+        "document.getElementById('form').addEventListener('input', function () {",
+        "  document.title = 'has ' + document.getElementById('user').value + ' and ' + document.getElementById('pass').value.length + ' letters';",
+        "});",
+        "</script>"
+      ],
+      "note": "A sign-in form of the page's own: a field that says it is for a name and one that says it is for a password, as a password manager looks for them. It sends nothing anywhere but to /landed. Once something is in it, its title says the name and how long the password is (never the password). The name's field is called what ?name= says, for a check by hand that wants to tell this form from another. For the system's filling of passwords (032)."
+    },
+    {
+      "path": "/choose",
+      "title": "Choose",
+      "body": [
+        "<p><select id=\"pick\"><option value=\"none\">Nothing</option><option value=\"tiger\">A tiger</option><option value=\"lion\">A lion</option></select></p>",
+        "<script>",
+        "document.getElementById('pick').addEventListener('change', function (event) { document.title = 'chose ' + event.target.value; });",
+        "</script>"
+      ],
+      "note": "A list of choices of the page's own (a select). Says in its title what was chosen. An engine shows such a list in a window of its own over the page, which needs the window the page is in: for the web view's hold on its window (032)."
     }
   ],
   "not_found": {

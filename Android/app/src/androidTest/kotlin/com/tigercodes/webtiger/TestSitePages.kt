@@ -428,6 +428,24 @@ internal object TestSitePages {
                 delayMilliseconds = 0,
                 authorization = "",
             ),
+            TestSitePage(
+                path = "/sign-in-form",
+                status = "200 OK",
+                type = "text/html",
+                headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
+                body = listOf(TestSitePiece.Text("<!doctype html><title>Sign in</title><h1>Sign in</h1><form id=\"form\" action=\"/landed\" method=\"get\">\n<p><label>Name <input id=\"user\" name=\""), TestSitePiece.Query("name", or = "username"), TestSitePiece.Text("\" type=\"text\" autocomplete=\"username\"></label></p>\n<p><label>Password <input id=\"pass\" name=\"password\" type=\"password\" autocomplete=\"current-password\"></label></p>\n<p><button id=\"go\" type=\"submit\">Sign in</button></p>\n</form>\n<script>\ndocument.getElementById('form').addEventListener('input', function () {\n  document.title = 'has ' + document.getElementById('user').value + ' and ' + document.getElementById('pass').value.length + ' letters';\n});\n</script>")),
+                delayMilliseconds = 0,
+                authorization = "",
+            ),
+            TestSitePage(
+                path = "/choose",
+                status = "200 OK",
+                type = "text/html",
+                headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
+                body = listOf(TestSitePiece.Text("<!doctype html><title>Choose</title><h1>Choose</h1><p><select id=\"pick\"><option value=\"none\">Nothing</option><option value=\"tiger\">A tiger</option><option value=\"lion\">A lion</option></select></p>\n<script>\ndocument.getElementById('pick').addEventListener('change', function (event) { document.title = 'chose ' + event.target.value; });\n</script>")),
+                delayMilliseconds = 0,
+                authorization = "",
+            ),
         )
 
     /** What every other path is answered with. */

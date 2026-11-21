@@ -70,9 +70,10 @@ internal class WebViewPages(private val context: Context) : PageFactory {
 
 /**
  * A web view in a login set's profile. It outlives the activity that shows it (000 §6.5: a
- * fold or a rotation reloads nothing), so it is made with a context whose base is the
- * application; the window that shows it lends it the activity while it is on screen
- * (ui/WebViewHost.kt).
+ * fold or a rotation reloads nothing), so its context is one whose base can be changed: the
+ * application's while it is not on the screen, and the activity's, lent by the window that
+ * shows it, while it is (ui/WebViewHost.kt). What a page puts over itself in a window of the
+ * WebView's own, a list of choices for one, needs that activity (032).
  */
 internal class WebViewPage(
     appContext: Context,
