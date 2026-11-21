@@ -26,7 +26,20 @@ public extension BrowserModel {
         let answer = session.core.send(.querySearch(WTQuerySearch()))
         Task { [weak self] in
             guard case let .searchSettings(settings) = try? await answer.value else { return }
-            self?.search = settings
+            self?.told(whereSearchesGo: settings)
+        }
+    }
+
+    /// The core has said where searches go: the window shows it, and the menu of selected
+    /// words names the engine a search for them goes to (023). The menu's words are the
+    /// session's, which every model of it shares; so they change here, on the core's word,
+    /// and never because a model was made: a window's view is made again many times, each
+    /// time with a model that is thrown away, and one that knows nothing yet must not take
+    /// the words away.
+    private func told(whereSearchesGo settings: WTSearchSettings) {
+        search = settings
+        session.engine.linkMenu?.searchWords = searchEngineName.map {
+            String(format: String(localized: "selection.search_with", bundle: .module), $0)
         }
     }
 

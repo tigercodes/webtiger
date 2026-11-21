@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | In progress. The contract (1.17), the core's rule, the Android shell (on an emulator) and the Mac are built and tested; the Mac app's own test of its menu is written and has not run (§8). The iPhone is not built: there the item is still the system's, which hands the words to the system's choice of search engine, in another app |
+| **Status** | In progress. The contract (1.17), the core's rule, the Android shell (on an emulator) and the Mac are built and tested, the Mac's app among them: its own test of its menu first ran on 2026-11-21, found the search missing from the app's menu, and passes since that was put right (§5). The iPhone is not built: there the item is still the system's, which hands the words to the system's choice of search engine, in another app |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "context menus". After a link's ([018](018-link-in-new-tab.md)) and a picture's ([022](022-picture-menu.md)): the menu of words that are selected |
 | **Contract** | 1.17: `SearchRequested` |
 | **Builds on** | [020](020-search-engine.md): the person's choice of where searches go. 018: a tab opened from another. 022: the Mac's script that says what a right-click was on |
-| **Last updated** | 2026-11-20 |
+| **Last updated** | 2026-11-21 |
 
 ## 1. User story
 
@@ -69,6 +69,8 @@ message SearchRequested {
 
 **Where the words cannot be had** (the Mac's script said nothing of the click), the item is not shown: an item that does nothing is not shown (022 D5).
 
+**What the Mac app's test found** (2026-11-21, the first time the Mac's UI suite ran over this). In the app, the menu of a word that was right-clicked had no search at all: WebKit's item was there, the script had said the word, and the shell had no words for the item, so it was taken out, as the rule above has it. The words had been given and then taken away. They are the session's, shared by every window's model; a model gave them to the adapter whenever what it knew of where searches go changed, and a model that is new knows nothing. SwiftUI makes a window's view again whenever it likes, each time with a model that is thrown away: each of those took the words away, and the model that is kept, knowing what it knew, never gave them back. Now the words change only when the core has said where searches go, and never because a model was made. No test of the model made a second one over the same session; one does now, and fails without the change.
+
 **As found on Android, before this** (System WebView 133, on the emulator): with a finger held on a word, the WebView's bar offered "Copy", "Share", "Select all" and "Read aloud", and no search. The WebView offers "Web search" only when it can see an app that answers a web search; an app sees only its own parts and what it has asked to see, and WebTiger asks to see no such apps. So nothing left the app on Android, and nothing could be searched for either.
 
 **As built on Android** (`SearchingContext`, `SearchSelectionActivity`, `WebViewPage`, `SystemWebViewEngine`), and as seen on the emulator:
@@ -98,8 +100,8 @@ message SearchRequested {
 | System WebView adapter, on the JVM (`SearchingContextTest`, 3; `LinksTest`, 1 more) | A request for a web search is heard, with its words, however it is asked, and starts nothing; one with no words is heard as none; every other request goes on as it was. The engine reports a search for a web view's words as the person's doing. Six of the rules checked by breaking them |
 | System WebView adapter suite (`SystemWebViewSearchTest`, 1, on the emulator) | Against the real WebView, with a finger held on a word of the test site: the word is selected; the WebView's bar offers "Web search"; that item, chosen as a press chooses it, is reported with the word, as the person's doing; nothing asked the system to start anything (the test stops and counts whatever does); the page is where it was. Without the manifest's activity the item was not offered |
 | WebKit adapter suite (`WebKitSearchTests`, 5 on the Mac, 1 on the iPhone simulator) | A search is reported with the words as they were selected, as the person's doing, and the page stays. On the Mac, against real WebKit with the mouse's own right-click: a selected word is told as that word; a password's field as nothing, in the page and inside a part of it that is closed to scripts, though there was something typed there; words typed in an ordinary field as those words. WebKit's item that searches is replaced by the shell's, that item and no other, and choosing it tells the adapter the words; it is taken out when the shell has no words for it, when no words or only white space were selected, and when nothing was said of the click. The menu that opens after a right-click on a selected word searches for that word. Nine of the rules checked by breaking them |
-| The Apple shell (`SearchModelTests`, 1 more) | The menu has no words for a search until the core has said where searches go; then it names the engine in use, and the one chosen after |
-| The Mac app (`MenuTests`, written; not yet run, §8) | The menu of a word that is right-clicked has one item that searches, the shell's, named for the engine, and not WebKit's. **No test chooses it**: a search goes to the internet |
+| The Apple shell (`SearchModelTests`, 2 more) | The menu has no words for a search until the core has said where searches go; then it names the engine in use, and the one chosen after. A model that is made and thrown away over the same session, as SwiftUI makes them, leaves the menu's words as they are: a window's view made again, a model alone, and a picture's model that is handed where searches go. Checked by breaking it: with the words following the model again, the test fails |
+| The Mac app (`MenuTests`, 1) | With the real core and real WebKit, in fake mode: the menu of a word that is right-clicked has one item that searches, the shell's, named for the engine, and not WebKit's; put away with nothing chosen, no tab opens and nothing was asked of anybody. **No test chooses it**: a search goes to the internet. Where it fails, it says which of WebKit's own items the menu had, and nothing of the menu bar's. It failed the first time it ran (§5), and passes since |
 
 ## 7. Decisions
 
@@ -117,7 +119,7 @@ message SearchRequested {
 - **Android: the search itself, in the app.** No test chooses the item with a core behind it: the tab would load the search engine. The adapter suite chooses it with no core; the core's own tests open the tab against a scripted engine.
 - **Android: words selected in a frame, in a field, and a password's field.** The WebView's own judgement, not looked at.
 - **Android: a phone.** It ran on an emulator.
-- **The Mac app's test of its menu has not run.** It was written with the rest; a dialog of the system's was on the screen, and the Mac's UI suite is not started while one is. What is tested on the Mac is the adapter, against real WebKit, with a menu the test made.
+- **The Mac: the item chosen, in the app.** No test chooses it: the tab would load the search engine. That choosing it tells the adapter the words is the adapter suite's, with a menu the test made; that the core then opens the search is the core's.
 - **The Mac: that the script's word of what is selected always comes before the menu** (as 022 §8). Late, the search would be missing from that menu, not wrong.
 - **The Mac: words selected in a frame.** The script is in every frame; no test has one.
 - **The iPhone**: not built, and what its menu offers not established.
@@ -126,8 +128,8 @@ message SearchRequested {
 
 - [x] Contract 1.17 and its version in every place it is written.
 - [x] The core: the rule of §3 (7 tests through `FakeShell`).
-- [x] The Mac: the script's words; the menu's item; the adapter suite (5). The app's test is written and has not run.
+- [x] The Mac: the script's words; the menu's item; the adapter suite (5); the app's test, which found the menu's search missing in the app and passes since.
 - [x] Android: the WebView's own item, heard by the adapter; the adapter suite on the emulator.
 - [ ] iPhone.
-- [ ] `Tools/test.sh all` green, and `android-device`.
+- [x] `Tools/test.sh all` green, stage by stage, and `android-device`, on 2026-11-21: `lint`, `core` (498), `unit` (261 on the Mac), `build`, `ios` (243 on the iPhone simulator, one skipped as before), `ui` (28 on the Mac, 25 on the iPhone), `android` (341 and 32 on the JVM) and `android-device` (144 on the emulator). The Mac's UI suite ran that day for the first time since [021](021-certificate-errors.md): all of it passed but this feature's test, which found the fault of §5; with that put right, the whole of it passed.
 - [ ] Windows shell.

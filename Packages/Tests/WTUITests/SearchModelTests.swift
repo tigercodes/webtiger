@@ -162,6 +162,29 @@ final class SearchModelTests: XCTestCase {
         XCTAssertEqual(model.session.engine.linkMenu?.searchWords, "Search with Ecosia")
     }
 
+    /// The menu's words are the session's, and every model of it shares them. SwiftUI makes a
+    /// window's view again whenever it likes, each time with a model that is thrown away: one
+    /// that has been told nothing yet must not take the words away. (It did: in the Mac's
+    /// app the menu of selected words had no search, and the app's test said so.)
+    func testAModelThatIsMadeAndThrownAwayLeavesTheMenusWordsAsTheyAre() async {
+        let (model, _) = await opened()
+        XCTAssertEqual(model.session.engine.linkMenu?.searchWords, "Search with DuckDuckGo")
+
+        // As SwiftUI does: the window's view again, over the same session.
+        _ = BrowserWindowView(session: model.session)
+        XCTAssertEqual(model.session.engine.linkMenu?.searchWords, "Search with DuckDuckGo")
+        // A model alone, before it is opened; and one for a picture, which is handed where
+        // searches go and was told it by no core.
+        _ = BrowserModel(session: model.session)
+        XCTAssertEqual(model.session.engine.linkMenu?.searchWords, "Search with DuckDuckGo")
+        var elsewhere = WTSearchSettings()
+        elsewhere.engines = [WTSearchEngine()]
+        _ = BrowserModel(session: model.session, finding: nil, searching: elsewhere)
+        XCTAssertEqual(model.session.engine.linkMenu?.searchWords, "Search with DuckDuckGo")
+        // The model that is kept still shows where searches go.
+        XCTAssertEqual(model.searchEngineName, "DuckDuckGo")
+    }
+
     func testAChoiceTheCoreRefusesLeavesTheListAsItIs() async {
         told.set(takes: false)
         let (model, core) = await opened()

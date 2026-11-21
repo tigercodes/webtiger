@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | Built and tested in the core, the Android shell and the Mac. On Android it was seen by hand in the app started for real, on an emulator. On the Mac the file itself is never opened by a test (that starts another app), and the Mac's UI suite has not run (§8). The iPhone is not built: its list does not offer it |
+| **Status** | Built and tested in the core, the Android shell and the Mac. On Android it was seen by hand in the app started for real, on an emulator. On the Mac the file itself is never opened by a test (that starts another app); in the Mac's app, in fake mode, the button is pressed, and the core and the shell answer with nothing opened. The iPhone is not built: its list does not offer it |
 | **Phase** | Brought forward from W3 ([013](013-downloads.md) §2: "Opening a file, or showing it in its folder, from the list: the System service again, with the Library"). Since [027](027-cookies-stay-with-their-site.md), Android has no notice of the system's to open a file from: the list is the only way inside WebTiger |
 | **Contract** | 1.22: `OpenDownload`; the host service `OpenFile` |
 | **Builds on** | 013: the list of downloads, and the name each file is saved under. [007](007-outside-links.md): the System service, which hands something to whatever the system has for it |
-| **Last updated** | 2026-11-20 |
+| **Last updated** | 2026-11-21 |
 
 ## 1. User story
 
@@ -85,7 +85,7 @@ message OpenFile {
 
 **The Mac** (`ShellHost.swift`: `FileOpener`; `DownloadsModel`; `DownloadsView`).
 
-- **A download that has finished has a button, "Open"**, beside the one that takes it off the list. (A button of its own, and not the row: the row is what the app's tests read, and the Mac's UI suite cannot run just now to say what changing it does.)
+- **A download that has finished has a button, "Open"**, beside the one that takes it off the list. (A button of its own, and not the row: the row is what the app's tests read. When this was built the Mac's UI suite could not run to say what changing the row does; it has run since, with the button, and the button stays.)
 - **The file is the one of that name in the folder the app saves downloads in.** A name is a name: one that is a path, or that leads out of the folder, is no file. The Mac opens it with whatever it has for its kind; where it has nothing, the Mac says so itself, in its own dialog, and offers to choose an app.
 
 **The iPhone and iPad**: not built. An iPhone has no way to hand a file of an app's to whatever opens its kind; what it has is a preview and a sheet for sharing, which are a design of their own. The list offers nothing there.
@@ -106,13 +106,14 @@ message OpenFile {
 | Android (`ShellHostTest`, 4 more; `DownloadsModelTest`, 2 more; `DownloadsListTest`, 2 more; on the JVM) | A file goes to the opener by its name and kind, and what came of it is the answer; an engine is asked nothing. In fake mode no file is opened and the core is told it was. The system is handed the file, its kind and leave to read it, and nothing else: no leave to write, no app named, no extras; the kind is the system's own where it has one; a file that is not there starts nothing. A kind nothing opens, and an activity that may not be started, are "no handler". The model asks the core for a finished download, with its window, and not for one with no whole file; why a file did not open is kept by the core's code, each download's its own, until it is pressed again and opens. In the list, only the finished row is pressed, and says "Open" to a screen reader; why it did not open is said under it in words, never by its code. Twelve parts of this checked by breaking them: all caught |
 | The Apple shell (`ShellHostTests`, 3 more; `DownloadsModelTests`, 3 more) | The same of the host and the model. And the Mac's own opener, about files that are not there: a file that is gone, a folder, an empty name, and a name that is a path or leads out of the folder are each no file, and are answered "missing". Why a file did not open is said in words. The Mac's picture of the list was made again, light and dark, with the button on the finished download and on no other: each looked at |
 | The Android app, on the emulator (`AppWindowTest`, in its test of a download) | With the real core, in fake mode: the finished download's row is pressed; the core says it may be opened and asks the shell, which in fake mode opens nothing and says it did; nothing is said under the download; Android's accessibility checks pass over the list with the row that can be pressed |
+| The Mac's app (`MenuTests`, in its test of a picture saved from the menu; 2026-11-21) | With the real core and real WebKit, in fake mode: the picture that was saved is whole in the list, and has the button that opens it; pressed, the core says the file may be opened and asks the shell, which in fake mode opens nothing and says it did; the row says what it said, and the button is still there. Not checked by breaking it: that a refusal is said in the row is the model's test |
 | By hand (2026-11-20, the emulator, the app started for real, the test site served from the Mac) | Two files downloaded: a text file and one of a kind nothing shows. In the list, the text file pressed: the system's own "Open with" came up, offering its apps; nothing was chosen, and Back returned to WebTiger. The other file pressed: the system took it (a part of the system on that emulator claims every file of that kind, and did nothing visible with it). The text file removed from the device, then pressed: "The file isn't where it was saved any more." under it. The files and the app's data were removed afterwards |
 
 ## 8. What is not verified
 
 - **A file actually opening in another app.** No test starts another app. By hand on the emulator the system's chooser was reached, and nothing was chosen in it.
 - **"Nothing on this device opens this kind of file", on a device.** The emulator has a part of the system that takes every file of an unknown kind, so the words were not seen there; that they are said when the system refuses is the JVM's test.
-- **The Mac, in the app.** The Mac's UI suite has not run (a dialog of the system's is on this Mac's screen, 024 §9), and no test presses the button: it would open the file. What is tested on the Mac is the host, the model, and the opener's refusal of what is not a file in its folder.
+- **The Mac: a file opened.** In the app the button is pressed only in fake mode, where nothing is opened; started for real it would hand the file to another app, which no test does and which was not done by hand either. What is tested of the Mac's own opener is its refusal of what is not a file in its folder.
 - **A phone**; and what a phone's own apps make of being handed a file this way.
 - **A kind of file the system warns about** (an app to install): what the system then says is the system's, and was not looked at. WebTiger asks for no leave to install anything.
 - **iPhone and iPad**: not built.
@@ -122,6 +123,6 @@ message OpenFile {
 - [x] Contract 1.22 and its version in every place it is written.
 - [x] The core: the rule of §3 (4 tests).
 - [x] Android: the list's press, and the System service's part; by hand on the emulator.
-- [x] The Mac: the list's button, and the System service's part. Not run in the app.
+- [x] The Mac: the list's button, and the System service's part; in the app, in fake mode, the button pressed with nothing opened.
 - [ ] iPhone and iPad.
-- [ ] `Tools/test.sh all` green, and `android-device`. Run on 2026-11-20, stage by stage, with everything but the Mac's UI suite (a dialog of the system's is on this Mac's screen, 024 §9): `lint`, `core` (498), `unit` (260 on the Mac), `ios` (242 on the iPhone simulator, one skipped as before), `build`, the iPhone's UI suite (25), `android` (341 and 32 on the JVM) and `android-device` (144 on the emulator) all passed.
+- [x] `Tools/test.sh all` green, stage by stage, and `android-device` (144 on the emulator), on 2026-11-21. The Mac's UI suite, which had not run when this was built (a dialog of the system's was on the Mac's screen), ran with it.

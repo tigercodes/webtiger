@@ -32,6 +32,14 @@ final class MenuTests: AppTestCase {
     }
 
     #if os(macOS)
+        /// The items of WebKit's own in the menu that is open, each by WebKit's name for it
+        /// and its words: what a failure says. Only WebKit's: never the menu bar's, which has
+        /// the person's recent items in it.
+        private func webKitsItems(in app: XCUIApplication) -> [String] {
+            app.menuItems.matching(NSPredicate(format: "identifier BEGINSWITH 'WKMenuItemIdentifier'")).allElementsBoundByIndex
+                .map { "\($0.identifier): \($0.title)" }
+        }
+
         func testAPictureIsSavedFromItsMenuWithNobodyAsked() {
             let app = launch(start: site.url("/pictures"))
             XCTAssertTrue(pageShows("Pictures", in: app), "the page of pictures loaded")
@@ -56,6 +64,21 @@ final class MenuTests: AppTestCase {
                 "it finished: the row says \(said)"
             )
             XCTAssertFalse(app.buttons["prompt-allow"].exists, "nobody was asked")
+
+            // A file that is whole can be opened from the list (030). The core says it may
+            // be, and asks the shell; in fake mode the shell opens nothing and says it did:
+            // no other app starts, and nothing is said under the download of its not opening.
+            let open = app.buttons["download-open"]
+            XCTAssertTrue(open.exists, "a download that is whole has the button that opens it")
+            press(open)
+            let row = app.descendants(matching: .any).matching(identifier: "download-entry").firstMatch
+            let waitedSince = Date()
+            while value(of: row) == said, Date().timeIntervalSince(waitedSince) < 3 {
+                usleep(200_000)
+            }
+            XCTAssertEqual(value(of: row), said, "the row says what it said")
+            XCTAssertTrue(open.exists, "and the file can be asked for again")
+
             press(app.buttons["downloads-done"])
             XCTAssertTrue(pageShows("Pictures", in: app), "and the page is where it was")
             XCTAssertEqual(app.buttons.matching(identifier: "tab").count, 1)
@@ -78,7 +101,8 @@ final class MenuTests: AppTestCase {
             // A right-click on a word selects it, and opens the menu of selected words.
             line.coordinate(withNormalizedOffset: CGVector(dx: across, dy: 0.5)).rightClick()
             // Fake mode takes the engine that stands in as chosen (020).
-            XCTAssertTrue(app.menuItems["Search with DuckDuckGo"].waitForExistence(timeout: 30), "the shell's search, named for the engine")
+            let offered = app.menuItems["Search with DuckDuckGo"].waitForExistence(timeout: 30)
+            XCTAssertTrue(offered, "the shell's search, named for the engine; WebKit's menu has \(webKitsItems(in: app))")
             let webKits = NSPredicate(format: "identifier == 'WKMenuItemIdentifierSearchWeb'")
             XCTAssertEqual(app.menuItems.matching(webKits).count, 1, "one item searches")
             XCTAssertEqual(app.menuItems.matching(webKits).firstMatch.title, "Search with DuckDuckGo", "and it is the shell's")

@@ -67,15 +67,9 @@ public final class BrowserModel {
     private var window: OpenedWindow?
 
     /// What the core says of where searches go (020): the engines, the one in use, and whether
-    /// anybody chose it. `nil` until the core has said.
-    public internal(set) var search: WTSearchSettings? {
-        didSet {
-            // The menu of selected words names the engine a search for them goes to (023).
-            session.engine.linkMenu?.searchWords = searchEngineName.map {
-                String(format: String(localized: "selection.search_with", bundle: .module), $0)
-            }
-        }
-    }
+    /// anybody chose it. `nil` until the core has said. Setting it tells nobody: what the
+    /// core said is taken in `told(whereSearchesGo:)`.
+    public internal(set) var search: WTSearchSettings?
 
     /// The list is open to change where searches go: an empty tab's "Change…" was pressed.
     public internal(set) var isChangingSearch = false
