@@ -113,7 +113,9 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         case .empty:
             break
         case .loading:
-            page(&window, url: "https://example.com/", display: "example.com", security: .secure)
+            // An address the person sent the tab to, on its way: the mark beside it waits
+            // for the page (029).
+            page(&window, url: "https://example.com/", display: "example.com", security: .unspecified)
             window.tab.loadState = .loading
             window.tab.progress = 0.4
         case .secure:

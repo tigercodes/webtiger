@@ -206,7 +206,11 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                 when (this) {
                     // An empty tab, under the list of search engines in the two states that show it.
                     EMPTY, SEARCH_QUESTION, SEARCH_CHANGE -> TabView(tab_id = 2, load_state = LoadState.LOAD_STATE_IDLE)
-                    LOADING -> page("https://example.com/", "example.com").copy(load_state = LoadState.LOAD_STATE_LOADING, progress = 0.4)
+                    // An address the person sent the tab to, on its way: the mark beside it waits
+                    // for the page (029).
+                    LOADING ->
+                        page("https://example.com/", "example.com", AddressView.Security.SECURITY_UNSPECIFIED)
+                            .copy(load_state = LoadState.LOAD_STATE_LOADING, progress = 0.4)
                     SECURE -> page("https://example.com/", "example.com")
                     INSECURE -> page("http://example.com/", "http://example.com", AddressView.Security.SECURITY_INSECURE)
                     LONG ->

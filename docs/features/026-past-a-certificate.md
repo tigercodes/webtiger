@@ -48,7 +48,7 @@ I do not get there by accident: it takes two deliberate presses, and the second 
 
 **A page under an exception is never shown as secure.** For as long as the core has an exception for a host and port in a login set, every page of that host and port in that login set is marked not secure beside the address: in every tab, however it was reached, and whether or not the certificate has since been put right. The padlock is for a connection the system trusts, and this is not one.
 
-**A load that failed is not shown as secure either.** The mark beside the address speaks of a page, and a failed load left none: from 1.20 the core says nothing of security (`SECURITY_UNSPECIFIED`) for a tab whose load failed, whatever its address. Before this, an address over `https` whose certificate had just been refused had the padlock beside it, from its scheme alone: 021 shipped that way, and an app's test here caught it. (Where a person went on past a certificate, a later failure there is still marked not secure: that much is known of it.) The mark while a load is still on its way is as [001](001-foundations.md) has it, and is not changed here.
+**A load that failed is not shown as secure either.** The mark beside the address speaks of a page, and a failed load left none: from 1.20 the core says nothing of security (`SECURITY_UNSPECIFIED`) for a tab whose load failed, whatever its address. Before this, an address over `https` whose certificate had just been refused had the padlock beside it, from its scheme alone: 021 shipped that way, and an app's test here caught it. (Where a person went on past a certificate, a later failure there is still marked not secure: that much is known of it.) The mark while a load is still on its way was left as [001](001-foundations.md) had it here; [029](029-the-mark-waits-for-the-page.md) has since made it wait for the page.
 
 **Nothing else changes.** History, downloads and what a site was allowed are as for any page. A page under an exception that asks for the camera is asked about as any page is: its origin is one a person chose to visit.
 
@@ -163,7 +163,7 @@ The failed page has no mark beside its address on either (the core's rule, §3):
 - **A real router, printer or other device**, which is what this is for; and **a phone**: Android ran on an emulator, Apple on the Mac and a simulator.
 - **A private window** (Apple): that its exceptions are its own is the adapter's rule, tested with no engine.
 - **The warning at the largest text sizes.** There is no picture of it; the failed page's own (021) is unchanged.
-- **The mark while a load is on its way.** An address over `https` that a person typed has the padlock beside it before any connection is made (001). For a certificate that is then refused that is a fraction of a second; it is not changed here, and is the owner's to decide.
+- ~~**The mark while a load is on its way.**~~ Decided and built since: the mark waits for the page ([029](029-the-mark-waits-for-the-page.md)).
 
 ## 10. Done checklist
 

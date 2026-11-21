@@ -547,10 +547,12 @@ impl Tab {
     fn view(&self, id: TabId) -> TabView {
         let shown = self.shown();
         let mut address = shown.map_or_else(AddressView::default, address_view);
-        // A load that failed left no page, and the mark beside the address
-        // speaks of a page: beside an address whose certificate was just
-        // refused, "secure" would be a lie (026 §3).
-        if self.load == Load::Failed {
+        // The mark beside the address speaks of a page that has arrived
+        // (029). An address the tab was sent to that has not committed, one
+        // a sleeping tab remembers, and a load that failed have no page to
+        // speak of: beside an address whose certificate was just refused,
+        // "secure" would be a lie (026 §3).
+        if self.load == Load::Failed || self.pending.is_some() {
             address.security = address_view::Security::Unspecified as i32;
         }
         TabView {
