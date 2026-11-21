@@ -203,10 +203,8 @@ final class WebKitDownloadTests: AdapterTestCase {
     /// the bytes itself, and this is its own doing: the shell sends no cookie anywhere.
     func testADownloadAPageStartsThatIsAtAnotherSiteIsFetchedThereAsThatSiteKnowsThePerson() async {
         await create(1)
-        await load(1, site.url("/set?v=ada"))
-        await wait(1, "the cookie to be set") { self.finished($0) && self.hasTitle("Set")($0) }
-        await load(1, site.url("/downloads-elsewhere?port=\(site.port)"))
-        await wait(1, "the page of links") { self.hasTitle("Downloads elsewhere")($0) }
+        await show(site.url("/set?v=ada"), titled: "Set")
+        await show(site.url("/downloads-elsewhere?port=\(site.port)"), titled: "Downloads elsewhere")
 
         let download = await click("elsewhere")
 
@@ -215,10 +213,8 @@ final class WebKitDownloadTests: AdapterTestCase {
         XCTAssertEqual(saved(elsewhere), "who=none", "what this site knows the person by was not sent to the other")
 
         // Signed in at the other site as somebody else, in the same login set.
-        await load(1, "http://localhost:\(site.port)/set?v=grace")
-        await wait(1, "the other site's cookie to be set") { reports in self.titled("Set", in: reports) == 2 }
-        await load(1, site.url("/downloads-elsewhere?port=\(site.port)"))
-        await wait(1, "the page of links again") { reports in self.titled("Downloads elsewhere", in: reports) == 2 }
+        await show("http://localhost:\(site.port)/set?v=grace", titled: "Set")
+        await show(site.url("/downloads-elsewhere?port=\(site.port)"), titled: "Downloads elsewhere")
         let theirs = await save(click("elsewhere"), as: "theirs.txt")
         XCTAssertEqual(saved(theirs), "who=grace", "fetched there as that site knows the person")
         // And this site still knows them as it did.
@@ -226,11 +222,20 @@ final class WebKitDownloadTests: AdapterTestCase {
         await wait(1, "who this site says is signed in") { self.hasTitle("who=ada")($0) }
     }
 
-    /// How many times a page of that title has been reported.
-    private func titled(_ title: String, in reports: [WTEngineEvent.OneOf_Kind]) -> Int {
+    /// Loads an address in web view 1 and waits for its page to be whole: this load's own end,
+    /// and its title. A page's links are not there to be clicked when its title has come: only
+    /// when it has finished.
+    private func show(_ address: String, titled title: String) async {
+        let ended = finishes(reports(1))
+        await load(1, address)
+        await wait(1, "the page \(title) to be whole") { self.finishes($0) > ended && self.lastTitle(1) == title }
+    }
+
+    /// How many loads have been reported finished.
+    private func finishes(_ reports: [WTEngineEvent.OneOf_Kind]) -> Int {
         reports.count(where: {
-            if case let .titleChanged(changed) = $0 {
-                changed.title == title
+            if case .navigationFinished = $0 {
+                true
             } else {
                 false
             }

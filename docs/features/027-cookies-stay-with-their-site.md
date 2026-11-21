@@ -48,7 +48,7 @@ The system's `DownloadManager` is no longer used. A fetcher of the adapter's own
 
 **What is lost by leaving the system's downloader:**
 
-- **The system's notice** of a download in the status bar, which was how a person opened a file that had come (013 §6). The file is in the device's Downloads, and in WebTiger's list; the list still cannot open it. Opening a file from the list is the next thing to build.
+- **The system's notice** of a download in the status bar, which was how a person opened a file that had come (013 §6). The file is in the device's Downloads, where the system's Files app shows it, and in WebTiger's list; the list still cannot open it. Opening a file from the list is planned with the Library (013 §2, W3): with the notice gone, it is wanted sooner on Android than it was.
 - **A download that outlives the app.** The system's downloader went on when the app was closed. The adapter's goes on while the app's process lives, as WebKit's does on Apple's systems.
 
 ## 5. Decisions
@@ -76,7 +76,7 @@ The system's `DownloadManager` is no longer used. A fetcher of the adapter's own
 - **The device's Downloads by a test.** No test writes where a person's files are (013): that path (`MediaStore`) was seen by hand, once.
 - **A WebView with no profiles** (an older one). There every login set shares one cookie store (003), and the fetcher reads that store: not run.
 - **What a site makes of a fetch with no referring address**, and a download that needs a sign-in the browser was asked for ([017](017-http-sign-in.md)): neither is sent, as before.
-- **iPhone**: the WebKit test passed on the Mac; on the iPhone simulator it runs with the suite.
+- **A phone of Apple's**: the WebKit test passed on the Mac and on the iPhone simulator.
 
 ## 8. Done checklist
 
@@ -85,4 +85,4 @@ The system's `DownloadManager` is no longer used. A fetcher of the adapter's own
 - [x] By hand, in the app started for real: the device's Downloads.
 - [x] Apple: a download a page starts that is sent on to another site, against real WebKit.
 - [x] 013 and 022 say what changed.
-- [ ] `Tools/test.sh all` green, and `android-device`.
+- [ ] `Tools/test.sh all` green, and `android-device`. Run on 2026-11-20 with everything but the Mac's UI suite, as [028](028-search-from-other-apps.md) §9 says: all passed. (The first whole run on the emulator failed one of this feature's own tests, which pressed a link when the page's title had come and before the page was whole: the test now waits for the load to end, on both systems.)

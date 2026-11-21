@@ -56,6 +56,16 @@ internal class SystemWebViewDownloadTest : AdapterTestCase() {
         return asked(id).last()
     }
 
+    /**
+     * Loads an address and waits for its page to be whole: this load's own end, and its title.
+     * A page is not there to be pressed when its title has come: only when it has finished.
+     */
+    private fun show(id: Long, address: String, title: String) {
+        val ended = reports(id).count { it.navigation_finished != null }
+        load(id, address)
+        await(id, "the page <$title> to be whole") { reports -> reports.count { it.navigation_finished != null } > ended && lastTitle(id) == title }
+    }
+
     private fun start(download: Long, name: String): HostResponse = answer(HostRequest(download_start = DownloadStart(download_id = download, file_name = name)))
 
     /** Starts a download and waits for its file to be whole: up to a minute, the system being no hurry. The name it finished under. */
@@ -181,10 +191,8 @@ internal class SystemWebViewDownloadTest : AdapterTestCase() {
     @Test
     fun aDownloadAPageStartsThatIsAtAnotherSiteIsFetchedThereAsThatSiteKnowsThePerson() {
         create(1)
-        load(1, site.url("/set?v=ada"))
-        await(1, "the cookie to be set") { finished(it) && hasTitle("Set")(it) }
-        load(1, site.url("/downloads-elsewhere?port=${site.port}"))
-        await(1, "the page of links") { hasTitle("Downloads elsewhere")(it) }
+        show(1, site.url("/set?v=ada"), "Set")
+        show(1, site.url("/downloads-elsewhere?port=${site.port}"), "Downloads elsewhere")
 
         val download = tapLink("elsewhere")
 
@@ -192,10 +200,8 @@ internal class SystemWebViewDownloadTest : AdapterTestCase() {
         assertEquals("who=none", saved(save(download, "elsewhere.txt")))
 
         // Signed in at the other site as somebody else, in the same login set.
-        load(1, "http://localhost:${site.port}/set?v=grace")
-        await(1, "the other site's cookie to be set") { reports -> reports.count { it.title_changed?.title == "Set" } == 2 }
-        load(1, site.url("/downloads-elsewhere?port=${site.port}"))
-        await(1, "the page of links again") { reports -> reports.count { it.title_changed?.title == "Downloads elsewhere" } == 2 }
+        show(1, "http://localhost:${site.port}/set?v=grace", "Set")
+        show(1, site.url("/downloads-elsewhere?port=${site.port}"), "Downloads elsewhere")
         assertEquals("who=grace", saved(save(tapLink("elsewhere"), "theirs.txt")))
         // And this site still knows them as it did.
         load(1, site.url("/whoami"))
