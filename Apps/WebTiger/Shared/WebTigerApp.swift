@@ -18,7 +18,12 @@ struct WebTigerApp: App {
         WindowGroup {
             switch launch.outcome {
             case let .started(session):
-                BrowserWindowView(session: session)
+                #if os(macOS)
+                    BrowserWindowView(session: session)
+                #else
+                    // One window at a time: a private window (037) is shown in its place.
+                    BrowserWindowsView(session: session)
+                #endif
             case let .refused(code):
                 StartFailedView(code: code)
             case .catalogue:
@@ -27,8 +32,29 @@ struct WebTigerApp: App {
         }
         #if os(macOS)
         .defaultSize(width: 1100, height: 760)
-        // The window's commands in the menu bar, with their keys (034).
-        .commands { BrowserCommands() }
+        #endif
+
+        #if os(macOS)
+            // Private windows (037): what New Private Window opens. The system does not put
+            // one back when the app starts again, and hands it nothing from other apps.
+            WindowGroup(id: BrowserWindowView.privateWindows) {
+                switch launch.outcome {
+                case let .started(session):
+                    BrowserWindowView(privateIn: session)
+                case let .refused(code):
+                    StartFailedView(code: code)
+                case .catalogue:
+                    CatalogueView()
+                }
+            }
+            .defaultSize(width: 1100, height: 760)
+            .restorationBehavior(.disabled)
+            .handlesExternalEvents(matching: [])
+            // The windows' commands in the menu bar, with their keys (034): one menu bar for
+            // every window of the app. They are said on the last kind of window there is:
+            // each kind brings the system's own File menu with it, and said on an earlier
+            // one, the system's Close took the place of Close Tab and Close Window again.
+            .commands { BrowserCommands() }
         #endif
     }
 }

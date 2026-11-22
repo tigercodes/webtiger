@@ -14,9 +14,15 @@ struct OutsideLinks: ViewModifier {
 
     func body(content: Content) -> some View {
         #if os(macOS)
-            content
-                .onOpenURL { model.openFromOutside($0.absoluteString) }
-                .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
+            if model.isPrivate {
+                // Nothing from outside the browser opens in a private window (037): it takes
+                // none of what the system hands the app.
+                content.handlesExternalEvents(preferring: [], allowing: [])
+            } else {
+                content
+                    .onOpenURL { model.openFromOutside($0.absoluteString) }
+                    .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
+            }
         #else
             content
         #endif

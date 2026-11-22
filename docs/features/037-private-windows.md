@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | **The core, the contract and the Android adapter are built and tested** (parts 1 and 3 of §5): a window opened as private has a login set of its own that the engine is told to keep nothing of, and the core writes nothing of it; on Android that login set is a profile cleared with its last page and deleted at the next start. **On Android a private window can be opened and used** (§5.3), on an emulator. The Mac and the iPhone have no way to open one yet. The rule's choices (§4) are the owner's, confirmed 2026-11-21 (WT-D26) |
+| **Status** | **The core, the contract and the Android adapter are built and tested** (parts 1 and 3 of §5): a window opened as private has a login set of its own that the engine is told to keep nothing of, and the core writes nothing of it; on Android that login set is a profile cleared with its last page and deleted at the next start. **On the Mac, on Android and on the iPhone a private window can be opened and used** (§5.3, §5.4): in the Mac's app, on an emulator and on the simulator. The rule's choices (§4) are the owner's, confirmed 2026-11-21 (WT-D26) |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "private windows". 000 §5.6: "A throwaway login set. Nothing is written; closing it wipes it" |
 | **Contract** | 1.26: `OpenWindow.private_window`; `WindowSnapshot.private_window`. `LoginSet.ephemeral` has been there since W0, and is now said |
 | **Builds on** | [001](001-foundations.md): login sets, and the adapters' isolation tests. [008](008-history.md), [009](009-session-restore.md), [013](013-downloads.md), [014](014-permissions.md), [012](012-zoom.md), [033](033-a-closed-tab-comes-back.md): each writes something a private window must not |
-| **Last updated** | 2026-11-21 |
+| **Last updated** | 2026-11-22 |
 
 ## 1. User story
 
@@ -66,7 +66,7 @@ And what it is not: it does not hide me from the sites I visit, from the network
 ## 5. In what order
 
 1. **The core and the contract** (built): a window opened as private has a login set of its own that is `ephemeral`; nothing of §3's table is written; the window is told. Tested through `FakeShell`, with the store's files read afterwards for what they hold.
-2. **The Apple shell**: New Private Window (⇧⌘N on the Mac; where on an iPhone is to be settled), the words, the empty tab's explanation. The adapter suite's isolation tests for a login set that is not persistent.
+2. **The Apple shell** (built): New Private Window (⇧⌘N) on the Mac, a window of its own (§5.4); on the iPhone the list of Spaces' last row (§5.3); the words; the empty tab's explanation.
 3. **Android** (built, the adapter): the throwaway profile (§5.2). The window's own part, a way to open one and the words, is still to come with the Apple shell's.
 
 ### 5.1 How the core keeps nothing (part 1)
@@ -105,6 +105,21 @@ A phone's app has one window on the screen. A private window there is a second w
 
 > **Provisional (2026-11-21):** where a phone's private window is opened from, and the page behind its chip, were not among the choices put to the owner (§4 said "where on an iPhone is to be settled"). Built first on Android, to be the same on the iPhone. The owner's to change.
 
+### 5.4 The Apple shell (part 2)
+
+**WebKit's adapter was ready.** Since W0 it has given a login set that is `ephemeral` a data store that is not persistent, and let go of it with the login set's last web view. Nothing in it changed.
+
+**The Mac: a window of its own.** File → New Private Window (⇧⌘N) opens one, with any window in front or none. It is a window like any other on the screen, so there is no way "back" to offer: the page behind its chip has Close Private Window and Done. The system is told not to put a private window back when the app starts again, and to hand it nothing from other apps; a link that waited for a window is not opened by a private one.
+
+Two things the Mac's app test found when it first ran, a day after the code was written (a dialog of the system's had been on the screen, and the Mac's suite does not start under one):
+
+- **The menu bar is said on the last kind of window.** Private windows are a second kind of window of the app's (a second `WindowGroup`), and each kind brings the system's own File menu with it. With the browser's commands said on the first kind, as they had been (034), the system's own Close and Close All came back in the place of Close Tab and Close Window: ⌘W closed a window with all its tabs, and six tests of the menus and of ⌘W failed. Said on the last kind, the menu bar is the browser's again, once.
+- **Close Private Window waits for the sheet to be gone.** A Mac's window does not close while a sheet is over it, and it lets go of the sheet a moment after SwiftUI says the sheet was dismissed: asked then, the window stayed. What the page was asked for is now done when the window itself says its sheet has ended (`NSWindow.didEndSheetNotification`); on a phone, when the sheet is dismissed.
+
+**The iPhone and the iPad: one window at a time**, as Android (§5.3): the list of Spaces' last row; the app keeps both windows and draws the one that is shown. As first built it kept the other one drawn and invisible behind: it was then still there for a screen reader, and for the app's test, which found it.
+
+**The chip** says "Private", the whole word, on every width; "Private Window" to a screen reader.
+
 ## 6. Tests
 
 The bar for the whole: after a private window has visited a site, signed in, downloaded, been asked for a permission and closed, **the store on disk and the engine's stores are searched for the site's name and hold none of it**. Part 1 meets it for the core's store.
@@ -120,15 +135,19 @@ The bar for the whole: after a private window has visited a site, signed in, dow
 | Android's window on the JVM (`PrivateWindowTest`, 7, drawn by Compose on Robolectric over a scripted core) | A private window is asked for as one, and is one from the start; a window the core says is private is one. It says what it is: the chip to a screen reader, the two sentences in an empty tab; its chip opens the page that says the same, not the list of Spaces, and the core is asked for none; Close and Back to the other window ask what they say, Done asks nothing. An ordinary window says nothing of private; its list of Spaces ends with the row, which asks for the private window and closes the list; the row says when one is open; a window drawn with no way to one has no row. The holder shows one window at a time: the first window is still the one other apps' links go to; left, the private one stays and is the same one when shown again; closed, the core is asked to close that window and no other, and the next is another. Eleven parts checked by breaking them: all caught |
 | Android's app on the emulator (`AppPrivateTest`, 1, fake mode: the real core and the real WebView) | A private window from the list of Spaces; it signs in to the test site and the site says who it is. Left open: the other window is where it was, and is not signed in. The list says a private window is open; shown again, it is as it was left, signed in. Closed: the other window is shown, and the list no longer says one is open. Another private window is not signed in. The history the other window lists has its own pages and neither of the private window's. Passed three runs one after another, and in the whole suite twice |
 | By hand (2026-11-21, the emulator, the app in fake mode) | The list of Spaces with its last row; the private window with a second, empty tab: the chip says "Private", the empty tab says the two sentences; the page behind the chip, with its three buttons. All well inside a phone's width. This is where the one-letter chip was seen and changed |
+| The Apple shell's model (`PrivateModelTests`, 3, on the Mac and the iPhone simulator) | A private window is asked for as one and is one from the start; a window the core says is private is one; a link from another app that waited for a window is not opened by a private one, and is by an ordinary one |
+| The iPhone's app (`PrivateTests`, 1, fake mode: the real core and real WebKit) | From the list of Spaces' last row: the window says it is private and names no Space; it signs in to the test site. The page behind the chip says what private means; Back shows the other window, which is not signed in. The list says a private window is open; shown again, it is as it was left. Closed: the other window, and the list no longer says one is open. Another private window is not signed in. Passed three runs one after another. Its first runs found the other window still there behind, and the page's name given to everything in it |
+| The Mac's app (`PrivateTests`, 1, fake mode: the real core and real WebKit) | New Private Window from the File menu opens a second window that says it is private; signed in to the test site there, the ordinary window is not signed in and the private one still is; the page behind the chip says what private means, offers no way back, and Close Private Window closes that window and leaves the other; another, by ⇧⌘N, is not signed in. Broken three ways, each seen to fail: the menu bar said on the first kind of window (this test passes, six others fail: Close Tab is not in the File menu and ⌘W closes the window); the window asked to close at once, and when SwiftUI says the sheet was dismissed (the window stays) |
 
 ## 7. What is not verified
 
-- **The Mac and the iPhone.** No way to open one there yet.
+- **The iPad.** The iPhone's code; no test at its size.
+- **That WebKit's store that is not persistent leaves nothing on disk.** Its adapter's isolation tests hold for it as for any login set; nobody looked at the disk.
+- **The system not putting a private window back** when the Mac app starts again: asked of the system (`restorationBehavior`), not tested: the app's tests start with nothing kept.
 - **"Do not offer to save here"** (§3, passwords): not built. On Android the system's Autofill is asked about a form in a private window as in any other (032).
 - **A link from another app while a private window is shown**: the first window is shown again with it, by the activity's code; no test hands a link over with a private window shown.
 - **The system making the window again** (a rotation, the app brought back from the background after its process was ended): the private window's model is kept with the first window's, by the same holder; that a private window ended with the process does not come back is the core's rule and is tested there, not on a device.
 - **Keys** (036) in a private window, and its page behind the chip while a list is open.
-- **WebKit.** That its store that is not persistent keeps nothing, and is gone when the window closes, is part 2's to show.
 - **Android killed with a private window open.** The profile's file stays until the next start (§5.2). That the next start deletes it was run by hand, with profiles whose pages had been closed; a kill with pages open was not tried.
 - **An older WebView**, which cannot remove everything in one call: caches and service workers of a private login set stay until its profile is deleted. Not run on one.
 - **A phone.** An emulator.
@@ -140,9 +159,9 @@ The bar for the whole: after a private window has visited a site, signed in, dow
 
 - [x] The owner's word on §4 (2026-11-21).
 - [x] The core and the contract (contract 1.26).
-- [ ] The Apple shell.
+- [x] The Apple shell.
 - [x] Android: the adapter (the window's part comes with the shells').
 - [x] Part 1: `Tools/test.sh all` green, and `android-device`, on 2026-11-21: `lint`, `core` (537), `unit` (268 on the Mac), `build`, the Mac's UI suite (36), `ios` (250 on the iPhone simulator, one skipped as before), the iPhone's UI suite (27), `android` (366 and 32 on the JVM) and `android-device` (150 on the emulator).
 - [x] Part 3 (Android's adapter): `lint`, `android` (369 and 32 on the JVM) and `android-device` (152 on the emulator, twice from a cold start), on 2026-11-21. Nothing of the core's or of Apple's changed.
 - [x] Part 2 on Android (the window): `lint`, `android` (376 and 32 on the JVM) and `android-device` (153 on the emulator, twice), with the Apple package's own tests (268 on the Mac) and the apps' build, because the shared words gained eight; on 2026-11-21. The Mac's UI suite could not be run: a dialog of the system's was on the screen.
-- [ ] Part 2 on the Mac and the iPhone: the whole gate.
+- [x] Part 2 on the Mac and the iPhone: `Tools/test.sh all` green, and `android-device`, on 2026-11-22: `lint`, `core` (538), `unit` (271 on the Mac), `build`, the Mac's UI suite (37), `ios` (253 on the iPhone simulator, one skipped as before), the iPhone's UI suite (28), `android` (376 and 32 on the JVM) and `android-device` (153 on the emulator).

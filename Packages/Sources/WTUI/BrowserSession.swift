@@ -152,7 +152,7 @@ public final class BrowserSession {
     #endif
 
     /// Opens a window in the core and delivers its snapshots to `update` until it is closed.
-    func openWindow(update: @escaping @MainActor (WTWindowSnapshot) -> Void) async throws -> OpenedWindow {
+    func openWindow(private asPrivate: Bool = false, update: @escaping @MainActor (WTWindowSnapshot) -> Void) async throws -> OpenedWindow {
         opening += 1
         defer {
             opening -= 1
@@ -160,7 +160,11 @@ public final class BrowserSession {
                 unclaimed.removeAll()
             }
         }
-        guard case let .windowOpened(opened) = try await core.request(.openWindow(WTOpenWindow())) else {
+        // A private window (037) is asked for as one: its logins are its own, and nothing it
+        // visits is kept.
+        var open = WTOpenWindow()
+        open.privateWindow = asPrivate
+        guard case let .windowOpened(opened) = try await core.request(.openWindow(open)) else {
             throw CoreError.refused(code: "response.unexpected", field: "")
         }
         var subscribe = WTSubscribe()

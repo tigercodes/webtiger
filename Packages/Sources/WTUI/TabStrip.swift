@@ -21,8 +21,15 @@ struct TabStrip: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            SpaceChip(name: model.spaceName, colour: model.spaceColour, action: onSpaces)
-                .padding(.leading, Tokens.Space.m)
+            // A private window has no Space (037): its chip says what it is.
+            Group {
+                if model.isPrivate {
+                    PrivateChip(action: onSpaces)
+                } else {
+                    SpaceChip(name: model.spaceName, colour: model.spaceColour, action: onSpaces)
+                }
+            }
+            .padding(.leading, Tokens.Space.m)
             tabs
             Button(action: onFind) {
                 Label { Text("find.open", bundle: .module) } icon: { Image(systemName: "magnifyingglass") }

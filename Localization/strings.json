@@ -49,6 +49,7 @@
     "selection.search_with": { "en": "Search with %@", "note": "In the menu of words that are selected in a page: search for those words, in a new tab. %@ is the search engine's own name, such as Ecosia." },
     "space.home": { "en": "Home", "note": "Name shown for the Space the app made itself, until the person gives it a name. A Space is a set of tabs kept apart from the others, such as home and work." },
     "space.chip": { "en": "Space: %@", "note": "Accessibility name of the button at the start of the strip of tabs that says which Space the window shows, and opens the list of Spaces. %@ is the Space's name." },
+    "private.new": { "en": "New Private Window", "note": "Command in the Mac's File menu (Shift-Command-N): open a private window." },
     "private.chip": { "en": "Private", "note": "Chip in the strip of tabs of a private window, where an ordinary window names its Space. Short: on a narrow strip only its first letter is shown." },
     "private.window": { "en": "Private Window", "note": "Name of a private window: the last row of the list of Spaces on a phone (it opens one), the heading of the page that explains it, and what a screen reader says for the chip." },
     "private.row.detail": { "en": "Nothing it visits is kept on this device.", "note": "Under 'Private Window' in the list of Spaces." },

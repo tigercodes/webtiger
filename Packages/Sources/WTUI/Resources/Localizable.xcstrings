@@ -1741,6 +1741,18 @@
         }
       }
     },
+    "private.new": {
+      "comment": "Command in the Mac's File menu (Shift-Command-N): open a private window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Private Window"
+          }
+        }
+      }
+    },
     "private.row.detail": {
       "comment": "Under 'Private Window' in the list of Spaces.",
       "extractionState": "manual",

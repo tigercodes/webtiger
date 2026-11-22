@@ -17,6 +17,15 @@ public struct BrowserWindowView: View {
     @State private var showingHistory = false
     /// The list of Spaces is open over the window (024).
     @State private var showingSpaces = false
+    /// The page behind a private window's chip (037) is open.
+    @State private var showingPrivate = false
+    /// Where the app shows one window at a time: the way to the private window, for an
+    /// ordinary one; and a private window's ways out. None on a Mac.
+    private var door: PrivateDoor?
+    private var ways: PrivateWays?
+    /// The window is closed in the core when this view goes: so for a window that is a view
+    /// of its own. Not where the app keeps the window's model and draws it when it is shown.
+    private var closesWithItsView = true
     @FocusState private var findFocused: Bool
     /// What the find bar is open on from the start: for a picture of the bar.
     private let finding: String?
@@ -24,6 +33,24 @@ public struct BrowserWindowView: View {
 
     public init(session: BrowserSession) {
         self.init(session: session, finding: nil)
+    }
+
+    /// A private window (037): asked of the core as one, and saying so.
+    public init(privateIn session: BrowserSession) {
+        self.init(session: session, finding: nil)
+        model.opensPrivate = true
+    }
+
+    /// A window where the app shows one at a time (037 §5.3), drawn over a model that
+    /// outlives the drawing: the window is not closed in the core when it is no longer drawn.
+    /// An ordinary one is given the way to the private window; a private one its ways out.
+    init(model: BrowserModel, session: BrowserSession, door: PrivateDoor?, ways: PrivateWays?) {
+        self.session = session
+        finding = nil
+        _model = State(initialValue: model)
+        self.door = door
+        self.ways = ways
+        closesWithItsView = false
     }
 
     /// A window as a picture of one (004): its find bar open on `finding`, its address field
@@ -52,7 +79,15 @@ public struct BrowserWindowView: View {
         VStack(spacing: 0) {
             TabStrip(
                 model: model, onFind: { model.openFind() }, onZoom: { model.openZoom() }, onHistory: { showingHistory = true },
-                onSpaces: { showingSpaces = true }
+                onSpaces: {
+                    // A private window has no Space: its chip opens the page that says what
+                    // it is (037).
+                    if model.isPrivate {
+                        showingPrivate = true
+                    } else {
+                        showingSpaces = true
+                    }
+                }
             )
             toolbar
             // What the tab asks the person (014): in the tab, under the toolbar, and not
@@ -81,7 +116,11 @@ public struct BrowserWindowView: View {
         // The menu bar speaks for the window in front (034).
         .focusedSceneValue(\.windowCommands, commands)
         .task { await model.open() }
-        .onDisappear { model.close() }
+        .onDisappear {
+            if closesWithItsView {
+                model.close()
+            }
+        }
         .modifier(OutsideLinks(model: model))
         // The find bar takes the keyboard when it opens, unless it is only a picture of one.
         .onChange(of: model.isFinding) { _, isFinding in
@@ -90,7 +129,9 @@ public struct BrowserWindowView: View {
             }
         }
         .sheet(isPresented: $showingHistory) { history }
-        .modifier(SpacesSheet(model: model, isShown: $showingSpaces))
+        .modifier(SpacesSheet(model: model, isShown: $showingSpaces, door: door))
+        // On a Mac a private window is a window of its own: closing it is its way out.
+        .modifier(PrivateSheet(isShown: $showingPrivate, ways: ways ?? PrivateWays(close: { dismiss() })))
         // Where searches go (020): over the window. At the first run it is there before the
         // window is used, and stays until an engine is chosen.
         .sheet(isPresented: Binding(get: { model.asksWhereSearchesGo }, set: {
@@ -390,7 +431,7 @@ public struct BrowserWindowView: View {
         } else if model.hasPage {
             WebViewHost(engine: session.engine, webViewID: model.tab.webViewID, pageWaits: model.pageWaits)
         } else {
-            EmptyTabView(searchesGoTo: model.searchEngineName, changeSearch: model.changeSearch)
+            EmptyTabView(searchesGoTo: model.searchEngineName, changeSearch: model.changeSearch, isPrivate: model.isPrivate)
         }
     }
 }
@@ -418,6 +459,8 @@ struct EmptyTabView: View {
     /// then said of it.
     var searchesGoTo: String?
     var changeSearch: () -> Void = {}
+    /// The tab is a private window's (037): it says what private means, and what it does not.
+    var isPrivate = false
     @Environment(\.locale) private var locale
 
     var body: some View {
@@ -430,6 +473,9 @@ struct EmptyTabView: View {
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("empty-tab")
+                if isPrivate {
+                    PrivateWords()
+                }
                 // Where what is typed goes when it is not an address, said where it is about
                 // to happen, with the way to change it.
                 if let searchesGoTo {

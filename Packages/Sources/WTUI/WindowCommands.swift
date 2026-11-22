@@ -107,8 +107,11 @@ private struct Command: View {
 
     private struct FileItems: View {
         let window: WindowCommands?
+        @Environment(\.openWindow) private var openWindow
 
         var body: some View {
+            // A private window (037): there with any window in front, or none.
+            Command("private.new", "n", [.command, .shift], enabled: true) { openWindow(id: BrowserWindowView.privateWindows) }
             Command("tabs.new", "t", enabled: window != nil) { window?.model.openTab() }
             Command("toolbar.open_location", "l", enabled: window != nil) { window?.openLocation() }
             Command("tabs.reopen", "t", [.command, .shift], enabled: window?.model.canReopenClosedTab == true) {

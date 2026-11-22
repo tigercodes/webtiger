@@ -291,6 +291,8 @@
     <string name="private_hides">It does not hide you from the sites you visit, or from your network.</string>
     <!-- What a private window means: in an empty tab of one, and on the page behind its chip. -->
     <string name="private_keeps">Nothing you visit in this window is kept on this device: no history, and nothing a site stored once the window is closed. Files you save stay.</string>
+    <!-- Command in the Mac's File menu (Shift-Command-N): open a private window. -->
+    <string name="private_new">New Private Window</string>
     <!-- Under 'Private Window' in the list of Spaces. -->
     <string name="private_row_detail">Nothing it visits is kept on this device.</string>
     <!-- Said beside 'Private Window' in the list of Spaces when a private window is open already: the row then shows it. -->

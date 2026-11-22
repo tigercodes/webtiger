@@ -68,6 +68,8 @@ struct SpaceChip: View {
 struct SpacesSheet: ViewModifier {
     let model: BrowserModel
     @Binding var isShown: Bool
+    /// The way to the private window (037), where the app shows one window at a time.
+    var door: PrivateDoor?
 
     func body(content: Content) -> some View {
         content
@@ -94,7 +96,14 @@ struct SpacesSheet: ViewModifier {
                             }
                         }
                     },
-                    done: { isShown = false }
+                    done: { isShown = false },
+                    // Chosen, the list closes behind the private window.
+                    privateDoor: door.map { door in
+                        PrivateDoor(isOpen: door.isOpen, show: {
+                            isShown = false
+                            door.show()
+                        })
+                    }
                 )
                 #if os(macOS)
                 .frame(minWidth: 480, minHeight: 420)
@@ -133,6 +142,8 @@ struct SpacesView: View {
     /// The Space the window shows is to have another name, another colour, or both.
     let edit: (SpaceEdit) -> Void
     let done: () -> Void
+    /// The way to the private window (037): the list's last row. None: no row.
+    var privateDoor: PrivateDoor?
 
     @State private var page: Page
     @State private var name: String
@@ -160,9 +171,11 @@ struct SpacesView: View {
         show: @escaping (UInt64) -> Void,
         make: @escaping (String, UInt64?, String) -> Void,
         edit: @escaping (SpaceEdit) -> Void,
-        done: @escaping () -> Void
+        done: @escaping () -> Void,
+        privateDoor: PrivateDoor? = nil
     ) {
         self.spaces = spaces
+        self.privateDoor = privateDoor
         self.shownID = shownID
         self.colours = colours
         self.refusal = refusal
@@ -208,6 +221,10 @@ struct SpacesView: View {
                 row(space)
             }
             Divider()
+            if let privateDoor {
+                PrivateRow(door: privateDoor)
+                Divider()
+            }
             HStack(spacing: Tokens.Space.m) {
                 Button {
                     // Whose logins a new Space would share, should the person choose to: those

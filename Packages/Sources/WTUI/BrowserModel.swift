@@ -26,6 +26,13 @@ public final class BrowserModel {
     /// What an undo would undo now in the Space the window shows (033), by the core's word
     /// for it; empty when there is nothing to undo.
     public internal(set) var undoKind = ""
+    /// The window is a private one (037): made to be one, or said to be one by the core.
+    public internal(set) var isPrivate = false
+    /// The window is to be opened in the core as a private one. Set before it opens.
+    var opensPrivate = false {
+        didSet { isPrivate = isPrivate || opensPrivate }
+    }
+
     /// Why the core would not make a Space, by its code: said on the page that asked.
     public internal(set) var spaceRefusal: String?
     /// The warning before going on past a certificate is open (026): for this failure of the
@@ -116,14 +123,17 @@ public final class BrowserModel {
     /// Opens the window in the core. Call once, when the view appears.
     public func open() async {
         guard window == nil else { return }
-        window = try? await session.openWindow { [weak self] snapshot in
+        window = try? await session.openWindow(private: opensPrivate) { [weak self] snapshot in
             self?.apply(snapshot)
         }
         // Where searches go, and whether anybody chose it (020): asked once, as the window
         // opens.
         askWhereSearchesGo()
-        // Links pressed in other apps before the window was open (031).
-        openWhatWaited()
+        // Links pressed in other apps before the window was open (031): never a private
+        // window's to open (037).
+        if !opensPrivate {
+            openWhatWaited()
+        }
     }
 
     public func close() {
@@ -391,6 +401,7 @@ public final class BrowserModel {
         spaceName = snapshot.spaceName
         spaceColour = snapshot.spaceColour
         undoKind = snapshot.undo
+        isPrivate = opensPrivate || snapshot.privateWindow
         // The zoom bar is the window's, and says the level of the page in front: with no page
         // there that can be zoomed, it has nothing to say.
         if isZooming, !tab.hasZoom {

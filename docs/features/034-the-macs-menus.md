@@ -6,7 +6,7 @@
 | **Phase** | W2 of [000](000-master-plan.md) §9: "keyboard maps per platform", the Mac's, for the commands there are so far |
 | **Contract** | No change |
 | **Builds on** | [005](005-tabs.md): the keys for tabs, which were carried by buttons nobody sees ("the app's menus are W2's"). [008](008-history.md), [010](010-find-in-page.md), [012](012-zoom.md): their keys, carried the same way. [033](033-a-closed-tab-comes-back.md): Reopen Closed Tab |
-| **Last updated** | 2026-11-21 |
+| **Last updated** | 2026-11-22 |
 
 ## 1. User story
 
@@ -33,6 +33,7 @@ On the Mac I look in the menu bar for what a browser can do, and it is there, ea
 
 | Menu | Item | Key | Grey when |
 |---|---|---|---|
+| File | New Private Window ([037](037-private-windows.md)) | ⇧⌘N | |
 | File | New Tab | ⌘T | |
 | File | Open Location | ⌘L | |
 | File | Reopen Closed Tab | ⇧⌘T | there is none to bring back (033) |
@@ -59,6 +60,7 @@ On the Mac I look in the menu bar for what a browser can do, and it is there, ea
 | D1 | The window offers its commands as one value, and the menu reads the window's model | The menu must be grey by what the model says, and the model is the window's. Nothing new is kept anywhere |
 | D2 | The same words as the buttons | One name for one thing: what a button's label says, the menu says |
 | D3 | The Mac only | The menu bar is the Mac's. An iPad's keys work as they did |
+| D4 | The commands are said on the last kind of window the app has (since [037](037-private-windows.md)) | Each kind of window brings the system's own File menu with it. Said on the first of two kinds, the system's Close and Close All came back in the place of Close Tab and Close Window; the tests of §5 found it the first time they ran with private windows |
 
 ## 5. Tests
 
