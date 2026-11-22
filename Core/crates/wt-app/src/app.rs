@@ -17,10 +17,10 @@ use wt_proto::v1::{
     EngineKind, FindInPage, ForgetHistory, GroupMade, HistoryEntry, HistoryPage, KeepTab,
     LetGoSite, LinkOpenRequested, LoginSet, MakeGroup, MoveToGroup, NavigationCommand, OpenAddress,
     OpenOutside, OpenTab, OpenWindow, OutsideLinkRequested, QueryHistory, RemoveGroup,
-    SearchRequested, SearchWords, SendSiteHome, StepTab, SubmitAddress, SuggestAddresses,
-    TabCommand, TabOpened, Undo, WebViewCommand, WebViewCreate, WebViewDestroy, WebViewFind,
-    WebViewLoad, WebViewSetZoom, WindowOpened, WindowSnapshot, ZoomChange, ZoomPage, engine_event,
-    forget_history, host_request, request, response, step_tab,
+    SearchRequested, SearchWords, SendSiteHome, SetFavourite, StepTab, SubmitAddress,
+    SuggestAddresses, TabCommand, TabOpened, Undo, WebViewCommand, WebViewCreate, WebViewDestroy,
+    WebViewFind, WebViewLoad, WebViewSetZoom, WindowOpened, WindowSnapshot, ZoomChange, ZoomPage,
+    engine_event, forget_history, host_request, request, response, step_tab,
 };
 use wt_store::{ClosedTab, MAX_SUGGESTIONS, SavedTab, Space, Store};
 
@@ -227,6 +227,7 @@ impl App {
             }
             request::Kind::RemoveGroup(remove) => answer(self.remove_group(&remove)),
             request::Kind::MoveToGroup(moved) => answer(self.move_to_group(&moved)),
+            request::Kind::SetFavourite(set) => answer(self.set_favourite(&set)),
             request::Kind::OpenDownload(open) => self.open_download(&open),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
@@ -651,6 +652,7 @@ impl App {
             home: String::new(),
             name: String::new(),
             group: 0,
+            favourite: false,
         };
         let reopened = self
             .state
@@ -1027,6 +1029,15 @@ impl App {
             .borrow_mut()
             .move_to_group(TabId(moved.tab_id), group)
             .map_err(|code| AppError::new(code).field(group_field(code)))?;
+        Ok(response::Kind::Ack(Ack {}))
+    }
+
+    /// Marks a tab as a Favourite, or unmarks it (042).
+    fn set_favourite(&self, set: &SetFavourite) -> Result<response::Kind, AppError> {
+        self.state
+            .borrow_mut()
+            .set_favourite(TabId(set.tab_id), set.favourite)
+            .map_err(|code| AppError::new(code).field("tab_id"))?;
         Ok(response::Kind::Ack(Ack {}))
     }
 

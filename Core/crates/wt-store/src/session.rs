@@ -24,6 +24,8 @@ pub struct SavedTab {
     /// The Group a Site is in (041): its place among its Space's Groups,
     /// counted from one. Nought for a tab that is in none.
     pub group: u32,
+    /// The Site is one of its row's Favourites (042).
+    pub favourite: bool,
 }
 
 /// A Group as it is kept between runs (041).
@@ -55,16 +57,23 @@ impl Store {
         {
             let mut insert = transaction
                 .prepare_cached(
-                    "INSERT INTO tab (space_id, position, url, title, front, site_home, site_name, site_group) \
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                    "INSERT INTO tab (space_id, position, url, title, front, site_home, site_name, site_group, favourite) \
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
                 )
                 .map_err(|_| StoreError::Query)?;
             for (position, tab) in tabs.iter().enumerate() {
                 let position = i64::try_from(position).map_err(|_| StoreError::Query)?;
                 insert
                     .execute(params![
-                        space, position, tab.url, tab.title, tab.front, tab.home, tab.name,
-                        tab.group
+                        space,
+                        position,
+                        tab.url,
+                        tab.title,
+                        tab.front,
+                        tab.home,
+                        tab.name,
+                        tab.group,
+                        tab.favourite
                     ])
                     .map_err(|_| StoreError::Query)?;
             }
@@ -81,7 +90,7 @@ impl Store {
         let mut statement = self
             .connection
             .prepare_cached(
-                "SELECT url, title, front, site_home, site_name, site_group FROM tab \
+                "SELECT url, title, front, site_home, site_name, site_group, favourite FROM tab \
                  WHERE space_id = ?1 ORDER BY position",
             )
             .map_err(|_| StoreError::Query)?;
@@ -94,6 +103,7 @@ impl Store {
                     home: row.get(3)?,
                     name: row.get(4)?,
                     group: row.get(5)?,
+                    favourite: row.get(6)?,
                 })
             })
             .and_then(Iterator::collect)
@@ -181,6 +191,7 @@ mod tests {
             home: String::new(),
             name: String::new(),
             group: 0,
+            favourite: false,
         }
     }
 
@@ -282,7 +293,7 @@ mod tests {
         drop(store);
         let old = Connection::open(&path).unwrap();
         old.execute_batch(
-            "DROP TABLE node; ALTER TABLE tab DROP COLUMN site_group; ALTER TABLE tab DROP COLUMN site_home; ALTER TABLE tab DROP COLUMN site_name; DROP TABLE journal; ALTER TABLE space DROP COLUMN colour; DROP TABLE setting; DROP TABLE site_permission; DROP TABLE download; DROP TABLE site_setting; DROP TABLE tab; PRAGMA user_version = 2;",
+            "ALTER TABLE tab DROP COLUMN favourite; DROP TABLE node; ALTER TABLE tab DROP COLUMN site_group; ALTER TABLE tab DROP COLUMN site_home; ALTER TABLE tab DROP COLUMN site_name; DROP TABLE journal; ALTER TABLE space DROP COLUMN colour; DROP TABLE setting; DROP TABLE site_permission; DROP TABLE download; DROP TABLE site_setting; DROP TABLE tab; PRAGMA user_version = 2;",
         )
             .unwrap();
         drop(old);
@@ -329,7 +340,7 @@ mod tests {
         store.save_tabs(made.id, &three()).unwrap();
         drop(store);
         let old = Connection::open(&path).unwrap();
-        old.execute_batch("DROP TABLE node; ALTER TABLE tab DROP COLUMN site_group; ALTER TABLE tab DROP COLUMN site_home; ALTER TABLE tab DROP COLUMN site_name; PRAGMA user_version = 9;")
+        old.execute_batch("ALTER TABLE tab DROP COLUMN favourite; DROP TABLE node; ALTER TABLE tab DROP COLUMN site_group; ALTER TABLE tab DROP COLUMN site_home; ALTER TABLE tab DROP COLUMN site_name; PRAGMA user_version = 9;")
             .unwrap();
         drop(old);
 
@@ -409,7 +420,8 @@ mod tests {
         drop(store);
         let old = Connection::open(&path).unwrap();
         old.execute_batch(
-            "DROP TABLE node; ALTER TABLE tab DROP COLUMN site_group; PRAGMA user_version = 10;",
+            "ALTER TABLE tab DROP COLUMN favourite; DROP TABLE node; \
+             ALTER TABLE tab DROP COLUMN site_group; PRAGMA user_version = 10;",
         )
         .unwrap();
         drop(old);
@@ -433,5 +445,46 @@ mod tests {
             .save_groups(made.id, std::slice::from_ref(&group))
             .unwrap();
         assert_eq!(store.saved_groups(made.id).unwrap(), [group]);
+    }
+
+    #[test]
+    fn a_site_says_whether_it_is_a_favourite_and_a_store_from_before_has_none() {
+        let folder = tempfile::tempdir().unwrap();
+        let path = folder.path().join("webtiger.sqlite");
+        let mut store = Store::open(&path).unwrap();
+        let space = store.default_space(MINE, Timestamp(1)).unwrap().id;
+        let mut tabs = three();
+        tabs[0].home = "https://example.com/".to_owned();
+        tabs[0].name = "Example".to_owned();
+        tabs[0].favourite = true;
+        tabs[1].home = "https://example.org/".to_owned();
+        tabs[1].name = "Another".to_owned();
+        store.save_tabs(space, &tabs).unwrap();
+        assert_eq!(store.saved_tabs(space).unwrap(), tabs);
+        drop(store);
+
+        // After a restart, as they were: the one that is, and the one that is not.
+        let store = Store::open(&path).unwrap();
+        let kept = store.saved_tabs(space).unwrap();
+        assert_eq!(
+            kept.iter().map(|tab| tab.favourite).collect::<Vec<_>>(),
+            [true, false, false]
+        );
+        drop(store);
+
+        // The same store put back to version 11, what 041 left: its tabs and Sites are
+        // as they were, and none is a Favourite.
+        let old = Connection::open(&path).unwrap();
+        old.execute_batch("ALTER TABLE tab DROP COLUMN favourite; PRAGMA user_version = 11;")
+            .unwrap();
+        drop(old);
+        let mut store = Store::open(&path).unwrap();
+        assert_eq!(store.schema_version().unwrap(), crate::SCHEMA_VERSION);
+        tabs[0].favourite = false;
+        assert_eq!(store.saved_tabs(space).unwrap(), tabs);
+        // And one can be kept in it now.
+        tabs[1].favourite = true;
+        store.save_tabs(space, &tabs).unwrap();
+        assert_eq!(store.saved_tabs(space).unwrap(), tabs);
     }
 }

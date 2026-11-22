@@ -26,7 +26,7 @@ I have a dozen Sites and they are of three kinds: work, the house, what I read. 
 
 ## 3. The rule
 
-**A row is a tree, one level deep.** A Space's row is: its Sites that are in no Group; then its Groups, in the order they were made, each with its Sites in theirs; and then the tabs that are no Sites. A Site is in one Group or in none. (Sites and Groups in one order of the person's own choosing come with dragging: until something can be moved, there is no other order to keep.)
+**A row is a tree, one level deep.** A Space's row is (after its Favourites, since [042](042-favourites.md)): its Sites that are in no Group; then its Groups, in the order they were made, each with its Sites in theirs; and then the tabs that are no Sites. A Site is in one Group or in none. (Sites and Groups in one order of the person's own choosing come with dragging: until something can be moved, there is no other order to keep.)
 
 **Making and naming.** A Group is made in the row a window shows (`MakeGroup`), with a name, after the Groups there are. It is renamed (`RenameGroup`) and given a colour or none (`ColourGroup`; the colours are a Space's, 025). A name is what a Space's name may be (024): trimmed, not empty, not too long.
 

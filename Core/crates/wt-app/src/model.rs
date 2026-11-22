@@ -285,6 +285,9 @@ pub(crate) struct Tab {
     site: Option<Site>,
     /// The Group a Site is in (041), when it is in one.
     group: Option<GroupId>,
+    /// The Site is one of its row's Favourites (042). No Favourite is in a
+    /// Group, and only a Site is one.
+    favourite: bool,
     /// A load of the Site's home is on its way: asked for by the person, by
     /// waking it or by sending it home. Where that load lands is the Site's
     /// home from then on (WT-D31): a home that sends the browser on to
@@ -352,6 +355,7 @@ impl Tab {
             stands_in: false,
             site: None,
             group: None,
+            favourite: false,
             homing: false,
         }
     }
@@ -405,6 +409,7 @@ impl Tab {
         tab.asleep = true;
         tab.site = Some(site.clone());
         tab.group = self.group;
+        tab.favourite = self.favourite;
         tab
     }
 
@@ -449,6 +454,7 @@ impl Tab {
                 home,
                 name,
                 group: 0,
+                favourite: false,
             };
         }
         let url = self
@@ -465,6 +471,7 @@ impl Tab {
                 home,
                 name,
                 group: 0,
+                favourite: false,
             };
         }
         let kept = self
@@ -489,6 +496,7 @@ impl Tab {
             home,
             name,
             group: 0,
+            favourite: false,
         }
     }
 
@@ -669,6 +677,7 @@ impl Tab {
             away: self.away_from().is_some(),
             site_name: self.site_name(),
             group_id: self.group.map_or(0, GroupId::get),
+            favourite: self.favourite,
         }
     }
 
@@ -712,6 +721,7 @@ impl Tab {
             kept: self.site.is_some(),
             away: self.away_from().is_some(),
             site_name: self.site_name(),
+            favourite: self.favourite,
         }
     }
 
@@ -801,27 +811,32 @@ struct Group {
 /// The most Groups a row has.
 const MOST_GROUPS: usize = 64;
 
-/// Puts a row's tabs in the order a row has (041): the Sites that are in no
-/// Group; each Group's Sites, Group by Group; the tabs that are no Sites.
-/// Within each, the tabs stay in the order they were in.
+/// Puts a row's tabs in the order a row has (041, 042): the Favourites; the
+/// Sites that are in no Group; each Group's Sites, Group by Group; the tabs
+/// that are no Sites. Within each, the tabs stay in the order they were in.
 fn arrange(tabs: &BTreeMap<TabId, Tab>, row: &mut Row) {
     let places: BTreeMap<TabId, (u8, usize)> = row
         .tabs
         .iter()
         .map(|id| {
             let place = match tabs.get(id) {
+                // (Only a Site is a Favourite: where the mark is set sees to it.)
+                Some(tab) if tab.favourite => (0, 0),
                 Some(tab) if tab.site.is_some() => tab
                     .group
                     .and_then(|group| row.groups.iter().position(|one| one.id == group))
-                    .map_or((0, 0), |group| (1, group)),
-                _ => (2, 0),
+                    .map_or((1, 0), |group| (2, group)),
+                _ => (3, 0),
             };
             (*id, place)
         })
         .collect();
     row.tabs
-        .sort_by_key(|id| places.get(id).copied().unwrap_or((2, 0)));
+        .sort_by_key(|id| places.get(id).copied().unwrap_or((3, 0)));
 }
+
+/// The most Favourites a row has (042).
+const MOST_FAVOURITES: usize = 12;
 
 /// Whether a tab is out of the way (041): a Site of a Group that is shut,
 /// unless it is the tab in front, which is always shown.
@@ -1059,6 +1074,11 @@ impl State {
                 .and_then(|place| groups.get(place))
                 .filter(|_| tab.site.is_some())
                 .map(|group| group.id);
+            // Only a Site is a Favourite (042), and a Favourite is in no Group.
+            tab.favourite = saved.favourite && tab.site.is_some();
+            if tab.favourite {
+                tab.group = None;
+            }
             self.tabs.insert(id, tab);
             if saved.front {
                 front = Some(id);
@@ -1266,6 +1286,7 @@ impl State {
                         .and_then(|group| row_groups.iter().position(|one| one.id == group))
                         .and_then(|place| u32::try_from(place + 1).ok())
                         .unwrap_or(0);
+                    saved.favourite = tab.favourite;
                     Some(saved)
                 })
                 .collect();
@@ -1650,9 +1671,73 @@ impl State {
         self.keep_tab(tab_id)?;
         if let Some(tab) = self.tabs.get_mut(&tab_id) {
             tab.group = Some(group);
+            // The row of Favourites is its own place: one put in a Group is
+            // a Favourite no longer (042).
+            tab.favourite = false;
         }
-        // At the Group's end: last in the row, and then put in a row's order,
-        // which leaves it last of its Group.
+        // At the Group's end.
+        self.last_of_its_kind(window, space, tab_id);
+        Ok(())
+    }
+
+    /// Marks a tab as one of its row's Favourites, or unmarks it (042). A tab
+    /// that is no Site is kept first, and one that cannot be kept is refused
+    /// as keeping refuses it. Marked, it leaves its Group and is the last of
+    /// the Favourites; unmarked, it is the last of the Sites that are in no
+    /// Group. The code to refuse with.
+    ///
+    /// Only a Site is ever marked: a tab is kept before it is, and a Site
+    /// that is let go is unmarked.
+    pub(crate) fn set_favourite(
+        &mut self,
+        tab_id: TabId,
+        favourite: bool,
+    ) -> Result<(), &'static str> {
+        let tab = self.tabs.get(&tab_id).ok_or("tab.unknown")?;
+        let (window, space, is) = (tab.window, tab.space, tab.favourite);
+        if !favourite {
+            // A tab that is none is as it was, and is not kept by it.
+            if is {
+                if let Some(tab) = self.tabs.get_mut(&tab_id) {
+                    tab.favourite = false;
+                }
+                self.last_of_its_kind(window, space, tab_id);
+            }
+            return Ok(());
+        }
+        if is {
+            return Ok(());
+        }
+        // (A private window's tab is refused where it is kept: nothing of
+        // one is, 037. Its row has no Favourite to count.)
+        let favourites = self
+            .windows
+            .get(&window)
+            .and_then(|found| found.rows.get(&space))
+            .map_or(0, |row| {
+                row.tabs
+                    .iter()
+                    .filter(|id| self.tabs.get(*id).is_some_and(|tab| tab.favourite))
+                    .count()
+            });
+        if favourites >= MOST_FAVOURITES {
+            return Err("favourite.too_many");
+        }
+        self.keep_tab(tab_id)?;
+        if let Some(tab) = self.tabs.get_mut(&tab_id) {
+            tab.favourite = true;
+            tab.group = None;
+        }
+        // It was after every Favourite, as every other tab is: in a row's
+        // order it is the last of them.
+        self.arrange_row(window, space);
+        Ok(())
+    }
+
+    /// Puts a tab last in its row and the row in a row's order again, which
+    /// leaves it the last of its kind: of the Favourites, of the Sites in
+    /// no Group, or of a Group's.
+    fn last_of_its_kind(&mut self, window: WindowId, space: SpaceId, tab_id: TabId) {
         if let Some(row) = self
             .windows
             .get_mut(&window)
@@ -1662,7 +1747,6 @@ impl State {
             row.tabs.push(tab_id);
         }
         self.arrange_row(window, space);
-        Ok(())
     }
 
     /// Where a Site is to be sent to be home again (039): its home, when it
@@ -1681,9 +1765,11 @@ impl State {
             return false;
         };
         if tab.site.take().is_some() {
-            // No Site is in a Group (041). Among the Sites it was before every
-            // other tab: in a row's order it is the first of those.
+            // No Site is in a Group (041) and no Favourite (042). Among the
+            // Sites it was before every other tab: in a row's order it is
+            // the first of those.
             tab.group = None;
+            tab.favourite = false;
             let (window, space) = (tab.window, tab.space);
             self.arrange_row(window, space);
         }
@@ -2734,6 +2820,12 @@ impl State {
                     .unwrap_or(u32::MAX),
                 })
                 .collect(),
+            favourites_full: row
+                .tabs
+                .iter()
+                .filter(|id| self.tabs.get(*id).is_some_and(|tab| tab.favourite))
+                .count()
+                >= MOST_FAVOURITES,
             downloads_active: self
                 .downloads_active
                 .get(&space.login_set)

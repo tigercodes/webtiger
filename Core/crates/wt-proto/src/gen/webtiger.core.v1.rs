@@ -355,6 +355,22 @@ pub struct GroupSummary {
     #[prost(uint32, tag = "5")]
     pub sites: u32,
 }
+/// Favourites (042). Since 1.32. Marks a tab as one of its row's Favourites,
+/// or unmarks it. A Favourite is a Site: a tab that is no Site is kept first
+/// (KeepTab), and one that cannot be kept is refused as KeepTab refuses it.
+/// It is in no Group: marked, a Site leaves the Group it was in, and put in a
+/// Group (MoveToGroup) it is a Favourite no longer. Marked, it is the last of
+/// the Favourites; unmarked, the last of the Sites that are in no Group.
+/// Answered with Ack, also when it is so already; "tab.unknown";
+/// "tab.no_page"; "window.private"; or "favourite.too_many" (a row has at
+/// most twelve).
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SetFavourite {
+    #[prost(uint64, tag = "1")]
+    pub tab_id: u64,
+    #[prost(bool, tag = "2")]
+    pub favourite: bool,
+}
 /// A window, as its subscription publishes it.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WindowSnapshot {
@@ -392,13 +408,19 @@ pub struct WindowSnapshot {
     #[prost(bool, tag = "9")]
     pub private_window: bool,
     /// Since 1.31. The Groups of the row the window shows (041), in their
-    /// order. The row is: the Sites that are in no Group; then each Group's
-    /// Sites, Group by Group in this order; then the tabs that are no Sites.
+    /// order. The row is: the Favourites (since 1.32); the Sites that are in no
+    /// Group; then each Group's Sites, Group by Group in this order; then the
+    /// tabs that are no Sites.
     /// `tabs` has the Sites of a Group that is shut left out, but for the tab in
     /// front, which is always there: a shut Group, and one with no Site, is
     /// drawn from this list alone.
     #[prost(message, repeated, tag = "10")]
     pub groups: ::prost::alloc::vec::Vec<GroupSummary>,
+    /// Since 1.32. The row has as many Favourites as a row can have (042):
+    /// marking another would be refused ("favourite.too_many"). A shell offers
+    /// no more by it, and needs no number of its own.
+    #[prost(bool, tag = "11")]
+    pub favourites_full: bool,
 }
 /// A tab as a strip of tabs shows it: enough to name it, and no more.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -435,6 +457,10 @@ pub struct TabSummary {
     /// Since 1.31. The Group a Site is in (041); 0 for a tab that is in none.
     #[prost(uint64, tag = "9")]
     pub group_id: u64,
+    /// Since 1.32. The Site is one of the row's Favourites (042): they are the
+    /// first of the row, in their order, and none is in a Group.
+    #[prost(bool, tag = "10")]
+    pub favourite: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TabView {
@@ -495,6 +521,9 @@ pub struct TabView {
     pub away: bool,
     #[prost(string, tag = "19")]
     pub site_name: ::prost::alloc::string::String,
+    /// Since 1.32. The tab is one of its row's Favourites (042).
+    #[prost(bool, tag = "20")]
+    pub favourite: bool,
 }
 /// What the address field shows. The core builds it so that every shell shows
 /// the same thing and none can be made to lie: a page-initiated load does not
@@ -2168,7 +2197,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -2285,6 +2314,9 @@ pub mod request {
         RemoveGroup(super::RemoveGroup),
         #[prost(message, tag = "44")]
         MoveToGroup(super::MoveToGroup),
+        /// Since 1.32
+        #[prost(message, tag = "45")]
+        SetFavourite(super::SetFavourite),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.

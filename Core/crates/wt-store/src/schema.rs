@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use crate::StoreError;
 
 /// The version this build's store is at.
-pub const SCHEMA_VERSION: u32 = 11;
+pub const SCHEMA_VERSION: u32 = 12;
 
 /// The migrations, in order: `MIGRATIONS[n]` takes version `n` to `n + 1`.
 const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
@@ -153,6 +153,8 @@ const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
          PRIMARY KEY (space_id, position)
      ) STRICT, WITHOUT ROWID;
      ALTER TABLE tab ADD COLUMN site_group INTEGER NOT NULL DEFAULT 0;",
+    // 12 (W2, 042): Favourites. A Site says whether it is one of its row's.
+    "ALTER TABLE tab ADD COLUMN favourite INTEGER NOT NULL DEFAULT 0;",
 ];
 
 pub(crate) fn version(connection: &Connection) -> Result<u32, StoreError> {

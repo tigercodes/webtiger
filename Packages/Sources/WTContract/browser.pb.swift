@@ -496,6 +496,29 @@ public nonisolated struct WTGroupSummary: Sendable {
   public init() {}
 }
 
+/// Favourites (042). Since 1.32. Marks a tab as one of its row's Favourites,
+/// or unmarks it. A Favourite is a Site: a tab that is no Site is kept first
+/// (KeepTab), and one that cannot be kept is refused as KeepTab refuses it.
+/// It is in no Group: marked, a Site leaves the Group it was in, and put in a
+/// Group (MoveToGroup) it is a Favourite no longer. Marked, it is the last of
+/// the Favourites; unmarked, the last of the Sites that are in no Group.
+/// Answered with Ack, also when it is so already; "tab.unknown";
+/// "tab.no_page"; "window.private"; or "favourite.too_many" (a row has at
+/// most twelve).
+public nonisolated struct WTSetFavourite: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var tabID: UInt64 = 0
+
+  public var favourite: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 /// A window, as its subscription publishes it.
 public nonisolated struct WTWindowSnapshot: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
@@ -543,12 +566,18 @@ public nonisolated struct WTWindowSnapshot: Sendable {
   public var privateWindow: Bool = false
 
   /// Since 1.31. The Groups of the row the window shows (041), in their
-  /// order. The row is: the Sites that are in no Group; then each Group's
-  /// Sites, Group by Group in this order; then the tabs that are no Sites.
+  /// order. The row is: the Favourites (since 1.32); the Sites that are in no
+  /// Group; then each Group's Sites, Group by Group in this order; then the
+  /// tabs that are no Sites.
   /// `tabs` has the Sites of a Group that is shut left out, but for the tab in
   /// front, which is always there: a shut Group, and one with no Site, is
   /// drawn from this list alone.
   public var groups: [WTGroupSummary] = []
+
+  /// Since 1.32. The row has as many Favourites as a row can have (042):
+  /// marking another would be refused ("favourite.too_many"). A shell offers
+  /// no more by it, and needs no number of its own.
+  public var favouritesFull: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -594,6 +623,10 @@ public nonisolated struct WTTabSummary: Sendable {
 
   /// Since 1.31. The Group a Site is in (041); 0 for a tab that is in none.
   public var groupID: UInt64 = 0
+
+  /// Since 1.32. The Site is one of the row's Favourites (042): they are the
+  /// first of the row, in their order, and none is in a Group.
+  public var favourite: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -733,6 +766,12 @@ public nonisolated struct WTTabView: @unchecked Sendable {
   public var siteName: String {
     get {_storage._siteName}
     set {_uniqueStorage()._siteName = newValue}
+  }
+
+  /// Since 1.32. The tab is one of its row's Favourites (042).
+  public var favourite: Bool {
+    get {_storage._favourite}
+    set {_uniqueStorage()._favourite = newValue}
   }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -2597,9 +2636,44 @@ nonisolated extension WTGroupSummary: SwiftProtobuf.Message, SwiftProtobuf._Mess
   }
 }
 
+nonisolated extension WTSetFavourite: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SetFavourite"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{1}favourite\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.tabID) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.favourite) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.tabID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.tabID, fieldNumber: 1)
+    }
+    if self.favourite != false {
+      try visitor.visitSingularBoolField(value: self.favourite, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTSetFavourite, rhs: WTSetFavourite) -> Bool {
+    if lhs.tabID != rhs.tabID {return false}
+    if lhs.favourite != rhs.favourite {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".WindowSnapshot"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0\u{3}downloads_active\0\u{3}space_id\0\u{3}space_name\0\u{3}space_colour\0\u{1}undo\0\u{3}private_window\0\u{1}groups\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0\u{3}downloads_active\0\u{3}space_id\0\u{3}space_name\0\u{3}space_colour\0\u{1}undo\0\u{3}private_window\0\u{1}groups\0\u{3}favourites_full\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2617,6 +2691,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 8: try { try decoder.decodeSingularStringField(value: &self.undo) }()
       case 9: try { try decoder.decodeSingularBoolField(value: &self.privateWindow) }()
       case 10: try { try decoder.decodeRepeatedMessageField(value: &self.groups) }()
+      case 11: try { try decoder.decodeSingularBoolField(value: &self.favouritesFull) }()
       default: break
       }
     }
@@ -2657,6 +2732,9 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
     if !self.groups.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.groups, fieldNumber: 10)
     }
+    if self.favouritesFull != false {
+      try visitor.visitSingularBoolField(value: self.favouritesFull, fieldNumber: 11)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2671,6 +2749,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.undo != rhs.undo {return false}
     if lhs.privateWindow != rhs.privateWindow {return false}
     if lhs.groups != rhs.groups {return false}
+    if lhs.favouritesFull != rhs.favouritesFull {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2678,7 +2757,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TabSummary"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{1}title\0\u{1}host\0\u{1}loading\0\u{1}kept\0\u{1}asleep\0\u{1}away\0\u{3}site_name\0\u{3}group_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{1}title\0\u{1}host\0\u{1}loading\0\u{1}kept\0\u{1}asleep\0\u{1}away\0\u{3}site_name\0\u{3}group_id\0\u{1}favourite\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2695,6 +2774,7 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
       case 7: try { try decoder.decodeSingularBoolField(value: &self.away) }()
       case 8: try { try decoder.decodeSingularStringField(value: &self.siteName) }()
       case 9: try { try decoder.decodeSingularUInt64Field(value: &self.groupID) }()
+      case 10: try { try decoder.decodeSingularBoolField(value: &self.favourite) }()
       default: break
       }
     }
@@ -2728,6 +2808,9 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if self.groupID != 0 {
       try visitor.visitSingularUInt64Field(value: self.groupID, fieldNumber: 9)
     }
+    if self.favourite != false {
+      try visitor.visitSingularBoolField(value: self.favourite, fieldNumber: 10)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2741,6 +2824,7 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs.away != rhs.away {return false}
     if lhs.siteName != rhs.siteName {return false}
     if lhs.groupID != rhs.groupID {return false}
+    if lhs.favourite != rhs.favourite {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2748,7 +2832,7 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TabView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}web_view_id\0\u{1}address\0\u{1}title\0\u{3}load_state\0\u{1}progress\0\u{3}can_go_back\0\u{3}can_go_forward\0\u{3}error_code\0\u{1}engine\0\u{3}login_set_id\0\u{1}find\0\u{1}zoom\0\u{1}prompt\0\u{3}certificate_passable\0\u{3}certificate_host\0\u{1}kept\0\u{1}away\0\u{3}site_name\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}web_view_id\0\u{1}address\0\u{1}title\0\u{3}load_state\0\u{1}progress\0\u{3}can_go_back\0\u{3}can_go_forward\0\u{3}error_code\0\u{1}engine\0\u{3}login_set_id\0\u{1}find\0\u{1}zoom\0\u{1}prompt\0\u{3}certificate_passable\0\u{3}certificate_host\0\u{1}kept\0\u{1}away\0\u{3}site_name\0\u{1}favourite\0")
 
   fileprivate class _StorageClass {
     var _tabID: UInt64 = 0
@@ -2770,6 +2854,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _kept: Bool = false
     var _away: Bool = false
     var _siteName: String = String()
+    var _favourite: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2799,6 +2884,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _kept = source._kept
       _away = source._away
       _siteName = source._siteName
+      _favourite = source._favourite
     }
   }
 
@@ -2836,6 +2922,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 17: try { try decoder.decodeSingularBoolField(value: &_storage._kept) }()
         case 18: try { try decoder.decodeSingularBoolField(value: &_storage._away) }()
         case 19: try { try decoder.decodeSingularStringField(value: &_storage._siteName) }()
+        case 20: try { try decoder.decodeSingularBoolField(value: &_storage._favourite) }()
         default: break
         }
       }
@@ -2905,6 +2992,9 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       if !_storage._siteName.isEmpty {
         try visitor.visitSingularStringField(value: _storage._siteName, fieldNumber: 19)
       }
+      if _storage._favourite != false {
+        try visitor.visitSingularBoolField(value: _storage._favourite, fieldNumber: 20)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2933,6 +3023,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._kept != rhs_storage._kept {return false}
         if _storage._away != rhs_storage._away {return false}
         if _storage._siteName != rhs_storage._siteName {return false}
+        if _storage._favourite != rhs_storage._favourite {return false}
         return true
       }
       if !storagesAreEqual {return false}

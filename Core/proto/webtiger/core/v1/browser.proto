@@ -179,6 +179,20 @@ message GroupSummary {
   uint32 sites = 5;
 }
 
+// Favourites (042). Since 1.32. Marks a tab as one of its row's Favourites,
+// or unmarks it. A Favourite is a Site: a tab that is no Site is kept first
+// (KeepTab), and one that cannot be kept is refused as KeepTab refuses it.
+// It is in no Group: marked, a Site leaves the Group it was in, and put in a
+// Group (MoveToGroup) it is a Favourite no longer. Marked, it is the last of
+// the Favourites; unmarked, the last of the Sites that are in no Group.
+// Answered with Ack, also when it is so already; "tab.unknown";
+// "tab.no_page"; "window.private"; or "favourite.too_many" (a row has at
+// most twelve).
+message SetFavourite {
+  uint64 tab_id = 1;
+  bool favourite = 2;
+}
+
 // A window, as its subscription publishes it.
 message WindowSnapshot {
   uint64 window_id = 1;
@@ -206,12 +220,17 @@ message WindowSnapshot {
   // Since 1.26. The window is private (037). A shell says so in words.
   bool private_window = 9;
   // Since 1.31. The Groups of the row the window shows (041), in their
-  // order. The row is: the Sites that are in no Group; then each Group's
-  // Sites, Group by Group in this order; then the tabs that are no Sites.
+  // order. The row is: the Favourites (since 1.32); the Sites that are in no
+  // Group; then each Group's Sites, Group by Group in this order; then the
+  // tabs that are no Sites.
   // `tabs` has the Sites of a Group that is shut left out, but for the tab in
   // front, which is always there: a shut Group, and one with no Site, is
   // drawn from this list alone.
   repeated GroupSummary groups = 10;
+  // Since 1.32. The row has as many Favourites as a row can have (042):
+  // marking another would be refused ("favourite.too_many"). A shell offers
+  // no more by it, and needs no number of its own.
+  bool favourites_full = 11;
 }
 
 // A tab as a strip of tabs shows it: enough to name it, and no more.
@@ -239,6 +258,9 @@ message TabSummary {
   string site_name = 8 [(wt.redact) = true];
   // Since 1.31. The Group a Site is in (041); 0 for a tab that is in none.
   uint64 group_id = 9;
+  // Since 1.32. The Site is one of the row's Favourites (042): they are the
+  // first of the row, in their order, and none is in a Group.
+  bool favourite = 10;
 }
 
 message TabView {
@@ -280,6 +302,8 @@ message TabView {
   // home, and the name it was kept with.
   bool away = 18;
   string site_name = 19 [(wt.redact) = true];
+  // Since 1.32. The tab is one of its row's Favourites (042).
+  bool favourite = 20;
 }
 
 enum LoadState {

@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | **Designed; nothing built.** The choices of §6 are put to the owner |
+| **Status** | **The core, the store and the contract are built and tested, on the recommendations of §6, which are provisional:** they are put to the owner and not yet answered. **The shells draw no Favourite yet** (§7) |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "Favourites". 000 §5.6: "A row of icon tiles at the top of a Space"; §6.1: in the tab strip, "icon-only tabs" |
-| **Contract** | To be 1.32 (§5) |
+| **Contract** | 1.32 (§5). Store schema 12 (§4) |
 | **Builds on** | [039](039-sites.md): Sites. [041](041-groups.md): the row as a tree, and where a Site sits in it |
 | **Last updated** | 2026-11-22 |
 
@@ -43,7 +43,7 @@ Four or five of my Sites I open all day: mail, the calendar, the chat. I make th
 
 A saved tab gains whether it is a Favourite (schema 12).
 
-## 5. The contract (to be 1.32)
+## 5. The contract (1.32)
 
 Added; nothing is changed or removed.
 
@@ -54,9 +54,19 @@ message SetFavourite { uint64 tab_id = 1; bool favourite = 2; }
 
 message TabSummary { … bool favourite = 10; }   // it is one of the row's Favourites
 message TabView    { … bool favourite = 20; }   // the tab in front is one
+message WindowSnapshot { … bool favourites_full = 11; }   // the row can have no more
 ```
 
+`favourites_full` is so that no shell needs the number twelve: it greys "Add to Favourites" by what the core says.
+
 The Favourites are the first of `tabs`, in their order.
+
+**As built, where the design did not say:**
+
+- **Unmarking a tab that is no Favourite** is not refused and changes nothing: it is not kept by it.
+- **A row's twelve are its own:** another window's row, and another Space's, have theirs. One that is a Favourite already is not counted again; the thirteenth is refused before it is kept.
+- **A Favourite is never out of the way:** it is in no Group, so no shut Group hides it.
+- **What a store says that the core never writes** (a Site of a Group marked a Favourite; a tab that is no Site marked one): the Site comes back a Favourite in no Group, and the tab a tab.
 
 ## 6. Decisions
 
@@ -79,16 +89,21 @@ The Favourites are the first of `tabs`, in their order.
 
 ## 8. Tests
 
-To be filled in as built.
+| Where | What |
+|---|---|
+| The store (`session.rs`, 1 more) | A Site says whether it is a Favourite, and it is there after the store is opened again; a store from before Favourites (version 11) has its tabs and Sites as they were, none a Favourite, and one can be kept in it |
+| The core, through the contract (`favourites.rs`, 7) | **Marking:** a tab that is no Site is kept, a Favourite, the first of the row and still in front, and says so; one marked is the last of the Favourites, wherever it was; a Site is marked as a tab is; marked again it is where it was; unmarked it is a Site, the last of those in no Group; none of it loads a page or destroys a web view. **What is refused:** a tab there is not, a tab with no page, a private window's; unmarking a tab that is none keeps nothing. **Twelve:** the thirteenth is refused and not kept; one that is a Favourite is not counted again; room again when one is unmarked; another window has its own twelve; the window is told when its row is full, at twelve and not at eleven. **Groups:** a Site of a Group that is marked leaves it and the Group holds one fewer; a Favourite put in a Group is one no longer; taken out of no Group it is as it was; a shut Group hides no Favourite; removing a Group leaves them. **A Site:** closed, a Favourite sleeps at its home and is one still; let go it is a tab and none; kept again it does not go back among them. **Across a quit** (a store on disk): in the order they were made, each asleep at its home; unmarked and quit again. **A store that says what the core never writes:** only a Site is a Favourite, and none is in a Group |
+| The rule broken, a part at a time | 25 parts, in the model and in the store: 23 caught. The two that were not were no faults: a condition that could never differ and a move the row's order already makes, both taken out of the code |
 
 ## 9. What is not verified
 
-To be filled in as built.
+- **Nothing draws a Favourite as one.** The shells are told (1.32) and draw it as the Site it is, first in the row; no shell can ask for one yet.
+- **The choices of §6** are the recommendations, not the owner's word.
 
 ## 10. Done checklist
 
 - [ ] The owner's word on §6.
-- [ ] The core, the store and the contract.
+- [x] The core, the store and the contract.
 - [ ] The Apple shell.
 - [ ] The Android shell.
 - [ ] `Tools/test.sh all` green, and `android-device`.

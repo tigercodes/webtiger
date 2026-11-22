@@ -10,9 +10,9 @@ use wt_app::{Dispatcher, HOST_TIMEOUT, Outbox, StartError};
 use wt_proto::v1::{
     ActivateTab, CloseTab, ColourGroup, CoreConfig, EngineEvent, EngineInfo, EngineKind, Envelope,
     FakeOptions, HostResponse, KeepTab, LetGoSite, MakeGroup, MoveToGroup, OpenTab, OpenWindow,
-    Platform, RemoveGroup, RenameGroup, Request, SendSiteHome, ShutGroup, SubmitAddress, Subscribe,
-    TestMode, WindowSnapshot, WindowTopic, envelope, event, host_request, host_response, request,
-    response, snapshot, subscribe,
+    Platform, RemoveGroup, RenameGroup, Request, SendSiteHome, SetFavourite, ShutGroup,
+    SubmitAddress, Subscribe, TestMode, WindowSnapshot, WindowTopic, envelope, event, host_request,
+    host_response, request, response, snapshot, subscribe,
 };
 use wt_proto::{CONTRACT_MAJOR, CONTRACT_MINOR};
 
@@ -388,6 +388,15 @@ impl FakeShell {
         self.request(request::Kind::MoveToGroup(MoveToGroup {
             tab_id: tab,
             group_id: group,
+        }))
+        .await
+    }
+
+    /// Marks a tab as a Favourite, or unmarks it (042), and waits.
+    pub async fn set_favourite(&mut self, tab: u64, favourite: bool) -> response::Kind {
+        self.request(request::Kind::SetFavourite(SetFavourite {
+            tab_id: tab,
+            favourite,
         }))
         .await
     }

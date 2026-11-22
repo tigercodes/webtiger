@@ -344,6 +344,7 @@ mod tests {
             home: String::new(),
             name: String::new(),
             group: 0,
+            favourite: false,
         };
         store
             .save_tabs(made.id, std::slice::from_ref(&kept))
@@ -351,7 +352,7 @@ mod tests {
         drop(store);
         let old = Connection::open(&path).unwrap();
         old.execute_batch(
-            "DROP TABLE node; ALTER TABLE tab DROP COLUMN site_group; ALTER TABLE tab DROP COLUMN site_home; ALTER TABLE tab DROP COLUMN site_name; DROP TABLE journal; PRAGMA user_version = 8;",
+            "ALTER TABLE tab DROP COLUMN favourite; DROP TABLE node; ALTER TABLE tab DROP COLUMN site_group; ALTER TABLE tab DROP COLUMN site_home; ALTER TABLE tab DROP COLUMN site_name; DROP TABLE journal; PRAGMA user_version = 8;",
         )
         .unwrap();
         drop(old);
