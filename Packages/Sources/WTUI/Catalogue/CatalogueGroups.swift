@@ -34,6 +34,20 @@ enum CatalogueGroups: String, CaseIterable, Identifiable {
         return [first, tab(22, "News", "news.example.com")]
     }
 
+    /// A row with Favourites (042), as a core would list it: the one in front, one asleep,
+    /// a Site that is none, and a tab.
+    static func favourites(front: WTTabSummary) -> [WTTabSummary] {
+        var calendar = tab(23, "Calendar", "calendar.example.com")
+        calendar.kept = true
+        calendar.favourite = true
+        calendar.asleep = true
+        calendar.siteName = "Calendar"
+        var wiki = tab(24, "Wiki", "wiki.example.com")
+        wiki.kept = true
+        wiki.siteName = "Wiki"
+        return [front, calendar, wiki, tab(22, "News", "news.example.com")]
+    }
+
     private static func group(_ id: UInt64, _ name: String, colour: String = "", shut: Bool = false, sites: UInt32 = 0) -> WTGroupSummary {
         var group = WTGroupSummary()
         group.groupID = id

@@ -10,6 +10,7 @@ import androidx.annotation.StringRes
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
@@ -329,7 +330,14 @@ private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit
                                 // Into a Group, or out of one: for a tab that can be kept.
                                 grouping =
                                     if (model.canBeGrouped(tab)) {
-                                        Grouping(model.groups, onMove = { model.moveToGroup(tab.tab_id, it) }, onNew = { model.askForANewGroup(tab.tab_id) })
+                                        Grouping(
+                                            model.groups,
+                                            onMove = { model.moveToGroup(tab.tab_id, it) },
+                                            onNew = { model.askForANewGroup(tab.tab_id) },
+                                            // Among the Favourites, or out of them (042).
+                                            canFavourite = model.canFavourite(tab),
+                                            onFavourite = { model.setFavourite(tab.tab_id, !tab.favourite) },
+                                        )
                                     } else {
                                         null
                                     },
@@ -377,7 +385,11 @@ private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit
     }
 }
 
-/** One tab in the strip: its name, which brings it in front, and a button that closes it. */
+/**
+ * One tab in the strip: its name, which brings it in front, and a button that closes it. A
+ * Favourite (042) is a tile: a letter, until sites have icons, with its whole name said to a
+ * screen reader, and no button at its end.
+ */
 @Composable
 private fun TabChip(
     tab: TabSummary,
@@ -396,21 +408,26 @@ private fun TabChip(
     var offering by remember { mutableStateOf(false) }
     val keepOrLetGo = stringResource(if (tab.kept) R.string.sites_let_go else R.string.sites_keep)
     val hasMenu = tab.kept || tab.host.isNotEmpty()
-    // What is said of the tab beside its name: that it is a Site, that it is away from its
-    // home, that it is asleep.
+    // What is said of the tab beside its name: that it is a Favourite, or a Site (a Favourite is
+    // one, and is not said to be both), that it is away from its home, that it is asleep.
     val said = listOfNotNull(
-        if (tab.kept) stringResource(R.string.sites_site) else null,
+        if (tab.favourite) stringResource(R.string.favourites_favourite) else if (tab.kept) stringResource(R.string.sites_site) else null,
         if (tab.away) stringResource(R.string.sites_away) else null,
         if (tab.asleep) stringResource(R.string.sites_asleep) else null,
     ).joinToString(", ")
     // "Return to Mail": for a Site that is away, by the name it was kept with.
     val sendHome = if (tab.site_name.isEmpty()) stringResource(R.string.sites_return_site) else stringResource(R.string.sites_return, tab.site_name)
+    // A tab's name: its page's title, or its site, or the words for a tab with no page.
+    val name = tab.title.ifEmpty { tab.host.ifEmpty { stringResource(R.string.tabs_untitled) } }
+    val shape = RoundedCornerShape(Tokens.Radius.field)
     Row(
         modifier =
             Modifier
                 .bringIntoViewRequester(place)
-                .clip(RoundedCornerShape(Tokens.Radius.field))
-                .background(if (inFront) Tokens.Palette.fieldFill.current else Color.Transparent),
+                .clip(shape)
+                .background(if (inFront) Tokens.Palette.fieldFill.current else Color.Transparent)
+                // A line round a Favourite: a tile, not a name.
+                .then(if (tab.favourite) Modifier.border(1.dp, Tokens.Palette.hairline.current, shape) else Modifier),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box {
@@ -426,11 +443,24 @@ private fun TabChip(
                         ).semantics {
                             selected = inFront
                             stateDescription = said
-                        }.padding(start = Tokens.Space.m)
+                            // A tile shows a letter: its whole name is what is said.
+                            if (tab.favourite) contentDescription = name
+                        }.then(if (tab.favourite) Modifier.widthIn(min = LocalMinimumInteractiveComponentSize.current) else Modifier.padding(start = Tokens.Space.m))
                         .testTag("tab"),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Tokens.Space.xs),
+                horizontalArrangement = if (tab.favourite) Arrangement.Center else Arrangement.spacedBy(Tokens.Space.xs),
             ) {
+                if (tab.favourite) {
+                    // The first letter of the name it was kept with, which does not change as
+                    // it wanders; of the name it shows, when it was kept with none.
+                    Text(
+                        text = spaceInitial(tab.site_name.ifEmpty { name }),
+                        fontWeight = if (inFront) FontWeight.Bold else FontWeight.Medium,
+                        // Asleep, it has no page: fainter, as a sleeping tab's name is.
+                        color = if (tab.asleep) MaterialTheme.colorScheme.onSurfaceVariant else Color.Unspecified,
+                        modifier = Modifier.testTag("favourite-letter"),
+                    )
+                } else {
                 if (tab.loading) {
                     // A dot, not a spinner: a tab that is loading is marked, and stays still.
                     Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Tokens.Palette.accent.current))
@@ -445,8 +475,7 @@ private fun TabChip(
                     )
                 }
                 Text(
-                    // A tab's name: its page's title, or its site, or the words for a tab with no page.
-                    text = tab.title.ifEmpty { tab.host.ifEmpty { stringResource(R.string.tabs_untitled) } },
+                    text = name,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     fontWeight = if (inFront) FontWeight.SemiBold else FontWeight.Normal,
@@ -454,6 +483,7 @@ private fun TabChip(
                     color = if (tab.asleep) MaterialTheme.colorScheme.onSurfaceVariant else Color.Unspecified,
                     modifier = Modifier.widthIn(max = 180.dp),
                 )
+                }
             }
             DropdownMenu(expanded = offering && hasMenu, onDismissRequest = { offering = false }) {
                 if (tab.away) {
@@ -466,6 +496,17 @@ private fun TabChip(
                         modifier = Modifier.testTag("site-home"),
                     )
                 }
+                // A Favourite's tile has no button at its end: its page is put to sleep here.
+                if (tab.favourite && !tab.asleep) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.sites_sleep)) },
+                        onClick = {
+                            offering = false
+                            onClose()
+                        },
+                        modifier = Modifier.testTag("favourite-sleep"),
+                    )
+                }
                 DropdownMenuItem(
                     text = { Text(keepOrLetGo) },
                     onClick = {
@@ -474,13 +515,27 @@ private fun TabChip(
                     },
                     modifier = Modifier.testTag("keep-or-let-go"),
                 )
+                // Among the Favourites, or out of them (042): grey when the row is full.
+                if (grouping != null) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(if (tab.favourite) R.string.favourites_remove else R.string.favourites_add)) },
+                        enabled = grouping.canFavourite,
+                        onClick = {
+                            offering = false
+                            grouping.onFavourite()
+                        },
+                        modifier = Modifier.testTag("favourite"),
+                    )
+                }
                 // "Move to Group" (041): the Groups of the row, none, and a new one.
                 if (grouping != null) {
                     MoveToGroupItems(grouping.groups, current = tab.group_id, onMove = grouping.onMove, onNew = grouping.onNew, onChosen = { offering = false })
                 }
             }
         }
-        if (tab.kept && tab.asleep) {
+        if (tab.favourite) {
+            // A tile is as small as it can be pressed: it has no button at its end.
+        } else if (tab.kept && tab.asleep) {
             // A sleeping Site has no page to close: its place stays as wide as it was.
             Spacer(modifier = Modifier.minimumInteractiveComponentSize().size(40.dp))
         } else {

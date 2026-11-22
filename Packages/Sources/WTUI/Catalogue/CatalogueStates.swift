@@ -19,6 +19,7 @@ enum CatalogueState: String, CaseIterable, Identifiable {
     case history
     case tabs
     case sites
+    case favourites
     case groups
     case find
     case findNone = "find-none"
@@ -50,6 +51,7 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         case .history: Words.catalogueStateHistory
         case .tabs: Words.catalogueStateTabs
         case .sites: Words.catalogueStateSites
+        case .favourites: Words.catalogueStateFavourites
         case .groups: Words.catalogueStateGroups
         case .find: Words.catalogueStateFind
         case .findNone: Words.catalogueStateFindNone
@@ -158,6 +160,14 @@ enum CatalogueState: String, CaseIterable, Identifiable {
             page(&window, url: "https://mail.example.com/", display: "mail.example.com", security: .secure)
             window.tab.title = "Mail"
             window.tab.kept = true
+        case .favourites:
+            // Favourites (042): the tab in front is one; beside it one that is asleep, a
+            // Site that is none, and a tab.
+            page(&window, url: "https://mail.example.com/", display: "mail.example.com", security: .secure)
+            window.tab.title = "Mail"
+            window.tab.kept = true
+            window.tab.favourite = true
+            window.tab.siteName = "Mail"
         case .groups:
             // Groups (041): the tab in front is the Site of an open Group that has a colour;
             // after it a Group that is shut, and a tab.
@@ -232,7 +242,12 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         front.host = window.tab.address.url.isEmpty ? "" : window.tab.address.host
         front.loading = window.tab.loadState == .loading
         front.kept = window.tab.kept
+        front.favourite = window.tab.favourite
+        front.siteName = window.tab.siteName
         window.tabs = [front]
+        if self == .favourites {
+            window.tabs = CatalogueGroups.favourites(front: front)
+        }
         if self == .sites {
             var away = Self.neighbour(20, title: "A page", host: "wiki.example.com")
             away.kept = true

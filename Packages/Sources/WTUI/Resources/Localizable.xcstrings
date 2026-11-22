@@ -193,6 +193,18 @@
         }
       }
     },
+    "catalogue.state.favourites": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favourites, as tiles"
+          }
+        }
+      }
+    },
     "catalogue.state.find": {
       "comment": "Design catalogue: a state of the window.",
       "extractionState": "manual",
@@ -1281,6 +1293,42 @@
           "stringUnit": {
             "state": "translated",
             "value": "This page didn’t load"
+          }
+        }
+      }
+    },
+    "favourites.add": {
+      "comment": "Command in a tab's own menu (on a Mac in the File menu, for the tab in front): the tab becomes one of the row's Favourites, the small tiles at its beginning. A tab that is no Site is kept as one by it. Grey when the row has as many Favourites as it can.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add to Favourites"
+          }
+        }
+      }
+    },
+    "favourites.favourite": {
+      "comment": "Said of a tab that is a Favourite, to a screen reader, with the tab's name: its tile shows only a letter.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favourite"
+          }
+        }
+      }
+    },
+    "favourites.remove": {
+      "comment": "The same command for a tab that is a Favourite: it is a Site like any other again.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove from Favourites"
           }
         }
       }

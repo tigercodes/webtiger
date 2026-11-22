@@ -34,6 +34,8 @@
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_failed_certificate_warning">The warning before going on past a certificate</string>
     <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_favourites">Favourites, as tiles</string>
+    <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_find">Find on the page, with a count</string>
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_find_none">Find on the page, not found</string>
@@ -215,6 +217,12 @@
     <string name="error_system_no_handler">Nothing on this device opens this kind of file.</string>
     <!-- Heading shown over a page that failed to load. -->
     <string name="error_title">This page didn’t load</string>
+    <!-- Command in a tab's own menu (on a Mac in the File menu, for the tab in front): the tab becomes one of the row's Favourites, the small tiles at its beginning. A tab that is no Site is kept as one by it. Grey when the row has as many Favourites as it can. -->
+    <string name="favourites_add">Add to Favourites</string>
+    <!-- Said of a tab that is a Favourite, to a screen reader, with the tab's name: its tile shows only a letter. -->
+    <string name="favourites_favourite">Favourite</string>
+    <!-- The same command for a tab that is a Favourite: it is a Site like any other again. -->
+    <string name="favourites_remove">Remove from Favourites</string>
     <!-- Shown in the find bar where the engine counts: which match is shown, and how many there are. First %ld is the match's number, second the total. -->
     <string name="find_count">%1$d of %2$d</string>
     <!-- Button that closes the find bar. -->

@@ -84,7 +84,12 @@ struct TabStrip: View {
                     ForEach(StripItem.row(tabs: model.tabs, groups: model.groups)) { item in
                         switch item {
                         case let .tab(tab):
-                            chip(tab).id(tab.tabID)
+                            // A Favourite is a tile (042); any other tab has its name.
+                            if tab.favourite {
+                                tile(tab).id(tab.tabID)
+                            } else {
+                                chip(tab).id(tab.tabID)
+                            }
                         case let .group(group):
                             GroupChip(
                                 group: group,
@@ -133,6 +138,39 @@ struct TabStrip: View {
             .accessibilityElement(children: .contain)
             .accessibilityLabel(Text(Words.tabsList))
             .accessibilityIdentifier("tab-strip")
+    }
+
+    /// A Favourite's tile (042): a letter, until sites have icons; the first of the name it
+    /// was kept with. Its whole name is said to a screen reader, and shown where a pointer
+    /// rests on it. It has no button at its end: a tile is as small as it can be pressed.
+    private func tile(_ tab: WTTabSummary) -> some View {
+        let isFront = tab.tabID == model.tab.tabID
+        let name = Self.shownName(of: tab, locale: locale)
+        return Button {
+            model.activate(tab.tabID)
+        } label: {
+            Text(verbatim: Self.letter(of: tab, locale: locale))
+                .font(.callout)
+                .fontWeight(isFront ? .bold : .medium)
+                // Asleep, it has no page: fainter, as a sleeping tab's name is.
+                .opacity(tab.asleep ? TabStrip.asleepOpacity : 1)
+                .frame(minWidth: BrowserWindowView.hitSize, minHeight: BrowserWindowView.hitSize)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(isFront ? Tokens.Palette.fieldFill : .clear, in: RoundedRectangle(cornerRadius: Tokens.Radius.field))
+        // A line round it: a tile, not a name.
+        .overlay {
+            RoundedRectangle(cornerRadius: Tokens.Radius.field).strokeBorder(Tokens.Palette.hairline, lineWidth: 1)
+        }
+        .help(Text(verbatim: name))
+        .accessibilityLabel(Text(verbatim: name))
+        .accessibilityIdentifier("tab")
+        .accessibilityAddTraits(isFront ? .isSelected : [])
+        .accessibilityValue(Text(verbatim: Self.said(of: tab, locale: locale)))
+        #if !os(macOS)
+            .contextMenu { menu(of: tab) }
+        #endif
     }
 
     private func chip(_ tab: WTTabSummary) -> some View {
@@ -196,12 +234,27 @@ struct TabStrip: View {
                         Text(verbatim: BrowserModel.returnWords(to: tab.siteName, locale: locale))
                     }
                 }
+                // A Favourite's tile has no button at its end: its page is put to sleep here.
+                if tab.favourite, !tab.asleep {
+                    Button {
+                        model.closeTab(tab.tabID)
+                    } label: {
+                        Text(Words.sitesSleep)
+                    }
+                }
                 Button {
                     model.keepOrLetGo(tab.tabID)
                 } label: {
                     Text(tab.kept ? Words.sitesLetGo : Words.sitesKeep)
                 }
                 if model.canBeGrouped(tab) {
+                    // Among the Favourites, or out of them (042): grey when the row is full.
+                    Button {
+                        model.setFavourite(tab.tabID, !tab.favourite)
+                    } label: {
+                        Text(tab.favourite ? Words.favouritesRemove : Words.favouritesAdd)
+                    }
+                    .disabled(!model.canFavourite(tab))
                     Menu {
                         MoveToGroupItems(
                             groups: model.groups, current: tab.groupID,
@@ -248,7 +301,10 @@ struct TabStrip: View {
     /// or nothing.
     static func said(of tab: WTTabSummary, locale: Locale = .current) -> String {
         var said: [String] = []
-        if tab.kept {
+        // A Favourite is a Site: it is said to be the one, not both.
+        if tab.favourite {
+            said.append(Words.favouritesFavourite.string(locale))
+        } else if tab.kept {
             said.append(Words.sitesSite.string(locale))
         }
         if tab.away {
@@ -258,6 +314,24 @@ struct TabStrip: View {
             said.append(Words.sitesAsleep.string(locale))
         }
         return said.formatted(.list(type: .and, width: .narrow).locale(locale))
+    }
+
+    /// A tab's name as words: its page's title, or its site, or the words for a tab with no
+    /// page.
+    static func shownName(of tab: WTTabSummary, locale: Locale = .current) -> String {
+        if !tab.title.isEmpty {
+            tab.title
+        } else if !tab.host.isEmpty {
+            tab.host
+        } else {
+            Words.tabsUntitled.string(locale)
+        }
+    }
+
+    /// The letter on a Favourite's tile: the first of the name it was kept with, which does
+    /// not change as it wanders; of the name it shows, when it was kept with none.
+    static func letter(of tab: WTTabSummary, locale: Locale = .current) -> String {
+        SpaceName.initial(of: tab.siteName.isEmpty ? shownName(of: tab, locale: locale) : tab.siteName)
     }
 
     /// A tab's name: its page's title, or its site, or the words for a tab with no page.

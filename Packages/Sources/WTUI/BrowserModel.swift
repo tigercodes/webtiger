@@ -14,6 +14,9 @@ public final class BrowserModel {
     public private(set) var tabs: [WTTabSummary] = []
     /// The Groups of the row the window shows (041), in their order.
     public private(set) var groups: [WTGroupSummary] = []
+    /// The row has as many Favourites as it can (042): the core says so, and no more is
+    /// offered.
+    public private(set) var favouritesFull = false
     /// What the Group page is open for; nothing while it is not open.
     public internal(set) var groupAsked: GroupAsk?
     /// Why the core would not make a Group, or change one, by its code: said on that page.
@@ -471,6 +474,7 @@ public final class BrowserModel {
         tab = snapshot.tab
         tabs = snapshot.tabs
         groups = snapshot.groups
+        favouritesFull = snapshot.favouritesFull
         downloadsActive = snapshot.downloadsActive
         spaceID = snapshot.spaceID
         spaceName = snapshot.spaceName

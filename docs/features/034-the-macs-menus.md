@@ -38,6 +38,7 @@ On the Mac I look in the menu bar for what a browser can do, and it is there, ea
 | File | Open Location | ⌘L | |
 | File | Reopen Closed Tab | ⇧⌘T | there is none to bring back (033) |
 | File | Keep as Site, or Stop Keeping for a tab that is one (since [039](039-sites.md)) | ⌘D | the tab in front has no page and is no Site |
+| File | Add to Favourites, or Remove from Favourites for a tab that is one (since [042](042-favourites.md)) | | the tab in front has no page and is no Site, the window is a private one, or the row has as many Favourites as it can |
 | File | Move to Group, a menu: the Groups of the row by name and "No Group", the one that is the tab's marked, and "New Group…" (since [041](041-groups.md)) | | the tab in front has no page and is no Site, or the window is a private one |
 | History | Return to the Site, by its name ("Return to Mail"; since 039) | ⇧⌘H | the tab in front is no Site, or is at its home: the item then says "Return to Site" |
 | File | Close Tab | ⌘W | |

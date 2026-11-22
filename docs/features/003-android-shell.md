@@ -235,7 +235,7 @@ The line above was run against the emulator, with a page served from the Mac (`1
 
 An emulator without a window, made by `Tools/android/emulator.sh` from the Google APIs image for Android 16 (API 36, `arm64-v8a`, revision 7) with the Pixel 8 profile, on a Mac with Apple silicon; its System WebView is **133.0.6943.137**. 2026-11-18.
 
-`Tools/test.sh android-device` runs the tests in `Android/app/src/androidTest` there: 158 pass. From a cold emulator the whole step took 40 s, the boot included.
+`Tools/test.sh android-device` runs the tests in `Android/app/src/androidTest` there: 159 pass. From a cold emulator the whole step took 40 s, the boot included.
 
 | Suite | Count | What it shows |
 |---|---|---|
@@ -265,6 +265,7 @@ An emulator without a window, made by `Tools/android/emulator.sh` from the Googl
 | `AppPrivateTest` | 2 | A private window ([037](037-private-windows.md) §5.3): opened from the list of Spaces, signed in to the test site, left and shown again as it was, closed; the other window is never signed in, and its history has nothing of the private one's; in a private window the address field and a page's field ask the keyboard not to learn, and in the other window neither does (037 §5.5) |
 | `AppSitesTest` | 1 | Sites (039): a tab kept from its own menu says it is a Site; closed by its button it stays, asleep, by the name it was kept with; pressed, it wakes at its home; Ctrl+D lets it go and keeps it again |
 | `AppGroupsTest` | 1 | Groups ([041](041-groups.md)): a tab put in a new Group from its own menu is kept, and the Group has its chip; with a second tab in front a press on the chip puts the Site out of the way and says how many the Group holds, and another has it back, neither loading anything; the Group is edited from its own menu; "No Group" takes the Site out and the Group's name puts it back; removed while shut, the Group is gone and its Site stays |
+| `AppFavouritesTest` | 1 | Favourites ([042](042-favourites.md)): of two tabs one is made a Favourite from its own menu and is a tile, first in the row, with its letter, saying its whole name; pressed, it brings its page; put to sleep from its menu it stays and wakes when pressed; removed from the Favourites it is a Site with its button |
 
 Also done by hand there, and looked at in screenshots: the app started with the `am start` line of §7 and a page served from the Mac; a link, back and forward; the keyboard that comes up is the address one, with Go; a load that timed out (the emulator's network was not up yet, seconds after its boot) showed the failed page in words, and Try Again loaded the page; `example.com` typed into the field loaded over https with the padlock and the short form of the address; the dark theme, switched while the app ran, redrew the window without making the activity again.
 
@@ -304,7 +305,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | `cd Core && cargo test --workspace --locked` | 139 passed |
 | `Tools/test.sh android`, from nothing | OK, 48 s |
 | … `:core-engine:testDebugUnitTest` | 32 passed |
-| … `:app:testDebugUnitTest` | 397 passed |
+| … `:app:testDebugUnitTest` | 401 passed |
 | … `:app:assembleDebug` | `app-debug.apk`, with `libwebtiger_core.so` for `arm64-v8a` and `x86_64` |
 | `Tools/strings/generate.sh --check` (as first run, the Python script it replaced), `Tools/design/tokens.py --check` | up to date; the Apple outputs' checksums unchanged |
 | `./gradlew :app:lintDebug` | no errors. Apart from notices that newer versions exist, two warnings are left on purpose: no launcher icon (the brand is not settled, 001 F10), and `toolbar_open_location` unused (it is the Mac's ⌘L) |
@@ -347,6 +348,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | `PrivateWindowTest` | 9 | A private window on a phone (037): asked for as one; what it says of itself; the page behind its chip; the row that opens it in the list of Spaces; the holder that shows one window at a time and closes the private one in the core; what the keyboard is told of the address field, in a private window and in an ordinary one (037 §5.5) |
 | `SitesTest` | 5 | Sites (039): the one command with two names against a scripted core; the strip's mark, what each tab says of itself, the button at a Site's end; a tab's own menu, held; a Site that is away: sent home only when the core says it is away; the outline for its mark, what it says, and the way home in its menu by its name |
 | `GroupsTest` | 9 | Groups (041): the row made of the core's two lists, the tabs never in another order than the core's; the model against a scripted core (shut and open, move, remove, a new Group made, coloured and given its tab, an edit by what changed, what the core refuses); the strip's chips, what they show and say, and where they stand; a Group's own menu; "Move to Group" in a tab's menu, with the tab's own marked; the page, and what is refused said on it in words |
+| `FavouritesTest` | 4 | Favourites (042): the model against a scripted core, and that no more is offered when the core says the row is full; the tile, its letter, what it says and that it has no button at its end; "Put to Sleep" and the command in a tab's own menu |
 | `CatalogueSnapshotTest` | 25 | The design catalogue as pictures, drawn on the JVM, and the failed page at twice the text size (004) |
 | `ThroughTheCoreTest` | 11 | The model, the session, the engine and the tracker over the **real core**: a page loads in the Space's login set; a page cannot put an address in the field it has not become; a failure by its code; fake mode, where each mode saves a download (013), and that only the app started for real may have the system ask the person (014); no profiles; a Space's colour ([025](025-space-colours.md)); words another app hands over are searched for in a new tab ([028](028-search-from-other-apps.md)); an address another app hands over opens in a new tab, and what is no address of the web opens nothing ([031](031-links-from-other-apps.md)) |
 

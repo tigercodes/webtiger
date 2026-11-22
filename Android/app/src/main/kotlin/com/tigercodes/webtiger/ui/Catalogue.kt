@@ -101,6 +101,7 @@ internal enum class CatalogueState(@StringRes val title: Int) {
     HISTORY(R.string.catalogue_state_history),
     TABS(R.string.catalogue_state_tabs),
     SITES(R.string.catalogue_state_sites),
+    FAVOURITES(R.string.catalogue_state_favourites),
     GROUPS(R.string.catalogue_state_groups),
     FIND(R.string.catalogue_state_find),
     FIND_NONE(R.string.catalogue_state_find_none),
@@ -247,6 +248,9 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                     // Sites (039): the tab in front is one, awake; beside it one that is
                     // asleep, and a tab that is none.
                     SITES -> page("https://mail.example.com/", "mail.example.com").copy(title = "Mail", kept = true)
+                    // Favourites (042): the tab in front is one; beside it one that is asleep,
+                    // a Site that is none, and a tab.
+                    FAVOURITES -> page("https://mail.example.com/", "mail.example.com").copy(title = "Mail", kept = true, favourite = true, site_name = "Mail")
                     // Groups (041): the tab in front is the Site of an open Group that has a
                     // colour; after it a Group that is shut, and a tab.
                     GROUPS -> page("https://wiki.example.com/", "wiki.example.com").copy(title = "Wiki", kept = true)
@@ -297,6 +301,8 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                     host = tab.address?.host.orEmpty(),
                     loading = tab.load_state == LoadState.LOAD_STATE_LOADING,
                     kept = tab.kept,
+                    favourite = tab.favourite,
+                    site_name = tab.site_name,
                 )
             val tabs =
                 if (this == SITES) {
@@ -304,6 +310,13 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                         front,
                         TabSummary(tab_id = 20, title = "A page", host = "wiki.example.com", kept = true, away = true, site_name = "Wiki"),
                         TabSummary(tab_id = 21, title = "Board", host = "board.example.com", kept = true, asleep = true, site_name = "Board"),
+                        TabSummary(tab_id = 22, title = "News", host = "news.example.com"),
+                    )
+                } else if (this == FAVOURITES) {
+                    listOf(
+                        front,
+                        TabSummary(tab_id = 23, title = "Calendar", host = "calendar.example.com", kept = true, favourite = true, asleep = true, site_name = "Calendar"),
+                        TabSummary(tab_id = 24, title = "Wiki", host = "wiki.example.com", kept = true, site_name = "Wiki"),
                         TabSummary(tab_id = 22, title = "News", host = "news.example.com"),
                     )
                 } else if (this == GROUPS) {

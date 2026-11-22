@@ -21,6 +21,7 @@
   <data name="catalogue_state_failed" xml:space="preserve"><value>A page that failed</value><comment>Design catalogue: a state of the window.</comment></data>
   <data name="catalogue_state_failed_certificate" xml:space="preserve"><value>A certificate that isn’t trusted</value><comment>Design catalogue: a state of the window.</comment></data>
   <data name="catalogue_state_failed_certificate_warning" xml:space="preserve"><value>The warning before going on past a certificate</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_favourites" xml:space="preserve"><value>Favourites, as tiles</value><comment>Design catalogue: a state of the window.</comment></data>
   <data name="catalogue_state_find" xml:space="preserve"><value>Find on the page, with a count</value><comment>Design catalogue: a state of the window.</comment></data>
   <data name="catalogue_state_find_none" xml:space="preserve"><value>Find on the page, not found</value><comment>Design catalogue: a state of the window.</comment></data>
   <data name="catalogue_state_group_edit" xml:space="preserve"><value>Editing a Group, refused</value><comment>Design catalogue: a state of the page of a Group.</comment></data>
@@ -112,6 +113,9 @@
   <data name="error_start_title" xml:space="preserve"><value>WebTiger couldn’t start</value><comment>Heading when the core refused to start.</comment></data>
   <data name="error_system_no_handler" xml:space="preserve"><value>Nothing on this device opens this kind of file.</value><comment>Under a download in the list, after a person pressed it to open its file: no app on the device opens files of its kind.</comment></data>
   <data name="error_title" xml:space="preserve"><value>This page didn’t load</value><comment>Heading shown over a page that failed to load.</comment></data>
+  <data name="favourites_add" xml:space="preserve"><value>Add to Favourites</value><comment>Command in a tab&apos;s own menu (on a Mac in the File menu, for the tab in front): the tab becomes one of the row&apos;s Favourites, the small tiles at its beginning. A tab that is no Site is kept as one by it. Grey when the row has as many Favourites as it can.</comment></data>
+  <data name="favourites_favourite" xml:space="preserve"><value>Favourite</value><comment>Said of a tab that is a Favourite, to a screen reader, with the tab&apos;s name: its tile shows only a letter.</comment></data>
+  <data name="favourites_remove" xml:space="preserve"><value>Remove from Favourites</value><comment>The same command for a tab that is a Favourite: it is a Site like any other again.</comment></data>
   <data name="find_count" xml:space="preserve"><value>{0} of {1}</value><comment>Shown in the find bar where the engine counts: which match is shown, and how many there are. First %ld is the match&apos;s number, second the total.</comment></data>
   <data name="find_done" xml:space="preserve"><value>Done</value><comment>Button that closes the find bar.</comment></data>
   <data name="find_field" xml:space="preserve"><value>Find on page</value><comment>Placeholder and accessibility label of the find bar&apos;s field.</comment></data>

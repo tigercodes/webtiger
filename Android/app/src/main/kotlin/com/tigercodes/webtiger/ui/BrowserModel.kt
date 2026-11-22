@@ -37,6 +37,7 @@ import com.tigercodes.webtiger.core.v1.Request
 import com.tigercodes.webtiger.core.v1.SearchSettings
 import com.tigercodes.webtiger.core.v1.SearchWords
 import com.tigercodes.webtiger.core.v1.SendSiteHome
+import com.tigercodes.webtiger.core.v1.SetFavourite
 import com.tigercodes.webtiger.core.v1.SpaceSummary
 import com.tigercodes.webtiger.core.v1.SubmitAddress
 import com.tigercodes.webtiger.core.v1.SuggestAddresses
@@ -91,6 +92,10 @@ class BrowserModel(
 
     /** The Groups of the row the window shows (041), in their order. */
     var groups by mutableStateOf<List<GroupSummary>>(emptyList())
+        private set
+
+    /** The row has as many Favourites as it can (042): the core says so, and no more is offered. */
+    var favouritesFull by mutableStateOf(false)
         private set
 
     /** How many downloads of the window's Space are coming (013): the core's count. */
@@ -309,6 +314,20 @@ class BrowserModel(
     fun sendHomeTheTabInFront() {
         val front = frontTabId ?: return
         if (tab.away) sendHome(front)
+    }
+
+    // Favourites (042)
+
+    /**
+     * A tab can be made a Favourite, or is one that can stop being one: the command has
+     * something to do. A tab with nothing to keep, a private window's tab, and any tab while the
+     * core says the row is full, cannot be made one.
+     */
+    fun canFavourite(tab: TabSummary): Boolean = tab.favourite || (canBeGrouped(tab) && !favouritesFull)
+
+    /** Marks a tab as a Favourite, or unmarks it. A tab that is no Site is kept by it: the core's rule. */
+    fun setFavourite(id: Long, favourite: Boolean) {
+        session.send(Request(set_favourite = SetFavourite(tab_id = id, favourite = favourite)))
     }
 
     // Groups (041)
@@ -925,6 +944,7 @@ class BrowserModel(
         tab = front
         tabs = snapshot.tabs
         groups = snapshot.groups
+        favouritesFull = snapshot.favourites_full
         downloadsActive = snapshot.downloads_active
         spaceId = snapshot.space_id
         spaceName = snapshot.space_name

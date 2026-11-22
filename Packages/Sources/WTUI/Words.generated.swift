@@ -83,6 +83,11 @@ enum Words {
     /// Design catalogue: a state of the window.
     static let catalogueStateFailedCertificateWarning = Word(key: "catalogue.state.failed_certificate_warning")
 
+    /// Favourites, as tiles
+    ///
+    /// Design catalogue: a state of the window.
+    static let catalogueStateFavourites = Word(key: "catalogue.state.favourites")
+
     /// Find on the page, with a count
     ///
     /// Design catalogue: a state of the window.
@@ -537,6 +542,21 @@ enum Words {
     ///
     /// Heading shown over a page that failed to load.
     static let errorTitle = Word(key: "error.title")
+
+    /// Add to Favourites
+    ///
+    /// Command in a tab's own menu (on a Mac in the File menu, for the tab in front): the tab becomes one of the row's Favourites, the small tiles at its beginning. A tab that is no Site is kept as one by it. Grey when the row has as many Favourites as it can.
+    static let favouritesAdd = Word(key: "favourites.add")
+
+    /// Favourite
+    ///
+    /// Said of a tab that is a Favourite, to a screen reader, with the tab's name: its tile shows only a letter.
+    static let favouritesFavourite = Word(key: "favourites.favourite")
+
+    /// Remove from Favourites
+    ///
+    /// The same command for a tab that is a Favourite: it is a Site like any other again.
+    static let favouritesRemove = Word(key: "favourites.remove")
 
     /// %ld of %ld
     ///
@@ -1343,6 +1363,7 @@ extension Word {
         "catalogue.state.failed",
         "catalogue.state.failed_certificate",
         "catalogue.state.failed_certificate_warning",
+        "catalogue.state.favourites",
         "catalogue.state.find",
         "catalogue.state.find_none",
         "catalogue.state.group_edit",
@@ -1434,6 +1455,9 @@ extension Word {
         "error.start.title",
         "error.system.no_handler",
         "error.title",
+        "favourites.add",
+        "favourites.favourite",
+        "favourites.remove",
         "find.count",
         "find.done",
         "find.field",

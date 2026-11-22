@@ -72,8 +72,18 @@ sealed interface GroupAsk {
     data class Edit(val group: GroupSummary) : GroupAsk
 }
 
-/** What a tab's menu needs for "Move to Group": the Groups of the row, and what choosing one, or a new one, asks. */
-internal class Grouping(val groups: List<GroupSummary>, val onMove: (Long) -> Unit, val onNew: () -> Unit)
+/**
+ * What the menu of a tab that can be kept needs beyond keeping it: for "Move to Group" (041),
+ * the Groups of the row, and what choosing one, or a new one, asks; for the Favourites (042),
+ * whether the command has something to do now, and what it asks.
+ */
+internal class Grouping(
+    val groups: List<GroupSummary>,
+    val onMove: (Long) -> Unit,
+    val onNew: () -> Unit,
+    val canFavourite: Boolean = false,
+    val onFavourite: () -> Unit = {},
+)
 
 /** What the strip draws, in order: a tab, or a Group's chip. */
 internal sealed interface StripItem {

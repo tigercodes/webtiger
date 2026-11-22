@@ -145,6 +145,14 @@ private struct Command: View {
             ) {
                 window?.model.keepOrLetGoTheTabInFront()
             }
+            // The tab in front among the Favourites, or out of them (042): grey when there is
+            // nothing to keep, and when the row has as many as it can.
+            Button {
+                window?.model.addOrRemoveTheTabInFrontAsAFavourite()
+            } label: {
+                Text(window?.model.tab.favourite == true ? Words.favouritesRemove : Words.favouritesAdd)
+            }
+            .disabled(window?.model.canFavouriteTheTabInFront != true)
             // The tab in front is put in a Group, or taken out of one (041).
             Menu {
                 MoveToGroupItems(
