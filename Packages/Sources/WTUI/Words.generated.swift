@@ -203,6 +203,11 @@ enum Words {
     /// Design catalogue: a state of the window.
     static let catalogueStateSecure = Word(key: "catalogue.state.secure")
 
+    /// Sites, awake and asleep
+    ///
+    /// Design catalogue: a state of the window.
+    static let catalogueStateSites = Word(key: "catalogue.state.sites")
+
     /// The list of Spaces
     ///
     /// Design catalogue: a state of the list of Spaces.
@@ -883,6 +888,31 @@ enum Words {
     /// In the menu of words that are selected in a page: search for those words, in a new tab. %@ is the search engine's own name, such as Ecosia.
     static let selectionSearchWith = Word(key: "selection.search_with")
 
+    /// Asleep
+    ///
+    /// Said of a tab that has no page loaded now, to a screen reader, with the tab's name: a Site that was closed, or a tab that came back after a quit. Opening it loads it.
+    static let sitesAsleep = Word(key: "sites.asleep")
+
+    /// Keep as Site
+    ///
+    /// Command (Command-D on a Mac, Control-D with a keyboard on Android; in a tab's own menu on a phone): keep the tab as a Site. A Site stays first in the row, and is put to sleep, not closed, when it is closed.
+    static let sitesKeep = Word(key: "sites.keep")
+
+    /// Stop Keeping
+    ///
+    /// The same command for a tab that is a Site: it becomes a tab like any other again.
+    static let sitesLetGo = Word(key: "sites.let_go")
+
+    /// Site
+    ///
+    /// Said of a tab that is kept, to a screen reader, with the tab's name.
+    static let sitesSite = Word(key: "sites.site")
+
+    /// Put to Sleep
+    ///
+    /// Label of the button at the end of a Site's tab, where another tab has Close Tab: the Site's page is closed and the Site stays in the row.
+    static let sitesSleep = Word(key: "sites.sleep")
+
     /// If you choose none, it gets one that no other Space has.
     ///
     /// Under the colours on the page that makes a Space.
@@ -1207,6 +1237,7 @@ extension Word {
         "catalogue.state.search_change",
         "catalogue.state.search_question",
         "catalogue.state.secure",
+        "catalogue.state.sites",
         "catalogue.state.spaces",
         "catalogue.state.spaces_new",
         "catalogue.state.spaces_new_shared",
@@ -1343,6 +1374,11 @@ extension Word {
         "search.question.detail",
         "search.question.title",
         "selection.search_with",
+        "sites.asleep",
+        "sites.keep",
+        "sites.let_go",
+        "sites.site",
+        "sites.sleep",
         "space.automatic_colour",
         "space.chip",
         "space.chosen_colour",

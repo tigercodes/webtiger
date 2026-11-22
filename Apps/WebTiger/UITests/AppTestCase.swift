@@ -206,12 +206,13 @@ class AppTestCase: XCTestCase {
             if issue.auditType == .textClipped, element?.identifier == "tab" {
                 return true
             }
-            // A tab scrolled part of the way out of the strip is not drawn whole: what
-            // the strip cuts off has no contrast to measure, and what is measured there
-            // is whatever is beside the strip. (With two tabs an iPhone's strip scrolls.)
-            if issue.auditType == .contrast, element?.identifier == "tab", let frame = element?.frame {
+            // What the strip has scrolled part of the way out of view is not drawn whole: a tab,
+            // or the name inside it. What is cut off has no contrast to measure, and what is
+            // measured there is whatever is beside the strip. (With two tabs an iPhone's strip
+            // scrolls.)
+            if issue.auditType == .contrast, let frame = element?.frame {
                 let strip = app.descendants(matching: .any).matching(identifier: "tab-strip").firstMatch
-                if strip.exists, !strip.frame.contains(frame) {
+                if strip.exists, !strip.frame.contains(frame), frame.minY >= strip.frame.minY - 1, frame.maxY <= strip.frame.maxY + 1 {
                     return true
                 }
             }

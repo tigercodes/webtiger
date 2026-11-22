@@ -99,6 +99,7 @@ internal enum class CatalogueState(@StringRes val title: Int) {
     FAILED_CERTIFICATE_WARNING(R.string.catalogue_state_failed_certificate_warning),
     HISTORY(R.string.catalogue_state_history),
     TABS(R.string.catalogue_state_tabs),
+    SITES(R.string.catalogue_state_sites),
     FIND(R.string.catalogue_state_find),
     FIND_NONE(R.string.catalogue_state_find_none),
     SUGGESTIONS(R.string.catalogue_state_suggestions),
@@ -241,6 +242,9 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                         )
                     HISTORY -> page("https://example.com/second", "example.com/second").copy(can_go_back = true, can_go_forward = true)
                     TABS -> page("https://example.com/", "example.com").copy(title = "Example Domain")
+                    // Sites (039): the tab in front is one, awake; beside it one that is
+                    // asleep, and a tab that is none.
+                    SITES -> page("https://mail.example.com/", "mail.example.com").copy(title = "Mail", kept = true)
                     // An engine that counts: the third of twelve.
                     FIND ->
                         page("https://example.com/", "example.com")
@@ -287,9 +291,16 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                     title = tab.title,
                     host = tab.address?.host.orEmpty(),
                     loading = tab.load_state == LoadState.LOAD_STATE_LOADING,
+                    kept = tab.kept,
                 )
             val tabs =
-                if (this == TABS) {
+                if (this == SITES) {
+                    listOf(
+                        front,
+                        TabSummary(tab_id = 21, title = "Board", host = "board.example.com", kept = true, asleep = true),
+                        TabSummary(tab_id = 22, title = "News", host = "news.example.com"),
+                    )
+                } else if (this == TABS) {
                     listOf(
                         TabSummary(tab_id = 11, title = "A page whose title is longer than a tab is wide"),
                         front,

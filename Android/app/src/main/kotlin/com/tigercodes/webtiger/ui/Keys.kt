@@ -25,6 +25,9 @@ internal sealed interface KeyCommand {
 
     data object ReopenClosedTab : KeyCommand
 
+    /** Keep the tab in front as a Site, or let a Site go (039). */
+    data object KeepOrLetGo : KeyCommand
+
     data object NextTab : KeyCommand
 
     data object PreviousTab : KeyCommand
@@ -82,6 +85,7 @@ internal fun keyCommand(key: Key, ctrl: Boolean, shift: Boolean, alt: Boolean, m
             when (key) {
                 Key.T -> KeyCommand.NewTab
                 Key.W -> KeyCommand.CloseTab
+                Key.D -> KeyCommand.KeepOrLetGo
                 Key.Tab -> KeyCommand.NextTab
                 Key.Nine -> KeyCommand.LastTab
                 Key.L -> KeyCommand.OpenLocation
@@ -133,6 +137,7 @@ internal fun BrowserModel.perform(command: KeyCommand, openLocation: () -> Unit,
         KeyCommand.NewTab -> openTab()
         KeyCommand.CloseTab -> closeTab(tab.tab_id)
         KeyCommand.ReopenClosedTab -> reopenClosedTab()
+        KeyCommand.KeepOrLetGo -> keepOrLetGoTheTabInFront()
         KeyCommand.NextTab -> stepTab(StepTab.To.TO_NEXT)
         KeyCommand.PreviousTab -> stepTab(StepTab.To.TO_PREVIOUS)
         KeyCommand.LastTab -> stepTab(StepTab.To.TO_LAST)

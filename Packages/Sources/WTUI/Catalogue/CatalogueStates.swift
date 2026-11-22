@@ -18,6 +18,7 @@ enum CatalogueState: String, CaseIterable, Identifiable {
     case failedCertificateWarning = "failed-certificate-warning"
     case history
     case tabs
+    case sites
     case find
     case findNone = "find-none"
     case suggestions
@@ -47,6 +48,7 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         case .failedCertificateWarning: Words.catalogueStateFailedCertificateWarning
         case .history: Words.catalogueStateHistory
         case .tabs: Words.catalogueStateTabs
+        case .sites: Words.catalogueStateSites
         case .find: Words.catalogueStateFind
         case .findNone: Words.catalogueStateFindNone
         case .suggestions: Words.catalogueStateSuggestions
@@ -148,6 +150,12 @@ enum CatalogueState: String, CaseIterable, Identifiable {
             page(&window, url: "https://example.com/second", display: "example.com/second", security: .secure)
             window.tab.canGoBack = true
             window.tab.canGoForward = true
+        case .sites:
+            // Sites (039): the tab in front is one, awake; beside it one that is asleep, and
+            // a tab that is none.
+            page(&window, url: "https://mail.example.com/", display: "mail.example.com", security: .secure)
+            window.tab.title = "Mail"
+            window.tab.kept = true
         case .tabs:
             page(&window, url: "https://example.com/", display: "example.com", security: .secure)
             window.tab.title = "Example Domain"
@@ -215,7 +223,14 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         front.title = window.tab.title
         front.host = window.tab.address.url.isEmpty ? "" : window.tab.address.host
         front.loading = window.tab.loadState == .loading
+        front.kept = window.tab.kept
         window.tabs = [front]
+        if self == .sites {
+            var asleep = Self.neighbour(21, title: "Board", host: "board.example.com")
+            asleep.kept = true
+            asleep.asleep = true
+            window.tabs = [front, asleep, Self.neighbour(22, title: "News", host: "news.example.com")]
+        }
         if self == .tabs {
             window.tabs = [
                 Self.neighbour(11, title: "A page whose title is longer than a tab is wide"),

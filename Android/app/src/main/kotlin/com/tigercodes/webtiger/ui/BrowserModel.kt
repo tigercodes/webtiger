@@ -15,6 +15,8 @@ import com.tigercodes.webtiger.core.v1.ColourSpace
 import com.tigercodes.webtiger.core.v1.CreateSpace
 import com.tigercodes.webtiger.core.v1.DialogKind
 import com.tigercodes.webtiger.core.v1.FindInPage
+import com.tigercodes.webtiger.core.v1.KeepTab
+import com.tigercodes.webtiger.core.v1.LetGoSite
 import com.tigercodes.webtiger.core.v1.LoadState
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.core.v1.OpenAddress
@@ -262,6 +264,26 @@ class BrowserModel(
     val hasFailed: Boolean get() = tab.load_state == LoadState.LOAD_STATE_FAILED
 
     val hasPage: Boolean get() = tab.web_view_id != 0L
+
+    // Sites (039)
+
+    /** The tab in front can be kept, or is a Site that can be let go: the one command has something to do. */
+    val canKeepOrLetGo: Boolean get() = tab.kept || hasPage
+
+    /**
+     * Keeps a tab as a Site, or lets it go when it is one (039). What either means, and where
+     * the tab then sits, is the core's.
+     */
+    fun keepOrLetGo(id: Long) {
+        val kept = if (id == tab.tab_id) tab.kept else tabs.firstOrNull { it.tab_id == id }?.kept == true
+        session.send(if (kept) Request(let_go_site = LetGoSite(tab_id = id)) else Request(keep_tab = KeepTab(tab_id = id)))
+    }
+
+    /** The same for the tab in front: what the key asks. */
+    fun keepOrLetGoTheTabInFront() {
+        val front = frontTabId ?: return
+        if (canKeepOrLetGo) keepOrLetGo(front)
+    }
 
     // Places offered as the address field is typed in (011)
 

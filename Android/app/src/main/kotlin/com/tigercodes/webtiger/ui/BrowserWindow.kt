@@ -84,6 +84,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
@@ -298,7 +299,13 @@ private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit
         ) {
             for (tab in model.tabs) {
                 key(tab.tab_id) {
-                    TabChip(tab, inFront = tab.tab_id == model.tab.tab_id, onActivate = { model.activate(tab.tab_id) }, onClose = { model.closeTab(tab.tab_id) })
+                    TabChip(
+                        tab,
+                        inFront = tab.tab_id == model.tab.tab_id,
+                        onActivate = { model.activate(tab.tab_id) },
+                        onClose = { model.closeTab(tab.tab_id) },
+                        onKeepOrLetGo = { model.keepOrLetGo(tab.tab_id) },
+                    )
                 }
             }
             NewTabButton(model)
@@ -336,10 +343,20 @@ private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit
 
 /** One tab in the strip: its name, which brings it in front, and a button that closes it. */
 @Composable
-private fun TabChip(tab: TabSummary, inFront: Boolean, onActivate: () -> Unit, onClose: () -> Unit) {
+private fun TabChip(tab: TabSummary, inFront: Boolean, onActivate: () -> Unit, onClose: () -> Unit, onKeepOrLetGo: () -> Unit) {
     // The tab that comes in front is brought into view.
     val place = remember { BringIntoViewRequester() }
     LaunchedEffect(inFront) { if (inFront) place.bringIntoView() }
+    // A tab's own menu, by a long press (039): keep it as a Site, or let a Site go. A tab with
+    // no page has nothing to keep, and no menu.
+    var offering by remember { mutableStateOf(false) }
+    val keepOrLetGo = stringResource(if (tab.kept) R.string.sites_let_go else R.string.sites_keep)
+    val hasMenu = tab.kept || tab.host.isNotEmpty()
+    // What is said of the tab beside its name: that it is a Site, that it is asleep.
+    val said = listOfNotNull(
+        if (tab.kept) stringResource(R.string.sites_site) else null,
+        if (tab.asleep) stringResource(R.string.sites_asleep) else null,
+    ).joinToString(", ")
     Row(
         modifier =
             Modifier
@@ -348,31 +365,66 @@ private fun TabChip(tab: TabSummary, inFront: Boolean, onActivate: () -> Unit, o
                 .background(if (inFront) Tokens.Palette.fieldFill.current else Color.Transparent),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier =
-                Modifier
-                    .heightIn(min = LocalMinimumInteractiveComponentSize.current)
-                    .selectable(selected = inFront, role = Role.Tab, onClick = onActivate)
-                    .padding(start = Tokens.Space.m)
-                    .testTag("tab"),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Tokens.Space.xs),
-        ) {
-            if (tab.loading) {
-                // A dot, not a spinner: a tab that is loading is marked, and stays still.
-                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Tokens.Palette.accent.current))
+        Box {
+            Row(
+                modifier =
+                    Modifier
+                        .heightIn(min = LocalMinimumInteractiveComponentSize.current)
+                        .combinedClickable(
+                            role = Role.Tab,
+                            onClick = onActivate,
+                            onLongClick = if (hasMenu) ({ offering = true }) else null,
+                            onLongClickLabel = if (hasMenu) keepOrLetGo else null,
+                        ).semantics {
+                            selected = inFront
+                            stateDescription = said
+                        }.padding(start = Tokens.Space.m)
+                        .testTag("tab"),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Tokens.Space.xs),
+            ) {
+                if (tab.loading) {
+                    // A dot, not a spinner: a tab that is loading is marked, and stays still.
+                    Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Tokens.Palette.accent.current))
+                }
+                if (tab.kept) {
+                    // A Site (039): a mark before its name; said in words above.
+                    Icon(painter = painterResource(R.drawable.ic_site), contentDescription = null, modifier = Modifier.size(14.dp).testTag("site-mark"))
+                }
+                Text(
+                    // A tab's name: its page's title, or its site, or the words for a tab with no page.
+                    text = tab.title.ifEmpty { tab.host.ifEmpty { stringResource(R.string.tabs_untitled) } },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = if (inFront) FontWeight.SemiBold else FontWeight.Normal,
+                    // Asleep, it has no page: its name is fainter, and it is said so.
+                    color = if (tab.asleep) MaterialTheme.colorScheme.onSurfaceVariant else Color.Unspecified,
+                    modifier = Modifier.widthIn(max = 180.dp),
+                )
             }
-            Text(
-                // A tab's name: its page's title, or its site, or the words for a tab with no page.
-                text = tab.title.ifEmpty { tab.host.ifEmpty { stringResource(R.string.tabs_untitled) } },
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                fontWeight = if (inFront) FontWeight.SemiBold else FontWeight.Normal,
-                modifier = Modifier.widthIn(max = 180.dp),
-            )
+            DropdownMenu(expanded = offering && hasMenu, onDismissRequest = { offering = false }) {
+                DropdownMenuItem(
+                    text = { Text(keepOrLetGo) },
+                    onClick = {
+                        offering = false
+                        onKeepOrLetGo()
+                    },
+                    modifier = Modifier.testTag("keep-or-let-go"),
+                )
+            }
         }
-        IconButton(onClick = onClose, modifier = Modifier.testTag("close-tab")) {
-            Icon(painter = painterResource(R.drawable.ic_close), contentDescription = stringResource(R.string.tabs_close), modifier = Modifier.size(18.dp))
+        if (tab.kept && tab.asleep) {
+            // A sleeping Site has no page to close: its place stays as wide as it was.
+            Spacer(modifier = Modifier.minimumInteractiveComponentSize().size(40.dp))
+        } else {
+            IconButton(onClick = onClose, modifier = Modifier.testTag("close-tab")) {
+                // For a Site the same button puts it to sleep (039), and says so.
+                Icon(
+                    painter = painterResource(R.drawable.ic_close),
+                    contentDescription = stringResource(if (tab.kept) R.string.sites_sleep else R.string.tabs_close),
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
     }
 }

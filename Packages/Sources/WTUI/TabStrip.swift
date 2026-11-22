@@ -6,6 +6,7 @@ import WTDesign
 /// The window's tabs in a row: each by its name, the one in front marked, a button to close each
 /// and one to open another (005 §5).
 struct TabStrip: View {
+    @Environment(\.locale) private var locale
     let model: BrowserModel
     /// Opens the find bar (010), the zoom bar (012) and the History list (008): their buttons stand at the end of
     /// the row, beside the tabs and not among them, where they stay when the tabs scroll.
@@ -136,9 +137,19 @@ struct TabStrip: View {
                             .frame(width: 6, height: 6)
                             .accessibilityHidden(true)
                     }
+                    if tab.kept {
+                        // A Site (039): a mark before its name; said in words below.
+                        Image(systemName: "bookmark.fill")
+                            .font(.caption2)
+                            .accessibilityHidden(true)
+                    }
                     name(tab)
                         .lineLimit(1)
                         .fontWeight(isFront ? .semibold : .regular)
+                        // Asleep, it has no page: its name is fainter, and it is said so. Fainter
+                        // by less than the system's secondary colour, which is too faint to read
+                        // at this size by the measure the iPhone's accessibility audit uses.
+                        .opacity(tab.asleep ? TabStrip.asleepOpacity : 1)
                 }
                 .padding(.leading, Tokens.Space.s)
                 .frame(maxWidth: widestName, minHeight: BrowserWindowView.hitSize, alignment: .leading)
@@ -148,10 +159,40 @@ struct TabStrip: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("tab")
             .accessibilityAddTraits(isFront ? .isSelected : [])
+            .accessibilityValue(Text(verbatim: Self.said(of: tab, locale: locale)))
+            #if !os(macOS)
+                // A tab's own menu, by a long press. (On a Mac a button takes a right-click for
+                // itself and no menu comes of it, 033: the menu bar and ⌘D are the ways there.)
+                .contextMenu {
+                    if tab.kept || !tab.host.isEmpty {
+                        Button {
+                            model.keepOrLetGo(tab.tabID)
+                        } label: {
+                            Text(tab.kept ? Words.sitesLetGo : Words.sitesKeep)
+                        }
+                    }
+                }
+            #endif
+            closer(of: tab)
+        }
+        .background(isFront ? Tokens.Palette.fieldFill : .clear, in: RoundedRectangle(cornerRadius: Tokens.Radius.field))
+    }
+
+    /// The button at a tab's end: it closes the tab; for a Site it puts it to sleep (039), and
+    /// says so; and a sleeping Site has none, there being no page to close.
+    @ViewBuilder
+    private func closer(of tab: WTTabSummary) -> some View {
+        if tab.kept, tab.asleep {
+            // A sleeping Site has no page to close: its place stays as wide as it was.
+            Color.clear
+                .frame(width: BrowserWindowView.hitSize, height: BrowserWindowView.hitSize)
+                .accessibilityHidden(true)
+        } else {
             Button {
                 model.closeTab(tab.tabID)
             } label: {
-                Label { Text(Words.tabsClose) } icon: { Image(systemName: "xmark") }
+                // For a Site the same button puts it to sleep (039), and says so.
+                Label { Text(tab.kept ? Words.sitesSleep : Words.tabsClose) } icon: { Image(systemName: "xmark") }
                     .labelStyle(.iconOnly)
                     .font(.caption)
                     .frame(minWidth: BrowserWindowView.hitSize, minHeight: BrowserWindowView.hitSize)
@@ -160,7 +201,22 @@ struct TabStrip: View {
             .buttonStyle(.borderless)
             .accessibilityIdentifier("close-tab")
         }
-        .background(isFront ? Tokens.Palette.fieldFill : .clear, in: RoundedRectangle(cornerRadius: Tokens.Radius.field))
+    }
+
+    /// How strongly a sleeping tab's name is drawn: against white this is a contrast of 8 to 1.
+    static let asleepOpacity = 0.7
+
+    /// What is said of a tab beside its name (039): that it is a Site, that it is asleep, both,
+    /// or nothing.
+    static func said(of tab: WTTabSummary, locale: Locale = .current) -> String {
+        var said: [String] = []
+        if tab.kept {
+            said.append(Words.sitesSite.string(locale))
+        }
+        if tab.asleep {
+            said.append(Words.sitesAsleep.string(locale))
+        }
+        return said.formatted(.list(type: .and, width: .narrow).locale(locale))
     }
 
     /// A tab's name: its page's title, or its site, or the words for a tab with no page.

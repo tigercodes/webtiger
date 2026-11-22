@@ -481,6 +481,18 @@
         }
       }
     },
+    "catalogue.state.sites": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sites, awake and asleep"
+          }
+        }
+      }
+    },
     "catalogue.state.spaces": {
       "comment": "Design catalogue: a state of the list of Spaces.",
       "extractionState": "manual",
@@ -2109,6 +2121,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "Search with %@"
+          }
+        }
+      }
+    },
+    "sites.asleep": {
+      "comment": "Said of a tab that has no page loaded now, to a screen reader, with the tab's name: a Site that was closed, or a tab that came back after a quit. Opening it loads it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Asleep"
+          }
+        }
+      }
+    },
+    "sites.keep": {
+      "comment": "Command (Command-D on a Mac, Control-D with a keyboard on Android; in a tab's own menu on a phone): keep the tab as a Site. A Site stays first in the row, and is put to sleep, not closed, when it is closed.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep as Site"
+          }
+        }
+      }
+    },
+    "sites.let_go": {
+      "comment": "The same command for a tab that is a Site: it becomes a tab like any other again.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop Keeping"
+          }
+        }
+      }
+    },
+    "sites.site": {
+      "comment": "Said of a tab that is kept, to a screen reader, with the tab's name.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Site"
+          }
+        }
+      }
+    },
+    "sites.sleep": {
+      "comment": "Label of the button at the end of a Site's tab, where another tab has Close Tab: the Site's page is closed and the Site stays in the row.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Put to Sleep"
           }
         }
       }

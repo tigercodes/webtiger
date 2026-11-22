@@ -391,6 +391,35 @@ public final class BrowserModel {
         tab.webViewID != 0
     }
 
+    // MARK: Sites (039)
+
+    /// The tab in front can be kept, or is a Site that can be let go: the one command has
+    /// something to do.
+    public var canKeepOrLetGo: Bool {
+        tab.kept || hasPage
+    }
+
+    /// Keeps a tab as a Site, or lets it go when it is one (039). What either means, and
+    /// where the tab then sits, is the core's.
+    public func keepOrLetGo(_ id: UInt64) {
+        let kept = id == tab.tabID ? tab.kept : tabs.first { $0.tabID == id }?.kept ?? false
+        if kept {
+            var letGo = WTLetGoSite()
+            letGo.tabID = id
+            send(.letGoSite(letGo))
+        } else {
+            var keep = WTKeepTab()
+            keep.tabID = id
+            send(.keepTab(keep))
+        }
+    }
+
+    /// The same for the tab in front: what the menu's item and its key ask.
+    public func keepOrLetGoTheTabInFront() {
+        guard let frontTabID, canKeepOrLetGo else { return }
+        keepOrLetGo(frontTabID)
+    }
+
     private func apply(_ snapshot: WTWindowSnapshot) {
         // Another tab came in front: what was typed was typed for the tab that was there. (The
         // window's first snapshot names its first tab, and is no switch: what was typed before

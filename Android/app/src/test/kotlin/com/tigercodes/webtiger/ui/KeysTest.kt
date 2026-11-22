@@ -55,6 +55,7 @@ class KeysTest {
         assertEquals(KeyCommand.NewTab, withCtrl(Key.T))
         assertEquals(KeyCommand.CloseTab, withCtrl(Key.W))
         assertEquals(KeyCommand.ReopenClosedTab, withCtrl(Key.T, shift = true))
+        assertEquals(KeyCommand.KeepOrLetGo, withCtrl(Key.D))
         assertEquals(KeyCommand.NextTab, withCtrl(Key.Tab))
         assertEquals(KeyCommand.PreviousTab, withCtrl(Key.Tab, shift = true))
         assertEquals(KeyCommand.OpenLocation, withCtrl(Key.L))
@@ -83,7 +84,7 @@ class KeysTest {
     @Test
     fun aKeyThatIsNotTheWindowsIsLeftAlone() {
         // The letters by themselves are typing, and with Shift.
-        for (key in listOf(Key.T, Key.W, Key.L, Key.R, Key.F, Key.H, Key.Tab, Key.One, Key.Nine, Key.Zero, Key.DirectionLeft)) {
+        for (key in listOf(Key.T, Key.W, Key.D, Key.L, Key.R, Key.F, Key.H, Key.Tab, Key.One, Key.Nine, Key.Zero, Key.DirectionLeft)) {
             assertNull("$key by itself", keyCommand(key, ctrl = false, shift = false, alt = false, meta = false))
             assertNull("$key with Shift", keyCommand(key, ctrl = false, shift = true, alt = false, meta = false))
             // With the system's own key held, the key is the system's.
@@ -94,7 +95,7 @@ class KeysTest {
         // Editing's keys stay the field's and the page's.
         for (key in listOf(Key.A, Key.C, Key.V, Key.X, Key.Z)) assertNull("$key", withCtrl(key))
         // Shift changes what a key asks for: it is not the same key with Shift.
-        for (key in listOf(Key.W, Key.L, Key.R, Key.F, Key.H, Key.One, Key.Nine)) assertNull("$key with Shift", withCtrl(key, shift = true))
+        for (key in listOf(Key.W, Key.D, Key.L, Key.R, Key.F, Key.H, Key.One, Key.Nine)) assertNull("$key with Shift", withCtrl(key, shift = true))
         // An arrow with Control, or with Alt and Shift, is moving in text.
         assertNull(withCtrl(Key.DirectionLeft))
         assertNull(keyCommand(Key.DirectionLeft, ctrl = false, shift = true, alt = true, meta = false))
@@ -134,6 +135,7 @@ class KeysTest {
             request.open_tab?.let { "open tab in ${it.window_id}" }
                 ?: request.undo?.let { "undo in ${it.window_id}" }
                 ?: request.close_tab?.let { "close ${it.tab_id}" }
+                ?: request.keep_tab?.let { "keep ${it.tab_id}" }
                 ?: request.step_tab?.let { "step ${it.to} ${it.place} in ${it.window_id}" }
                 ?: request.tab_command?.let { "tab ${it.tab_id} ${it.command}" }
                 ?: request.zoom_page?.let { "zoom ${it.tab_id} ${it.change}" }
@@ -148,6 +150,7 @@ class KeysTest {
                 press(NativeKey.KEYCODE_T, CTRL),
                 press(NativeKey.KEYCODE_T, CTRL or SHIFT),
                 press(NativeKey.KEYCODE_W, CTRL),
+                press(NativeKey.KEYCODE_D, CTRL),
                 press(NativeKey.KEYCODE_TAB, CTRL),
                 press(NativeKey.KEYCODE_TAB, CTRL or SHIFT),
                 press(NativeKey.KEYCODE_3, CTRL),
@@ -159,12 +162,13 @@ class KeysTest {
                 press(NativeKey.KEYCODE_MINUS, CTRL),
                 press(NativeKey.KEYCODE_0, CTRL),
             )
-        assertEquals("each was the window's, and nothing else is to have it", List(13) { true }, pressed)
+        assertEquals("each was the window's, and nothing else is to have it", List(14) { true }, pressed)
         assertEquals(
             listOf(
                 "open tab in 1",
                 "undo in 1",
                 "close 2",
+                "keep 2",
                 "step ${StepTab.To.TO_NEXT} 0 in 1",
                 "step ${StepTab.To.TO_PREVIOUS} 0 in 1",
                 "step ${StepTab.To.TO_PLACE} 3 in 1",

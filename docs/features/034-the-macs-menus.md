@@ -37,6 +37,7 @@ On the Mac I look in the menu bar for what a browser can do, and it is there, ea
 | File | New Tab | ⌘T | |
 | File | Open Location | ⌘L | |
 | File | Reopen Closed Tab | ⇧⌘T | there is none to bring back (033) |
+| File | Keep as Site, or Stop Keeping for a tab that is one (since [039](039-sites.md)) | ⌘D | the tab in front has no page and is no Site |
 | File | Close Tab | ⌘W | |
 | File | Close Window | ⇧⌘W | |
 | Edit | Find on Page | ⌘F | the tab has no page |
@@ -49,7 +50,7 @@ On the Mac I look in the menu bar for what a browser can do, and it is there, ea
 | History | Forward | ⌘] | there is no way forward |
 | History | History and Downloads | ⌘Y | |
 
-**Close Tab on a window's last tab closes the window**, as ⌘W did (005). **Close Window** closes it however many tabs it has. They take the place of the system's own Close, which had ⌘W.
+**Close Tab on a window's last tab closes the window**, as ⌘W did (005). Since [039](039-sites.md) a Site that is asleep does not count as a tab to be left with: when the tab in front is the only one that is not a sleeping Site, the window closes. **Close Window** closes it however many tabs it has. They take the place of the system's own Close, which had ⌘W.
 
 **New Window** (⌘N) is the system's own item, and stays.
 

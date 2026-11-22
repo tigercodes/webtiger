@@ -23,10 +23,15 @@ public struct WindowCommands {
 
     /// Closes the tab in front. On a window's last tab it closes the window, as it does
     /// everywhere on a Mac: the core's own rule is only that a window is never left empty
-    /// (005, T1).
+    /// (005, T1). A Site that is asleep is no tab to be left with (039): when nothing else
+    /// would be left to show, the window closes too. (Otherwise ⌘W would go round for ever:
+    /// the core opens an empty tab when a row's last Site is closed, and closing that tab
+    /// would wake the Site again.) The Sites are kept, and are there when a window next opens.
     func closeTab() {
-        if model.tabs.count > 1 {
-            model.closeTab(model.tab.tabID)
+        let front = model.tab.tabID
+        let somethingElseToShow = model.tabs.contains { $0.tabID != front && !($0.kept && $0.asleep) }
+        if somethingElseToShow {
+            model.closeTab(front)
         } else {
             closeWindow()
         }
@@ -116,6 +121,13 @@ private struct Command: View {
             Command(Words.toolbarOpenLocation, "l", enabled: window != nil) { window?.openLocation() }
             Command(Words.tabsReopen, "t", [.command, .shift], enabled: window?.model.canReopenClosedTab == true) {
                 window?.model.reopenClosedTab()
+            }
+            // One command with two names (039): a tab is kept as a Site, a Site is let go.
+            Command(
+                window?.model.tab.kept == true ? Words.sitesLetGo : Words.sitesKeep, "d",
+                enabled: window?.model.canKeepOrLetGo == true
+            ) {
+                window?.model.keepOrLetGoTheTabInFront()
             }
         }
     }
@@ -217,6 +229,8 @@ struct KeysNobodySees: View {
                     window.model.reopenClosedTab()
                 }
                 Command(Words.tabsClose, "w", enabled: true) { window.closeTab() }
+                // ⌘D keeps the tab in front as a Site, or lets a Site go (039).
+                Command(Words.sitesKeep, "d", enabled: window.model.canKeepOrLetGo) { window.model.keepOrLetGoTheTabInFront() }
                 Command(Words.historyOpen, "y", enabled: true) { window.showHistory() }
                 Command(Words.findOpen, "f", enabled: true) { window.find() }
                 Command(Words.findNext, "g", enabled: true) { window.model.findNext() }
