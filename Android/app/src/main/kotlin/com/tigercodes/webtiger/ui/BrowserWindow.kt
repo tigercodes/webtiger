@@ -53,6 +53,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -129,6 +130,17 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
     }
     // The History list is open over the window (008).
     var showingHistory by rememberSaveable { mutableStateOf(false) }
+    // The keys of a keyboard (036): the activity asks the window before anything in it has a
+    // key. Not while the lists of what was visited are over the window.
+    val windowKeys = LocalWindowKeys.current
+    DisposableEffect(windowKeys, model) {
+        windowKeys?.answer = { command ->
+            val answers = !showingHistory
+            if (answers) model.perform(command, openLocation = { addressField.requestFocus() }, showHistory = { showingHistory = true })
+            answers
+        }
+        onDispose { windowKeys?.answer = null }
+    }
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         // The window draws edge to edge; its content keeps clear of the system's bars, the
         // cutout and the keyboard.

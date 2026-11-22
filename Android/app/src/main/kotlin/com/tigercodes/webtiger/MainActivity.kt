@@ -4,12 +4,14 @@ package com.tigercodes.webtiger
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.ViewGroup
 import android.webkit.MimeTypeMap
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -20,13 +22,18 @@ import com.tigercodes.webtiger.ui.BrowserWindow
 import com.tigercodes.webtiger.ui.CatalogueScreen
 import com.tigercodes.webtiger.ui.FillableWindow
 import com.tigercodes.webtiger.ui.LaunchOptions
+import com.tigercodes.webtiger.ui.LocalWindowKeys
 import com.tigercodes.webtiger.ui.StartFailed
+import com.tigercodes.webtiger.ui.WindowKeys
 import com.tigercodes.webtiger.webview.AppPermissions
 import com.tigercodes.webtiger.webview.pickerTypes
 
 class MainActivity : ComponentActivity() {
     /** The app's own permissions, while this window is their way to ask the system (014). */
     private var permissions: AppPermissions? = null
+
+    /** The window's answer to a keyboard's keys (036), asked before anything in the window has a key. */
+    private val keys = WindowKeys()
 
     /** What is told when the system's dialog has been answered: one question is up at a time. */
     private var answered: (() -> Unit)? = null
@@ -90,10 +97,12 @@ class MainActivity : ComponentActivity() {
             ComposeView(this).apply {
                 setContent {
                     WebTigerTheme {
-                        session.fold(
-                            onSuccess = { running -> BrowserWindow(running, window.model(running)) },
-                            onFailure = { failure -> StartFailed(WebTigerApp.startCode(failure)) },
-                        )
+                        CompositionLocalProvider(LocalWindowKeys provides keys) {
+                            session.fold(
+                                onSuccess = { running -> BrowserWindow(running, window.model(running)) },
+                                onFailure = { failure -> StartFailed(WebTigerApp.startCode(failure)) },
+                            )
+                        }
                     }
                 }
             }
@@ -104,6 +113,9 @@ class MainActivity : ComponentActivity() {
      * What another app handed over while the window is there, words (028) or an address (031):
      * the window comes forward, and the core is asked.
      */
+    /** A keyboard's keys (036): the window is asked first, and what it answers nothing else has. */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean = keys.handle(event) || super.dispatchKeyEvent(event)
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         val launch = launchOptions(this.intent, applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0)

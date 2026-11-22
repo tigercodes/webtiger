@@ -92,7 +92,7 @@ And keys with no item, as every browser on the Mac has them: ⌘1 to ⌘8 for th
 
 ## 8. What is not verified
 
-- **The iPad, and Android with a keyboard.** No keys there.
+- **The iPad.** No keys there. (Android has them since [036](036-androids-keys.md).)
 - **Keyboards that are not American.** ⇧⌘] and ⇧⌘[, and the number keys, are where they are on an American keyboard; where a layout needs Shift or Option for them, what the keys do was not tried.
 - **That turning off the system's tabs takes nothing a person wanted.** A person who had "Prefer tabs: always" set in the system's settings gets windows, as in other browsers. Seen only as the absence of a second pair of items in the Window menu: the test presses each item by its name, which fails when two have it.
 - **Many tabs.** Three in the app; the core's rule has no limit of its own.

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built, and **run on an emulator** (Android 16, System WebView 133): the app starts, a page loads through the core, and 149 tests pass on the device, among them the adapter suite against the real WebView and isolation between login sets. 392 more pass on the JVM, 28 of them driving the real core through JNI. **Not yet run on a physical device, on any other WebView version, or folded** (§8) |
+| **Status** | Built, and **run on an emulator** (Android 16, System WebView 133): the app starts, a page loads through the core, and 150 tests pass on the device, among them the adapter suite against the real WebView and isolation between login sets. 398 more pass on the JVM, 28 of them driving the real core through JNI. **Not yet run on a physical device, on any other WebView version, or folded** (§8) |
 | **Phase** | W0 of [000](000-master-plan.md) §9; item 1 of [001](001-foundations.md) §12 |
 | **Stack** | 000 §5.1: Kotlin, Jetpack Compose, Material 3, `androidx.webkit`, Wire, JNI through `wt-ffi` |
 | **Last updated** | 2026-11-18 (run on an emulator; the device suite) |
@@ -235,7 +235,7 @@ The line above was run against the emulator, with a page served from the Mac (`1
 
 An emulator without a window, made by `Tools/android/emulator.sh` from the Google APIs image for Android 16 (API 36, `arm64-v8a`, revision 7) with the Pixel 8 profile, on a Mac with Apple silicon; its System WebView is **133.0.6943.137**. 2026-11-18.
 
-`Tools/test.sh android-device` runs the tests in `Android/app/src/androidTest` there: 149 pass. From a cold emulator the whole step took 40 s, the boot included.
+`Tools/test.sh android-device` runs the tests in `Android/app/src/androidTest` there: 150 pass. From a cold emulator the whole step took 40 s, the boot included.
 
 | Suite | Count | What it shows |
 |---|---|---|
@@ -261,6 +261,7 @@ An emulator without a window, made by `Tools/android/emulator.sh` from the Googl
 | `AppLinksTest` | 1 | A link from another app, in the app ([031](031-links-from-other-apps.md)): the window, asked as the system asks it, opens the link in a new tab in front; the same link again opens again; six requests at once are each answered, in order, and what is no address of the web opens nothing |
 | `AppAutofillTest`, `AppChoicesTest` | 1, 1 | Passwords ([032](032-passwords-android.md)): with an Autofill service of the tests' own as the device's for the test, the system asks it about a page's sign-in form in the app's window, once, with the form's site and its two fields, and nothing of the system's is shown. And a page's list of choices opens over the page, in a window of the WebView's own, and the choice is the page's: the web view has the window's activity while it is shown |
 | `AppUndoTest` | 1 | Undo ([033](033-a-closed-tab-comes-back.md)): a page's tab closed; the button for a new tab, held, offers it back, and no tab is opened by the hold; chosen, the tab is where it was, in front, with its page and its address |
+| `AppKeysTest` | 1 | A keyboard's keys ([036](036-androids-keys.md)), sent as the system sends them: back and forward, a new tab, from tab to tab, the address field, close and reopen, with the keyboard in a page and then in the address field |
 
 Also done by hand there, and looked at in screenshots: the app started with the `am start` line of §7 and a page served from the Mac; a link, back and forward; the keyboard that comes up is the address one, with Go; a load that timed out (the emulator's network was not up yet, seconds after its boot) showed the failed page in words, and Try Again loaded the page; `example.com` typed into the field loaded over https with the padlock and the short form of the address; the dark theme, switched while the app ran, redrew the window without making the activity again.
 
@@ -280,7 +281,7 @@ Faults found by running it, all fixed with tests: the refused navigation's progr
 - **The keyboard after a page takes the focus**: whether a page's own form gets the keyboard once the focus was sent to the page. A tapped address field shows the whole address selected, with one caret handle where two selection handles would be expected.
 - `net.offline`: the system's answer about the network was never asked with the network off. `net.tls`: no site with a bad certificate was loaded.
 - Site permissions between login sets (as for WebKit, 001 §10 Q2); what an extra profile costs.
-- **A clearing that once said it removed no cookie.** On 2026-11-19, once in some fifteen runs of the device suite, `clearingALoginSetLeavesNothing` failed where it checks that the WebView says it removed cookies: the WebView said it had removed none. The twelve isolation tests passed three runs in a row straight after, and nothing in them had changed. Not explained. What that run did not reach is the check that matters, that a web view made in the login set afterwards has no cookie; it has passed every other time.
+- **A clearing that says it removed no cookie, on the first run after the device starts.** On 2026-11-19, once in some fifteen runs of the device suite, `clearingALoginSetLeavesNothing` failed where it checked that the WebView says it removed cookies: the WebView said it had removed none. On 2026-11-21 it did so four more times, each on the first run after the emulator had been started cold, and never on a later run. The test was made to go on: in the two such runs that followed, **nothing was left** (no cookie for a page made in the login set afterwards, no stored value, database, cache or worker). The test now looks in the login set's own jar instead of taking the WebView's word: the cookie is there before the clearing and the jar is empty after; what the WebView said is written to the log. With that, six runs each from a cold start passed, and in all six the WebView said it had removed some. Not explained: whether, in the runs where it said none, the cookie was in the jar when it was asked; looking in the jar first may itself be what makes the answer right. For WebTiger, when clearing a login set is built: what the WebView says it removed is not to be relied on; what is left is to be looked at.
 - **Deleting a profile at the next start** (§5.2): the refusal within one run is pinned; the deletion after a restart was not exercised, since a test's process cannot restart itself.
 - **Performance** (Q4, Q6): the cost of the request callback and of the JNI crossings; start-up; memory. The emulator's debug build started cold in 0.6 to 0.9 s by `am start -W`, which says nothing about the budget.
 - A release build: R8, shrinking (the keep rules are written, never exercised), signing.
@@ -299,7 +300,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | `cd Core && cargo test --workspace --locked` | 139 passed |
 | `Tools/test.sh android`, from nothing | OK, 48 s |
 | … `:core-engine:testDebugUnitTest` | 32 passed |
-| … `:app:testDebugUnitTest` | 360 passed |
+| … `:app:testDebugUnitTest` | 366 passed |
 | … `:app:assembleDebug` | `app-debug.apk`, with `libwebtiger_core.so` for `arm64-v8a` and `x86_64` |
 | `Tools/strings/strings.py --check`, `Tools/design/tokens.py --check` | up to date; the Apple outputs' checksums unchanged |
 | `./gradlew :app:lintDebug` | no errors. Apart from notices that newer versions exist, two warnings are left on purpose: no launcher icon (the brand is not settled, 001 F10), and `toolbar_open_location` unused (it is the Mac's ⌘L) |
@@ -338,6 +339,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | `ViewAddressTest` | 6 | A link pressed in another app ([031](031-links-from-other-apps.md)): what the window reads of the system's request and hands to the core, that nothing is handed over twice, that every address which comes before the window is open is kept, and what the system is told the window shows |
 | `WebViewHostTest` | 3 | What the window lends its activity to (032): found inside whatever the adapter wrapped a web view's context in; none where a view's context can be lent nothing; lent, and given back |
 | `UndoTest` | 3 | Undo (033): the window's model offers a closed tab back only while the core says there is one, and asks with the window; the button for a new tab, held, brings the menu, and a screen reader is told so by name; with nothing to bring back the button is only a button |
+| `KeysTest` | 6 | A keyboard's keys (036): the table of which key asks for what, and what is left alone; the window answering them with the focus nowhere, once for a key held down, not under the lists, and not at all when no window is drawn |
 | `CatalogueSnapshotTest` | 23 | The design catalogue as pictures, drawn on the JVM, and the failed page at twice the text size (004) |
 | `ThroughTheCoreTest` | 11 | The model, the session, the engine and the tracker over the **real core**: a page loads in the Space's login set; a page cannot put an address in the field it has not become; a failure by its code; fake mode, where each mode saves a download (013), and that only the app started for real may have the system ask the person (014); no profiles; a Space's colour ([025](025-space-colours.md)); words another app hands over are searched for in a new tab ([028](028-search-from-other-apps.md)); an address another app hands over opens in a new tab, and what is no address of the web opens nothing ([031](031-links-from-other-apps.md)) |
 

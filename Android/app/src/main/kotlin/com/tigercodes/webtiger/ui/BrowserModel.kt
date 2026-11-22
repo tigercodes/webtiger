@@ -33,6 +33,7 @@ import com.tigercodes.webtiger.core.v1.SuggestAddresses
 import com.tigercodes.webtiger.core.v1.SwitchSpace
 import com.tigercodes.webtiger.core.v1.TabCommand
 import com.tigercodes.webtiger.core.v1.TabSummary
+import com.tigercodes.webtiger.core.v1.StepTab
 import com.tigercodes.webtiger.core.v1.TabView
 import com.tigercodes.webtiger.core.v1.Undo
 import com.tigercodes.webtiger.core.v1.WindowSnapshot
@@ -226,6 +227,16 @@ class BrowserModel(
     /** Closes a tab. The core says which tab comes forward, and never leaves the window empty. */
     fun closeTab(id: Long) {
         session.send(Request(close_tab = CloseTab(tab_id = id)))
+    }
+
+    /**
+     * Asks the core to bring another tab of the window in front, by where it is in the row
+     * (035): the next, the one before, the last, or the tab at `place`, counted from one.
+     * Which tab that is, is the core's to say.
+     */
+    fun stepTab(to: StepTab.To, place: Int = 0) {
+        val open = window ?: return
+        session.send(Request(step_tab = StepTab(window_id = open.windowId, to = to, place = place)))
     }
 
     /** Brings a tab in front. */
