@@ -167,6 +167,11 @@ public nonisolated struct WTOpenWindow: Sendable {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
+  /// Since 1.26. A private window (037): its logins are its own, made now and
+  /// thrown away with the window, and the core writes nothing of what it
+  /// visits. It has no Space to switch, and never comes back with the session.
+  public var privateWindow: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -343,6 +348,9 @@ public nonisolated struct WTWindowSnapshot: Sendable {
   /// (033), by its kind: "tab.closed" when a closed tab can be brought back;
   /// empty when there is nothing to undo.
   public var undo: String = String()
+
+  /// Since 1.26. The window is private (037). A shell says so in words.
+  public var privateWindow: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1670,18 +1678,29 @@ nonisolated extension WTDownloadState: SwiftProtobuf._ProtoNameProviding {
 
 nonisolated extension WTOpenWindow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".OpenWindow"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}private_window\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    // Load everything into unknown fields
-    while try decoder.nextFieldNumber() != nil {}
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBoolField(value: &self.privateWindow) }()
+      default: break
+      }
+    }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.privateWindow != false {
+      try visitor.visitSingularBoolField(value: self.privateWindow, fieldNumber: 1)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: WTOpenWindow, rhs: WTOpenWindow) -> Bool {
+    if lhs.privateWindow != rhs.privateWindow {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1959,7 +1978,7 @@ nonisolated extension WTActivateTab: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".WindowSnapshot"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0\u{3}downloads_active\0\u{3}space_id\0\u{3}space_name\0\u{3}space_colour\0\u{1}undo\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0\u{3}downloads_active\0\u{3}space_id\0\u{3}space_name\0\u{3}space_colour\0\u{1}undo\0\u{3}private_window\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1975,6 +1994,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 6: try { try decoder.decodeSingularStringField(value: &self.spaceName) }()
       case 7: try { try decoder.decodeSingularStringField(value: &self.spaceColour) }()
       case 8: try { try decoder.decodeSingularStringField(value: &self.undo) }()
+      case 9: try { try decoder.decodeSingularBoolField(value: &self.privateWindow) }()
       default: break
       }
     }
@@ -2009,6 +2029,9 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
     if !self.undo.isEmpty {
       try visitor.visitSingularStringField(value: self.undo, fieldNumber: 8)
     }
+    if self.privateWindow != false {
+      try visitor.visitSingularBoolField(value: self.privateWindow, fieldNumber: 9)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2021,6 +2044,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.spaceName != rhs.spaceName {return false}
     if lhs.spaceColour != rhs.spaceColour {return false}
     if lhs.undo != rhs.undo {return false}
+    if lhs.privateWindow != rhs.privateWindow {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

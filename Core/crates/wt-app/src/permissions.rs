@@ -136,7 +136,7 @@ impl App {
     /// What an origin was allowed in a login set. A store that refuses has
     /// allowed nothing: the person is asked.
     pub(crate) fn allowed(&self, login_set: LoginSetId, origin: &str) -> Vec<PermissionKind> {
-        self.store
+        self.store_of(login_set)
             .borrow()
             .allowed(login_set, origin)
             .unwrap_or_default()
@@ -272,7 +272,7 @@ impl App {
             // A store that refuses remembers nothing: the page has its
             // answer all the same, and the person is asked again next time.
             let _ = self
-                .store
+                .store_of(login_set)
                 .borrow_mut()
                 .allow(login_set, &asking.origin, &names);
             let mut allowed = self.allowed(login_set, &asking.origin);
@@ -304,7 +304,7 @@ impl App {
     ) -> Result<response::Kind, AppError> {
         let login_set = self.permissions_of(query.window_id)?;
         let all = self
-            .store
+            .store_of(login_set)
             .borrow()
             .all_allowed(login_set)
             .map_err(|error| AppError::new(error.code()))?;
@@ -347,16 +347,17 @@ impl App {
                 // An origin that is none of the web's was allowed nothing.
                 match origin_of(origin) {
                     Some(origin) => self
-                        .store
+                        .store_of(login_set)
                         .borrow_mut()
                         .forget_permissions(login_set, &origin)
                         .map(|_| ()),
                     None => Ok(()),
                 }
             }
-            Some(forget_permissions::What::Everything(true)) => {
-                self.store.borrow_mut().forget_all_permissions(login_set)
-            }
+            Some(forget_permissions::What::Everything(true)) => self
+                .store_of(login_set)
+                .borrow_mut()
+                .forget_all_permissions(login_set),
             _ => return Err(AppError::new("permission.nothing_named").field("what")),
         };
         forgotten.map_err(|error| AppError::new(error.code()))?;

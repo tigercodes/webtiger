@@ -162,7 +162,13 @@ impl DialogKind {
 /// Opens a window in the default Space, with one tab. Answered with
 /// WindowOpened. In fake mode the tab opens FakeOptions.start_address.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct OpenWindow {}
+pub struct OpenWindow {
+    /// Since 1.26. A private window (037): its logins are its own, made now and
+    /// thrown away with the window, and the core writes nothing of what it
+    /// visits. It has no Space to switch, and never comes back with the session.
+    #[prost(bool, tag = "1")]
+    pub private_window: bool,
+}
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct WindowOpened {
     #[prost(uint64, tag = "1")]
@@ -269,6 +275,9 @@ pub struct WindowSnapshot {
     /// empty when there is nothing to undo.
     #[prost(string, tag = "8")]
     pub undo: ::prost::alloc::string::String,
+    /// Since 1.26. The window is private (037). A shell says so in words.
+    #[prost(bool, tag = "9")]
+    pub private_window: bool,
 }
 /// A tab as a strip of tabs shows it: enough to name it, and no more.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]

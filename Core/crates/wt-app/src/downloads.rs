@@ -219,7 +219,7 @@ impl App {
             ..
         } = wanted;
         let total = (expected > 0).then_some(expected);
-        let written = self.store.borrow_mut().add_download(
+        let written = self.store_of(login_set).borrow_mut().add_download(
             login_set,
             &url,
             &name,
@@ -292,10 +292,12 @@ impl App {
         };
         // A store that refuses leaves the record coming until the next
         // start, when it is interrupted: there is nobody to tell.
-        let _ =
-            self.store
-                .borrow_mut()
-                .end_download(ended.record, state, file_name, self.clock.now());
+        let _ = self.store_of(ended.login_set).borrow_mut().end_download(
+            ended.record,
+            state,
+            file_name,
+            self.clock.now(),
+        );
         self.publish_downloads(ended.login_set);
     }
 
@@ -359,7 +361,7 @@ impl App {
             .ok()
             .filter(|before| *before > 0);
         let page = self
-            .store
+            .store_of(login_set)
             .borrow()
             .downloads(login_set, before, limit)
             .map_err(|error| AppError::new(error.code()))?;
@@ -418,7 +420,7 @@ impl App {
         // An id beyond any the store could have given is nobody's.
         let record = i64::try_from(open.download_id).map_err(|_| unknown())?;
         let download = self
-            .store
+            .store_of(login_set)
             .borrow()
             .download(login_set, record)
             .map_err(|error| AppError::new(error.code()))?
@@ -449,7 +451,7 @@ impl App {
                     if let Some(shell_id) = mine {
                         self.stop(shell_id);
                     }
-                    self.store
+                    self.store_of(login_set)
                         .borrow_mut()
                         .forget_download(login_set, record)
                         .map(|_| ())
@@ -468,7 +470,9 @@ impl App {
                 for shell_id in mine {
                     self.stop(shell_id);
                 }
-                self.store.borrow_mut().forget_all_downloads(login_set)
+                self.store_of(login_set)
+                    .borrow_mut()
+                    .forget_all_downloads(login_set)
             }
             Some(forget_downloads::What::Everything(false)) | None => {
                 return Err(AppError::new("download.nothing_named").field("what"));

@@ -735,7 +735,18 @@ pub(crate) struct State {
     /// snapshots of the windows that show it: whether there is something
     /// to undo. A Space that is not here has none.
     closed_tabs: BTreeMap<SpaceId, usize>,
+    /// The rows of private windows (037): each a Space only in name, with a
+    /// login set of its own, held here and in no store. It is in no list of
+    /// Spaces, has no name and no colour, and goes with its window.
+    private: Vec<Space>,
+    /// How many private windows have been opened: each one's row is numbered
+    /// from [`PRIVATE_SPACES_FROM`], far above any Space a store has.
+    private_made: u64,
 }
+
+/// The number of the first private window's row, where a Space's number is
+/// wanted: far above any a store gives a Space.
+const PRIVATE_SPACES_FROM: u64 = 1 << 62;
 
 impl State {
     /// A state with no windows. `spaces` are the Spaces in their order, and
@@ -754,6 +765,8 @@ impl State {
             downloads_active: BTreeMap::new(),
             exceptions: BTreeSet::new(),
             closed_tabs: BTreeMap::new(),
+            private: Vec::new(),
+            private_made: 0,
             spaces,
             start: (start.id, start.login_set),
             engine,
@@ -773,15 +786,35 @@ impl State {
     ///
     /// It shows the Space the window with the session shows, or showed
     /// (024).
-    pub(crate) fn open_window(&mut self) -> (WindowId, TabId, bool) {
+    ///
+    /// With `private`, the login set made for it, the window is a private
+    /// one (037): it has that login set and a row of its own with one empty
+    /// tab, it never has the session, and no window opened after it takes
+    /// its place.
+    pub(crate) fn open_window(&mut self, private: Option<LoginSetId>) -> (WindowId, TabId, bool) {
         let window = WindowId(self.ids.mint());
-        let has_session = self
-            .session_window
-            .is_some_and(|session| self.windows.contains_key(&session));
-        if self.saved.is_some() && !has_session {
-            self.session_window = Some(window);
-        }
-        let (space, login_set) = self.start;
+        let (space, login_set) = match private {
+            Some(login_set) => {
+                let space = SpaceId(PRIVATE_SPACES_FROM.saturating_add(self.private_made));
+                self.private_made = self.private_made.saturating_add(1);
+                self.private.push(Space {
+                    id: space,
+                    name: String::new(),
+                    login_set,
+                    colour: String::new(),
+                });
+                (space, login_set)
+            }
+            None => {
+                let has_session = self
+                    .session_window
+                    .is_some_and(|session| self.windows.contains_key(&session));
+                if self.saved.is_some() && !has_session {
+                    self.session_window = Some(window);
+                }
+                self.start
+            }
+        };
         let (row, restored) = self.make_row(window, space, login_set);
         let front = row.front;
         let rows = BTreeMap::from([(space, row)]);
@@ -831,8 +864,42 @@ impl State {
         (Row { tabs, front }, restored)
     }
 
+    /// A Space, or a private window's row, which is one in name only.
     fn space(&self, id: SpaceId) -> Option<&Space> {
-        self.spaces.iter().find(|space| space.id == id)
+        self.spaces
+            .iter()
+            .chain(&self.private)
+            .find(|space| space.id == id)
+    }
+
+    /// The login set is a private window's (037): nothing of it is written,
+    /// and the engine is to keep nothing of it.
+    pub(crate) fn is_private(&self, login_set: LoginSetId) -> bool {
+        self.private
+            .iter()
+            .any(|space| space.login_set == login_set)
+    }
+
+    /// The window is a private one (037).
+    pub(crate) fn is_private_window(&self, window: WindowId) -> bool {
+        self.windows
+            .get(&window)
+            .is_some_and(|window| self.is_private_space(window.space))
+    }
+
+    /// The login set of a private window; `None` for an ordinary window and
+    /// for one there is not.
+    pub(crate) fn private_login_set(&self, window: WindowId) -> Option<LoginSetId> {
+        let window = self.windows.get(&window)?;
+        self.private
+            .iter()
+            .find(|space| space.id == window.space)
+            .map(|space| space.login_set)
+    }
+
+    /// The row is a private window's (037), where a Space's number is wanted.
+    pub(crate) fn is_private_space(&self, space: SpaceId) -> bool {
+        self.private.iter().any(|private| private.id == space)
     }
 
     /// The Spaces, in their order (024).
@@ -892,7 +959,17 @@ impl State {
         space: SpaceId,
     ) -> Result<(), &'static str> {
         let window = self.windows.get(&window_id).ok_or("window.unknown")?;
-        let login_set = self.space(space).ok_or("space.unknown")?.login_set;
+        // A private window has no Space to switch (037); and its row is no
+        // Space that a window could be switched to.
+        if self.is_private_space(window.space) {
+            return Err("window.private");
+        }
+        let login_set = self
+            .spaces
+            .iter()
+            .find(|stored| stored.id == space)
+            .ok_or("space.unknown")?
+            .login_set;
         if window.space == space {
             return Ok(());
         }
@@ -967,6 +1044,7 @@ impl State {
     /// such window.
     pub(crate) fn close_window(&mut self, window: WindowId) -> Option<Vec<WebViewId>> {
         let closing = self.windows.remove(&window)?;
+        let closing_space = closing.space;
         let mut web_views = Vec::new();
         // The tabs of every Space it has shown, not only the one it shows.
         for tab in closing.rows.into_values().flat_map(|row| row.tabs) {
@@ -977,6 +1055,18 @@ impl State {
         }
         self.dirty.remove(&window);
         self.closed.push(window);
+        // A private window's row goes with it (037), and what was kept of
+        // its login set here: the certificates gone on past, the count of
+        // its downloads.
+        if let Some(at) = self
+            .private
+            .iter()
+            .position(|space| space.id == closing_space)
+        {
+            let login_set = self.private.remove(at).login_set;
+            self.exceptions.retain(|(of, _)| *of != login_set);
+            self.downloads_active.remove(&login_set);
+        }
         Some(web_views)
     }
 
@@ -1000,7 +1090,13 @@ impl State {
     ) -> Option<TabId> {
         let window = self.windows.get_mut(&window_id)?;
         let space = window.space;
-        let login_set = self.spaces.iter().find(|s| s.id == space)?.login_set;
+        // The Space the window shows; or, for a private window, its own row.
+        let login_set = self
+            .spaces
+            .iter()
+            .chain(&self.private)
+            .find(|s| s.id == space)?
+            .login_set;
         let row = window.rows.get_mut(&space)?;
         let tab = TabId(self.ids.mint());
         let place = after
@@ -1565,9 +1661,13 @@ impl State {
     /// session keeps them (009). `None` for a tab there is not, and for one
     /// with no address of the web's: an empty tab is nothing to bring back.
     pub(crate) fn closing(&mut self, tab_id: TabId) -> Option<(SpaceId, u32, SavedTab)> {
-        let tab = self.tabs.get_mut(&tab_id)?;
-        let (window, space) = (tab.window, tab.space);
-        let saved = tab.saved(false);
+        let (window, space) = self.tabs.get(&tab_id).map(|tab| (tab.window, tab.space))?;
+        // Nothing of a private window is written (037): its closed tab is
+        // not journalled, and is not brought back.
+        if self.is_private_space(space) {
+            return None;
+        }
+        let saved = self.tabs.get_mut(&tab_id)?.saved(false);
         if saved.url.is_empty() {
             return None;
         }
@@ -1853,6 +1953,10 @@ impl State {
     /// same address again, straight after).
     pub(crate) fn visit_to_record(&self, web_view: WebViewId) -> Option<(LoginSetId, String)> {
         let tab = self.tab_of(web_view)?;
+        // Nothing a private window visits is written (037).
+        if self.is_private(tab.login_set) {
+            return None;
+        }
         let address = tab.committed.as_ref()?;
         if !matches!(address.scheme(), "http" | "https") {
             return None;
@@ -1980,6 +2084,7 @@ impl State {
     pub(crate) fn window_snapshot(&self, window_id: WindowId) -> Option<WindowSnapshot> {
         let window = self.windows.get(&window_id)?;
         let space = self.space(window.space)?;
+        let private = self.is_private_space(space.id);
         let row = window.shown()?;
         let front = self.tabs.get(&row.front)?;
         let mut view = front.view(row.front);
@@ -2005,7 +2110,8 @@ impl State {
                 .get(&space.login_set)
                 .copied()
                 .unwrap_or(0),
-            space_id: space.id.get(),
+            // A private window shows no Space (037): none is named.
+            space_id: if private { 0 } else { space.id.get() },
             space_name: space.name.clone(),
             space_colour: space.colour.clone(),
             // What an undo would undo here (033): a closed tab, or nothing.
@@ -2014,6 +2120,7 @@ impl State {
             } else {
                 String::new()
             },
+            private_window: private,
         })
     }
 

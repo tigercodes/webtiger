@@ -246,8 +246,24 @@ impl FakeShell {
     /// Opens a window and subscribes to it. Its window, tab and
     /// subscription ids.
     pub async fn open_window(&mut self) -> (u64, u64, u64) {
-        let response::Kind::WindowOpened(opened) =
-            self.request(request::Kind::OpenWindow(OpenWindow {})).await
+        self.open_a_window(false).await
+    }
+
+    /// Opens a private window (037) and subscribes to it: the window, its
+    /// tab, and the subscription.
+    ///
+    /// # Panics
+    /// When the core answers with anything else.
+    pub async fn open_private_window(&mut self) -> (u64, u64, u64) {
+        self.open_a_window(true).await
+    }
+
+    async fn open_a_window(&mut self, private: bool) -> (u64, u64, u64) {
+        let response::Kind::WindowOpened(opened) = self
+            .request(request::Kind::OpenWindow(OpenWindow {
+                private_window: private,
+            }))
+            .await
         else {
             panic!("OpenWindow answers WindowOpened");
         };

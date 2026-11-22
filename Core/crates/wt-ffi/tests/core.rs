@@ -100,7 +100,7 @@ fn a_ping_goes_round_through_the_shell() {
 fn a_page_loads_through_the_contract() {
     let mut shell = TestShell::fake();
     let response::Kind::WindowOpened(opened) =
-        shell.request(request::Kind::OpenWindow(OpenWindow {}))
+        shell.request(request::Kind::OpenWindow(OpenWindow::default()))
     else {
         panic!("OpenWindow answers WindowOpened");
     };

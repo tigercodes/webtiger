@@ -9,17 +9,17 @@ use std::time::Duration;
 
 use tokio::time::Instant;
 use wt_core::{
-    ACTUAL_SIZE, Address, Clock, Input, SearchEngine, TabId, Timestamp, Uuid, WebViewId, WindowId,
-    classify, opens_outside, searched_words, zoom_in, zoom_out,
+    ACTUAL_SIZE, Address, Clock, Input, LoginSetId, SearchEngine, TabId, Timestamp, Uuid,
+    WebViewId, WindowId, classify, opens_outside, searched_words, zoom_in, zoom_out,
 };
 use wt_proto::v1::{
     Ack, ActivateTab, AddressSuggestion, AddressSuggestions, CloseTab, CloseWindow, EngineEvent,
     EngineKind, FindInPage, ForgetHistory, HistoryEntry, HistoryPage, LinkOpenRequested, LoginSet,
-    NavigationCommand, OpenAddress, OpenOutside, OpenTab, OutsideLinkRequested, QueryHistory,
-    SearchRequested, SearchWords, StepTab, SubmitAddress, SuggestAddresses, TabCommand, TabOpened,
-    Undo, WebViewCommand, WebViewCreate, WebViewDestroy, WebViewFind, WebViewLoad, WebViewSetZoom,
-    WindowOpened, WindowSnapshot, ZoomChange, ZoomPage, engine_event, forget_history, host_request,
-    request, response, step_tab,
+    NavigationCommand, OpenAddress, OpenOutside, OpenTab, OpenWindow, OutsideLinkRequested,
+    QueryHistory, SearchRequested, SearchWords, StepTab, SubmitAddress, SuggestAddresses,
+    TabCommand, TabOpened, Undo, WebViewCommand, WebViewCreate, WebViewDestroy, WebViewFind,
+    WebViewLoad, WebViewSetZoom, WindowOpened, WindowSnapshot, ZoomChange, ZoomPage, engine_event,
+    forget_history, host_request, request, response, step_tab,
 };
 use wt_store::{ClosedTab, SavedTab, Space, Store};
 
@@ -84,6 +84,10 @@ pub struct App {
     /// The store, for what browsing writes: history (008) and the session
     /// (009).
     pub(crate) store: Rc<RefCell<Store>>,
+    /// What private windows keep while they are open (037): a store that is
+    /// only ever in memory. `None` when it could not be made; no private
+    /// window is opened then.
+    pub(crate) private_store: Option<Rc<RefCell<Store>>>,
     pub(crate) clock: Rc<dyn Clock>,
     pub(crate) new_login_set: Rc<dyn Fn() -> Option<Uuid>>,
     /// The session as the store has it: written again only where it
@@ -143,6 +147,9 @@ impl App {
             fake_start: options.fake_start.map(Into::into),
             outside: Rc::new(RefCell::new(BTreeMap::new())),
             store,
+            private_store: Store::open_private()
+                .ok()
+                .map(|store| Rc::new(RefCell::new(store))),
             clock: options.clock,
             downloads: Rc::new(RefCell::new(BTreeMap::new())),
             downloaded: Rc::new(RefCell::new(BTreeMap::new())),
@@ -159,7 +166,7 @@ impl App {
     /// `ForgetDownloads`). The dispatcher answers the rest.
     pub fn request(&self, kind: request::Kind) -> AppFuture {
         match kind {
-            request::Kind::OpenWindow(_) => self.open_window(),
+            request::Kind::OpenWindow(open) => self.open_window(&open),
             request::Kind::CloseWindow(close) => {
                 let closing = self.close_window(&close);
                 // What waited in its tabs for the person has nobody to ask.
@@ -306,10 +313,12 @@ impl App {
         let Some((login_set, url)) = self.state.borrow().visit_to_record(web_view) else {
             return;
         };
-        let recorded = self
-            .store
-            .borrow_mut()
-            .record_visit(login_set, &url, "", self.clock.now());
+        let recorded = self.store_of(login_set).borrow_mut().record_visit(
+            login_set,
+            &url,
+            "",
+            self.clock.now(),
+        );
         if let Ok(id) = recorded {
             self.state.borrow_mut().visit_recorded(web_view, id, url);
         }
@@ -342,7 +351,7 @@ impl App {
             .ok()
             .filter(|before| *before > 0);
         let page = self
-            .store
+            .store_of(login_set)
             .borrow()
             .visits(login_set, &query.text, before, limit)
             .map_err(|error| AppError::new(error.code()))?;
@@ -380,7 +389,7 @@ impl App {
             suggest.limit
         };
         let places = self
-            .store
+            .store_of(login_set)
             .borrow()
             .suggestions(login_set, &suggest.text, limit)
             .map_err(|error| AppError::new(error.code()))?;
@@ -406,7 +415,7 @@ impl App {
             .borrow()
             .history_of(WindowId(forget.window_id))
             .ok_or_else(|| AppError::new("window.unknown").field("window_id"))?;
-        let mut store = self.store.borrow_mut();
+        let mut store = self.store_of(login_set).borrow_mut();
         let forgotten = match forget.what {
             Some(forget_history::What::VisitId(visit)) => match i64::try_from(visit) {
                 Ok(visit) => store.forget_visit(login_set, visit).map(|_| ()),
@@ -546,6 +555,11 @@ impl App {
     /// person asked for from outside any tab: a search for words, or a
     /// link pressed in another app. Answered with the tab that opened.
     fn open_in_front(&self, window: WindowId, front: TabId, address: Address) -> AppFuture {
+        // What comes from outside the browser never opens in a private
+        // window (037): the shell is told, and chooses another.
+        if self.state.borrow().is_private_window(window) {
+            return refuse(AppError::new("window.private").field("window_id"));
+        }
         let opened = self.state.borrow_mut().open_tab(window, Some(front), false);
         let Some(tab) = opened else {
             return refuse(AppError::new("window.unknown").field("window_id"));
@@ -571,6 +585,10 @@ impl App {
         let Some(space) = self.state.borrow().space_shown(window) else {
             return refuse(AppError::new("window.unknown").field("window_id"));
         };
+        // A private window's closed tabs are kept nowhere (037).
+        if self.state.borrow().is_private_space(space) {
+            return refuse(AppError::new("undo.nothing"));
+        }
         // Taken out of the journal: what is undone is not undone twice. A
         // journal that cannot be read has nothing to undo.
         let taken = self
@@ -609,10 +627,27 @@ impl App {
         })
     }
 
+    /// The store that keeps what a login set's windows keep: the one on
+    /// disk; or, for a private window's login set, the one in memory (037).
+    /// A private login set is only ever made when that store is there.
+    ///
+    /// Not to be called while the state is borrowed to be changed.
+    pub(crate) fn store_of(&self, login_set: LoginSetId) -> &Rc<RefCell<Store>> {
+        match &self.private_store {
+            Some(private) if self.state.borrow().is_private(login_set) => private,
+            _ => &self.store,
+        }
+    }
+
     /// Asks the journal how many closed tabs of a Space it has (033), for
     /// what the windows that show it are told. A journal that cannot be
     /// asked is one with nothing to undo.
     fn count_closed_tabs(&self, space: wt_core::SpaceId) {
+        // A private window's row is no Space of the store's, and has no
+        // closed tabs (037).
+        if self.state.borrow().is_private_space(space) {
+            return;
+        }
         let count = self.store.borrow().closed_tabs(space).unwrap_or(0);
         self.state.borrow_mut().set_closed_tabs(space, count);
     }
@@ -699,8 +734,30 @@ impl App {
         self.state.borrow_mut().take_closed()
     }
 
-    fn open_window(&self) -> AppFuture {
-        let (window, tab, restored) = self.state.borrow_mut().open_window();
+    fn open_window(&self, open: &OpenWindow) -> AppFuture {
+        // A private window (037) has a login set made now, for it alone: in
+        // no store on disk, and in the one in memory for what the window
+        // keeps while it is open.
+        let private = if open.private_window {
+            let made = self
+                .private_store
+                .as_ref()
+                .zip((self.new_login_set)().map(LoginSetId));
+            let Some((store, login_set)) = made else {
+                return refuse(AppError::new("window.no_private"));
+            };
+            if store
+                .borrow_mut()
+                .add_login_set(login_set, self.clock.now())
+                .is_err()
+            {
+                return refuse(AppError::new("window.no_private"));
+            }
+            Some(login_set)
+        } else {
+            None
+        };
+        let (window, tab, restored) = self.state.borrow_mut().open_window(private);
         let opened = response::Kind::WindowOpened(WindowOpened {
             window_id: window.get(),
             tab_id: tab.get(),
@@ -732,13 +789,16 @@ impl App {
     }
 
     fn close_window(&self, close: &CloseWindow) -> AppFuture {
-        let closed = self
-            .state
-            .borrow_mut()
-            .close_window(WindowId(close.window_id));
+        let window = WindowId(close.window_id);
+        let private = self.state.borrow().private_login_set(window);
+        let closed = self.state.borrow_mut().close_window(window);
         let Some(web_views) = closed else {
             return refuse(AppError::new("window.unknown").field("window_id"));
         };
+        // What a private window kept while it was open goes with it (037).
+        if let (Some(login_set), Some(store)) = (private, &self.private_store) {
+            let _ = store.borrow_mut().drop_login_set(login_set);
+        }
         let destroying: Vec<HostFuture> = web_views
             .into_iter()
             .map(|web_view| {
@@ -965,7 +1025,11 @@ impl App {
         let Some(level) = level.filter(|level| *level != now) else {
             return Box::pin(async { Ok(response::Kind::Ack(Ack {})) });
         };
-        if let Err(error) = self.store.borrow_mut().set_zoom(login_set, &site, level) {
+        if let Err(error) = self
+            .store_of(login_set)
+            .borrow_mut()
+            .set_zoom(login_set, &site, level)
+        {
             return refuse(AppError::new(error.code()));
         }
         let to_tell = self.state.borrow_mut().set_zoom(login_set, &site, level);
@@ -990,7 +1054,13 @@ impl App {
             return;
         };
         let level = site
-            .and_then(|site| self.store.borrow().zoom(login_set, &site).ok().flatten())
+            .and_then(|site| {
+                self.store_of(login_set)
+                    .borrow()
+                    .zoom(login_set, &site)
+                    .ok()
+                    .flatten()
+            })
             .unwrap_or(ACTUAL_SIZE);
         if level == now {
             return;
@@ -1062,7 +1132,9 @@ impl App {
                     engine: engine as i32,
                     login_set: Some(LoginSet {
                         id: login_set.to_string(),
-                        ephemeral: false,
+                        // A private window's (037): the engine keeps
+                        // nothing of it.
+                        ephemeral: self.state.borrow().is_private(login_set),
                     }),
                 }))
         });
