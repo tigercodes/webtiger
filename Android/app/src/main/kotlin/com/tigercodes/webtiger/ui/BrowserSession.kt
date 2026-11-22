@@ -79,11 +79,11 @@ class BrowserSession(
     }
 
     /** Opens a window in the core and delivers its snapshots to `update` until it is closed. */
-    internal suspend fun openWindow(update: (WindowSnapshot) -> Unit): OpenedWindow {
+    internal suspend fun openWindow(private: Boolean = false, update: (WindowSnapshot) -> Unit): OpenedWindow {
         opening += 1
         try {
             val opened =
-                core.request(Request(open_window = OpenWindow())).window_opened
+                core.request(Request(open_window = OpenWindow(private_window = private))).window_opened
                     ?: throw CoreError.Refused(code = "response.unexpected", field = "")
             val subscribed =
                 core.request(Request(subscribe = Subscribe(window = WindowTopic(window_id = opened.window_id)))).subscribed

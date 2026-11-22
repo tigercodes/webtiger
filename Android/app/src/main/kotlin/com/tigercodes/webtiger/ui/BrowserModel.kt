@@ -61,7 +61,16 @@ class BrowserModel(
     searching: SearchSettings? = null,
     changingSearch: Boolean = false,
     warned: Boolean = false,
+    /** The window is a private one (037): the core is asked to open it so. */
+    private val asPrivate: Boolean = false,
 ) {
+    /**
+     * The window is a private one (037): asked for as one, or said to be one by the core.
+     * Nothing it visits is kept, and it says so in words.
+     */
+    var isPrivate by mutableStateOf(asPrivate)
+        private set
+
     /** The tab in front, as the core last published it. The window's controls act on it. */
     var tab by mutableStateOf(TabView())
         private set
@@ -130,7 +139,7 @@ class BrowserModel(
         // From now this window is told when a link of a page is pressed and held (018).
         session.engine.onPressed = ::pressed
         try {
-            window = session.openWindow(::apply)
+            window = session.openWindow(private = asPrivate, update = ::apply)
             // Where searches go, and whether anybody chose it (020): asked once, when the
             // window has opened.
             askWhereSearchesGo()
@@ -757,6 +766,7 @@ class BrowserModel(
         spaceName = snapshot.space_name
         spaceColour = snapshot.space_colour
         undoKind = snapshot.undo
+        isPrivate = asPrivate || snapshot.private_window
         // The zoom bar is the window's, and says the level of the page in front: with no page
         // there that can be zoomed, it has nothing to say.
         if (isZooming && front.zoom == null) isZooming = false

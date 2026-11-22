@@ -1681,6 +1681,102 @@
         }
       }
     },
+    "private.back": {
+      "comment": "Button on the page behind a private window's chip on a phone: shows the other window again and leaves the private one open. %@ is the name of the Space the other window shows.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back to %@"
+          }
+        }
+      }
+    },
+    "private.chip": {
+      "comment": "Chip in the strip of tabs of a private window, where an ordinary window names its Space. Short: on a narrow strip only its first letter is shown.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Private"
+          }
+        }
+      }
+    },
+    "private.close": {
+      "comment": "Button on the page behind a private window's chip, and command: closes the private window, and everything of it is gone.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close Private Window"
+          }
+        }
+      }
+    },
+    "private.hides": {
+      "comment": "What a private window does not do: follows the sentence that says what it means.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It does not hide you from the sites you visit, or from your network."
+          }
+        }
+      }
+    },
+    "private.keeps": {
+      "comment": "What a private window means: in an empty tab of one, and on the page behind its chip.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing you visit in this window is kept on this device: no history, and nothing a site stored once the window is closed. Files you save stay."
+          }
+        }
+      }
+    },
+    "private.row.detail": {
+      "comment": "Under 'Private Window' in the list of Spaces.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing it visits is kept on this device."
+          }
+        }
+      }
+    },
+    "private.row.open": {
+      "comment": "Said beside 'Private Window' in the list of Spaces when a private window is open already: the row then shows it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open"
+          }
+        }
+      }
+    },
+    "private.window": {
+      "comment": "Name of a private window: the last row of the list of Spaces on a phone (it opens one), the heading of the page that explains it, and what a screen reader says for the chip.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Private Window"
+          }
+        }
+      }
+    },
     "prompt.allow": {
       "comment": "Button in a tab's prompt: lets the site use what it asked for, now and when it asks again.",
       "extractionState": "manual",

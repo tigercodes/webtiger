@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **The core, the contract and the Android adapter are built and tested** (parts 1 and 3 of §5): a window opened as private has a login set of its own that the engine is told to keep nothing of, and the core writes nothing of it; on Android that login set is a profile cleared with its last page and deleted at the next start. No shell opens a private window yet, so nobody can use it. The rule's choices (§4) are the owner's, confirmed 2026-11-21 (WT-D26) |
+| **Status** | **The core, the contract and the Android adapter are built and tested** (parts 1 and 3 of §5): a window opened as private has a login set of its own that the engine is told to keep nothing of, and the core writes nothing of it; on Android that login set is a profile cleared with its last page and deleted at the next start. **On Android a private window can be opened and used** (§5.3), on an emulator. The Mac and the iPhone have no way to open one yet. The rule's choices (§4) are the owner's, confirmed 2026-11-21 (WT-D26) |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "private windows". 000 §5.6: "A throwaway login set. Nothing is written; closing it wipes it" |
 | **Contract** | 1.26: `OpenWindow.private_window`; `WindowSnapshot.private_window`. `LoginSet.ephemeral` has been there since W0, and is now said |
 | **Builds on** | [001](001-foundations.md): login sets, and the adapters' isolation tests. [008](008-history.md), [009](009-session-restore.md), [013](013-downloads.md), [014](014-permissions.md), [012](012-zoom.md), [033](033-a-closed-tab-comes-back.md): each writes something a private window must not |
@@ -93,6 +93,18 @@ The WebView has no login set in memory: a login set is a profile, and a profile 
 
 **The window's last page, not the window.** The adapter knows web views, not windows: a private window whose every tab has been closed, and which then has an empty tab, has had its logins removed, though the window is still open. The same is so in WebKit's adapter. On the safe side; a person who closes every page of a private window is signed out there.
 
+### 5.3 On a phone: one window at a time (part 2, Android first)
+
+A phone's app has one window on the screen. A private window there is a second window of the core's that the app shows in place of the first, which stays as it was behind it.
+
+- **Opened from the list of Spaces**: its last row is "Private Window". It opens one, or shows the one that is open, and says "Open" then.
+- **In a private window the chip says "Private"**, the whole word, on a narrow strip too ("Private Window" to a screen reader). As first built it was one letter where the strip is narrow, as a Space's chip is: seen on the emulator, a private window then looked like a Space whose name begins with P, and said nowhere on the screen what it was. The word costs the tabs some room; they scroll. It opens a page that says what private means and what it does not (§1), with three ways on: **Close Private Window** (it is gone, with everything of it, and the other window is shown); **Back to** the Space the other window shows (the private window stays open behind); **Done**.
+- **An empty tab in a private window** says the same two sentences.
+- **A link from another app** is shown in the other window, which comes to the front: never in the private one.
+- There is no list of Spaces in a private window: it has none.
+
+> **Provisional (2026-11-21):** where a phone's private window is opened from, and the page behind its chip, were not among the choices put to the owner (§4 said "where on an iPhone is to be settled"). Built first on Android, to be the same on the iPhone. The owner's to change.
+
 ## 6. Tests
 
 The bar for the whole: after a private window has visited a site, signed in, downloaded, been asked for a permission and closed, **the store on disk and the engine's stores are searched for the site's name and hold none of it**. Part 1 meets it for the core's store.
@@ -105,10 +117,17 @@ The bar for the whole: after a private window has visited a site, signed in, dow
 | Android's adapter on the JVM (`SystemWebViewEngineTest`, 3 more) | What an earlier run left is looked for first, then the login set is written down, then its page is made; a second page keeps it, and it is cleared once when the last is gone; an ordinary login set is neither written down nor cleared; each private login set is cleared by itself; one that cannot be written down is refused and nothing is made. Eight parts checked by breaking them: all caught |
 | Android's adapter on the emulator (`SystemWebViewIsolationTest`, 3 in place of the one that expected a refusal) | A private login set has its cookie and stored value while a page of it is there, through a second page after the first is gone; with the last gone its jar empties, and a page made in it afterwards finds no cookie, no stored value and no database. It and an ordinary login set share nothing, either way. What an earlier run left is deleted before anything is made |
 | By hand (2026-11-21, the emulator, the app and its tests installed once and the isolation tests run three times as three processes, the app's data kept between them) | The first run found nothing left. The second found the three private login sets the first had left and deleted all three profiles as it started; the third the same for the second's. (Run by Gradle the last test finds nothing to delete: Gradle removes the app, and its data, after each run.) |
+| Android's window on the JVM (`PrivateWindowTest`, 7, drawn by Compose on Robolectric over a scripted core) | A private window is asked for as one, and is one from the start; a window the core says is private is one. It says what it is: the chip to a screen reader, the two sentences in an empty tab; its chip opens the page that says the same, not the list of Spaces, and the core is asked for none; Close and Back to the other window ask what they say, Done asks nothing. An ordinary window says nothing of private; its list of Spaces ends with the row, which asks for the private window and closes the list; the row says when one is open; a window drawn with no way to one has no row. The holder shows one window at a time: the first window is still the one other apps' links go to; left, the private one stays and is the same one when shown again; closed, the core is asked to close that window and no other, and the next is another. Eleven parts checked by breaking them: all caught |
+| Android's app on the emulator (`AppPrivateTest`, 1, fake mode: the real core and the real WebView) | A private window from the list of Spaces; it signs in to the test site and the site says who it is. Left open: the other window is where it was, and is not signed in. The list says a private window is open; shown again, it is as it was left, signed in. Closed: the other window is shown, and the list no longer says one is open. Another private window is not signed in. The history the other window lists has its own pages and neither of the private window's. Passed three runs one after another, and in the whole suite twice |
+| By hand (2026-11-21, the emulator, the app in fake mode) | The list of Spaces with its last row; the private window with a second, empty tab: the chip says "Private", the empty tab says the two sentences; the page behind the chip, with its three buttons. All well inside a phone's width. This is where the one-letter chip was seen and changed |
 
 ## 7. What is not verified
 
-- **Anybody using it.** No shell opens a private window yet.
+- **The Mac and the iPhone.** No way to open one there yet.
+- **"Do not offer to save here"** (§3, passwords): not built. On Android the system's Autofill is asked about a form in a private window as in any other (032).
+- **A link from another app while a private window is shown**: the first window is shown again with it, by the activity's code; no test hands a link over with a private window shown.
+- **The system making the window again** (a rotation, the app brought back from the background after its process was ended): the private window's model is kept with the first window's, by the same holder; that a private window ended with the process does not come back is the core's rule and is tested there, not on a device.
+- **Keys** (036) in a private window, and its page behind the chip while a list is open.
 - **WebKit.** That its store that is not persistent keeps nothing, and is gone when the window closes, is part 2's to show.
 - **Android killed with a private window open.** The profile's file stays until the next start (§5.2). That the next start deletes it was run by hand, with profiles whose pages had been closed; a kill with pages open was not tried.
 - **An older WebView**, which cannot remove everything in one call: caches and service workers of a private login set stay until its profile is deleted. Not run on one.
@@ -125,4 +144,5 @@ The bar for the whole: after a private window has visited a site, signed in, dow
 - [x] Android: the adapter (the window's part comes with the shells').
 - [x] Part 1: `Tools/test.sh all` green, and `android-device`, on 2026-11-21: `lint`, `core` (537), `unit` (268 on the Mac), `build`, the Mac's UI suite (36), `ios` (250 on the iPhone simulator, one skipped as before), the iPhone's UI suite (27), `android` (366 and 32 on the JVM) and `android-device` (150 on the emulator).
 - [x] Part 3 (Android's adapter): `lint`, `android` (369 and 32 on the JVM) and `android-device` (152 on the emulator, twice from a cold start), on 2026-11-21. Nothing of the core's or of Apple's changed.
-- [ ] Part 2 (the shells): the whole gate again.
+- [x] Part 2 on Android (the window): `lint`, `android` (376 and 32 on the JVM) and `android-device` (153 on the emulator, twice), with the Apple package's own tests (268 on the Mac) and the apps' build, because the shared words gained eight; on 2026-11-21. The Mac's UI suite could not be run: a dialog of the system's was on the screen.
+- [ ] Part 2 on the Mac and the iPhone: the whole gate.

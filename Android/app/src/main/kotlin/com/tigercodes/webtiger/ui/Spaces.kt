@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.CircleShape
@@ -92,9 +93,11 @@ internal const val COMPACT_WIDTH_DP = 600
  * only the initial, a bar under it, which takes none of the strip's room.
  */
 @Composable
-internal fun SpaceChip(name: String, compact: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, colour: String = "") {
+internal fun SpaceChip(name: String, compact: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, colour: String = "", saidAs: String? = null) {
     val shown = spaceName(name)
-    val said = stringResource(R.string.space_chip, shown)
+    // What a screen reader says: the Space, by name; or what the chip was given to say (a
+    // private window's is no Space, 037).
+    val said = saidAs ?: stringResource(R.string.space_chip, shown)
     val touch = LocalMinimumInteractiveComponentSize.current
     Row(
         modifier =
@@ -160,6 +163,8 @@ internal fun Spaces(
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
     colours: List<String> = emptyList(),
+    /** The way to the private window (037), on a phone: the list's last row. None: no row. */
+    private: PrivateWindows? = null,
     making: Boolean = false,
     name: String = "",
     sharingWith: Long? = null,
@@ -208,7 +213,7 @@ internal fun Spaces(
                     onBack = { page = SpacesPage.LIST },
                 )
             SpacesPage.LIST ->
-                SpaceList(all, shownId, onShow = onShow, onNew = { page = SpacesPage.NEW }, onRename = { page = SpacesPage.RENAME }, onDone = onDone)
+                SpaceList(all, shownId, onShow = onShow, onNew = { page = SpacesPage.NEW }, onRename = { page = SpacesPage.RENAME }, onDone = onDone, private = private)
         }
     }
 }
@@ -227,7 +232,15 @@ private fun owner(spaces: List<SpaceSummary>, id: Long): Long {
 }
 
 @Composable
-private fun SpaceList(spaces: List<SpaceSummary>, shownId: Long, onShow: (Long) -> Unit, onNew: () -> Unit, onRename: () -> Unit, onDone: () -> Unit) {
+private fun SpaceList(
+    spaces: List<SpaceSummary>,
+    shownId: Long,
+    onShow: (Long) -> Unit,
+    onNew: () -> Unit,
+    onRename: () -> Unit,
+    onDone: () -> Unit,
+    private: PrivateWindows? = null,
+) {
     Column(modifier = Modifier.padding(horizontal = Tokens.Space.l), verticalArrangement = Arrangement.spacedBy(Tokens.Space.s)) {
         Text(
             text = stringResource(R.string.spaces_title),
@@ -273,6 +286,36 @@ private fun SpaceList(spaces: List<SpaceSummary>, shownId: Long, onShow: (Long) 
             }
         }
         HorizontalDivider(color = Tokens.Palette.hairline.current)
+        // The private window (037), which is no Space: the last row. It opens one, or shows
+        // the one that is open, and says so in words.
+        if (private != null) {
+            val open = if (private.isOpen) stringResource(R.string.private_row_open) else ""
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable(role = Role.Button, onClick = private.show)
+                        .heightIn(min = LocalMinimumInteractiveComponentSize.current)
+                        .padding(horizontal = Tokens.Space.l, vertical = Tokens.Space.s)
+                        .semantics(mergeDescendants = true) { if (private.isOpen) stateDescription = open }
+                        .testTag("space-private"),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Tokens.Space.m),
+            ) {
+                // No mark: it is no Space. The room of one, so that its name is under theirs.
+                Spacer(modifier = Modifier.size(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = stringResource(R.string.private_window), style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        text = stringResource(R.string.private_row_detail),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (private.isOpen) Text(text = open, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("space-private-open"))
+            }
+            HorizontalDivider(color = Tokens.Palette.hairline.current)
+        }
     }
     Row(modifier = Modifier.padding(horizontal = Tokens.Space.s, vertical = Tokens.Space.s), horizontalArrangement = Arrangement.spacedBy(Tokens.Space.s)) {
         TextButton(onClick = onNew, modifier = Modifier.testTag("spaces-new")) { Text(stringResource(R.string.spaces_new)) }

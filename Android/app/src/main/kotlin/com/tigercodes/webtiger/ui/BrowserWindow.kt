@@ -106,7 +106,9 @@ import com.tigercodes.webtiger.design.Tokens
 
 /** One window over `model`. The system's Back goes back in the page while it can. */
 @Composable
-fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
+fun BrowserWindow(session: BrowserSession, model: BrowserModel, private: PrivateWindows? = null) {
+    // The page behind a private window's chip (037) is open over the window.
+    var showingPrivate by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(model) { model.open() }
     BackHandler(enabled = model.tab.can_go_back) { model.perform(NavigationCommand.NAVIGATION_COMMAND_BACK) }
     // Where the keyboard's focus goes when an address has been submitted: to the page.
@@ -145,7 +147,14 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
         // The window draws edge to edge; its content keeps clear of the system's bars, the
         // cutout and the keyboard.
         Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-            TabStrip(model, onFind = model::openFind, onZoom = model::openZoom, onHistory = { showingHistory = true }, onSpaces = model::openSpaces)
+            // A private window has no Space (037): its chip opens the page that says what it is.
+            TabStrip(
+                model,
+                onFind = model::openFind,
+                onZoom = model::openZoom,
+                onHistory = { showingHistory = true },
+                onSpaces = { if (model.isPrivate) showingPrivate = true else model.openSpaces() },
+            )
             Toolbar(model, addressField, onSubmitted = { page.requestFocus() })
             // What the tab asks the person (014): in the tab, under the toolbar, and not over
             // the window. It takes the keyboard from nothing by appearing.
@@ -172,7 +181,7 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
                                 },
                         )
                     model.hasPage -> WebViewHost(session.engine, model.tab.web_view_id, Modifier.fillMaxSize().testTag("page"))
-                    else -> EmptyTab(searchesGoTo = model.searchEngineName, onChangeSearch = model::changeSearch)
+                    else -> EmptyTab(searchesGoTo = model.searchEngineName, onChangeSearch = model::changeSearch, private = model.isPrivate)
                 }
                 // What is offered for what is typed (011): under the toolbar, over the page.
                 if (model.suggestions.isNotEmpty()) SuggestionList(model, onChosen = { page.requestFocus() })
@@ -202,8 +211,21 @@ fun BrowserWindow(session: BrowserSession, model: BrowserModel) {
                 onEdit = model::editSpace,
                 onDone = model::closeSpaces,
                 colours = model.spaceColours,
+                // The way to the private window (037): chosen, the list closes behind it.
+                private =
+                    private?.let { ways ->
+                        PrivateWindows(ways.isOpen, ways.other, show = {
+                            model.closeSpaces()
+                            ways.show()
+                        }, leave = ways.leave, close = ways.close)
+                    },
                 modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing),
             )
+        }
+        // The page behind a private window's chip (037): over the window, as the list of
+        // Spaces is over an ordinary one.
+        if (showingPrivate && model.isPrivate && private != null) {
+            PrivatePage(private, onDone = { showingPrivate = false }, modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing))
         }
         // Over the window, which stays as it is underneath: the page's web view is not taken
         // out of it. A visit chosen loads in the tab in front; the system's Back closes the
@@ -240,7 +262,18 @@ private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit
         // The Space the window shows (024): before the tabs, where it stays when they scroll.
         // In a window as narrow as a phone's it is the Space's initial.
         val compact = LocalConfiguration.current.screenWidthDp < COMPACT_WIDTH_DP
-        SpaceChip(name = model.spaceName, compact = compact, onClick = onSpaces, modifier = Modifier.padding(start = Tokens.Space.xs), colour = model.spaceColour)
+        if (model.isPrivate) {
+            // No Space: the chip says "Private" (037), and a screen reader "Private Window".
+            // The whole word, on a narrow strip too: one letter would be any Space's, and this
+            // is where the window says what it is.
+            SpaceChip(
+                name = stringResource(R.string.private_chip),
+                compact = false,
+                onClick = onSpaces,
+                modifier = Modifier.padding(start = Tokens.Space.xs),
+                saidAs = stringResource(R.string.private_window),
+            )
+        } else SpaceChip(name = model.spaceName, compact = compact, onClick = onSpaces, modifier = Modifier.padding(start = Tokens.Space.xs), colour = model.spaceColour)
         Row(
             modifier =
                 Modifier
@@ -772,7 +805,7 @@ private fun ProgressLine(model: BrowserModel) {
 
 /** A tab with no page yet. */
 @Composable
-internal fun EmptyTab(searchesGoTo: String? = null, onChangeSearch: () -> Unit = {}) {
+internal fun EmptyTab(searchesGoTo: String? = null, onChangeSearch: () -> Unit = {}, private: Boolean = false) {
     Column(
         // Words in the middle of the space they have, which scroll when it is too small for
         // them: at the largest text sizes they would otherwise run off both ends of it.
@@ -791,6 +824,20 @@ internal fun EmptyTab(searchesGoTo: String? = null, onChangeSearch: () -> Unit =
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
+        // In a private window (037): what private means, and what it does not, in words.
+        if (private) {
+            Text(
+                text = stringResource(R.string.private_keeps),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = Tokens.Space.m).testTag("private-keeps"),
+            )
+            Text(
+                text = stringResource(R.string.private_hides),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.testTag("private-hides"),
+            )
+        }
         // Where what is typed goes when it is not an address (020), said where it is about to
         // happen, with the way to change it. Not said until the core has said.
         if (searchesGoTo != null) {

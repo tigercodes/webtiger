@@ -12,6 +12,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -23,6 +27,7 @@ import com.tigercodes.webtiger.ui.CatalogueScreen
 import com.tigercodes.webtiger.ui.FillableWindow
 import com.tigercodes.webtiger.ui.LaunchOptions
 import com.tigercodes.webtiger.ui.LocalWindowKeys
+import com.tigercodes.webtiger.ui.PrivateWindows
 import com.tigercodes.webtiger.ui.StartFailed
 import com.tigercodes.webtiger.ui.WindowKeys
 import com.tigercodes.webtiger.webview.AppPermissions
@@ -99,7 +104,26 @@ class MainActivity : ComponentActivity() {
                     WebTigerTheme {
                         CompositionLocalProvider(LocalWindowKeys provides keys) {
                             session.fold(
-                                onSuccess = { running -> BrowserWindow(running, window.model(running)) },
+                                onSuccess = { running ->
+                                    // One window at a time (037 §5.3): the private window while
+                                    // it is shown, otherwise the first. Each is a window of its
+                                    // own, with its own state: neither is drawn as the other.
+                                    val shown = window.shown(running)
+                                    key(shown) {
+                                        BrowserWindow(
+                                            running,
+                                            shown,
+                                            private =
+                                                PrivateWindows(
+                                                    isOpen = window.hasPrivate,
+                                                    other = window.model(running).spaceName,
+                                                    show = { window.showPrivate(running) },
+                                                    leave = window::leavePrivate,
+                                                    close = window::closePrivate,
+                                                ),
+                                        )
+                                    }
+                                },
                                 onFailure = { failure -> StartFailed(WebTigerApp.startCode(failure)) },
                             )
                         }
@@ -109,19 +133,22 @@ class MainActivity : ComponentActivity() {
         setContentView(FillableWindow(this).apply { addView(drawn, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)) })
     }
 
-    /**
-     * What another app handed over while the window is there, words (028) or an address (031):
-     * the window comes forward, and the core is asked.
-     */
     /** A keyboard's keys (036): the window is asked first, and what it answers nothing else has. */
     override fun dispatchKeyEvent(event: KeyEvent): Boolean = keys.handle(event) || super.dispatchKeyEvent(event)
 
+    /**
+     * What another app handed over while the window is there, words (028) or an address (031):
+     * the window comes forward, and the core is asked. It goes to the app's first window, and
+     * never to a private one (037): when a private window is what is shown, the first window
+     * is shown again, with what was handed over; the private one stays open behind.
+     */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         val launch = launchOptions(this.intent, applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0)
         if (launch.catalogue) return
         (application as WebTigerApp).session(launch).getOrNull()?.let { running ->
-            handedOver(intent, ViewModelProvider(this)[WindowHolder::class.java].model(running))
+            val window = ViewModelProvider(this)[WindowHolder::class.java]
+            if (handedOver(intent, window.model(running))) window.leavePrivate()
         }
     }
 
@@ -191,10 +218,12 @@ class MainActivity : ComponentActivity() {
          * intent it brings then is the one the window was first started with, and what that
          * carried was handed over the first time.
          */
-        fun handedOver(intent: Intent?, model: BrowserModel) {
-            if (intent != null && intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
+        fun handedOver(intent: Intent?, model: BrowserModel): Boolean {
+            if (intent != null && intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return false
             searchWords(intent, model)
             openAddress(intent, model)
+            // Whether there was anything to hand over: words, or an address.
+            return (intent?.action == ACTION_SEARCH_WORDS && !intent.getStringExtra(EXTRA_WORDS).isNullOrBlank()) || address(intent) != null
         }
 
         /** `--ez webtiger.catalogue true`: the design catalogue instead of a browser (004). Debuggable builds only. */
@@ -226,9 +255,42 @@ class MainActivity : ComponentActivity() {
 class WindowHolder : ViewModel() {
     private var model: BrowserModel? = null
 
+    /**
+     * The private window (037), when there is one: a second window of the core's, which the
+     * app shows in place of the first while `showingPrivate`.
+     */
+    private var private by mutableStateOf<BrowserModel?>(null)
+    private var showingPrivate by mutableStateOf(false)
+
+    /** The window the app opened with: where links from other apps go, whatever is shown. */
     fun model(session: BrowserSession): BrowserModel = model ?: BrowserModel(session).also { model = it }
 
+    /** The window the app shows now: the private one while it is shown, otherwise the first. */
+    fun shown(session: BrowserSession): BrowserModel = private?.takeIf { showingPrivate } ?: model(session)
+
+    /** There is a private window, shown or behind. */
+    val hasPrivate: Boolean get() = private != null
+
+    /** Opens a private window, or shows the one there is. */
+    fun showPrivate(session: BrowserSession) {
+        if (private == null) private = BrowserModel(session, asPrivate = true)
+        showingPrivate = true
+    }
+
+    /** Shows the first window again. The private one stays open behind it. */
+    fun leavePrivate() {
+        showingPrivate = false
+    }
+
+    /** Closes the private window in the core, with everything of it, and shows the first. */
+    fun closePrivate() {
+        showingPrivate = false
+        private?.close()
+        private = null
+    }
+
     override fun onCleared() {
+        private?.close()
         model?.close()
     }
 }
