@@ -202,21 +202,21 @@ public struct BrowserWindowView: View {
         if !model.tab.address.host.isEmpty {
             return model.tab.address.host
         }
-        return String(localized: "app.name", bundle: .module)
+        return Words.appName.string()
     }
 
     private var toolbar: some View {
         HStack(spacing: Tokens.Space.s) {
-            toolbarButton("toolbar.back", symbol: "chevron.backward", identifier: "back", enabled: model.tab.canGoBack) {
+            toolbarButton(Words.toolbarBack, symbol: "chevron.backward", identifier: "back", enabled: model.tab.canGoBack) {
                 model.perform(.back)
             }
-            toolbarButton("toolbar.forward", symbol: "chevron.forward", identifier: "forward", enabled: model.tab.canGoForward) {
+            toolbarButton(Words.toolbarForward, symbol: "chevron.forward", identifier: "forward", enabled: model.tab.canGoForward) {
                 model.perform(.forward)
             }
             if model.isLoading {
-                toolbarButton("toolbar.stop", symbol: "xmark", identifier: "stop", enabled: true) { model.perform(.stop) }
+                toolbarButton(Words.toolbarStop, symbol: "xmark", identifier: "stop", enabled: true) { model.perform(.stop) }
             } else {
-                toolbarButton("toolbar.reload", symbol: "arrow.clockwise", identifier: "reload", enabled: model.hasPage) {
+                toolbarButton(Words.toolbarReload, symbol: "arrow.clockwise", identifier: "reload", enabled: model.hasPage) {
                     model.perform(.reload)
                 }
             }
@@ -234,7 +234,7 @@ public struct BrowserWindowView: View {
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
                 TextField(text: $model.findText) {
-                    Text("find.field", bundle: .module)
+                    Text(Words.findField)
                 }
                 .textFieldStyle(.plain)
                 .focused($findFocused)
@@ -248,7 +248,7 @@ public struct BrowserWindowView: View {
                         model.findNext()
                         findFocused = true
                     }
-                    .accessibilityLabel(Text("find.field", bundle: .module))
+                    .accessibilityLabel(Text(Words.findField))
                     .accessibilityIdentifier("find-field")
                 findOutcome
             }
@@ -256,16 +256,16 @@ public struct BrowserWindowView: View {
             .padding(.vertical, Tokens.Space.xs)
             .frame(minHeight: Tokens.Size.fieldHeight)
             .background(Tokens.Palette.fieldFill, in: RoundedRectangle(cornerRadius: Tokens.Radius.field))
-            toolbarButton("find.previous", symbol: "chevron.up", identifier: "find-previous", enabled: !model.findText.isEmpty) {
+            toolbarButton(Words.findPrevious, symbol: "chevron.up", identifier: "find-previous", enabled: !model.findText.isEmpty) {
                 model.findPrevious()
             }
-            toolbarButton("find.next", symbol: "chevron.down", identifier: "find-next", enabled: !model.findText.isEmpty) {
+            toolbarButton(Words.findNext, symbol: "chevron.down", identifier: "find-next", enabled: !model.findText.isEmpty) {
                 model.findNext()
             }
             Button {
                 model.closeFind()
             } label: {
-                Text("find.done", bundle: .module)
+                Text(Words.findDone)
             }
             // Neutral, as every button with words is (F14).
             .buttonStyle(.bordered)
@@ -283,12 +283,12 @@ public struct BrowserWindowView: View {
         case .nothing:
             EmptyView()
         case .notFound:
-            Text("find.none", bundle: .module)
+            Text(Words.findNone)
                 .lineLimit(1)
                 .fixedSize()
                 .accessibilityIdentifier("find-outcome")
         case let .match(current, total):
-            Text(String(format: String(localized: "find.count", bundle: .module), current, total))
+            Text(Words.findCount.filled(current, total))
                 .monospacedDigit()
                 .lineLimit(1)
                 .fixedSize()
@@ -297,14 +297,14 @@ public struct BrowserWindowView: View {
     }
 
     private func toolbarButton(
-        _ title: LocalizedStringKey,
+        _ title: Word,
         symbol: String,
         identifier: String,
         enabled: Bool,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            Label { Text(title, bundle: .module) } icon: { Image(systemName: symbol) }
+            Label { Text(title) } icon: { Image(systemName: symbol) }
                 .labelStyle(.iconOnly)
                 .frame(minWidth: Self.hitSize, minHeight: Self.hitSize)
                 .contentShape(Rectangle())
@@ -342,7 +342,7 @@ public struct BrowserWindowView: View {
         HStack(spacing: Tokens.Space.xs) {
             securityMark
             TextField(text: $model.addressText, selection: $addressSelection) {
-                Text("address.placeholder", bundle: .module)
+                Text(Words.addressPlaceholder)
             }
             .textFieldStyle(.plain)
             .focused($addressFocused)
@@ -373,7 +373,7 @@ public struct BrowserWindowView: View {
                     model.putSuggestionsAway()
                     return .handled
                 }
-                .accessibilityLabel(Text("address.label", bundle: .module))
+                .accessibilityLabel(Text(Words.addressLabel))
                 .accessibilityIdentifier("address-field")
         }
         .padding(.horizontal, Tokens.Space.s)
@@ -399,12 +399,12 @@ public struct BrowserWindowView: View {
         case .secure:
             Image(systemName: "lock.fill")
                 .foregroundStyle(Tokens.Palette.secure)
-                .accessibilityLabel(Text("address.secure", bundle: .module))
+                .accessibilityLabel(Text(Words.addressSecure))
                 .accessibilityIdentifier("security-secure")
         case .insecure:
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(Tokens.Palette.insecure)
-                .accessibilityLabel(Text("address.insecure", bundle: .module))
+                .accessibilityLabel(Text(Words.addressInsecure))
                 .accessibilityIdentifier("security-insecure")
         case .unspecified, .local, .UNRECOGNIZED:
             Image(systemName: "magnifyingglass")
@@ -467,9 +467,9 @@ struct EmptyTabView: View {
         CenteredWords {
             VStack(spacing: Tokens.Space.m) {
                 VStack(spacing: Tokens.Space.s) {
-                    Text("tab.empty.title", bundle: .module)
+                    Text(Words.tabEmptyTitle)
                         .font(.largeTitle.weight(.semibold))
-                    Text("tab.empty.hint", bundle: .module)
+                    Text(Words.tabEmptyHint)
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("empty-tab")
@@ -482,7 +482,7 @@ struct EmptyTabView: View {
                     Text(Self.goesTo(searchesGoTo, locale: locale))
                         .accessibilityIdentifier("search-goes-to")
                     Button(action: changeSearch) {
-                        Text("search.change", bundle: .module)
+                        Text(Words.searchChange)
                             .frame(minHeight: BrowserWindowView.hitSize)
                     }
                     .buttonStyle(.bordered)
@@ -497,7 +497,7 @@ struct EmptyTabView: View {
 
     /// The sentence that says where searches go.
     static func goesTo(_ engine: String, locale: Locale = .current) -> String {
-        String(format: String(localized: "search.goes_to", bundle: .module, locale: locale), engine)
+        Words.searchGoesTo.filled(engine, locale: locale)
     }
 }
 
@@ -512,9 +512,9 @@ public struct StartFailedView: View {
     public var body: some View {
         CenteredWords {
             VStack(spacing: Tokens.Space.m) {
-                Text("error.start.title", bundle: .module)
+                Text(Words.errorStartTitle)
                     .font(.title2.weight(.semibold))
-                Text(String(format: Bundle.module.localizedString(forKey: "error.start.detail", value: nil, table: nil), code))
+                Text(Words.errorStartDetail.filled(code))
                     .textSelection(.enabled)
             }
             .multilineTextAlignment(.center)

@@ -32,7 +32,7 @@ struct TabStrip: View {
             .padding(.leading, Tokens.Space.m)
             tabs
             Button(action: onFind) {
-                Label { Text("find.open", bundle: .module) } icon: { Image(systemName: "magnifyingglass") }
+                Label { Text(Words.findOpen) } icon: { Image(systemName: "magnifyingglass") }
                     .labelStyle(.iconOnly)
                     .frame(minWidth: BrowserWindowView.hitSize, minHeight: BrowserWindowView.hitSize)
                     .contentShape(Rectangle())
@@ -42,7 +42,7 @@ struct TabStrip: View {
             .disabled(!model.hasPage)
             .accessibilityIdentifier("find")
             Button(action: onZoom) {
-                Label { Text("zoom.open", bundle: .module) } icon: { Image(systemName: "textformat.size") }
+                Label { Text(Words.zoomOpen) } icon: { Image(systemName: "textformat.size") }
                     .labelStyle(.iconOnly)
                     .frame(minWidth: BrowserWindowView.hitSize, minHeight: BrowserWindowView.hitSize)
                     .contentShape(Rectangle())
@@ -52,7 +52,7 @@ struct TabStrip: View {
             .disabled(model.zoom == nil)
             .accessibilityIdentifier("zoom")
             Button(action: onHistory) {
-                Label { Text("history.open", bundle: .module) } icon: { Image(systemName: "clock.arrow.circlepath") }
+                Label { Text(Words.historyOpen) } icon: { Image(systemName: "clock.arrow.circlepath") }
                     .labelStyle(.iconOnly)
                     .frame(minWidth: BrowserWindowView.hitSize, minHeight: BrowserWindowView.hitSize)
                     .contentShape(Rectangle())
@@ -68,7 +68,7 @@ struct TabStrip: View {
                     }
             }
             .buttonStyle(.borderless)
-            .accessibilityValue(model.downloadsActive > 0 ? Text("downloads.active", bundle: .module) : Text(verbatim: ""))
+            .accessibilityValue(model.downloadsActive > 0 ? Text(Words.downloadsActive) : Text(verbatim: ""))
             .accessibilityIdentifier("history")
             .padding(.trailing, Tokens.Space.m)
         }
@@ -84,7 +84,7 @@ struct TabStrip: View {
                     Button {
                         model.openTab()
                     } label: {
-                        Label { Text("tabs.new", bundle: .module) } icon: { Image(systemName: "plus") }
+                        Label { Text(Words.tabsNew) } icon: { Image(systemName: "plus") }
                             .labelStyle(.iconOnly)
                             .frame(minWidth: BrowserWindowView.hitSize, minHeight: BrowserWindowView.hitSize)
                             .contentShape(Rectangle())
@@ -118,7 +118,7 @@ struct TabStrip: View {
             .modifier(OffersClosedTab(model: model))
         #endif
             .accessibilityElement(children: .contain)
-            .accessibilityLabel(Text("tabs.list", bundle: .module))
+            .accessibilityLabel(Text(Words.tabsList))
             .accessibilityIdentifier("tab-strip")
     }
 
@@ -151,7 +151,7 @@ struct TabStrip: View {
             Button {
                 model.closeTab(tab.tabID)
             } label: {
-                Label { Text("tabs.close", bundle: .module) } icon: { Image(systemName: "xmark") }
+                Label { Text(Words.tabsClose) } icon: { Image(systemName: "xmark") }
                     .labelStyle(.iconOnly)
                     .font(.caption)
                     .frame(minWidth: BrowserWindowView.hitSize, minHeight: BrowserWindowView.hitSize)
@@ -170,7 +170,7 @@ struct TabStrip: View {
         } else if !tab.host.isEmpty {
             Text(verbatim: tab.host)
         } else {
-            Text("tabs.untitled", bundle: .module)
+            Text(Words.tabsUntitled)
         }
     }
 }
@@ -197,7 +197,7 @@ private struct ReopenClosedTab: View {
     let model: BrowserModel
 
     var body: some View {
-        Button { model.reopenClosedTab() } label: { Text("tabs.reopen", bundle: .module) }
+        Button { model.reopenClosedTab() } label: { Text(Words.tabsReopen) }
             .accessibilityIdentifier("reopen-closed-tab")
     }
 }

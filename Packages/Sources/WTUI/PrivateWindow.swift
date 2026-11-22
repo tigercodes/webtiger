@@ -20,7 +20,7 @@ struct PrivateChip: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: Tokens.Space.xs) {
-                Text("private.chip", bundle: .module)
+                Text(Words.privateChip)
                     .fontWeight(.semibold)
                     .lineLimit(1)
                 Image(systemName: "chevron.down")
@@ -33,7 +33,7 @@ struct PrivateChip: View {
         }
         .buttonStyle(.plain)
         .background(Tokens.Palette.fieldFill, in: RoundedRectangle(cornerRadius: Tokens.Radius.field))
-        .accessibilityLabel(Text("private.window", bundle: .module))
+        .accessibilityLabel(Text(Words.privateWindow))
         .accessibilityIdentifier("private-chip")
     }
 }
@@ -42,9 +42,9 @@ struct PrivateChip: View {
 struct PrivateWords: View {
     var body: some View {
         VStack(spacing: Tokens.Space.s) {
-            Text("private.keeps", bundle: .module)
+            Text(Words.privateKeeps)
                 .accessibilityIdentifier("private-keeps")
-            Text("private.hides", bundle: .module)
+            Text(Words.privateHides)
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("private-hides")
         }
@@ -108,27 +108,24 @@ private struct PrivatePage: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.l) {
-            Text("private.window", bundle: .module)
+            Text(Words.privateWindow)
                 .font(.title2.weight(.semibold))
                 .accessibilityAddTraits(.isHeader)
             PrivateWords()
             VStack(alignment: .leading, spacing: Tokens.Space.s) {
                 Button { leave(ways.close) } label: {
-                    Text("private.close", bundle: .module).frame(minHeight: BrowserWindowView.hitSize)
+                    Text(Words.privateClose).frame(minHeight: BrowserWindowView.hitSize)
                 }
                 .accessibilityIdentifier("private-close")
                 if let other = ways.leave {
                     Button { leave(other.go) } label: {
-                        Text(verbatim: String(
-                            format: String(localized: "private.back", bundle: .module, locale: locale),
-                            SpaceName.shown(other.other, locale: locale)
-                        ))
-                        .frame(minHeight: BrowserWindowView.hitSize)
+                        Text(verbatim: Words.privateBack.filled(SpaceName.shown(other.other, locale: locale), locale: locale))
+                            .frame(minHeight: BrowserWindowView.hitSize)
                     }
                     .accessibilityIdentifier("private-leave")
                 }
                 Button { leave(nil) } label: {
-                    Text("spaces.done", bundle: .module).frame(minHeight: BrowserWindowView.hitSize)
+                    Text(Words.spacesDone).frame(minHeight: BrowserWindowView.hitSize)
                 }
                 .keyboardShortcut(.cancelAction)
                 .accessibilityIdentifier("private-done")
@@ -163,15 +160,15 @@ struct PrivateRow: View {
                 // No mark: it is no Space. The room of one, so that its name is under theirs.
                 Color.clear.frame(width: 10, height: 10)
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("private.window", bundle: .module)
+                    Text(Words.privateWindow)
                         .fontWeight(.semibold)
-                    Text("private.row.detail", bundle: .module)
+                    Text(Words.privateRowDetail)
                         .font(.callout)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: Tokens.Space.m)
                 if door.isOpen {
-                    Text("private.row.open", bundle: .module)
+                    Text(Words.privateRowOpen)
                         .font(.callout)
                         .accessibilityIdentifier("space-private-open")
                 }

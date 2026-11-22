@@ -44,25 +44,25 @@ struct DialogBar: View {
             .fixedSize(horizontal: false, vertical: true)
             if dialog.kind == .prompt {
                 TextField(text: $text) {
-                    Text("prompt.answer", bundle: .module)
+                    Text(Words.promptAnswer)
                 }
                 .textFieldStyle(.roundedBorder)
                 .onSubmit { answer(true, text, false) }
-                .accessibilityLabel(Text("prompt.answer", bundle: .module))
+                .accessibilityLabel(Text(Words.promptAnswer))
                 .accessibilityIdentifier("prompt-field")
             }
             // A page that said something before can be stopped: on a row of its own, apart
             // from the answers to what it says now.
             if dialog.maySilence {
-                button("prompt.silence", identifier: "prompt-silence") { answer(false, "", true) }
+                button(Words.promptSilence, identifier: "prompt-silence") { answer(false, "", true) }
             }
             HStack(spacing: Tokens.Space.m) {
                 Spacer(minLength: 0)
                 // Something said is only acknowledged: there is nothing to refuse.
                 if dialog.kind != .alert {
-                    button("prompt.cancel", identifier: "prompt-cancel") { answer(false, "", false) }
+                    button(Words.promptCancel, identifier: "prompt-cancel") { answer(false, "", false) }
                 }
-                button("prompt.ok", identifier: "prompt-ok") { answer(true, dialog.kind == .prompt ? text : "", false) }
+                button(Words.promptOk, identifier: "prompt-ok") { answer(true, dialog.kind == .prompt ? text : "", false) }
             }
         }
         .padding(.horizontal, Tokens.Space.m)
@@ -74,9 +74,9 @@ struct DialogBar: View {
 
     /// Neutral, as every button with words is (F14); its words on more lines where one is
     /// not enough, and never cut short.
-    private func button(_ title: LocalizedStringKey, identifier: String, action: @escaping () -> Void) -> some View {
+    private func button(_ title: Word, identifier: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(title, bundle: .module)
+            Text(title)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(minHeight: BrowserWindowView.hitSize)
         }
@@ -90,6 +90,6 @@ struct DialogBar: View {
 
     /// The bar's first line: who says it.
     static func says(_ site: String, locale: Locale = .current) -> String {
-        String(format: String(localized: "prompt.says", bundle: .module, locale: locale), site)
+        Words.promptSays.filled(site, locale: locale)
     }
 }

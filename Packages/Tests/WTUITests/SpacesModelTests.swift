@@ -365,9 +365,9 @@ final class SpacesModelTests: XCTestCase {
         }
         // On the page that edits a Space, it is said of changing it.
         for code in ["space.random", "store.query", "space.rename_failed", ""] {
-            XCTAssertEqual(SpacesView.words(for: code, unknown: "error.space.rename_failed"), "The Space couldn’t be changed.", code)
+            XCTAssertEqual(SpacesView.words(for: code, unknown: Words.errorSpaceRenameFailed), "The Space couldn’t be changed.", code)
         }
         XCTAssertEqual(SpacesView.words(for: "space.colour_unknown"), "That colour isn’t one a Space can have.")
-        XCTAssertEqual(SpacesView.words(for: "space.unknown", unknown: "error.space.rename_failed"), "That Space isn’t there any more.")
+        XCTAssertEqual(SpacesView.words(for: "space.unknown", unknown: Words.errorSpaceRenameFailed), "That Space isn’t there any more.")
     }
 }

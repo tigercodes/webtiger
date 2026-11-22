@@ -35,29 +35,29 @@ enum CatalogueState: String, CaseIterable, Identifiable {
     }
 
     /// The state's name in the catalogue.
-    var title: LocalizedStringKey {
+    var title: Word {
         switch self {
-        case .empty: "catalogue.state.empty"
-        case .loading: "catalogue.state.loading"
-        case .secure: "catalogue.state.secure"
-        case .insecure: "catalogue.state.insecure"
-        case .long: "catalogue.state.long"
-        case .failed: "catalogue.state.failed"
-        case .failedCertificate: "catalogue.state.failed_certificate"
-        case .failedCertificateWarning: "catalogue.state.failed_certificate_warning"
-        case .history: "catalogue.state.history"
-        case .tabs: "catalogue.state.tabs"
-        case .find: "catalogue.state.find"
-        case .findNone: "catalogue.state.find_none"
-        case .suggestions: "catalogue.state.suggestions"
-        case .zoom: "catalogue.state.zoom"
-        case .prompt: "catalogue.state.prompt"
-        case .promptDownload: "catalogue.state.prompt_download"
-        case .promptAlert: "catalogue.state.prompt_alert"
-        case .promptConfirm: "catalogue.state.prompt_confirm"
-        case .promptText: "catalogue.state.prompt_text"
-        case .promptSignIn: "catalogue.state.prompt_sign_in"
-        case .promptSignInAgain: "catalogue.state.prompt_sign_in_again"
+        case .empty: Words.catalogueStateEmpty
+        case .loading: Words.catalogueStateLoading
+        case .secure: Words.catalogueStateSecure
+        case .insecure: Words.catalogueStateInsecure
+        case .long: Words.catalogueStateLong
+        case .failed: Words.catalogueStateFailed
+        case .failedCertificate: Words.catalogueStateFailedCertificate
+        case .failedCertificateWarning: Words.catalogueStateFailedCertificateWarning
+        case .history: Words.catalogueStateHistory
+        case .tabs: Words.catalogueStateTabs
+        case .find: Words.catalogueStateFind
+        case .findNone: Words.catalogueStateFindNone
+        case .suggestions: Words.catalogueStateSuggestions
+        case .zoom: Words.catalogueStateZoom
+        case .prompt: Words.catalogueStatePrompt
+        case .promptDownload: Words.catalogueStatePromptDownload
+        case .promptAlert: Words.catalogueStatePromptAlert
+        case .promptConfirm: Words.catalogueStatePromptConfirm
+        case .promptText: Words.catalogueStatePromptText
+        case .promptSignIn: Words.catalogueStatePromptSignIn
+        case .promptSignInAgain: Words.catalogueStatePromptSignInAgain
         }
     }
 
@@ -302,11 +302,11 @@ enum CatalogueHistory: String, CaseIterable, Identifiable {
     }
 
     /// The state's name in the catalogue.
-    var title: LocalizedStringKey {
+    var title: Word {
         switch self {
-        case .list: "catalogue.state.history_list"
-        case .empty: "catalogue.state.history_empty"
-        case .noneFound: "catalogue.state.history_none_found"
+        case .list: Words.catalogueStateHistoryList
+        case .empty: Words.catalogueStateHistoryEmpty
+        case .noneFound: Words.catalogueStateHistoryNoneFound
         }
     }
 

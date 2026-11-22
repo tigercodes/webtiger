@@ -58,7 +58,7 @@ struct SpaceChip: View {
         }
         .buttonStyle(.plain)
         .background(Tokens.Palette.fieldFill, in: RoundedRectangle(cornerRadius: Tokens.Radius.field))
-        .accessibilityLabel(Text(verbatim: String(format: String(localized: "space.chip", bundle: .module, locale: locale), shown)))
+        .accessibilityLabel(Text(verbatim: Words.spaceChip.filled(shown, locale: locale)))
         .accessibilityIdentifier("space-chip")
     }
 }
@@ -208,11 +208,11 @@ struct SpacesView: View {
     private var list: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: Tokens.Space.s) {
-                Text("spaces.title", bundle: .module)
+                Text(Words.spacesTitle)
                     .font(.title2.weight(.semibold))
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("spaces-title")
-                Text("spaces.detail", bundle: .module)
+                Text(Words.spacesDetail)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(Tokens.Space.l)
@@ -234,7 +234,7 @@ struct SpacesView: View {
                     colour = ""
                     page = .new
                 } label: {
-                    Text("spaces.new", bundle: .module)
+                    Text(Words.spacesNew)
                         .frame(minHeight: BrowserWindowView.hitSize)
                 }
                 .buttonStyle(.bordered)
@@ -247,7 +247,7 @@ struct SpacesView: View {
                     colour = shown?.colour ?? ""
                     page = .rename
                 } label: {
-                    Text("spaces.rename", bundle: .module)
+                    Text(Words.spacesRename)
                         .frame(minHeight: BrowserWindowView.hitSize)
                 }
                 .buttonStyle(.bordered)
@@ -256,7 +256,7 @@ struct SpacesView: View {
                 .disabled(shown == nil)
                 .accessibilityIdentifier("spaces-rename")
                 Button(action: done) {
-                    Text("spaces.done", bundle: .module)
+                    Text(Words.spacesDone)
                         .frame(minHeight: BrowserWindowView.hitSize)
                 }
                 .buttonStyle(.bordered)
@@ -282,14 +282,14 @@ struct SpacesView: View {
                     Text(verbatim: SpaceName.shown(space.name, locale: locale))
                         .fontWeight(.semibold)
                     if let other = sharer(with: space) {
-                        Text(verbatim: String(format: String(localized: "spaces.shares", bundle: .module, locale: locale), other))
+                        Text(verbatim: Words.spacesShares.filled(other, locale: locale))
                             .font(.callout)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 Spacer(minLength: Tokens.Space.m)
                 if isShown {
-                    Text("spaces.shown", bundle: .module)
+                    Text(Words.spacesShown)
                         .font(.callout)
                 }
             }
@@ -337,30 +337,30 @@ struct SpacesView: View {
 
     private var making: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.l) {
-            Text("space.new.title", bundle: .module)
+            Text(Words.spaceNewTitle)
                 .font(.title2.weight(.semibold))
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("space-new-title")
             VStack(alignment: .leading, spacing: Tokens.Space.xs) {
-                Text("space.new.name", bundle: .module)
+                Text(Words.spaceNewName)
                     .font(.callout)
-                TextField(text: $name) { Text("space.new.name", bundle: .module) }
+                TextField(text: $name) { Text(Words.spaceNewName) }
                     .textFieldStyle(.roundedBorder)
                     .focused($nameFocused)
                     .onSubmit(submit)
                     .accessibilityIdentifier("space-name")
             }
             VStack(alignment: .leading, spacing: Tokens.Space.s) {
-                Text("space.new.logins", bundle: .module)
+                Text(Words.spaceNewLogins)
                     .font(.headline)
                     .accessibilityAddTraits(.isHeader)
                 choice(
-                    "space.new.own", detail: String(localized: "space.new.own.detail", bundle: .module, locale: locale),
+                    Words.spaceNewOwn, detail: Words.spaceNewOwnDetail.string(locale),
                     chosen: !shares, identifier: "space-logins-own"
                 ) { shares = false }
                 choice(
-                    "space.new.shared",
-                    detail: String(format: String(localized: "space.new.shared.detail", bundle: .module, locale: locale), sharedName),
+                    Words.spaceNewShared,
+                    detail: Words.spaceNewSharedDetail.filled(sharedName, locale: locale),
                     chosen: shares, identifier: "space-logins-shared"
                 ) { shares = true }
                 // Which Space, where there is more than one to choose among.
@@ -370,18 +370,18 @@ struct SpacesView: View {
                             Text(verbatim: SpaceName.shown(space.name, locale: locale)).tag(space.spaceID)
                         }
                     } label: {
-                        Text("space.new.share_with", bundle: .module)
+                        Text(Words.spaceNewShareWith)
                     }
                     .accessibilityIdentifier("space-share-with")
                 }
             }
             VStack(alignment: .leading, spacing: Tokens.Space.xs) {
                 SpaceSwatches(colours: colours, offersNone: false, chosen: $colour)
-                Text("space.automatic_colour", bundle: .module)
+                Text(Words.spaceAutomaticColour)
                     .font(.callout)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            buttons("space.new.make", identifier: "space-make", unknown: "error.space.failed", action: submit)
+            buttons(Words.spaceNewMake, identifier: "space-make", unknown: Words.errorSpaceFailed, action: submit)
         }
         .padding(Tokens.Space.l)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -397,7 +397,7 @@ struct SpacesView: View {
     /// one that does what the page is for, which is not to be pressed while there is no name.
     /// (The core says so too: this only spares the press.)
     private func buttons(
-        _ title: LocalizedStringKey, identifier: String, unknown: String, needsName: Bool = true, action: @escaping () -> Void
+        _ title: Word, identifier: String, unknown: Word, needsName: Bool = true, action: @escaping () -> Void
     ) -> some View {
         VStack(alignment: .leading, spacing: Tokens.Space.l) {
             if let refusal {
@@ -409,7 +409,7 @@ struct SpacesView: View {
                 Button {
                     page = .list
                 } label: {
-                    Text("space.new.back", bundle: .module)
+                    Text(Words.spaceNewBack)
                         .frame(minHeight: BrowserWindowView.hitSize)
                 }
                 .buttonStyle(.bordered)
@@ -419,7 +419,7 @@ struct SpacesView: View {
                     // The one that does something stands out by its weight. (White on the
                     // accent's blue, which a prominent button is, is too faint to read at this
                     // size: Apple's audit, on an iPhone.)
-                    Text(title, bundle: .module)
+                    Text(title)
                         .fontWeight(.semibold)
                         .frame(minHeight: BrowserWindowView.hitSize)
                 }
@@ -435,14 +435,14 @@ struct SpacesView: View {
 
     private var renaming: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.l) {
-            Text("space.rename.title", bundle: .module)
+            Text(Words.spaceRenameTitle)
                 .font(.title2.weight(.semibold))
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("space-rename-title")
             VStack(alignment: .leading, spacing: Tokens.Space.xs) {
-                Text("space.new.name", bundle: .module)
+                Text(Words.spaceNewName)
                     .font(.callout)
-                TextField(text: $name) { Text("space.new.name", bundle: .module) }
+                TextField(text: $name) { Text(Words.spaceNewName) }
                     .textFieldStyle(.roundedBorder)
                     .focused($nameFocused)
                     .onSubmit(save)
@@ -450,7 +450,7 @@ struct SpacesView: View {
             }
             SpaceSwatches(colours: colours, offersNone: true, chosen: $colour)
             buttons(
-                "space.rename.save", identifier: "space-save", unknown: "error.space.rename_failed",
+                Words.spaceRenameSave, identifier: "space-save", unknown: Words.errorSpaceRenameFailed,
                 needsName: shown?.name.isEmpty == false,
                 action: save
             )
@@ -489,14 +489,14 @@ struct SpacesView: View {
     /// One of the two choices of logins: its name, what it means in a sentence, and whether
     /// it is the one chosen, which a mark says and a screen reader is told.
     private func choice(
-        _ title: LocalizedStringKey, detail: String, chosen: Bool, identifier: String, choose: @escaping () -> Void
+        _ title: Word, detail: String, chosen: Bool, identifier: String, choose: @escaping () -> Void
     ) -> some View {
         Button(action: choose) {
             HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.s) {
                 Image(systemName: chosen ? "largecircle.fill.circle" : "circle")
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(title, bundle: .module)
+                    Text(title)
                         .fontWeight(.semibold)
                     Text(verbatim: detail)
                         .font(.callout)
@@ -513,9 +513,7 @@ struct SpacesView: View {
 
     /// The words for why a Space was not made, or not named: the code's own, or `unknown`,
     /// what is said when no more is known. Never the code's text.
-    static func words(for code: String, unknown: String = "error.space.failed") -> String {
-        let key = "error." + code
-        let words = Bundle.module.localizedString(forKey: key, value: nil, table: nil)
-        return words != key ? words : Bundle.module.localizedString(forKey: unknown, value: nil, table: nil)
+    static func words(for code: String, unknown: Word = Words.errorSpaceFailed) -> String {
+        (Word(named: "error." + code) ?? unknown).string()
     }
 }

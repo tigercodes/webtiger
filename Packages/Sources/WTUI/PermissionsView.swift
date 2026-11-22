@@ -33,7 +33,7 @@ public struct PermissionsView: View {
             if let switcher {
                 switcher
             } else {
-                Text("permissions.title", bundle: .module)
+                Text(Words.permissionsTitle)
                     .font(.headline)
                     .accessibilityAddTraits(.isHeader)
             }
@@ -41,7 +41,7 @@ public struct PermissionsView: View {
             Button {
                 model.forgetEverything()
             } label: {
-                Text("permissions.clear", bundle: .module)
+                Text(Words.permissionsClear)
                     // On more lines where one is not enough, and never cut short.
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(minHeight: BrowserWindowView.hitSize)
@@ -52,7 +52,7 @@ public struct PermissionsView: View {
             .disabled(model.sites.isEmpty)
             .accessibilityIdentifier("permissions-clear")
             Button(action: done) {
-                Text("permissions.done", bundle: .module)
+                Text(Words.permissionsDone)
                     .frame(minHeight: BrowserWindowView.hitSize)
             }
             .buttonStyle(.bordered)
@@ -70,7 +70,7 @@ public struct PermissionsView: View {
             Spacer()
         } else if model.sites.isEmpty {
             Spacer()
-            Text("permissions.empty", bundle: .module)
+            Text(Words.permissionsEmpty)
                 .multilineTextAlignment(.center)
                 // On as many lines as it needs at any text size, and never cut short.
                 .fixedSize(horizontal: false, vertical: true)
@@ -107,7 +107,7 @@ public struct PermissionsView: View {
             Button {
                 model.forget(site)
             } label: {
-                Label { Text("permissions.forget", bundle: .module) } icon: { Image(systemName: "trash") }
+                Label { Text(Words.permissionsForget) } icon: { Image(systemName: "trash") }
                     .labelStyle(.iconOnly)
                     .frame(minWidth: BrowserWindowView.hitSize, minHeight: BrowserWindowView.hitSize)
                     .contentShape(Rectangle())
@@ -123,15 +123,15 @@ public struct PermissionsView: View {
     /// this build has no words for is left out.
     static func allowed(_ site: WTSitePermissions, locale: Locale = .current) -> String {
         let names: [String] = site.kinds.compactMap { kind in
-            let key: String.LocalizationValue? =
+            let key: Word? =
                 switch kind {
-                case .camera: "permissions.kind.camera"
-                case .microphone: "permissions.kind.microphone"
-                case .location: "permissions.kind.location"
-                case .downloads: "permissions.kind.downloads"
+                case .camera: Words.permissionsKindCamera
+                case .microphone: Words.permissionsKindMicrophone
+                case .location: Words.permissionsKindLocation
+                case .downloads: Words.permissionsKindDownloads
                 default: nil
                 }
-            return key.map { String(localized: $0, bundle: .module, locale: locale) }
+            return key.map { $0.string(locale) }
         }
         let list = ListFormatter()
         list.locale = locale

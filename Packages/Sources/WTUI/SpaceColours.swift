@@ -9,9 +9,7 @@ enum SpaceColour {
     /// written beside the heading when it is chosen. Nothing for a name this build has no word
     /// for: a code's own text is never shown.
     static func word(_ name: String, locale: Locale = .current) -> String {
-        let key = "space.colour." + name
-        let word = Bundle.module.localizedString(forKey: key, value: nil, table: nil)
-        return name.isEmpty || word == key ? "" : word
+        Word(named: "space.colour." + name)?.string(locale) ?? ""
     }
 }
 
@@ -58,7 +56,7 @@ struct SpaceSwatches: View {
                 .accessibilityIdentifier("space-colour")
             LazyVGrid(columns: [GridItem(.adaptive(minimum: BrowserWindowView.hitSize), spacing: Tokens.Space.xs)], alignment: .leading) {
                 if offersNone {
-                    swatch("", word: String(localized: "space.no_colour", bundle: .module, locale: locale))
+                    swatch("", word: Words.spaceNoColour.string(locale))
                 }
                 ForEach(offered, id: \.self) { colour in
                     swatch(colour, word: SpaceColour.word(colour, locale: locale))
@@ -70,8 +68,8 @@ struct SpaceSwatches: View {
     private var heading: Text {
         let word = SpaceColour.word(chosen, locale: locale)
         return word.isEmpty
-            ? Text("space.colour", bundle: .module)
-            : Text(verbatim: String(format: String(localized: "space.chosen_colour", bundle: .module, locale: locale), word))
+            ? Text(Words.spaceColour)
+            : Text(verbatim: Words.spaceChosenColour.filled(word, locale: locale))
     }
 
     private func swatch(_ colour: String, word: String) -> some View {

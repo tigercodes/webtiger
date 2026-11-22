@@ -12,7 +12,7 @@ struct ZoomBar: View {
     var body: some View {
         let zoom = model.zoom ?? WTZoomView()
         HStack(spacing: Tokens.Space.s) {
-            button("zoom.out", symbol: "minus", identifier: "zoom-out", enabled: zoom.canZoomOut) { model.zoom(.out) }
+            button(Words.zoomOut, symbol: "minus", identifier: "zoom-out", enabled: zoom.canZoomOut) { model.zoom(.out) }
             // The level; pressing it puts the page back to actual size.
             Button {
                 model.zoom(.reset)
@@ -27,15 +27,15 @@ struct ZoomBar: View {
             .buttonStyle(.bordered)
             .tint(.primary)
             .disabled(zoom.percent == 100)
-            .accessibilityLabel(Text("zoom.reset", bundle: .module))
+            .accessibilityLabel(Text(Words.zoomReset))
             .accessibilityValue(Text(level(zoom)))
             .accessibilityIdentifier("zoom-level")
-            button("zoom.in", symbol: "plus", identifier: "zoom-in", enabled: zoom.canZoomIn) { model.zoom(.in) }
+            button(Words.zoomIn, symbol: "plus", identifier: "zoom-in", enabled: zoom.canZoomIn) { model.zoom(.in) }
             Spacer(minLength: 0)
             Button {
                 model.closeZoom()
             } label: {
-                Text("zoom.done", bundle: .module)
+                Text(Words.zoomDone)
             }
             .buttonStyle(.bordered)
             .tint(.primary)
@@ -47,18 +47,18 @@ struct ZoomBar: View {
     }
 
     private func level(_ zoom: WTZoomView) -> String {
-        String(format: String(localized: "zoom.level", bundle: .module), Int(zoom.percent))
+        Words.zoomLevel.filled(Int(zoom.percent))
     }
 
     private func button(
-        _ title: LocalizedStringKey,
+        _ title: Word,
         symbol: String,
         identifier: String,
         enabled: Bool,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            Label { Text(title, bundle: .module) } icon: { Image(systemName: symbol) }
+            Label { Text(title) } icon: { Image(systemName: symbol) }
                 .labelStyle(.iconOnly)
                 .frame(minWidth: BrowserWindowView.hitSize, minHeight: BrowserWindowView.hitSize)
                 .contentShape(Rectangle())

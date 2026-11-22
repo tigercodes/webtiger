@@ -33,7 +33,7 @@ struct SuggestionList: View {
         .background(.background)
         .overlay(alignment: .bottom) { Rectangle().fill(Tokens.Palette.hairline).frame(height: 1) }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text("suggestions.list", bundle: .module))
+        .accessibilityLabel(Text(Words.suggestionsList))
         .accessibilityIdentifier("suggestions")
     }
 
@@ -57,7 +57,7 @@ struct SuggestionList: View {
                 // A tab that is open (038): choosing the row brings it in front. Said in
                 // words, whole, whatever the title has to give up for it; and in the text's
                 // own colour: small and grey, the iPhone's audit found it too faint to read.
-                Text("suggestions.switch_tab", bundle: .module)
+                Text(Words.suggestionsSwitchTab)
                     .font(.footnote)
                     .lineLimit(1)
                     .fixedSize()

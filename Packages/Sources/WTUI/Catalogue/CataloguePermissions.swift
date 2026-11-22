@@ -13,10 +13,10 @@ enum CataloguePermissions: String, CaseIterable, Identifiable {
     }
 
     /// The state's name in the catalogue.
-    var title: LocalizedStringKey {
+    var title: Word {
         switch self {
-        case .list: "catalogue.state.permissions_list"
-        case .empty: "catalogue.state.permissions_empty"
+        case .list: Words.catalogueStatePermissionsList
+        case .empty: Words.catalogueStatePermissionsEmpty
         }
     }
 

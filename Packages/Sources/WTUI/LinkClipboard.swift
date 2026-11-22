@@ -48,15 +48,15 @@ extension LinkMenu {
     @MainActor
     static func words(copyingTo clipboard: LinkClipboard) -> LinkMenu {
         #if os(macOS)
-            let open = String(localized: "link.open_link_new_tab", bundle: .module)
+            let open = Words.linkOpenLinkNewTab.string()
         #else
-            let open = String(localized: "link.open_new_tab", bundle: .module)
+            let open = Words.linkOpenNewTab.string()
         #endif
         return LinkMenu(
             openInNewTab: open,
-            openImageInNewTab: String(localized: "link.open_image_new_tab", bundle: .module),
-            downloadLinkedFile: String(localized: "link.download", bundle: .module),
-            copyLink: String(localized: "link.copy", bundle: .module),
+            openImageInNewTab: Words.linkOpenImageNewTab.string(),
+            downloadLinkedFile: Words.linkDownload.string(),
+            copyLink: Words.linkCopy.string(),
             copy: clipboard.copy
         )
     }

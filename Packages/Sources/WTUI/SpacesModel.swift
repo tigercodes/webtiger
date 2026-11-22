@@ -143,7 +143,7 @@ public struct SpaceEdit: Equatable, Sendable {
 /// while nobody has named it.
 enum SpaceName {
     static func shown(_ name: String, locale: Locale = .current) -> String {
-        name.isEmpty ? String(localized: "space.home", bundle: .module, locale: locale) : name
+        name.isEmpty ? Words.spaceHome.string(locale) : name
     }
 
     /// The first letter of a name as it is shown, as a capital: what stands for the Space

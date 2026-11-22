@@ -13,10 +13,10 @@ enum CatalogueDownloads: String, CaseIterable, Identifiable {
     }
 
     /// The state's name in the catalogue.
-    var title: LocalizedStringKey {
+    var title: Word {
         switch self {
-        case .list: "catalogue.state.downloads_list"
-        case .empty: "catalogue.state.downloads_empty"
+        case .list: Words.catalogueStateDownloadsList
+        case .empty: Words.catalogueStateDownloadsEmpty
         }
     }
 

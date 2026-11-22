@@ -48,17 +48,17 @@ struct LibraryView: View {
     /// list's title would be.
     private var switcher: some View {
         HStack(spacing: Tokens.Space.xs) {
-            choice("history.title", .history, identifier: "library-history")
-            choice("downloads.title", .downloads, identifier: "library-downloads")
-            choice("permissions.title", .permissions, identifier: "library-permissions")
+            choice(Words.historyTitle, .history, identifier: "library-history")
+            choice(Words.downloadsTitle, .downloads, identifier: "library-downloads")
+            choice(Words.permissionsTitle, .permissions, identifier: "library-permissions")
         }
     }
 
-    private func choice(_ title: LocalizedStringKey, _ which: Part, identifier: String) -> some View {
+    private func choice(_ title: Word, _ which: Part, identifier: String) -> some View {
         Button {
             part = which
         } label: {
-            Text(title, bundle: .module)
+            Text(title)
                 .font(.headline)
                 // On more lines where one is not enough, and never cut short.
                 .fixedSize(horizontal: false, vertical: true)

@@ -7,4 +7,4 @@
 --self remove
 --header strip
 --disable redundantReturn, wrapMultilineStatementBraces, noForceUnwrapInTests
---exclude Packages/.build, Tools, Packages/Sources/WTContract, Packages/Sources/WTDesign/Tokens.generated.swift, Packages/Tests/WTWebKitTests/TestSitePages.generated.swift
+--exclude Packages/.build, Tools, Packages/Sources/WTContract, Packages/Sources/WTDesign/Tokens.generated.swift, Packages/Sources/WTUI/Words.generated.swift, Packages/Tests/WTWebKitTests/TestSitePages.generated.swift

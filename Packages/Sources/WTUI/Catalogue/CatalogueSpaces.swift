@@ -15,13 +15,13 @@ enum CatalogueSpaces: String, CaseIterable, Identifiable {
     }
 
     /// The state's name in the catalogue.
-    var title: LocalizedStringKey {
+    var title: Word {
         switch self {
-        case .list: "catalogue.state.spaces"
-        case .new: "catalogue.state.spaces_new"
-        case .newShared: "catalogue.state.spaces_new_shared"
-        case .refused: "catalogue.state.spaces_refused"
-        case .rename: "catalogue.state.spaces_rename"
+        case .list: Words.catalogueStateSpaces
+        case .new: Words.catalogueStateSpacesNew
+        case .newShared: Words.catalogueStateSpacesNewShared
+        case .refused: Words.catalogueStateSpacesRefused
+        case .rename: Words.catalogueStateSpacesRename
         }
     }
 

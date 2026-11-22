@@ -39,7 +39,7 @@ public extension BrowserModel {
     private func told(whereSearchesGo settings: WTSearchSettings) {
         search = settings
         session.engine.linkMenu?.searchWords = searchEngineName.map {
-            String(format: String(localized: "selection.search_with", bundle: .module), $0)
+            Words.selectionSearchWith.filled($0)
         }
     }
 
@@ -90,14 +90,14 @@ struct SearchEnginesView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: Tokens.Space.s) {
-                    Text("search.question.title", bundle: .module)
+                    Text(Words.searchQuestionTitle)
                         .font(.title2.weight(.semibold))
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityAddTraits(.isHeader)
                         .accessibilityIdentifier("search-question")
                     // In the colour of the heading: a quieter grey on a sheet is too faint to
                     // read at this size (Apple's audit, on an iPhone).
-                    Text("search.question.detail", bundle: .module)
+                    Text(Words.searchQuestionDetail)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(Tokens.Space.l)
@@ -111,12 +111,9 @@ struct SearchEnginesView: View {
                     // "Keep DuckDuckGo": the default, by its name.
                     Group {
                         if settings.chosen {
-                            Text("search.keep", bundle: .module)
+                            Text(Words.searchKeep)
                         } else {
-                            Text(verbatim: String(
-                                format: String(localized: "search.keep_default", bundle: .module, locale: locale),
-                                inUseName
-                            ))
+                            Text(verbatim: Words.searchKeepDefault.filled(inUseName, locale: locale))
                         }
                     }
                     .frame(minHeight: BrowserWindowView.hitSize)
@@ -148,7 +145,7 @@ struct SearchEnginesView: View {
                 }
                 Spacer(minLength: Tokens.Space.m)
                 if inUse {
-                    Text(settings.chosen ? "search.in_use" : "search.default", bundle: .module)
+                    Text(settings.chosen ? Words.searchInUse : Words.searchDefault)
                         .font(.callout)
                 }
             }

@@ -112,7 +112,7 @@ struct PromptBar: View {
         Button {
             answer(false, "", false, "")
         } label: {
-            Text("prompt.refuse", bundle: .module)
+            Text(Words.promptRefuse)
                 // On more lines where one is not enough, and never cut short.
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(minHeight: BrowserWindowView.hitSize)
@@ -123,7 +123,7 @@ struct PromptBar: View {
         Button {
             answer(true, "", false, "")
         } label: {
-            Text("prompt.allow", bundle: .module)
+            Text(Words.promptAllow)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(minHeight: BrowserWindowView.hitSize)
         }
@@ -142,12 +142,12 @@ struct PromptBar: View {
 
     /// What a page wants, each in its own words. A kind this build has no words for is left
     /// out.
-    static func wanted(_ permission: WTPermissionPrompt) -> [String.LocalizationValue] {
+    static func wanted(_ permission: WTPermissionPrompt) -> [Word] {
         permission.kinds.compactMap { kind in
             switch kind {
-            case .camera: "prompt.kind.camera"
-            case .microphone: "prompt.kind.microphone"
-            case .location: "prompt.kind.location"
+            case .camera: Words.promptKindCamera
+            case .microphone: Words.promptKindMicrophone
+            case .location: Words.promptKindLocation
             default: nil
             }
         }
@@ -160,13 +160,13 @@ struct PromptBar: View {
         // core's words. The name is in quotation marks, so that where it begins and ends
         // can be seen.
         if case let .download(download)? = prompt.kind {
-            return String(format: String(localized: "prompt.download", bundle: .module, locale: locale), download.site, download.fileName)
+            return Words.promptDownload.filled(download.site, download.fileName, locale: locale)
         }
         guard case let .permission(permission)? = prompt.kind else { return "" }
-        let names = wanted(permission).map { String(localized: $0, bundle: .module, locale: locale) }
+        let names = wanted(permission).map { $0.string(locale) }
         let list = ListFormatter()
         list.locale = locale
-        let pattern = String(localized: "prompt.permission", bundle: .module, locale: locale)
+        let pattern = Words.promptPermission.string(locale)
         return String(format: pattern, permission.site, list.string(from: names) ?? names.joined(separator: ", "))
     }
 }

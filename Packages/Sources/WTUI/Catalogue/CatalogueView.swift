@@ -9,14 +9,14 @@ public struct CatalogueView: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Tokens.Space.xl) {
-                Text("catalogue.title", bundle: .module)
+                Text(Words.catalogueTitle)
                     .font(.largeTitle.weight(.semibold))
                     .accessibilityAddTraits(.isHeader)
                 CatalogueTokens()
-                heading("catalogue.states")
+                heading(Words.catalogueStates)
                 ForEach(CatalogueState.allCases) { state in
                     VStack(alignment: .leading, spacing: Tokens.Space.s) {
-                        Text(state.title, bundle: .module)
+                        Text(state.title)
                             .font(.headline)
                         CatalogueWindow(state: state)
                             .frame(height: CatalogueWindow.height)
@@ -26,7 +26,7 @@ public struct CatalogueView: View {
                 }
                 ForEach(CatalogueHistory.allCases) { state in
                     VStack(alignment: .leading, spacing: Tokens.Space.s) {
-                        Text(state.title, bundle: .module)
+                        Text(state.title)
                             .font(.headline)
                         CatalogueHistoryList(state: state)
                             .frame(height: CatalogueWindow.height)
@@ -36,7 +36,7 @@ public struct CatalogueView: View {
                 }
                 ForEach(CatalogueDownloads.allCases) { state in
                     VStack(alignment: .leading, spacing: Tokens.Space.s) {
-                        Text(state.title, bundle: .module)
+                        Text(state.title)
                             .font(.headline)
                         CatalogueDownloadsList(state: state)
                             .frame(height: CatalogueWindow.height)
@@ -46,7 +46,7 @@ public struct CatalogueView: View {
                 }
                 ForEach(CataloguePermissions.allCases) { state in
                     VStack(alignment: .leading, spacing: Tokens.Space.s) {
-                        Text(state.title, bundle: .module)
+                        Text(state.title)
                             .font(.headline)
                         CataloguePermissionsList(state: state)
                             .frame(height: CatalogueWindow.height)
@@ -56,7 +56,7 @@ public struct CatalogueView: View {
                 }
                 ForEach(CatalogueSearch.allCases) { state in
                     VStack(alignment: .leading, spacing: Tokens.Space.s) {
-                        Text(state.title, bundle: .module)
+                        Text(state.title)
                             .font(.headline)
                         CatalogueSearchEngines(state: state)
                             .frame(height: CatalogueWindow.height)
@@ -66,7 +66,7 @@ public struct CatalogueView: View {
                 }
                 ForEach(CatalogueSpaces.allCases) { state in
                     VStack(alignment: .leading, spacing: Tokens.Space.s) {
-                        Text(state.title, bundle: .module)
+                        Text(state.title)
                             .font(.headline)
                         CatalogueSpacesList(state: state)
                             .frame(height: CatalogueWindow.height)
@@ -74,7 +74,7 @@ public struct CatalogueView: View {
                             .overlay(RoundedRectangle(cornerRadius: Tokens.Radius.tile).strokeBorder(Tokens.Palette.hairline))
                     }
                 }
-                heading("catalogue.start_failed")
+                heading(Words.catalogueStartFailed)
                 StartFailedView(code: "store.open")
                     .frame(height: CatalogueWindow.height)
                     .overlay(RoundedRectangle(cornerRadius: Tokens.Radius.tile).strokeBorder(Tokens.Palette.hairline))
@@ -86,8 +86,8 @@ public struct CatalogueView: View {
         .accessibilityIdentifier("catalogue")
     }
 
-    private func heading(_ title: LocalizedStringKey) -> some View {
-        Text(title, bundle: .module)
+    private func heading(_ title: Word) -> some View {
+        Text(title)
             .font(.title2.weight(.semibold))
             .accessibilityAddTraits(.isHeader)
     }
@@ -145,7 +145,7 @@ struct CatalogueHistoryList: View {
 struct CatalogueTokens: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.l) {
-            section("catalogue.colours") {
+            section(Words.catalogueColours) {
                 ForEach(Tokens.Catalogue.colors, id: \.name) { token in
                     row(token.name) {
                         RoundedRectangle(cornerRadius: Tokens.Radius.field)
@@ -155,14 +155,14 @@ struct CatalogueTokens: View {
                     }
                 }
             }
-            section("catalogue.space") {
+            section(Words.catalogueSpace) {
                 ForEach(Tokens.Catalogue.space, id: \.name) { token in
                     row(token.name, value: token.value) {
                         Rectangle().fill(Tokens.Palette.accent).frame(width: token.value, height: 12)
                     }
                 }
             }
-            section("catalogue.radius") {
+            section(Words.catalogueRadius) {
                 ForEach(Tokens.Catalogue.radius, id: \.name) { token in
                     row(token.name, value: token.value) {
                         RoundedRectangle(cornerRadius: token.value)
@@ -172,7 +172,7 @@ struct CatalogueTokens: View {
                     }
                 }
             }
-            section("catalogue.size") {
+            section(Words.catalogueSize) {
                 ForEach(Tokens.Catalogue.size, id: \.name) { token in
                     row(token.name, value: token.value) {
                         Rectangle().fill(Tokens.Palette.accent).frame(width: 12, height: token.value)
@@ -183,9 +183,9 @@ struct CatalogueTokens: View {
         .accessibilityIdentifier("catalogue-tokens")
     }
 
-    private func section(_ title: LocalizedStringKey, @ViewBuilder rows: () -> some View) -> some View {
+    private func section(_ title: Word, @ViewBuilder rows: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: Tokens.Space.s) {
-            Text(title, bundle: .module)
+            Text(title)
                 .font(.title2.weight(.semibold))
                 .accessibilityAddTraits(.isHeader)
             rows()

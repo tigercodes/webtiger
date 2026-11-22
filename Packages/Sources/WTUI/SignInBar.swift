@@ -32,14 +32,14 @@ struct SignInBar: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("prompt-site")
             if signIn.again {
-                line("prompt.sign_in.again", identifier: "prompt-again")
+                line(Words.promptSignInAgain, identifier: "prompt-again")
             }
             // Said unless the core says the connection is private: a shell told nothing warns.
             if !signIn.confidential {
-                line("prompt.sign_in.not_private", identifier: "prompt-not-private")
+                line(Words.promptSignInNotPrivate, identifier: "prompt-not-private")
             }
             TextField(text: $name) {
-                Text("prompt.sign_in.name", bundle: .module)
+                Text(Words.promptSignInName)
             }
             .textFieldStyle(.roundedBorder)
             .autocorrectionDisabled()
@@ -48,21 +48,21 @@ struct SignInBar: View {
             #endif
                 .focused($typing, equals: .name)
                 .onSubmit { typing = .password }
-                .accessibilityLabel(Text("prompt.sign_in.name", bundle: .module))
+                .accessibilityLabel(Text(Words.promptSignInName))
                 .accessibilityIdentifier("prompt-name")
             // Drawn as dots, and a password to the system and to assistive technologies.
             SecureField(text: $password) {
-                Text("prompt.sign_in.password", bundle: .module)
+                Text(Words.promptSignInPassword)
             }
             .textFieldStyle(.roundedBorder)
             .focused($typing, equals: .password)
             .onSubmit { answer(true, name, password) }
-            .accessibilityLabel(Text("prompt.sign_in.password", bundle: .module))
+            .accessibilityLabel(Text(Words.promptSignInPassword))
             .accessibilityIdentifier("prompt-password")
             HStack(spacing: Tokens.Space.m) {
                 Spacer(minLength: 0)
-                button("prompt.cancel", identifier: "prompt-cancel") { answer(false, "", "") }
-                button("prompt.sign_in.go", identifier: "prompt-sign-in") { answer(true, name, password) }
+                button(Words.promptCancel, identifier: "prompt-cancel") { answer(false, "", "") }
+                button(Words.promptSignInGo, identifier: "prompt-sign-in") { answer(true, name, password) }
             }
         }
         .padding(.horizontal, Tokens.Space.m)
@@ -73,17 +73,17 @@ struct SignInBar: View {
     }
 
     /// One of the bar's sentences, on as many lines as it needs.
-    private func line(_ words: LocalizedStringKey, identifier: String) -> some View {
-        Text(words, bundle: .module)
+    private func line(_ words: Word, identifier: String) -> some View {
+        Text(words)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier(identifier)
     }
 
     /// Neutral, as every button with words is (F14); its words on more lines where one is
     /// not enough, and never cut short.
-    private func button(_ title: LocalizedStringKey, identifier: String, action: @escaping () -> Void) -> some View {
+    private func button(_ title: Word, identifier: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(title, bundle: .module)
+            Text(title)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(minHeight: BrowserWindowView.hitSize)
         }
@@ -94,6 +94,6 @@ struct SignInBar: View {
 
     /// The bar's first line: the server that gets what is typed.
     static func title(_ site: String, locale: Locale = .current) -> String {
-        String(format: String(localized: "prompt.sign_in", bundle: .module, locale: locale), site)
+        Words.promptSignIn.filled(site, locale: locale)
     }
 }

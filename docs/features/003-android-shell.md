@@ -214,7 +214,7 @@ JavaScript and DOM storage on; a wide viewport and pinch zoom; **no file access 
 - The window draws edge to edge and keeps clear of the bars, the cutout and the keyboard.
 - Nothing the app keeps is backed up or transferred to another device (`allowBackup` off, data extraction rules): whether a browser's cookies and history may leave the device is not yet decided.
 
-**Strings** (`Tools/strings/strings.py`) are written to `res/values/strings.xml` from `Localization/strings.json`, and to `values-<language>` for each other language: apostrophes, quotes, backslashes, a leading `@` or `?` and XML's own characters are escaped, and `%@` becomes `%s` (numbered when there is more than one). **Tokens** (`Tools/design/tokens.py`) are written to `design/Tokens.kt`. Both are checked in and `Tools/test.sh lint` fails when they are stale.
+**Strings** (`Tools/strings/generate.sh`: `Core/tools/strings-gen`, [040](040-one-catalogue-of-words.md); a Python script until then) are written to `res/values/strings.xml` from `Localization/strings.json`, and to `values-<language>` for each other language: apostrophes, quotes, backslashes, a leading `@` or `?` and XML's own characters are escaped, and `%@` becomes `%s` (numbered when there is more than one). **Tokens** (`Tools/design/tokens.py`) are written to `design/Tokens.kt`. Both are checked in and `Tools/test.sh lint` fails when they are stale.
 
 ## 7. Fake mode
 
@@ -304,7 +304,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | … `:core-engine:testDebugUnitTest` | 32 passed |
 | … `:app:testDebugUnitTest` | 381 passed |
 | … `:app:assembleDebug` | `app-debug.apk`, with `libwebtiger_core.so` for `arm64-v8a` and `x86_64` |
-| `Tools/strings/strings.py --check`, `Tools/design/tokens.py --check` | up to date; the Apple outputs' checksums unchanged |
+| `Tools/strings/generate.sh --check` (as first run, the Python script it replaced), `Tools/design/tokens.py --check` | up to date; the Apple outputs' checksums unchanged |
 | `./gradlew :app:lintDebug` | no errors. Apart from notices that newer versions exist, two warnings are left on purpose: no launcher icon (the brand is not settled, 001 F10), and `toolbar_open_location` unused (it is the Mac's ⌘L) |
 
 | Suite | Count | What it shows |

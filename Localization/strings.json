@@ -1,5 +1,5 @@
 {
-  "comment": "Every user-visible string, once, for every shell. The core speaks codes; the shells speak these words. Tools/strings/strings.py writes the Apple String Catalog from it (strings.xml and .resw join with their shells). Keys are dotted lower case; an 'error.<code>' key is the words for a core error code. British spelling.",
+  "comment": "Every user-visible string, once, for every shell. The core speaks codes; the shells speak these words. Tools/strings/generate.sh (Core/tools/strings-gen) writes every platform's file from it: Apple's String Catalog and the Swift names, Android's strings.xml, Windows' Resources.resw (040). Keys are dotted lower case; an 'error.<code>' key is the words for a core error code. Arguments are written Apple's way (%@, %d, %1$@; %% for a per cent sign) and every language and platform must take the ones the English takes. A platform's own wording, where it should differ, is an object by language under 'apple', 'android' or 'windows'. British spelling.",
   "strings": {
     "app.name": { "en": "WebTiger", "note": "The app's name. Not translated." },
     "address.placeholder": { "en": "Search or enter address", "note": "Placeholder in the address field." },

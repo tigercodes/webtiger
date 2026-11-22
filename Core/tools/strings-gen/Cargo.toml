@@ -1,0 +1,29 @@
+[package]
+name = "wt-strings-gen"
+description = "Writes every platform's strings from Localization/strings.json; run only by Tools/strings/generate.sh"
+version = "0.1.0"
+edition = "2024"
+license = "MPL-2.0"
+publish = false
+
+# Its own workspace, as tools/proto-gen is, so the core's builds and tests never
+# compile it.
+[workspace]
+
+[dependencies]
+# The versions Core/Cargo.lock already holds, so no machine fetches anything
+# more to run it: reading the catalogue, and writing Apple's String Catalog,
+# which is JSON too.
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+# As the core's crates (Core/Cargo.toml).
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+dbg_macro = "deny"
+todo = "deny"

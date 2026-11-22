@@ -12,10 +12,10 @@ enum CatalogueSearch: String, CaseIterable, Identifiable {
     }
 
     /// The state's name in the catalogue.
-    var title: LocalizedStringKey {
+    var title: Word {
         switch self {
-        case .question: "catalogue.state.search_question"
-        case .change: "catalogue.state.search_change"
+        case .question: Words.catalogueStateSearchQuestion
+        case .change: Words.catalogueStateSearchChange
         }
     }
 

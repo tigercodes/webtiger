@@ -27,12 +27,12 @@ struct FailedPageView: View {
                     .font(.system(size: 44))
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
-                Text("error.title", bundle: .module)
+                Text(Words.errorTitle)
                     .font(.title2.weight(.semibold))
                 Text(Self.words(for: code))
                 // A neutral button with its words in the primary colour: readable in both
                 // appearances, where a tinted label is not.
-                Button(action: retry) { Text("error.retry", bundle: .module) }
+                Button(action: retry) { Text(Words.errorRetry) }
                     .buttonStyle(.bordered)
                     .tint(.primary)
                     .accessibilityIdentifier("retry")
@@ -40,7 +40,7 @@ struct FailedPageView: View {
                     if goingOn.isWarned {
                         CertificateWarning(goingOn: goingOn)
                     } else {
-                        Button(action: goingOn.advanced) { Text("certificate.advanced", bundle: .module) }
+                        Button(action: goingOn.advanced) { Text(Words.certificateAdvanced) }
                             .buttonStyle(.bordered)
                             .tint(.primary)
                             .accessibilityIdentifier("certificate-advanced")
@@ -63,14 +63,12 @@ struct FailedPageView: View {
     static func words(for code: String) -> String {
         var parts = code.split(separator: ".").map(String.init)
         while parts.count >= 2 {
-            let key = "error." + parts.joined(separator: ".")
-            let words = Bundle.module.localizedString(forKey: key, value: nil, table: nil)
-            if words != key {
-                return words
+            if let words = Word(named: "error." + parts.joined(separator: ".")) {
+                return words.string()
             }
             parts.removeLast()
         }
-        return Bundle.module.localizedString(forKey: "error.net.failed", value: nil, table: nil)
+        return Words.errorNetFailed.string()
     }
 }
 
@@ -83,15 +81,15 @@ private struct CertificateWarning: View {
 
     var body: some View {
         VStack(spacing: Tokens.Space.s) {
-            Text("certificate.warning.title", bundle: .module)
+            Text(Words.certificateWarningTitle)
                 .font(.headline)
                 .accessibilityAddTraits(.isHeader)
-            Text(verbatim: words("certificate.warning"))
+            Text(verbatim: words(Words.certificateWarning))
                 .accessibilityIdentifier("certificate-warning-words")
-            Text("certificate.warning.only_if", bundle: .module)
+            Text(Words.certificateWarningOnlyIf)
             // Not the page's main button, and not coloured as one: going on is allowed, and is
             // not what the page suggests.
-            Button(action: goingOn.goOn) { Text(verbatim: words("certificate.proceed")) }
+            Button(action: goingOn.goOn) { Text(verbatim: words(Words.certificateProceed)) }
                 .buttonStyle(.bordered)
                 .tint(.primary)
                 .accessibilityIdentifier("certificate-go-on")
@@ -105,7 +103,7 @@ private struct CertificateWarning: View {
     }
 
     /// Words with the host's name in them.
-    private func words(_ key: String.LocalizationValue) -> String {
-        String(format: String(localized: key, bundle: .module, locale: locale), goingOn.host)
+    private func words(_ key: Word) -> String {
+        key.filled(goingOn.host, locale: locale)
     }
 }

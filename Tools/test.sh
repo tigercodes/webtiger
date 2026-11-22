@@ -58,12 +58,15 @@ run_lint() {
   step "lint: generated code"
   Tools/proto/generate.sh --check
   python3 -I Tools/design/tokens.py --check
-  python3 -I Tools/strings/strings.py --check
+  Tools/strings/generate.sh --check
   python3 -I Tools/testsite/site.py --check
   python3 -I Tools/testsite/site.py self-test
   step "lint: Rust"
   (cd Core && cargo fmt --all --check && cargo clippy --workspace --all-targets --locked -- -D warnings)
   (cd Core/tools/proto-gen && cargo fmt --check)
+  # The strings tool (040) has a workspace of its own, as the proto tool has.
+  (cd Core/tools/strings-gen && cargo fmt --check \
+    && CARGO_TARGET_DIR="$ROOT/Core/target/strings-gen" cargo clippy --all-targets --locked -- -D warnings)
   if command -v cargo-deny >/dev/null 2>&1; then
     (cd Core && cargo deny check)
   else
@@ -82,6 +85,8 @@ run_lint() {
 run_core() {
   step "core (cargo test)"
   (cd Core && cargo test --workspace --locked)
+  step "core: the strings tool (cargo test)"
+  (cd Core/tools/strings-gen && CARGO_TARGET_DIR="$ROOT/Core/target/strings-gen" cargo test --locked)
 }
 
 run_unit() {

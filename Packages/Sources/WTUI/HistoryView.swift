@@ -34,31 +34,31 @@ public struct HistoryView: View {
         }
         .task { model.reload() }
         .confirmationDialog(
-            Text("history.clear.title", bundle: .module),
+            Text(Words.historyClearTitle),
             isPresented: $choosingWhatToForget,
             titleVisibility: .visible
         ) {
             Button {
                 model.forget(since: Date.now.addingTimeInterval(-3600))
             } label: {
-                Text("history.clear.hour", bundle: .module)
+                Text(Words.historyClearHour)
             }
             Button {
                 model.forget(since: calendar.startOfDay(for: .now))
             } label: {
-                Text("history.clear.today", bundle: .module)
+                Text(Words.historyClearToday)
             }
             Button(role: .destructive) {
                 model.forgetEverything()
             } label: {
-                Text("history.clear.everything", bundle: .module)
+                Text(Words.historyClearEverything)
             }
             .accessibilityIdentifier("history-clear-everything")
             Button(role: .cancel) {} label: {
-                Text("history.clear.cancel", bundle: .module)
+                Text(Words.historyClearCancel)
             }
         } message: {
-            Text("history.clear.detail", bundle: .module)
+            Text(Words.historyClearDetail)
         }
     }
 
@@ -67,7 +67,7 @@ public struct HistoryView: View {
             if let switcher {
                 switcher
             } else {
-                Text("history.title", bundle: .module)
+                Text(Words.historyTitle)
                     .font(.headline)
                     .accessibilityAddTraits(.isHeader)
             }
@@ -77,7 +77,7 @@ public struct HistoryView: View {
             Button {
                 choosingWhatToForget = true
             } label: {
-                Text("history.clear", bundle: .module)
+                Text(Words.historyClear)
                     .frame(minHeight: BrowserWindowView.hitSize)
             }
             // Neutral, as every button with words is: a tinted label does not reach the
@@ -86,7 +86,7 @@ public struct HistoryView: View {
             .tint(.primary)
             .accessibilityIdentifier("history-clear")
             Button(action: done) {
-                Text("history.done", bundle: .module)
+                Text(Words.historyDone)
                     .frame(minHeight: BrowserWindowView.hitSize)
             }
             .buttonStyle(.bordered)
@@ -104,14 +104,14 @@ public struct HistoryView: View {
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
             TextField(text: $model.text) {
-                Text("history.search", bundle: .module)
+                Text(Words.historySearch)
             }
             .textFieldStyle(.plain)
             .autocorrectionDisabled()
             #if !os(macOS)
                 .textInputAutocapitalization(.never)
             #endif
-                .accessibilityLabel(Text("history.search", bundle: .module))
+                .accessibilityLabel(Text(Words.historySearch))
                 .accessibilityIdentifier("history-search")
         }
         .padding(.horizontal, Tokens.Space.m)
@@ -126,7 +126,7 @@ public struct HistoryView: View {
             Spacer()
         } else if model.entries.isEmpty {
             Spacer()
-            Text(model.text.isEmpty ? "history.empty" : "history.none_found", bundle: .module)
+            Text(model.text.isEmpty ? Words.historyEmpty : Words.historyNoneFound)
                 .multilineTextAlignment(.center)
                 .padding(Tokens.Space.l)
                 .accessibilityIdentifier("history-nothing")
@@ -142,7 +142,7 @@ public struct HistoryView: View {
                         Button {
                             model.showOlder()
                         } label: {
-                            Text("history.older", bundle: .module)
+                            Text(Words.historyOlder)
                                 .frame(maxWidth: .infinity, minHeight: BrowserWindowView.hitSize)
                         }
                         // Plain, so its words are in the primary colour: they must be read (F14).
@@ -189,7 +189,7 @@ public struct HistoryView: View {
             Button {
                 model.forget(entry)
             } label: {
-                Label { Text("history.forget", bundle: .module) } icon: { Image(systemName: "trash") }
+                Label { Text(Words.historyForget) } icon: { Image(systemName: "trash") }
                     .labelStyle(.iconOnly)
                     .frame(minWidth: BrowserWindowView.hitSize, minHeight: BrowserWindowView.hitSize)
                     .contentShape(Rectangle())

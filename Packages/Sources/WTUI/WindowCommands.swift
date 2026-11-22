@@ -40,14 +40,14 @@ public extension FocusedValues {
 
 /// One command: its words, its key, whether it can be chosen now, and what it asks.
 private struct Command: View {
-    let words: LocalizedStringKey
+    let words: Word
     let key: KeyEquivalent
     var modifiers: EventModifiers = .command
     let enabled: Bool
     let action: () -> Void
 
     init(
-        _ words: LocalizedStringKey,
+        _ words: Word,
         _ key: KeyEquivalent,
         _ modifiers: EventModifiers = .command,
         enabled: Bool,
@@ -61,7 +61,7 @@ private struct Command: View {
     }
 
     var body: some View {
-        Button(action: action) { Text(words, bundle: .module) }
+        Button(action: action) { Text(words) }
             .keyboardShortcut(key, modifiers: modifiers)
             .disabled(!enabled)
     }
@@ -81,7 +81,7 @@ private struct Command: View {
             CommandGroup(replacing: .saveItem) { CloseItems(window: window) }
             CommandGroup(after: .pasteboard) { FindItems(window: window) }
             CommandGroup(before: .toolbar) { ViewItems(window: window) }
-            CommandMenu(Text("menu.history", bundle: .module)) { HistoryItems(window: window) }
+            CommandMenu(Text(Words.menuHistory)) { HistoryItems(window: window) }
             CommandGroup(after: .windowSize) { TabItems(window: window) }
         }
 
@@ -100,8 +100,8 @@ private struct Command: View {
         var body: some View {
             let several = (window?.model.tabs.count ?? 0) > 1
             Divider()
-            Command("tabs.next", .tab, .control, enabled: several) { window?.model.stepTab(.next) }
-            Command("tabs.previous", .tab, [.control, .shift], enabled: several) { window?.model.stepTab(.previous) }
+            Command(Words.tabsNext, .tab, .control, enabled: several) { window?.model.stepTab(.next) }
+            Command(Words.tabsPrevious, .tab, [.control, .shift], enabled: several) { window?.model.stepTab(.previous) }
         }
     }
 
@@ -111,10 +111,10 @@ private struct Command: View {
 
         var body: some View {
             // A private window (037): there with any window in front, or none.
-            Command("private.new", "n", [.command, .shift], enabled: true) { openWindow(id: BrowserWindowView.privateWindows) }
-            Command("tabs.new", "t", enabled: window != nil) { window?.model.openTab() }
-            Command("toolbar.open_location", "l", enabled: window != nil) { window?.openLocation() }
-            Command("tabs.reopen", "t", [.command, .shift], enabled: window?.model.canReopenClosedTab == true) {
+            Command(Words.privateNew, "n", [.command, .shift], enabled: true) { openWindow(id: BrowserWindowView.privateWindows) }
+            Command(Words.tabsNew, "t", enabled: window != nil) { window?.model.openTab() }
+            Command(Words.toolbarOpenLocation, "l", enabled: window != nil) { window?.openLocation() }
+            Command(Words.tabsReopen, "t", [.command, .shift], enabled: window?.model.canReopenClosedTab == true) {
                 window?.model.reopenClosedTab()
             }
         }
@@ -124,14 +124,14 @@ private struct Command: View {
         let window: WindowCommands?
 
         var body: some View {
-            Command("tabs.close", "w", enabled: true) {
+            Command(Words.tabsClose, "w", enabled: true) {
                 if let window {
                     window.closeTab()
                 } else {
                     closeWhatIsInFront()
                 }
             }
-            Command("menu.close_window", "w", [.command, .shift], enabled: true) {
+            Command(Words.menuCloseWindow, "w", [.command, .shift], enabled: true) {
                 if let window {
                     window.closeWindow()
                 } else {
@@ -152,9 +152,9 @@ private struct Command: View {
 
         var body: some View {
             Divider()
-            Command("find.open", "f", enabled: window?.model.hasPage == true) { window?.find() }
-            Command("find.next", "g", enabled: window?.model.isFinding == true) { window?.model.findNext() }
-            Command("find.previous", "g", [.command, .shift], enabled: window?.model.isFinding == true) {
+            Command(Words.findOpen, "f", enabled: window?.model.hasPage == true) { window?.find() }
+            Command(Words.findNext, "g", enabled: window?.model.isFinding == true) { window?.model.findNext() }
+            Command(Words.findPrevious, "g", [.command, .shift], enabled: window?.model.isFinding == true) {
                 window?.model.findPrevious()
             }
         }
@@ -166,12 +166,12 @@ private struct Command: View {
         var body: some View {
             let model = window?.model
             let zoom = model?.zoom
-            Command("toolbar.reload", "r", enabled: model?.hasPage == true) { model?.perform(.reload) }
-            Command("toolbar.stop", ".", enabled: model?.isLoading == true) { model?.perform(.stop) }
+            Command(Words.toolbarReload, "r", enabled: model?.hasPage == true) { model?.perform(.reload) }
+            Command(Words.toolbarStop, ".", enabled: model?.isLoading == true) { model?.perform(.stop) }
             Divider()
-            Command("zoom.in", "+", enabled: zoom?.canZoomIn == true) { model?.zoom(.in) }
-            Command("zoom.out", "-", enabled: zoom?.canZoomOut == true) { model?.zoom(.out) }
-            Command("zoom.reset", "0", enabled: zoom != nil && zoom?.percent != 100) { model?.zoom(.reset) }
+            Command(Words.zoomIn, "+", enabled: zoom?.canZoomIn == true) { model?.zoom(.in) }
+            Command(Words.zoomOut, "-", enabled: zoom?.canZoomOut == true) { model?.zoom(.out) }
+            Command(Words.zoomReset, "0", enabled: zoom != nil && zoom?.percent != 100) { model?.zoom(.reset) }
             Divider()
         }
     }
@@ -181,10 +181,10 @@ private struct Command: View {
 
         var body: some View {
             let model = window?.model
-            Command("toolbar.back", "[", enabled: model?.tab.canGoBack == true) { model?.perform(.back) }
-            Command("toolbar.forward", "]", enabled: model?.tab.canGoForward == true) { model?.perform(.forward) }
+            Command(Words.toolbarBack, "[", enabled: model?.tab.canGoBack == true) { model?.perform(.back) }
+            Command(Words.toolbarForward, "]", enabled: model?.tab.canGoForward == true) { model?.perform(.forward) }
             Divider()
-            Command("history.open", "y", enabled: window != nil) { window?.showHistory() }
+            Command(Words.historyOpen, "y", enabled: window != nil) { window?.showHistory() }
         }
     }
 #endif
@@ -198,33 +198,33 @@ struct KeysNobodySees: View {
 
     var body: some View {
         Group {
-            Command("zoom.in", "=", enabled: true) { window.model.zoom(.in) }
+            Command(Words.zoomIn, "=", enabled: true) { window.model.zoom(.in) }
             #if os(macOS)
                 // From tab to tab (035), as every browser on the Mac has it: ⇧⌘] and ⇧⌘[ beside
                 // the menu's ⌃Tab and ⌃⇧Tab; ⌘1 to ⌘8 for the tab at that place; ⌘9 for the last.
-                Command("tabs.next", "]", [.command, .shift], enabled: true) { window.model.stepTab(.next) }
-                Command("tabs.previous", "[", [.command, .shift], enabled: true) { window.model.stepTab(.previous) }
+                Command(Words.tabsNext, "]", [.command, .shift], enabled: true) { window.model.stepTab(.next) }
+                Command(Words.tabsPrevious, "[", [.command, .shift], enabled: true) { window.model.stepTab(.previous) }
                 ForEach(1 ..< 9, id: \.self) { place in
-                    Command("tabs.list", KeyEquivalent(Character("\(place)")), enabled: true) { window.model.showTab(at: place) }
+                    Command(Words.tabsList, KeyEquivalent(Character("\(place)")), enabled: true) { window.model.showTab(at: place) }
                 }
-                Command("tabs.list", "9", enabled: true) { window.model.stepTab(.last) }
+                Command(Words.tabsList, "9", enabled: true) { window.model.stepTab(.last) }
             #endif
             #if !os(macOS)
-                Command("tabs.new", "t", enabled: true) { window.model.openTab() }
-                Command("toolbar.open_location", "l", enabled: true) { window.openLocation() }
+                Command(Words.tabsNew, "t", enabled: true) { window.model.openTab() }
+                Command(Words.toolbarOpenLocation, "l", enabled: true) { window.openLocation() }
                 // ⇧⌘T, as in every browser: the tab that was last closed comes back (033).
-                Command("tabs.reopen", "t", [.command, .shift], enabled: window.model.canReopenClosedTab) {
+                Command(Words.tabsReopen, "t", [.command, .shift], enabled: window.model.canReopenClosedTab) {
                     window.model.reopenClosedTab()
                 }
-                Command("tabs.close", "w", enabled: true) { window.closeTab() }
-                Command("history.open", "y", enabled: true) { window.showHistory() }
-                Command("find.open", "f", enabled: true) { window.find() }
-                Command("find.next", "g", enabled: true) { window.model.findNext() }
-                Command("find.previous", "g", [.command, .shift], enabled: true) { window.model.findPrevious() }
+                Command(Words.tabsClose, "w", enabled: true) { window.closeTab() }
+                Command(Words.historyOpen, "y", enabled: true) { window.showHistory() }
+                Command(Words.findOpen, "f", enabled: true) { window.find() }
+                Command(Words.findNext, "g", enabled: true) { window.model.findNext() }
+                Command(Words.findPrevious, "g", [.command, .shift], enabled: true) { window.model.findPrevious() }
                 // Zoom (012): ⌘+, ⌘− and ⌘0, bar or no bar.
-                Command("zoom.in", "+", enabled: true) { window.model.zoom(.in) }
-                Command("zoom.out", "-", enabled: true) { window.model.zoom(.out) }
-                Command("zoom.reset", "0", enabled: true) { window.model.zoom(.reset) }
+                Command(Words.zoomIn, "+", enabled: true) { window.model.zoom(.in) }
+                Command(Words.zoomOut, "-", enabled: true) { window.model.zoom(.out) }
+                Command(Words.zoomReset, "0", enabled: true) { window.model.zoom(.reset) }
             #endif
         }
         .opacity(0)

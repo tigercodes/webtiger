@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from Localization/strings.json by Core/tools/strings-gen (Tools/strings/generate.sh). Do not edit. -->
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="address_insecure" xml:space="preserve"><value>Not secure</value><comment>Accessibility label of the warning shown for an http page.</comment></data>
+  <data name="address_label" xml:space="preserve"><value>Address and search</value><comment>Accessibility label of the address field.</comment></data>
+  <data name="address_placeholder" xml:space="preserve"><value>Search or enter address</value><comment>Placeholder in the address field.</comment></data>
+  <data name="address_secure" xml:space="preserve"><value>Secure connection</value><comment>Accessibility label of the padlock shown for an https page.</comment></data>
+  <data name="app_name" xml:space="preserve"><value>WebTiger</value><comment>The app&apos;s name. Not translated.</comment></data>
+  <data name="catalogue_colours" xml:space="preserve"><value>Colours</value><comment>Design catalogue: heading of the colour tokens.</comment></data>
+  <data name="catalogue_radius" xml:space="preserve"><value>Radius</value><comment>Design catalogue: heading of the corner-radius tokens.</comment></data>
+  <data name="catalogue_size" xml:space="preserve"><value>Size</value><comment>Design catalogue: heading of the size tokens.</comment></data>
+  <data name="catalogue_space" xml:space="preserve"><value>Space</value><comment>Design catalogue: heading of the spacing tokens.</comment></data>
+  <data name="catalogue_start_failed" xml:space="preserve"><value>The core would not start</value><comment>Design catalogue: heading of what is shown instead of a window when the core refuses to start.</comment></data>
+  <data name="catalogue_state_downloads_empty" xml:space="preserve"><value>Downloads: none</value><comment>Design catalogue: a state of the Downloads list.</comment></data>
+  <data name="catalogue_state_downloads_list" xml:space="preserve"><value>Downloads: coming, finished and failed</value><comment>Design catalogue: a state of the Downloads list.</comment></data>
+  <data name="catalogue_state_empty" xml:space="preserve"><value>An empty tab</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_failed" xml:space="preserve"><value>A page that failed</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_failed_certificate" xml:space="preserve"><value>A certificate that isn’t trusted</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_failed_certificate_warning" xml:space="preserve"><value>The warning before going on past a certificate</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_find" xml:space="preserve"><value>Find on the page, with a count</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_find_none" xml:space="preserve"><value>Find on the page, not found</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_history" xml:space="preserve"><value>Back and forward offered</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_history_empty" xml:space="preserve"><value>The History list, nothing visited</value><comment>Design catalogue: the History list before anything has been visited.</comment></data>
+  <data name="catalogue_state_history_list" xml:space="preserve"><value>The History list</value><comment>Design catalogue: the History list with visits in it.</comment></data>
+  <data name="catalogue_state_history_none_found" xml:space="preserve"><value>The History list, nothing found</value><comment>Design catalogue: the History list when the words typed find nothing.</comment></data>
+  <data name="catalogue_state_insecure" xml:space="preserve"><value>A page that is not secure</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_link_menu" xml:space="preserve"><value>A link was pressed and held</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_loading" xml:space="preserve"><value>A page loading</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_long" xml:space="preserve"><value>An address too long for its field</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_permissions_empty" xml:space="preserve"><value>Permissions: none</value><comment>Design catalogue: a state of the Permissions list.</comment></data>
+  <data name="catalogue_state_permissions_list" xml:space="preserve"><value>Permissions: sites that were allowed</value><comment>Design catalogue: a state of the Permissions list.</comment></data>
+  <data name="catalogue_state_picture_link_menu" xml:space="preserve"><value>A picture that is a link was pressed and held</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_picture_menu" xml:space="preserve"><value>A picture was pressed and held</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_prompt" xml:space="preserve"><value>A page asks to use the camera and the microphone</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_prompt_alert" xml:space="preserve"><value>A page says something</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_prompt_confirm" xml:space="preserve"><value>A page asks yes or no, not for the first time</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_prompt_download" xml:space="preserve"><value>A page asks to download a file</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_prompt_sign_in" xml:space="preserve"><value>A server asks who is there</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_prompt_sign_in_again" xml:space="preserve"><value>A server asks again, over a connection that is not private</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_prompt_text" xml:space="preserve"><value>A page asks for a word</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_search_change" xml:space="preserve"><value>Changing where searches go</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_search_question" xml:space="preserve"><value>The first run asks where searches go</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_secure" xml:space="preserve"><value>A secure page</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_spaces" xml:space="preserve"><value>The list of Spaces</value><comment>Design catalogue: a state of the list of Spaces.</comment></data>
+  <data name="catalogue_state_spaces_new" xml:space="preserve"><value>Making a Space</value><comment>Design catalogue: a state of the list of Spaces.</comment></data>
+  <data name="catalogue_state_spaces_new_shared" xml:space="preserve"><value>Making a Space that shares logins</value><comment>Design catalogue: a state of the list of Spaces.</comment></data>
+  <data name="catalogue_state_spaces_refused" xml:space="preserve"><value>A Space the core would not make</value><comment>Design catalogue: a state of the list of Spaces.</comment></data>
+  <data name="catalogue_state_spaces_rename" xml:space="preserve"><value>Editing a Space</value><comment>Design catalogue: a state of the list of Spaces.</comment></data>
+  <data name="catalogue_state_suggestions" xml:space="preserve"><value>Places offered as an address is typed</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_tabs" xml:space="preserve"><value>Several tabs</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_zoom" xml:space="preserve"><value>The zoom bar, on a page made bigger</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_states" xml:space="preserve"><value>The Window</value><comment>Design catalogue: heading of the browser window&apos;s states.</comment></data>
+  <data name="catalogue_title" xml:space="preserve"><value>Design Catalogue</value><comment>Title of the design catalogue: a screen for designers that shows every design token and every state of the window.</comment></data>
+  <data name="certificate_advanced" xml:space="preserve"><value>Advanced…</value><comment>Button on the page shown when a site&apos;s certificate isn&apos;t trusted, under &apos;Try Again&apos;: shows the warning, and under it the way to go on to the site all the same.</comment></data>
+  <data name="certificate_proceed" xml:space="preserve"><value>Go On to {0} (Not Safe)</value><comment>Button under the warning: loads the site although its certificate isn&apos;t trusted. %@ is the site&apos;s host name. The words in brackets say what the button does and must stay.</comment></data>
+  <data name="certificate_warning" xml:space="preserve"><value>WebTiger can’t confirm that this is really {0}. Someone could be pretending to be it, and could read or change what you send and receive: passwords, messages, card numbers.</value><comment>The warning shown before a person can go on to a site whose certificate isn&apos;t trusted. %@ is the site&apos;s host name, such as router.example.com.</comment></data>
+  <data name="certificate_warning_only_if" xml:space="preserve"><value>Go on only if you know why this site’s certificate isn’t trusted, such as a router or a device of your own.</value><comment>Second sentence of the warning before going on to a site whose certificate isn&apos;t trusted.</comment></data>
+  <data name="certificate_warning_title" xml:space="preserve"><value>Going on isn’t safe</value><comment>Heading of the warning shown before a person can go on to a site whose certificate isn&apos;t trusted.</comment></data>
+  <data name="downloads_active" xml:space="preserve"><value>Downloading</value><comment>Accessibility value of the History and Downloads button while a download is coming.</comment></data>
+  <data name="downloads_clear" xml:space="preserve"><value>Clear List</value><comment>Button in the Downloads list that takes every download off the list. The files stay where they are.</comment></data>
+  <data name="downloads_coming" xml:space="preserve"><value>{0} of {1}</value><comment>Under a download that is still coming, when its size is known: how much has arrived, and how much there is. Both are sizes with their units, such as “1.2 MB”.</comment></data>
+  <data name="downloads_coming_so_far" xml:space="preserve"><value>{0} so far</value><comment>Under a download that is still coming, when its size is not known: how much has arrived, as a size with its unit.</comment></data>
+  <data name="downloads_done" xml:space="preserve"><value>Done</value><comment>Button that closes the Downloads list.</comment></data>
+  <data name="downloads_empty" xml:space="preserve"><value>Files you download will be listed here.</value><comment>Shown in the Downloads list when nothing has been downloaded.</comment></data>
+  <data name="downloads_forget" xml:space="preserve"><value>Remove from List</value><comment>Accessibility label of the button beside a download that has ended, which takes it off the list. The file stays.</comment></data>
+  <data name="downloads_older" xml:space="preserve"><value>Show Older Downloads</value><comment>Button at the end of the Downloads list that shows the next, older page of downloads.</comment></data>
+  <data name="downloads_open" xml:space="preserve"><value>Open</value><comment>What pressing a finished download in the list does, as a screen reader says it: opens the file with whatever the device has for its kind.</comment></data>
+  <data name="downloads_open_failed" xml:space="preserve"><value>The file couldn’t be opened.</value><comment>Under a download in the list, after a person pressed it to open its file, when it did not open for a reason this build has no words for.</comment></data>
+  <data name="downloads_stop" xml:space="preserve"><value>Stop Download</value><comment>Accessibility label of the button beside a download that is still coming, which stops it.</comment></data>
+  <data name="downloads_title" xml:space="preserve"><value>Downloads</value><comment>Title of the list of downloads, and the name of its half of the switch beside History.</comment></data>
+  <data name="error_download_cancelled" xml:space="preserve"><value>Stopped</value><comment>Under a download that was stopped.</comment></data>
+  <data name="error_download_disk" xml:space="preserve"><value>The file couldn’t be saved.</value><comment>Under a download that failed because its file could not be written.</comment></data>
+  <data name="error_download_failed" xml:space="preserve"><value>The download failed.</value><comment>Under a download that failed for a reason this build has no words for.</comment></data>
+  <data name="error_download_interrupted" xml:space="preserve"><value>WebTiger was closed before it finished.</value><comment>Under a download that was still coming when the app ended.</comment></data>
+  <data name="error_download_missing" xml:space="preserve"><value>The file isn’t where it was saved any more.</value><comment>Under a download in the list, after a person pressed it to open its file: the file was moved, renamed or removed since it was downloaded.</comment></data>
+  <data name="error_download_network" xml:space="preserve"><value>The connection was lost.</value><comment>Under a download that failed because of the network.</comment></data>
+  <data name="error_engine_no_private" xml:space="preserve"><value>Private windows aren’t available on this device yet.</value><comment>The engine cannot make a login set that is kept in memory only.</comment></data>
+  <data name="error_engine_no_profiles" xml:space="preserve"><value>The web engine on this device can’t keep each Space’s logins separate. Update Android System WebView and try again.</value><comment>Android: the System WebView is too old to give each login set a profile of its own.</comment></data>
+  <data name="error_engine_unavailable" xml:space="preserve"><value>This page’s engine isn’t available.</value><comment>The web engine the tab asked for is not installed.</comment></data>
+  <data name="error_net_connect" xml:space="preserve"><value>The site couldn’t be reached.</value><comment>A load failed: connection refused or lost.</comment></data>
+  <data name="error_net_dns" xml:space="preserve"><value>The site’s address couldn’t be found.</value><comment>A load failed: DNS.</comment></data>
+  <data name="error_net_failed" xml:space="preserve"><value>Something went wrong while loading the page.</value><comment>A load failed for a reason without words of its own.</comment></data>
+  <data name="error_net_offline" xml:space="preserve"><value>You’re not connected to the internet.</value><comment>A load failed: no network.</comment></data>
+  <data name="error_net_timeout" xml:space="preserve"><value>The site took too long to answer.</value><comment>A load failed: timed out.</comment></data>
+  <data name="error_net_tls" xml:space="preserve"><value>A secure connection to the site couldn’t be made.</value><comment>A load failed: TLS or certificate problem.</comment></data>
+  <data name="error_net_tls_date" xml:space="preserve"><value>This site’s certificate isn’t valid today. It may have run out, or this device’s date may be wrong.</value><comment>A load failed: the site&apos;s certificate has expired or is not valid yet, by this device&apos;s clock.</comment></data>
+  <data name="error_net_tls_name" xml:space="preserve"><value>This site’s certificate is for a different site.</value><comment>A load failed: the certificate the site presented names another site.</comment></data>
+  <data name="error_net_tls_untrusted" xml:space="preserve"><value>This device doesn’t trust this site’s certificate.</value><comment>A load failed: the site&apos;s certificate signs itself, or was signed by an authority this device does not know.</comment></data>
+  <data name="error_page_renderer_gone" xml:space="preserve"><value>The page stopped unexpectedly.</value><comment>The process drawing the page died.</comment></data>
+  <data name="error_retry" xml:space="preserve"><value>Try Again</value><comment>Button on the failed-page view: reload.</comment></data>
+  <data name="error_space_colour_unknown" xml:space="preserve"><value>That colour isn’t one a Space can have.</value><comment>Said where a Space is made or edited when the app does not know the colour that was chosen.</comment></data>
+  <data name="error_space_failed" xml:space="preserve"><value>The Space couldn’t be made.</value><comment>Said on the page that makes a Space when it could not be made and no more is known.</comment></data>
+  <data name="error_space_name_empty" xml:space="preserve"><value>A Space needs a name.</value><comment>Said on the page that makes a Space when the name is empty.</comment></data>
+  <data name="error_space_rename_failed" xml:space="preserve"><value>The Space couldn’t be changed.</value><comment>Said on the page that edits a Space when it could not be changed and no more is known.</comment></data>
+  <data name="error_space_too_many" xml:space="preserve"><value>There are as many Spaces as there can be.</value><comment>Said on the page that makes a Space when the app will not make another: it has its limit of them.</comment></data>
+  <data name="error_space_unknown" xml:space="preserve"><value>That Space isn’t there any more.</value><comment>Said on the page that makes a Space when the Space whose logins it was to share is gone.</comment></data>
+  <data name="error_start_detail" xml:space="preserve"><value>Error code: {0}</value><comment>Shown under the start failure heading. %@ is a code such as store.open.</comment></data>
+  <data name="error_start_title" xml:space="preserve"><value>WebTiger couldn’t start</value><comment>Heading when the core refused to start.</comment></data>
+  <data name="error_system_no_handler" xml:space="preserve"><value>Nothing on this device opens this kind of file.</value><comment>Under a download in the list, after a person pressed it to open its file: no app on the device opens files of its kind.</comment></data>
+  <data name="error_title" xml:space="preserve"><value>This page didn’t load</value><comment>Heading shown over a page that failed to load.</comment></data>
+  <data name="find_count" xml:space="preserve"><value>{0} of {1}</value><comment>Shown in the find bar where the engine counts: which match is shown, and how many there are. First %ld is the match&apos;s number, second the total.</comment></data>
+  <data name="find_done" xml:space="preserve"><value>Done</value><comment>Button that closes the find bar.</comment></data>
+  <data name="find_field" xml:space="preserve"><value>Find on page</value><comment>Placeholder and accessibility label of the find bar&apos;s field.</comment></data>
+  <data name="find_next" xml:space="preserve"><value>Next Match</value><comment>Button in the find bar: go to the next match.</comment></data>
+  <data name="find_none" xml:space="preserve"><value>Not found</value><comment>Shown in the find bar when the text is not on the page.</comment></data>
+  <data name="find_open" xml:space="preserve"><value>Find on Page</value><comment>Label of the button, beside the tabs, that opens the find bar; and the command (Command-F on a Mac).</comment></data>
+  <data name="find_previous" xml:space="preserve"><value>Previous Match</value><comment>Button in the find bar: go to the match before.</comment></data>
+  <data name="history_clear" xml:space="preserve"><value>Clear…</value><comment>Button in the History list that asks which visits to forget.</comment></data>
+  <data name="history_clear_cancel" xml:space="preserve"><value>Cancel</value><comment>Choice: leave history as it is.</comment></data>
+  <data name="history_clear_detail" xml:space="preserve"><value>Visits that are forgotten can’t be brought back.</value><comment>Under the question of which visits to forget.</comment></data>
+  <data name="history_clear_everything" xml:space="preserve"><value>Everything</value><comment>Choice: forget every visit.</comment></data>
+  <data name="history_clear_hour" xml:space="preserve"><value>The Last Hour</value><comment>Choice: forget the visits of the last hour.</comment></data>
+  <data name="history_clear_title" xml:space="preserve"><value>Forget which visits?</value><comment>Question asked by the Clear button of the History list, above the choices.</comment></data>
+  <data name="history_clear_today" xml:space="preserve"><value>Today</value><comment>Choice: forget the visits since midnight.</comment></data>
+  <data name="history_done" xml:space="preserve"><value>Done</value><comment>Button that closes the History list.</comment></data>
+  <data name="history_empty" xml:space="preserve"><value>Pages you visit will be listed here.</value><comment>Shown in the History list when nothing has been visited yet.</comment></data>
+  <data name="history_forget" xml:space="preserve"><value>Forget This Visit</value><comment>Accessibility label of the button beside a visit that removes it from history.</comment></data>
+  <data name="history_none_found" xml:space="preserve"><value>No visits match.</value><comment>Shown in the History list when the words typed find no visit.</comment></data>
+  <data name="history_older" xml:space="preserve"><value>Show Older Visits</value><comment>Button at the end of the History list that shows the next, older page of visits.</comment></data>
+  <data name="history_open" xml:space="preserve"><value>History and Downloads</value><comment>Label of the button, beside the tabs, that opens the lists of pages visited and of files downloaded.</comment></data>
+  <data name="history_search" xml:space="preserve"><value>Search history</value><comment>Placeholder and accessibility label of the field for finding a visit by words of its title or address.</comment></data>
+  <data name="history_title" xml:space="preserve"><value>History</value><comment>Title of the list of pages visited.</comment></data>
+  <data name="link_cancel" xml:space="preserve"><value>Cancel</value><comment>In a link&apos;s menu: close the menu and do nothing.</comment></data>
+  <data name="link_copy" xml:space="preserve"><value>Copy Link</value><comment>In a link&apos;s menu: copy the link&apos;s address.</comment></data>
+  <data name="link_download" xml:space="preserve"><value>Download Linked File</value><comment>In a link&apos;s menu: save what the link leads to as a file, with the person&apos;s downloads.</comment></data>
+  <data name="link_download_image" xml:space="preserve"><value>Download Image</value><comment>In a picture&apos;s menu: save the picture as a file, with the person&apos;s downloads.</comment></data>
+  <data name="link_image_menu" xml:space="preserve"><value>Image</value><comment>Accessibility name of the menu shown for a picture of a page that was pressed and held.</comment></data>
+  <data name="link_menu" xml:space="preserve"><value>Link</value><comment>Accessibility name of the menu shown for a link of a page that was pressed and held.</comment></data>
+  <data name="link_open_image_new_tab" xml:space="preserve"><value>Open Image in New Tab</value><comment>In a picture&apos;s menu (on a Mac beside the system&apos;s own items such as Copy Image): open the picture by itself in a new tab.</comment></data>
+  <data name="link_open_link_new_tab" xml:space="preserve"><value>Open Link in New Tab</value><comment>In the menu a Mac shows for a link (right-click), beside the system&apos;s own items such as Copy Link: open the link in a new tab.</comment></data>
+  <data name="link_open_new_tab" xml:space="preserve"><value>Open in New Tab</value><comment>In a link&apos;s menu: open the link in a new tab, behind the one being read.</comment></data>
+  <data name="menu_close_window" xml:space="preserve"><value>Close Window</value><comment>Command in the Mac&apos;s File menu (Shift-Command-W): close the window, however many tabs it has.</comment></data>
+  <data name="menu_history" xml:space="preserve"><value>History</value><comment>Name of a menu in the Mac&apos;s menu bar: going back and forward, and the list of pages visited.</comment></data>
+  <data name="outside_search" xml:space="preserve"><value>Search with WebTiger</value><comment>Android: the item WebTiger adds to other apps&apos; menu of selected text. Choosing it opens the words as a search in WebTiger, with the search engine the person chose. Short: it sits in a small bar.</comment></data>
+  <data name="permissions_clear" xml:space="preserve"><value>Remove All</value><comment>Button in the Permissions list that takes back what every site was allowed. Each will ask again.</comment></data>
+  <data name="permissions_done" xml:space="preserve"><value>Done</value><comment>Button that closes the Permissions list.</comment></data>
+  <data name="permissions_empty" xml:space="preserve"><value>Sites you allow to download, or to use your camera, microphone or location, will be listed here.</value><comment>Shown in the Permissions list when no site was allowed anything.</comment></data>
+  <data name="permissions_forget" xml:space="preserve"><value>Stop Allowing</value><comment>Accessibility label of the button beside a site in the Permissions list, which takes back what it was allowed. The site will ask again.</comment></data>
+  <data name="permissions_kind_camera" xml:space="preserve"><value>Camera</value><comment>What a site was allowed to use, under its name in the Permissions list. Several are joined as a list by the system.</comment></data>
+  <data name="permissions_kind_downloads" xml:space="preserve"><value>Downloads</value><comment>What a site was allowed to do, under its name in the Permissions list: download files without asking each time.</comment></data>
+  <data name="permissions_kind_location" xml:space="preserve"><value>Location</value><comment>What a site was allowed to use, under its name in the Permissions list: where the device is.</comment></data>
+  <data name="permissions_kind_microphone" xml:space="preserve"><value>Microphone</value><comment>What a site was allowed to use, under its name in the Permissions list.</comment></data>
+  <data name="permissions_title" xml:space="preserve"><value>Permissions</value><comment>Title of the list of sites that were allowed to download, or to use the camera, the microphone or the location, and the name of its part of the switch beside History and Downloads.</comment></data>
+  <data name="private_back" xml:space="preserve"><value>Back to {0}</value><comment>Button on the page behind a private window&apos;s chip on a phone: shows the other window again and leaves the private one open. %@ is the name of the Space the other window shows.</comment></data>
+  <data name="private_chip" xml:space="preserve"><value>Private</value><comment>Chip in the strip of tabs of a private window, where an ordinary window names its Space. Short: on a narrow strip only its first letter is shown.</comment></data>
+  <data name="private_close" xml:space="preserve"><value>Close Private Window</value><comment>Button on the page behind a private window&apos;s chip, and command: closes the private window, and everything of it is gone.</comment></data>
+  <data name="private_hides" xml:space="preserve"><value>It does not hide you from the sites you visit, or from your network.</value><comment>What a private window does not do: follows the sentence that says what it means.</comment></data>
+  <data name="private_keeps" xml:space="preserve"><value>Nothing you visit in this window is kept on this device: no history, and nothing a site stored once the window is closed. Files you save stay.</value><comment>What a private window means: in an empty tab of one, and on the page behind its chip.</comment></data>
+  <data name="private_new" xml:space="preserve"><value>New Private Window</value><comment>Command in the Mac&apos;s File menu (Shift-Command-N): open a private window.</comment></data>
+  <data name="private_row_detail" xml:space="preserve"><value>Nothing it visits is kept on this device.</value><comment>Under &apos;Private Window&apos; in the list of Spaces.</comment></data>
+  <data name="private_row_open" xml:space="preserve"><value>Open</value><comment>Said beside &apos;Private Window&apos; in the list of Spaces when a private window is open already: the row then shows it.</comment></data>
+  <data name="private_window" xml:space="preserve"><value>Private Window</value><comment>Name of a private window: the last row of the list of Spaces on a phone (it opens one), the heading of the page that explains it, and what a screen reader says for the chip.</comment></data>
+  <data name="prompt_allow" xml:space="preserve"><value>Allow</value><comment>Button in a tab&apos;s prompt: lets the site use what it asked for, now and when it asks again.</comment></data>
+  <data name="prompt_answer" xml:space="preserve"><value>Your answer</value><comment>Accessibility label of the field in the bar where a page asks for a line of text.</comment></data>
+  <data name="prompt_cancel" xml:space="preserve"><value>Cancel</value><comment>Button in the bar that shows what a page asks: refuses it.</comment></data>
+  <data name="prompt_download" xml:space="preserve"><value>{0} wants to download “{1}”.</value><comment>The sentence in the bar a tab shows when a page starts a download and its site was not yet allowed to. %1$@ is the site, as the address field shows it; %2$@ is the name the file would be saved under, in quotation marks so that where it begins and ends can be seen.</comment></data>
+  <data name="prompt_kind_camera" xml:space="preserve"><value>your camera</value><comment>What a page asks to use, in the prompt.permission sentence.</comment></data>
+  <data name="prompt_kind_location" xml:space="preserve"><value>your location</value><comment>What a page asks to use, in the prompt.permission sentence: where the device is.</comment></data>
+  <data name="prompt_kind_microphone" xml:space="preserve"><value>your microphone</value><comment>What a page asks to use, in the prompt.permission sentence.</comment></data>
+  <data name="prompt_ok" xml:space="preserve"><value>OK</value><comment>Button in the bar that shows what a page says or asks: accepts it.</comment></data>
+  <data name="prompt_permission" xml:space="preserve"><value>{0} wants to use {1}.</value><comment>The sentence in the bar a tab shows when a page asks to use something of the device&apos;s. %1$@ is the site, as the address field shows it; %2$@ is what it wants: one or more of the prompt.kind strings, joined as a list by the system (in English: “your camera and your microphone”).</comment></data>
+  <data name="prompt_refuse" xml:space="preserve"><value>Don’t Allow</value><comment>Button in a tab&apos;s prompt: refuses what the page asked for, this time.</comment></data>
+  <data name="prompt_says" xml:space="preserve"><value>{0} says:</value><comment>The first line of the bar a tab shows when a page says something or asks (alert, confirm, prompt). %@ is the site, as the address field shows it; the page&apos;s own words follow on the next lines.</comment></data>
+  <data name="prompt_sign_in" xml:space="preserve"><value>Sign in to {0}</value><comment>The first line of the bar a tab shows when a server asks for a name and a password before it answers (HTTP authentication). %@ is the server, as the address field shows a site: it is who gets what is typed.</comment></data>
+  <data name="prompt_sign_in_again" xml:space="preserve"><value>That name or password was not accepted.</value><comment>In the sign-in bar, when the server refused what was sent before and asks again.</comment></data>
+  <data name="prompt_sign_in_go" xml:space="preserve"><value>Sign In</value><comment>Button in the sign-in bar: sends the name and the password to the server that asked.</comment></data>
+  <data name="prompt_sign_in_name" xml:space="preserve"><value>Name</value><comment>The sign-in bar&apos;s first field: the name to sign in with. Shown in the empty field and read as its label.</comment></data>
+  <data name="prompt_sign_in_not_private" xml:space="preserve"><value>This connection is not private. What you type could be read by others.</value><comment>In the sign-in bar, when the server is not reached over https: the name and password travel unprotected.</comment></data>
+  <data name="prompt_sign_in_password" xml:space="preserve"><value>Password</value><comment>The sign-in bar&apos;s second field. Shown in the empty field and read as its label.</comment></data>
+  <data name="prompt_silence" xml:space="preserve"><value>Stop This Page’s Messages</value><comment>Button in the bar that shows what a page says, from the page&apos;s second message on: this page is shown no more messages until another page loads.</comment></data>
+  <data name="search_change" xml:space="preserve"><value>Change…</value><comment>Button beside &apos;Searches go to …&apos; on an empty tab: opens the list of search engines.</comment></data>
+  <data name="search_default" xml:space="preserve"><value>Default</value><comment>Said of the search engine that searches go to when nobody has chosen another, in the list of search engines at the first run.</comment></data>
+  <data name="search_goes_to" xml:space="preserve"><value>Searches go to {0}.</value><comment>On an empty tab, under its hint. %@ is a search engine&apos;s own name, such as Ecosia.</comment></data>
+  <data name="search_in_use" xml:space="preserve"><value>In use</value><comment>Said of the search engine that searches go to now, in the list of search engines when it is opened to change it.</comment></data>
+  <data name="search_keep" xml:space="preserve"><value>Cancel</value><comment>Button that closes the list of search engines without changing where searches go. Not shown at the first run, when one has to be chosen.</comment></data>
+  <data name="search_keep_default" xml:space="preserve"><value>Keep {0}</value><comment>Button under the list of search engines at the first run: leaves searches going to the default engine. %@ is that engine&apos;s own name, such as DuckDuckGo.</comment></data>
+  <data name="search_question_detail" xml:space="preserve"><value>What you type in the address field that is not an address is sent to the search engine you choose. Nothing is sent until you search.</value><comment>Under the heading of the list of search engines.</comment></data>
+  <data name="search_question_title" xml:space="preserve"><value>Where should your searches go?</value><comment>Heading of the first run&apos;s question, and of the same list when it is opened again: the person chooses a search engine.</comment></data>
+  <data name="selection_search_with" xml:space="preserve"><value>Search with {0}</value><comment>In the menu of words that are selected in a page: search for those words, in a new tab. %@ is the search engine&apos;s own name, such as Ecosia.</comment></data>
+  <data name="space_automatic_colour" xml:space="preserve"><value>If you choose none, it gets one that no other Space has.</value><comment>Under the colours on the page that makes a Space.</comment></data>
+  <data name="space_chip" xml:space="preserve"><value>Space: {0}</value><comment>Accessibility name of the button at the start of the strip of tabs that says which Space the window shows, and opens the list of Spaces. %@ is the Space&apos;s name.</comment></data>
+  <data name="space_chosen_colour" xml:space="preserve"><value>Colour: {0}</value><comment>The same heading when a colour is chosen: it names the colour in words, so that it is not told by the colour alone. %@ is the colour&apos;s name, such as Blue.</comment></data>
+  <data name="space_colour" xml:space="preserve"><value>Colour</value><comment>Heading over the colours to choose among for a Space, where one is made and where one is edited.</comment></data>
+  <data name="space_colour_blue" xml:space="preserve"><value>Blue</value><comment>Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.</comment></data>
+  <data name="space_colour_green" xml:space="preserve"><value>Green</value><comment>Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.</comment></data>
+  <data name="space_colour_grey" xml:space="preserve"><value>Grey</value><comment>Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.</comment></data>
+  <data name="space_colour_orange" xml:space="preserve"><value>Orange</value><comment>Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.</comment></data>
+  <data name="space_colour_pink" xml:space="preserve"><value>Pink</value><comment>Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.</comment></data>
+  <data name="space_colour_purple" xml:space="preserve"><value>Purple</value><comment>Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.</comment></data>
+  <data name="space_colour_red" xml:space="preserve"><value>Red</value><comment>Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.</comment></data>
+  <data name="space_colour_teal" xml:space="preserve"><value>Teal</value><comment>Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.</comment></data>
+  <data name="space_colour_yellow" xml:space="preserve"><value>Yellow</value><comment>Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.</comment></data>
+  <data name="space_home" xml:space="preserve"><value>Home</value><comment>Name shown for the Space the app made itself, until the person gives it a name. A Space is a set of tabs kept apart from the others, such as home and work.</comment></data>
+  <data name="space_new_back" xml:space="preserve"><value>Back</value><comment>Button on the page that makes a Space: back to the list of Spaces, with nothing made.</comment></data>
+  <data name="space_new_logins" xml:space="preserve"><value>Logins</value><comment>Heading over the choice of whose logins a new Space has: its own, or another Space&apos;s.</comment></data>
+  <data name="space_new_make" xml:space="preserve"><value>Make Space</value><comment>Button that makes the new Space and shows it in the window.</comment></data>
+  <data name="space_new_name" xml:space="preserve"><value>Name</value><comment>Label of the field for a new Space&apos;s name.</comment></data>
+  <data name="space_new_own" xml:space="preserve"><value>Its own</value><comment>Choice for a new Space: it is signed in to nothing, apart from every other Space.</comment></data>
+  <data name="space_new_own_detail" xml:space="preserve"><value>Signed out everywhere to begin with. What you sign in to in this Space stays in it.</value><comment>Under the choice &apos;Its own&apos;.</comment></data>
+  <data name="space_new_share_with" xml:space="preserve"><value>Share with</value><comment>Label of the choice of which Space a new Space shares its logins with.</comment></data>
+  <data name="space_new_shared" xml:space="preserve"><value>The same as another Space</value><comment>Choice for a new Space: it is signed in to sites as another Space is.</comment></data>
+  <data name="space_new_shared_detail" xml:space="preserve"><value>Signed in wherever {0} is. The two share history and downloads.</value><comment>Under the choice &apos;The same as another Space&apos;. %@ is the name of the Space whose logins are shared.</comment></data>
+  <data name="space_new_title" xml:space="preserve"><value>New Space</value><comment>Heading of the page that makes a Space.</comment></data>
+  <data name="space_no_colour" xml:space="preserve"><value>None</value><comment>The choice of no colour for a Space, beside the colours.</comment></data>
+  <data name="space_rename_save" xml:space="preserve"><value>Save</value><comment>Button that gives the Space the name in the field.</comment></data>
+  <data name="space_rename_title" xml:space="preserve"><value>Edit Space</value><comment>Heading of the page that gives a Space another name or colour.</comment></data>
+  <data name="spaces_detail" xml:space="preserve"><value>A Space keeps its tabs apart from the others. Choose one to show it in this window.</value><comment>Under the heading of the list of Spaces.</comment></data>
+  <data name="spaces_done" xml:space="preserve"><value>Done</value><comment>Button that closes the list of Spaces without changing which is shown.</comment></data>
+  <data name="spaces_new" xml:space="preserve"><value>New Space…</value><comment>Button at the end of the list of Spaces: opens the page that makes one.</comment></data>
+  <data name="spaces_rename" xml:space="preserve"><value>Edit…</value><comment>Button in the list of Spaces, beside &apos;New Space…&apos;: opens the page that gives the Space the window shows another name or colour.</comment></data>
+  <data name="spaces_shares" xml:space="preserve"><value>Shares logins with {0}</value><comment>Under a Space&apos;s name in the list of Spaces, when it is signed in to sites as another Space is. %@ is that other Space&apos;s name.</comment></data>
+  <data name="spaces_shown" xml:space="preserve"><value>Shown</value><comment>Said of the Space the window shows now, in the list of Spaces.</comment></data>
+  <data name="spaces_title" xml:space="preserve"><value>Spaces</value><comment>Heading of the list of Spaces.</comment></data>
+  <data name="suggestions_list" xml:space="preserve"><value>Suggestions</value><comment>Accessibility label of the list of places offered under the address field as it is typed in.</comment></data>
+  <data name="suggestions_switch_tab" xml:space="preserve"><value>Switch to Tab</value><comment>At the end of a row of that list which is a tab that is already open: choosing the row brings that tab in front instead of loading the page again.</comment></data>
+  <data name="tab_empty_hint" xml:space="preserve"><value>Type an address or a search above.</value><comment>Hint under the heading of an empty tab.</comment></data>
+  <data name="tab_empty_title" xml:space="preserve"><value>Where to?</value><comment>Heading of a tab that has no page yet.</comment></data>
+  <data name="tabs_close" xml:space="preserve"><value>Close Tab</value><comment>Button on a tab in the strip, and command (Command-W on a Mac): close the tab.</comment></data>
+  <data name="tabs_list" xml:space="preserve"><value>Tabs</value><comment>Accessibility label of the strip of the window&apos;s tabs.</comment></data>
+  <data name="tabs_new" xml:space="preserve"><value>New Tab</value><comment>Button at the end of the strip of tabs, and command (Command-T on a Mac): open an empty tab.</comment></data>
+  <data name="tabs_next" xml:space="preserve"><value>Show Next Tab</value><comment>Command in the Mac&apos;s Window menu (Control-Tab): bring the next tab in the row in front; from the last, the first.</comment></data>
+  <data name="tabs_previous" xml:space="preserve"><value>Show Previous Tab</value><comment>Command in the Mac&apos;s Window menu (Control-Shift-Tab): bring the tab before in the row in front; from the first, the last.</comment></data>
+  <data name="tabs_reopen" xml:space="preserve"><value>Reopen Closed Tab</value><comment>Command (Shift-Command-T on a Mac): bring back the tab that was last closed, where it was.</comment></data>
+  <data name="tabs_untitled" xml:space="preserve"><value>New Tab</value><comment>The name the strip gives a tab that has no page yet.</comment></data>
+  <data name="toolbar_back" xml:space="preserve"><value>Back</value><comment>Button: go back one page.</comment></data>
+  <data name="toolbar_forward" xml:space="preserve"><value>Forward</value><comment>Button: go forward one page.</comment></data>
+  <data name="toolbar_open_location" xml:space="preserve"><value>Open Location</value><comment>Command (Command-L on a Mac): put the keyboard in the address field with the whole address selected.</comment></data>
+  <data name="toolbar_reload" xml:space="preserve"><value>Reload</value><comment>Button: reload the page.</comment></data>
+  <data name="toolbar_stop" xml:space="preserve"><value>Stop</value><comment>Button: stop loading the page.</comment></data>
+  <data name="zoom_done" xml:space="preserve"><value>Done</value><comment>Button that closes the zoom bar.</comment></data>
+  <data name="zoom_in" xml:space="preserve"><value>Zoom In</value><comment>Button in the zoom bar, and the command (Command-plus on a Mac): make the page bigger.</comment></data>
+  <data name="zoom_level" xml:space="preserve"><value>{0}%</value><comment>The zoom bar&apos;s level, in per cent. %ld is the number; %% is a per cent sign.</comment></data>
+  <data name="zoom_open" xml:space="preserve"><value>Zoom</value><comment>Label of the button, beside the tabs, that opens the zoom bar.</comment></data>
+  <data name="zoom_out" xml:space="preserve"><value>Zoom Out</value><comment>Button in the zoom bar, and the command (Command-minus on a Mac): make the page smaller.</comment></data>
+  <data name="zoom_reset" xml:space="preserve"><value>Actual Size</value><comment>Accessibility label of the zoom bar&apos;s level, which puts the page back to 100% when pressed; and the command (Command-0 on a Mac).</comment></data>
+</root>
