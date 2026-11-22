@@ -4,6 +4,10 @@
 // device, where the adapter suite (src/androidTest) drives it against the real WebView.
 package com.tigercodes.webtiger.webview
 
+import androidx.webkit.ProfileStore
+import androidx.webkit.WebStorageCompat
+import java.io.File
+import java.io.IOException
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.MutableContextWrapper
@@ -59,6 +63,76 @@ internal class WebViewPages(private val context: Context) : PageFactory {
             }
 
     override fun create(webViewId: Long, loginSet: String, host: PageHost): Page = WebViewPage(context, webViewId, loginSet, host, ::isOnline)
+
+    /** The private login sets whose profiles are to be deleted (037): one name to a line, in a file that is never backed up. */
+    private val thrownAway = File(context.noBackupFilesDir, "private-login-sets")
+
+    override fun willThrowAway(loginSet: String): Boolean =
+        synchronized(PrivateProfiles) {
+            try {
+                val listed = PrivateProfiles.read(thrownAway)
+                if (loginSet !in listed) PrivateProfiles.write(thrownAway, listed + loginSet)
+                true
+            } catch (_: IOException) {
+                false
+            }
+        }
+
+    override fun clear(loginSet: String) {
+        val profile =
+            try {
+                ProfileStore.getInstance().getProfile(loginSet)
+            } catch (_: RuntimeException) {
+                null
+            } ?: return
+        profile.cookieManager.removeAllCookies(null)
+        // A current WebView clears everything a site stored in one call; an older one clears
+        // its stored values and databases, and leaves caches and workers until the profile is
+        // deleted (003 §5.2).
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.DELETE_BROWSING_DATA)) {
+            WebStorageCompat.deleteBrowsingData(profile.webStorage) {}
+        } else {
+            profile.webStorage.deleteAllData()
+        }
+    }
+
+    override fun sweep() {
+        synchronized(PrivateProfiles) {
+            // Once in a run: a profile this run has used cannot be deleted by it.
+            if (PrivateProfiles.swept) return
+            PrivateProfiles.swept = true
+            val left =
+                try {
+                    PrivateProfiles.read(thrownAway)
+                } catch (_: IOException) {
+                    return
+                }
+            PrivateProfiles.leftAtStart = left
+            if (left.isEmpty() || !keepsLoginSetsApart) return
+            val store =
+                try {
+                    ProfileStore.getInstance()
+                } catch (_: RuntimeException) {
+                    return
+                }
+            // One that will not go is kept on the list, for the next start.
+            val kept =
+                left.filter { name ->
+                    try {
+                        store.deleteProfile(name)
+                        false
+                    } catch (_: RuntimeException) {
+                        true
+                    }
+                }
+            PrivateProfiles.deletedAtStart = left - kept.toSet()
+            try {
+                PrivateProfiles.write(thrownAway, kept)
+            } catch (_: IOException) {
+                // Still listed: tried again at the next start, when there is nothing to delete.
+            }
+        }
+    }
 
     /** Whether the device has a network that reaches the internet. */
     private fun isOnline(): Boolean {
@@ -577,5 +651,29 @@ internal class WebViewPage(
         const val ACTUAL_SIZE = 100
         const val SMALLEST_ZOOM = 50
         const val LARGEST_ZOOM = 500
+    }
+}
+
+/**
+ * The list of private login sets whose profiles are to be deleted (037), and what was done
+ * about it as this run started. One for the process: the WebView's profiles are the process's.
+ */
+internal object PrivateProfiles {
+    /** The list has been gone through in this run. */
+    var swept = false
+
+    /** The private login sets an earlier run left, as the list had them when this run first looked. Null until then. */
+    var leftAtStart: List<String>? = null
+
+    /** Those of them whose profiles were deleted. */
+    var deletedAtStart: List<String> = emptyList()
+
+    fun read(list: File): List<String> = if (list.exists()) list.readLines().filter { SystemWebViewEngine.isUuid(it) } else emptyList()
+
+    /** Written whole, to a file beside it that then takes its place: a list half written is never read. */
+    fun write(list: File, names: List<String>) {
+        val next = File(list.parentFile, list.name + ".next")
+        next.writeText(names.joinToString(separator = "") { it + "\n" })
+        if (!next.renameTo(list)) throw IOException("the list could not be put in place")
     }
 }

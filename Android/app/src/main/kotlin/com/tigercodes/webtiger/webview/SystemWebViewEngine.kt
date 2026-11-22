@@ -124,6 +124,12 @@ class SystemWebViewEngine internal constructor(
     /** The login set each web view's pages run in. A window a page asks for is in the asking page's. */
     private val loginSets = HashMap<Long, String>()
 
+    /** The login sets of this run that are private windows' (037): cleared when their last page is gone. */
+    private val thrownAway = HashSet<String>()
+
+    /** The profiles an earlier run's private windows left have been looked for. */
+    private var swept = false
+
     /** The certificates a person went on past (026). Until the process ends, and kept nowhere else. */
     internal val certificates = Certificates()
 
@@ -244,8 +250,11 @@ class SystemWebViewEngine internal constructor(
                     signIns.dropped(destroy.web_view_id)
                     files.dropped(destroy.web_view_id)
                     pages.remove(destroy.web_view_id)?.close()
-                    loginSets.remove(destroy.web_view_id)
+                    val loginSet = loginSets.remove(destroy.web_view_id)
                     certificates.dropped(destroy.web_view_id)
+                    // A private window's login set, with its last page gone (037): what its
+                    // pages stored is removed now, and its profile when the app next starts.
+                    if (loginSet != null && loginSet in thrownAway && loginSet !in loginSets.values) factory.clear(loginSet)
                     done
                 }
                 // A request from a core newer than this shell.
@@ -259,14 +268,25 @@ class SystemWebViewEngine internal constructor(
         if (create.engine != EngineKind.ENGINE_KIND_CHROMIUM) return failure("engine.unavailable")
         if (pages.containsKey(create.web_view_id)) return failure("webview.exists")
         val loginSet = create.login_set
-        // A private window's login set is kept in memory and never written. A WebView profile
-        // is always written to disk, so there is none to give it: refused, not approximated.
-        if (loginSet?.ephemeral == true) return failure("engine.no_private")
         val name = loginSet?.id.orEmpty()
         if (!isUuid(name)) return failure("webview.bad_login_set")
         // Without profiles every web view would share the one default data store, and a login
         // set's cookies would be every other's. No web view is better than that.
         if (!factory.keepsLoginSetsApart) return failure("engine.no_profiles")
+        // The profiles of the private windows of an earlier run are deleted before any web
+        // view is made (037): the only time the WebView lets a profile be deleted.
+        if (!swept) {
+            swept = true
+            factory.sweep()
+        }
+        // A private window's login set (037). The WebView has no login set in memory: a
+        // profile is always on disk. So it is a profile to throw away: written down as one
+        // before it is made, cleared when its last page is gone, and deleted when the app
+        // next starts. One that cannot be written down is not made.
+        if (loginSet?.ephemeral == true) {
+            if (!factory.willThrowAway(name)) return failure("engine.no_private")
+            thrownAway.add(name)
+        }
         val page =
             try {
                 factory.create(create.web_view_id, name, Reports())

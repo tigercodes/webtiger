@@ -116,8 +116,11 @@ class SystemWebViewEngineTest {
             assertRefused("webview.bad_login_set", engine.answer(create(4, loginSet = null)))
             assertRefused("webview.bad_login_set", engine.answer(create(4, LoginSet(id = LOGIN_SET.uppercase()))))
             assertRefused("webview.bad_login_set", engine.answer(create(4, LoginSet(id = "../Default"))))
-            // A private login set must leave nothing on disk, and a WebView profile always does.
+            // A private login set that cannot be written down as one to throw away is not made:
+            // a profile nobody knows to delete would be left on disk.
+            pages.remembers = false
             assertRefused("engine.no_private", engine.answer(create(4, LoginSet(id = LOGIN_SET, ephemeral = true))))
+            pages.remembers = true
             assertEquals(0, engine.webViewCount)
             assertTrue(pages.made.isEmpty())
 
@@ -366,4 +369,57 @@ class SystemWebViewEngineTest {
             assertFalse(bad, SystemWebViewEngine.isUuid(bad))
         }
     }
+
+    // A private window's login set (037): a profile to throw away
+
+    private fun private(id: Long, loginSet: String = PRIVATE) = create(id, LoginSet(id = loginSet, ephemeral = true))
+
+    @Test
+    fun aPrivateLoginSetIsWrittenDownBeforeItsPageIsMadeAndClearedWhenItsLastPageIsGone() =
+        runTest {
+            assertDone(engine.answer(private(1)))
+            // What an earlier run left is looked for first; then the login set is written down
+            // as one to throw away; and only then is its page made.
+            assertEquals(listOf("sweep", "throw away $PRIVATE", "make $PRIVATE"), pages.did)
+
+            // A second page of it: nothing is cleared while one is left.
+            assertDone(engine.answer(private(2)))
+            assertDone(engine.answer(destroy(1)))
+            assertEquals(emptyList<String>(), pages.did.filter { it.startsWith("clear") })
+
+            // Its last page gone: what its pages stored is removed, once.
+            assertDone(engine.answer(destroy(2)))
+            assertEquals(listOf("clear $PRIVATE"), pages.did.filter { it.startsWith("clear") })
+            assertDone(engine.answer(destroy(2)))
+            assertEquals(listOf("clear $PRIVATE"), pages.did.filter { it.startsWith("clear") })
+            // What an earlier run left was looked for once, and not again for each page.
+            assertEquals(1, pages.did.count { it == "sweep" })
+        }
+
+    @Test
+    fun anOrdinaryLoginSetIsNeverWrittenDownOrCleared() =
+        runTest {
+            assertDone(engine.answer(create(1)))
+            assertDone(engine.answer(private(2)))
+            assertDone(engine.answer(destroy(1)))
+            // The ordinary login set's last page is gone, and nothing of it is touched; the
+            // private one's page is still there.
+            assertEquals(listOf("sweep", "make $LOGIN_SET", "throw away $PRIVATE", "make $PRIVATE"), pages.did)
+            // What an earlier run left is looked for before the first page of any kind.
+            assertEquals("sweep", pages.did.first())
+        }
+
+    @Test
+    fun eachPrivateLoginSetIsClearedByItself() =
+        runTest {
+            val other = "9a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c2d"
+            assertDone(engine.answer(private(1)))
+            assertDone(engine.answer(private(2, other)))
+            assertDone(engine.answer(destroy(1)))
+            assertEquals(listOf("clear $PRIVATE"), pages.did.filter { it.startsWith("clear") })
+            assertDone(engine.answer(destroy(2)))
+            assertEquals(listOf("clear $PRIVATE", "clear $other"), pages.did.filter { it.startsWith("clear") })
+        }
 }
+
+private const val PRIVATE = "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d"

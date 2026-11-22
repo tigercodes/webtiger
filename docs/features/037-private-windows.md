@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **The core and the contract are built and tested** (part 1 of §5): a window opened as private has a login set of its own that the engine is told to keep nothing of, and the core writes nothing of it. No shell opens one yet, so nobody can use it. The rule's choices (§4) are the owner's, confirmed 2026-11-21 (WT-D26) |
+| **Status** | **The core, the contract and the Android adapter are built and tested** (parts 1 and 3 of §5): a window opened as private has a login set of its own that the engine is told to keep nothing of, and the core writes nothing of it; on Android that login set is a profile cleared with its last page and deleted at the next start. No shell opens a private window yet, so nobody can use it. The rule's choices (§4) are the owner's, confirmed 2026-11-21 (WT-D26) |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "private windows". 000 §5.6: "A throwaway login set. Nothing is written; closing it wipes it" |
 | **Contract** | 1.26: `OpenWindow.private_window`; `WindowSnapshot.private_window`. `LoginSet.ephemeral` has been there since W0, and is now said |
 | **Builds on** | [001](001-foundations.md): login sets, and the adapters' isolation tests. [008](008-history.md), [009](009-session-restore.md), [013](013-downloads.md), [014](014-permissions.md), [012](012-zoom.md), [033](033-a-closed-tab-comes-back.md): each writes something a private window must not |
@@ -67,7 +67,7 @@ And what it is not: it does not hide me from the sites I visit, from the network
 
 1. **The core and the contract** (built): a window opened as private has a login set of its own that is `ephemeral`; nothing of §3's table is written; the window is told. Tested through `FakeShell`, with the store's files read afterwards for what they hold.
 2. **The Apple shell**: New Private Window (⇧⌘N on the Mac; where on an iPhone is to be settled), the words, the empty tab's explanation. The adapter suite's isolation tests for a login set that is not persistent.
-3. **Android**: the throwaway profile, and its deletion at close and at start, as an isolation test on a device. Until then the Android adapter refuses a login set that is `ephemeral`, as it always has: a private window there opens and loads nothing.
+3. **Android** (built, the adapter): the throwaway profile (§5.2). The window's own part, a way to open one and the words, is still to come with the Apple shell's.
 
 ### 5.1 How the core keeps nothing (part 1)
 
@@ -81,6 +81,18 @@ And what it is not: it does not hide me from the sites I visit, from the network
 - **Numbers that name one thing.** A download is named by a number that a shell may send back; the memory store's downloads (and visits, of which there are none) are numbered from far above any a store on disk reaches.
 - **What is not kept even in memory:** places visited (nothing is offered back, D1) and closed tabs (D2). The session never has a private window in it, and a private window opened first never becomes the window whose tabs are kept.
 
+### 5.2 Android: a profile to throw away (part 3)
+
+The WebView has no login set in memory: a login set is a profile, and a profile is on disk. What the WebView allows ([003](003-android-shell.md) §5.2) decides the rest: a profile's data can be removed while the app runs; the profile itself can be deleted only by a run that has not used it.
+
+- **Written down first.** Before a private login set's profile is made, its name is added to a list in the app's own files (never backed up). A profile the app is killed with is therefore known to be one to delete. If the list cannot be written, the web view is refused (`engine.no_private`).
+- **Cleared with its last page.** When the last web view of a private login set is destroyed, its cookies and everything its pages stored are removed. (On a WebView older than the one that clears everything in one call, caches and service workers stay until the profile is deleted.)
+- **Deleted at the next start.** Before the first web view of a run is made, of any login set, the profiles on the list are deleted and taken off it. One that will not go stays on the list.
+
+**What this is, plainly.** While a private window is open on Android its cookies are in a file, as any login set's are. If the app is killed with a private window open, that file stays until WebTiger is next started, and is deleted then before anything loads. On Apple's systems nothing of a private window is ever in a file.
+
+**The window's last page, not the window.** The adapter knows web views, not windows: a private window whose every tab has been closed, and which then has an empty tab, has had its logins removed, though the window is still open. The same is so in WebKit's adapter. On the safe side; a person who closes every page of a private window is signed out there.
+
 ## 6. Tests
 
 The bar for the whole: after a private window has visited a site, signed in, downloaded, been asked for a permission and closed, **the store on disk and the engine's stores are searched for the site's name and hold none of it**. Part 1 meets it for the core's store.
@@ -90,11 +102,17 @@ The bar for the whole: after a private window has visited a site, signed in, dow
 | The store (`wt-store`, 3: `private.rs`) | A private store's downloads and visits are numbered far above a real store's. A login set is added once and dropped with everything of it (visits, a site's zoom, what a site may use, downloads), another's left as it was, and nothing can be kept for it afterwards. A login set a Space has is not dropped |
 | The core (`wt-app/tests/private.rs`, 9, through `FakeShell`; six over a store on disk whose files are then read whole) | **Its own login set**: the windows are told which they are; a private one names no Space and has one tab; the engine is told to keep nothing of each private window's login set, each is its own, and none is the ordinary window's. **Nothing written or offered back**: a private window has no history and is offered nothing from any, its own visits or the ordinary window's; the ordinary window is offered nothing of the private one's; left open as a crash leaves it, the files hold the ordinary site's name and not the private one's. **The session**: a private window opened first is not the one whose tabs are kept, and never comes back; the first ordinary window gets the session. **Closed tabs**: not journalled, nothing to undo there or anywhere. **Zoom**: kept for the site while the window is open, across its tabs; not the ordinary window's; gone with the window. **What a site may use**: what was allowed in an ordinary window is asked afresh in a private one, kept there while it is open, and gone with it; the ordinary window's answer is untouched. **Downloads**: each window lists its own; a number names one download; the private one's entry is written nowhere, by its address or its file's name. **No Space**: in no list of Spaces; cannot be switched; no window can be switched to its row; a link and a search from outside are refused and open nothing. **A window a private page opens** is a tab of the same private window, in its login set |
 | By breaking it | Eighteen parts of the rule, each then run against these tests. Seventeen caught, one of them only after its test was made to open a second tab in each private window: with two private windows given one row number, the second window's next tab took the first one's logins, and nothing looked. The eighteenth is no break that can be seen: asking the store on disk for a private window's history finds none either, because none is ever recorded, there or in memory |
+| Android's adapter on the JVM (`SystemWebViewEngineTest`, 3 more) | What an earlier run left is looked for first, then the login set is written down, then its page is made; a second page keeps it, and it is cleared once when the last is gone; an ordinary login set is neither written down nor cleared; each private login set is cleared by itself; one that cannot be written down is refused and nothing is made. Eight parts checked by breaking them: all caught |
+| Android's adapter on the emulator (`SystemWebViewIsolationTest`, 3 in place of the one that expected a refusal) | A private login set has its cookie and stored value while a page of it is there, through a second page after the first is gone; with the last gone its jar empties, and a page made in it afterwards finds no cookie, no stored value and no database. It and an ordinary login set share nothing, either way. What an earlier run left is deleted before anything is made |
+| By hand (2026-11-21, the emulator, the app and its tests installed once and the isolation tests run three times as three processes, the app's data kept between them) | The first run found nothing left. The second found the three private login sets the first had left and deleted all three profiles as it started; the third the same for the second's. (Run by Gradle the last test finds nothing to delete: Gradle removes the app, and its data, after each run.) |
 
 ## 7. What is not verified
 
 - **Anybody using it.** No shell opens a private window yet.
-- **The engines.** That WebKit's store that is not persistent keeps nothing, and is gone when the window closes, is part 2's to show; Android's WebView refuses such a login set today.
+- **WebKit.** That its store that is not persistent keeps nothing, and is gone when the window closes, is part 2's to show.
+- **Android killed with a private window open.** The profile's file stays until the next start (§5.2). That the next start deletes it was run by hand, with profiles whose pages had been closed; a kill with pages open was not tried.
+- **An older WebView**, which cannot remove everything in one call: caches and service workers of a private login set stay until its profile is deleted. Not run on one.
+- **A phone.** An emulator.
 - **That the memory store's rows are deleted when the window closes**, through the app. The store's own test shows a login set dropped with everything of it; nothing can ask the core for a closed private window's things, so no test through the contract can see them gone or still there.
 - **A download still coming when its private window closes.** The file goes on being saved; its entry is gone with the window. Not tested.
 - **Signing in** (017) and **a certificate gone on past** (026) in a private window: both are kept by login set in memory already, and go with the window; no test of this feature does either.
@@ -104,6 +122,7 @@ The bar for the whole: after a private window has visited a site, signed in, dow
 - [x] The owner's word on §4 (2026-11-21).
 - [x] The core and the contract (contract 1.26).
 - [ ] The Apple shell.
-- [ ] Android.
+- [x] Android: the adapter (the window's part comes with the shells').
 - [x] Part 1: `Tools/test.sh all` green, and `android-device`, on 2026-11-21: `lint`, `core` (537), `unit` (268 on the Mac), `build`, the Mac's UI suite (36), `ios` (250 on the iPhone simulator, one skipped as before), the iPhone's UI suite (27), `android` (366 and 32 on the JVM) and `android-device` (150 on the emulator).
-- [ ] Parts 2 and 3: the same again.
+- [x] Part 3 (Android's adapter): `lint`, `android` (369 and 32 on the JVM) and `android-device` (152 on the emulator, twice from a cold start), on 2026-11-21. Nothing of the core's or of Apple's changed.
+- [ ] Part 2 (the shells): the whole gate again.

@@ -175,12 +175,90 @@ internal class SystemWebViewIsolationTest : AdapterTestCase() {
         assertEquals("a tab that sleeps does not sign its Space out", "who=ada", lastTitle(2))
     }
 
+    // A private window's login set (037): a profile to throw away
+
+    /** What a login set's own jar holds for the test site. */
+    private fun jar(loginSet: String): String = onMain { ProfileStore.getInstance().getProfile(loginSet)?.cookieManager?.getCookie(site.url("/whoami")) }.orEmpty()
+
+    /**
+     * The WebView has no login set in memory: a private window's is a profile like any other,
+     * with its own cookies and storage while its pages are there; with its last page gone,
+     * what they stored is removed, and a page made in it afterwards finds nothing.
+     */
     @Test
-    fun aPrivateLoginSetIsRefusedNotApproximated() {
-        // A WebView profile is always written to disk; the contract's private login set is kept
-        // in memory. So there is none to give (003 §5.2, A4).
-        assertEquals("engine.no_private", create(1, ephemeral = true).error?.code)
-        assertNull(webView(1))
+    fun aPrivateLoginSetIsClearedWhenItsLastPageIsGone() {
+        val loginSet = newLoginSet()
+        assertNull(create(1, loginSet = loginSet, ephemeral = true).error)
+        load(1, site.url("/set?v=ada"))
+        await(1, "the cookie to be set") { finished(it) && hasTitle("Set")(it) }
+        load(1, site.url("/storage?v=ada"))
+        await(1, "the value to be stored") { lastTitle(1) == "stored=ada" }
+        // A second page of it, and the first one gone: nothing is removed while a page is left.
+        assertNull(create(2, loginSet = loginSet, ephemeral = true).error)
+        destroy(1)
+        load(2, site.url("/whoami"))
+        await(2, "the cookie, still there") { finished(it) && lastTitle(2).startsWith("who=") }
+        assertEquals("who=ada", lastTitle(2))
+        assertTrue("in the jar: <${jar(loginSet)}>", jar(loginSet).contains("ada"))
+
+        destroy(2)
+
+        // Its last page gone: the jar empties (the WebView does it a moment later).
+        var left = jar(loginSet)
+        for (attempt in 0 until 100) {
+            if (left.isEmpty()) break
+            Thread.sleep(100)
+            left = jar(loginSet)
+        }
+        assertEquals("the private login set's jar is empty once its last page is gone", "", left)
+        // And a page made in it afterwards finds no cookie and no stored value.
+        assertNull(create(3, loginSet = loginSet, ephemeral = true).error)
+        load(3, site.url("/whoami"))
+        await(3, "the cookie's absence") { finished(it) && lastTitle(3).startsWith("who=") }
+        assertEquals("who=none", lastTitle(3))
+        var stored = ""
+        for (attempt in 0 until 50) {
+            stored = run(3, "return [localStorage.getItem('who'), (await indexedDB.databases()).length]").orEmpty()
+            if (stored == "[null,0]") break
+            Thread.sleep(100)
+        }
+        assertEquals("no stored value and no database is left", "[null,0]", stored)
+    }
+
+    /** A private login set and an ordinary one share nothing, either way: it is a login set like any other while it lives. */
+    @Test
+    fun aPrivateLoginSetSharesNothingWithAnOrdinaryOne() {
+        val (ordinary, private) = newLoginSet() to newLoginSet()
+        create(1, loginSet = ordinary)
+        load(1, site.url("/set?v=ada"))
+        await(1, "the ordinary cookie") { finished(it) && hasTitle("Set")(it) }
+        assertNull(create(2, loginSet = private, ephemeral = true).error)
+        load(2, site.url("/whoami"))
+        await(2, "who the private page is") { finished(it) && lastTitle(2).startsWith("who=") }
+        assertEquals("the ordinary login set's cookie is not the private one's", "who=none", lastTitle(2))
+
+        load(2, site.url("/set?v=grace"))
+        await(2, "the private cookie") { reports -> reports.count { it.title_changed?.title == "Set" } >= 1 && finished(reports, times = 2) }
+        load(1, site.url("/whoami"))
+        await(1, "who the ordinary page is") { finished(it, times = 2) && lastTitle(1).startsWith("who=") }
+        assertEquals("the private login set's cookie is not the ordinary one's", "who=ada", lastTitle(1))
+    }
+
+    /**
+     * What an earlier run's private windows left is deleted before anything is made in this
+     * run: the only time the WebView lets a profile be deleted (§5.2). The first web view made
+     * in this process, by whichever test, did it; this looks at what it did. On a device's
+     * first run there is nothing left to delete: this run leaves one for the next.
+     */
+    @Test
+    fun whatAnEarlierRunsPrivateWindowsLeftIsDeletedBeforeAnythingIsMade() {
+        assertNull(create(1, loginSet = newLoginSet(), ephemeral = true).error)
+        val left = checkNotNull(PrivateProfiles.leftAtStart) { "the list was looked at before the first web view was made" }
+        val deleted = PrivateProfiles.deletedAtStart
+        val there = onMain { ProfileStore.getInstance().allProfileNames }
+        Log.i("WTFACT", "private login sets left by an earlier run: ${left.size}; their profiles deleted as this run started: ${deleted.size}")
+        assertEquals("every one that was left was deleted: none can be in use as a run starts", left.toSet(), deleted.toSet())
+        for (name in deleted) assertFalse("a deleted profile is no longer among the WebView's", name in there)
     }
 
     @Test

@@ -687,7 +687,12 @@ internal class AppWindowTest {
 
         // A finger on the page's button: the page asks, and waits.
         PageTouch.tap(checkNotNull(shownWebView()), "camera")
-        compose.waitUntil(15_000) { bars() == 1 }
+        try {
+            compose.waitUntil(15_000) { bars() == 1 }
+        } catch (_: androidx.compose.ui.test.ComposeTimeoutException) {
+            // What the page says of itself tells how far the asking got.
+            throw AssertionError("the person was never asked: the page's title is <${pageTitle()}>, and ${bars()} prompts are shown")
+        }
         compose.onNodeWithTag("prompt-words").assertTextEquals("${shown("/")} wants to use your camera.")
         assertEquals("asking camera", pageTitle())
         compose.onRoot().tryPerformAccessibilityChecks()

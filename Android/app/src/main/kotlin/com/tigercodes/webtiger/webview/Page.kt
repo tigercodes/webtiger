@@ -127,4 +127,25 @@ internal interface PageFactory {
 
     /** A page whose web view runs in the login set `loginSet`, a UUID. Throws when the device has no usable WebView. */
     fun create(webViewId: Long, loginSet: String, host: PageHost): Page
+
+    /**
+     * A login set is about to be used that is a private window's (037): to be thrown away.
+     * It is written down before its profile is made, so that a profile the app is killed
+     * with is still known to be one to delete. False when it cannot be written down: there
+     * is no private window then.
+     */
+    fun willThrowAway(loginSet: String): Boolean
+
+    /**
+     * Removes everything the pages of a login set stored: cookies, storage, caches, workers.
+     * A private window's, when its last page is gone. Its profile itself cannot be deleted
+     * until the app starts again (003 §5.2).
+     */
+    fun clear(loginSet: String)
+
+    /**
+     * Deletes the profiles of the private login sets an earlier run left: before any web
+     * view is made, which is the only time the WebView lets a profile be deleted.
+     */
+    fun sweep()
 }

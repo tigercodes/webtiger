@@ -62,6 +62,26 @@ internal class FakePages(override var keepsLoginSetsApart: Boolean = true) : Pag
 
     override fun create(webViewId: Long, loginSet: String, host: PageHost): Page {
         failure?.let { throw it }
+        did.add("make $loginSet")
         return FakePage(webViewId, loginSet, host).also { made.add(it) }
+    }
+
+    /** What the adapter did about private login sets, in order: "sweep", "throw away <name>", "clear <name>"; and "make <name>" for each page made. */
+    val did = ArrayList<String>()
+
+    /** Whether a private login set can be written down as one to throw away. */
+    var remembers = true
+
+    override fun willThrowAway(loginSet: String): Boolean {
+        if (remembers) did.add("throw away $loginSet")
+        return remembers
+    }
+
+    override fun clear(loginSet: String) {
+        did.add("clear $loginSet")
+    }
+
+    override fun sweep() {
+        did.add("sweep")
     }
 }
