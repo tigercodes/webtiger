@@ -4,6 +4,7 @@
 // window's chip, which says what private means and how to leave it.
 package com.tigercodes.webtiger.ui
 
+import android.view.inputmethod.EditorInfo
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -16,7 +17,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.InterceptPlatformTextInput
+import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -34,6 +38,29 @@ import com.tigercodes.webtiger.design.Tokens
  * of the Space the other window shows, as it was given: empty for one nobody named.
  */
 class PrivateWindows(val isOpen: Boolean, val other: String, val show: () -> Unit, val leave: () -> Unit, val close: () -> Unit)
+
+/**
+ * What a private window draws is drawn in this (037 §5.5): whatever in it tells the keyboard
+ * about a field to type in adds that nothing typed there is to be learned from. The address
+ * field, the find bar, a prompt's field. (A page's own fields are the web view's to tell
+ * about: `webview/WebViewPage.kt`.) It is asked of the keyboard, which is the person's own.
+ */
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+internal fun KeyboardAskedNotToLearn(content: @Composable () -> Unit) {
+    InterceptPlatformTextInput(
+        interceptor = { request, next ->
+            next.startInputMethod(
+                PlatformTextInputMethodRequest { attributes ->
+                    request.createInputConnection(attributes).also {
+                        attributes.imeOptions = attributes.imeOptions or EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
+                    }
+                },
+            )
+        },
+        content = content,
+    )
+}
 
 /** The page behind a private window's chip: what private means, what it does not, and the ways on. */
 @Composable

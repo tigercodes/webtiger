@@ -5,7 +5,13 @@ import android.view.View
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 
 /** A page that records what it was asked to do. */
-internal class FakePage(val id: Long, val loginSet: String, val host: PageHost) : Page {
+internal class FakePage(
+    val id: Long,
+    val loginSet: String,
+    val host: PageHost,
+    /** Whether it was made as a private window's page, whose keyboard is asked not to learn (037 §5.5). */
+    val forgetful: Boolean = false,
+) : Page {
     val loaded = ArrayList<String>()
     val commands = ArrayList<NavigationCommand>()
     var closed = false
@@ -60,10 +66,10 @@ internal class FakePages(override var keepsLoginSetsApart: Boolean = true) : Pag
     val made = ArrayList<FakePage>()
     var failure: RuntimeException? = null
 
-    override fun create(webViewId: Long, loginSet: String, host: PageHost): Page {
+    override fun create(webViewId: Long, loginSet: String, forgetful: Boolean, host: PageHost): Page {
         failure?.let { throw it }
         did.add("make $loginSet")
-        return FakePage(webViewId, loginSet, host).also { made.add(it) }
+        return FakePage(webViewId, loginSet, host, forgetful).also { made.add(it) }
     }
 
     /** What the adapter did about private login sets, in order: "sweep", "throw away <name>", "clear <name>"; and "make <name>" for each page made. */

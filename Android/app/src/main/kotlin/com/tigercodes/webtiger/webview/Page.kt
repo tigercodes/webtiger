@@ -125,8 +125,12 @@ internal interface PageFactory {
     /** Whether this device's WebView can keep one login set's data apart from another's. */
     val keepsLoginSetsApart: Boolean
 
-    /** A page whose web view runs in the login set `loginSet`, a UUID. Throws when the device has no usable WebView. */
-    fun create(webViewId: Long, loginSet: String, host: PageHost): Page
+    /**
+     * A page whose web view runs in the login set `loginSet`, a UUID. Throws when the device
+     * has no usable WebView. `forgetful`: the login set is a private window's (037), and the
+     * keyboard is asked not to learn from what is typed in the page's fields.
+     */
+    fun create(webViewId: Long, loginSet: String, forgetful: Boolean, host: PageHost): Page
 
     /**
      * A login set is about to be used that is a private window's (037): to be thrown away.

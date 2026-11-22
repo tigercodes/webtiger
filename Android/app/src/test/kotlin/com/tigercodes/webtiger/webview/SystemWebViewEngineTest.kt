@@ -397,6 +397,25 @@ class SystemWebViewEngineTest {
         }
 
     @Test
+    fun aPrivateLoginSetsPagesAreMadeToAskTheKeyboardNotToLearn() =
+        runTest {
+            assertDone(engine.answer(create(1)))
+            assertDone(engine.answer(private(2)))
+            assertEquals("the private login set's page, and not the ordinary one's", listOf(false, true), pages.made.map { it.forgetful })
+
+            // A window a page asks for is made in the asking page's login set, and as its
+            // pages are: a private page's is a private page.
+            assertNotNull(pages.made[1].host.newWindow(2, userGesture = true))
+            assertNotNull(pages.made[0].host.newWindow(1, userGesture = true))
+            assertEquals(listOf(false, true, true, false), pages.made.map { it.forgetful })
+
+            // And a second tab of each.
+            assertDone(engine.answer(private(3)))
+            assertDone(engine.answer(create(4)))
+            assertEquals(listOf(true, false), pages.made.takeLast(2).map { it.forgetful })
+        }
+
+    @Test
     fun anOrdinaryLoginSetIsNeverWrittenDownOrCleared() =
         runTest {
             assertDone(engine.answer(create(1)))

@@ -5,6 +5,7 @@ package com.tigercodes.webtiger.webview
 
 import android.content.Context
 import android.util.Log
+import android.view.inputmethod.EditorInfo
 import android.webkit.CookieManager
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -242,6 +243,36 @@ internal class SystemWebViewIsolationTest : AdapterTestCase() {
         load(1, site.url("/whoami"))
         await(1, "who the ordinary page is") { finished(it, times = 2) && lastTitle(1).startsWith("who=") }
         assertEquals("the private login set's cookie is not the ordinary one's", "who=ada", lastTitle(1))
+    }
+
+    /**
+     * A private login set's web view asks the keyboard not to learn from what is typed in a
+     * page's field (037 §5.5); an ordinary one's asks nothing of the kind. Each is asked as the
+     * system asks a view about the field that is being typed in, once a finger has put the
+     * cursor in the page's field.
+     */
+    @Test
+    fun aPrivateLoginSetsWebViewAsksTheKeyboardNotToLearn() {
+        create(1)
+        assertNull(create(2, ephemeral = true).error)
+        val told = HashMap<Long, Int>()
+        for (id in listOf(1L, 2L)) {
+            load(id, site.url("/sign-in-form"))
+            await(id, "the form") { finished(it) }
+            tap(id, "user")
+            val view = checkNotNull(webView(id))
+            // The web view has a field for the keyboard a moment after the finger: until
+            // then it has nothing to say, and says nothing.
+            var options: Int? = null
+            for (attempt in 0 until 100) {
+                options = onMain { EditorInfo().let { info -> view.onCreateInputConnection(info)?.let { info.imeOptions } } }
+                if (options != null) break
+                Thread.sleep(100)
+            }
+            told[id] = checkNotNull(options) { "web view $id never had a field for the keyboard" }
+        }
+        assertEquals("an ordinary login set's page asks nothing of the kind", 0, told.getValue(1) and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING)
+        assertTrue("a private login set's page asks the keyboard not to learn", told.getValue(2) and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING != 0)
     }
 
     /**

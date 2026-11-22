@@ -3,6 +3,9 @@
 // row that opens it in the list of Spaces, and the holder that shows one window at a time.
 package com.tigercodes.webtiger.ui
 
+import android.view.View
+import android.view.inputmethod.EditorInfo
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertCountEquals
@@ -26,6 +29,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -122,6 +126,51 @@ class PrivateWindowTest {
         compose.waitForIdle()
         compose.onAllNodesWithTag("private-page").assertCountEquals(0)
         assertEquals(listOf("leave", "close"), did)
+    }
+
+    // The keyboard is asked not to learn (037 §5.5)
+
+    /** The view the window is drawn in: the one the system asks about the field being typed in. */
+    private var windowView: View? = null
+
+    private fun showWithItsView(model: BrowserModel) {
+        compose.setContent {
+            windowView = LocalView.current
+            WebTigerTheme { BrowserWindow(session, model, ways()) }
+        }
+        compose.waitForIdle()
+    }
+
+    /** What the keyboard is told of the field that has it, as the system asks: its options, or null with no field to type in. */
+    private fun toldTheKeyboard(): Int? {
+        val told = EditorInfo()
+        val connection = compose.runOnIdle { windowView?.onCreateInputConnection(told) }
+        return if (connection == null) null else told.imeOptions
+    }
+
+    @Test
+    fun aPrivateWindowAsksTheKeyboardNotToLearnFromItsAddressField() {
+        showWithItsView(BrowserModel(session, asPrivate = true))
+        compose.onNodeWithTag("address-field").performClick()
+        compose.waitForIdle()
+
+        val told = toldTheKeyboard()
+        assertNotNull("the address field is the keyboard's to type in", told)
+        assertTrue("and nothing typed in it is to be learned from", told!! and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING != 0)
+        // What the field said of itself is still said: it is a field that goes somewhere.
+        assertEquals(EditorInfo.IME_ACTION_GO, told and EditorInfo.IME_MASK_ACTION)
+    }
+
+    @Test
+    fun anOrdinaryWindowAsksTheKeyboardNothingOfTheKind() {
+        showWithItsView(BrowserModel(session))
+        compose.onNodeWithTag("address-field").performClick()
+        compose.waitForIdle()
+
+        val told = toldTheKeyboard()
+        assertNotNull("the address field is the keyboard's to type in", told)
+        assertEquals(0, told!! and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING)
+        assertEquals(EditorInfo.IME_ACTION_GO, told and EditorInfo.IME_MASK_ACTION)
     }
 
     @Test

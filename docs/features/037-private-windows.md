@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **The core, the contract and the Android adapter are built and tested** (parts 1 and 3 of §5): a window opened as private has a login set of its own that the engine is told to keep nothing of, and the core writes nothing of it; on Android that login set is a profile cleared with its last page and deleted at the next start. **On the Mac, on Android and on the iPhone a private window can be opened and used** (§5.3, §5.4): in the Mac's app, on an emulator and on the simulator. The rule's choices (§4) are the owner's, confirmed 2026-11-21 (WT-D26) |
+| **Status** | **The core, the contract and the Android adapter are built and tested** (parts 1 and 3 of §5): a window opened as private has a login set of its own that the engine is told to keep nothing of, and the core writes nothing of it; on Android that login set is a profile cleared with its last page and deleted at the next start. **On the Mac, on Android and on the iPhone a private window can be opened and used** (§5.3, §5.4): in the Mac's app, on an emulator and on the simulator. **On Android it asks the keyboard not to learn from what is typed in it** (§5.5). The rule's choices (§4) are the owner's, confirmed 2026-11-21 (WT-D26) |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "private windows". 000 §5.6: "A throwaway login set. Nothing is written; closing it wipes it" |
 | **Contract** | 1.26: `OpenWindow.private_window`; `WindowSnapshot.private_window`. `LoginSet.ephemeral` has been there since W0, and is now said |
 | **Builds on** | [001](001-foundations.md): login sets, and the adapters' isolation tests. [008](008-history.md), [009](009-session-restore.md), [013](013-downloads.md), [014](014-permissions.md), [012](012-zoom.md), [033](033-a-closed-tab-comes-back.md): each writes something a private window must not |
@@ -50,6 +50,8 @@ And what it is not: it does not hide me from the sites I visit, from the network
 
 **Passwords.** The system's password manager is the person's and is not WebTiger's to switch off; where the system lets a browser say "do not offer to save here" (Android's Autofill, [032](032-passwords-android.md)), a private window says it.
 
+**The keyboard.** What is typed in a private window is typed through the system's keyboard, and a keyboard may learn words from what it is given: a place where what was typed is kept, outside WebTiger. Where the system lets an app ask a keyboard not to learn (Android), a private window asks, for its own fields and for a page's (§5.5). It is asked, not enforced: the keyboard is the person's own choice, and what it does with the request is its own.
+
 ## 4. Decisions
 
 > **The owner's decision (2026-11-21, WT-D26): "private choices are fine".** Each of these could have gone the other way, and other browsers differ on them. They were written down before any code and put to the owner, who confirmed them as written.
@@ -67,7 +69,8 @@ And what it is not: it does not hide me from the sites I visit, from the network
 
 1. **The core and the contract** (built): a window opened as private has a login set of its own that is `ephemeral`; nothing of §3's table is written; the window is told. Tested through `FakeShell`, with the store's files read afterwards for what they hold.
 2. **The Apple shell** (built): New Private Window (⇧⌘N) on the Mac, a window of its own (§5.4); on the iPhone the list of Spaces' last row (§5.3); the words; the empty tab's explanation.
-3. **Android** (built, the adapter): the throwaway profile (§5.2). The window's own part, a way to open one and the words, is still to come with the Apple shell's.
+3. **Android** (built): the throwaway profile (§5.2); the window's part, a way to open one and the words (§5.3).
+4. **Android: the keyboard is asked not to learn** (§5.5).
 
 ### 5.1 How the core keeps nothing (part 1)
 
@@ -120,6 +123,17 @@ Two things the Mac's app test found when it first ran, a day after the code was 
 
 **The chip** says "Private", the whole word, on every width; "Private Window" to a screen reader.
 
+### 5.5 Android: the keyboard is asked not to learn (part 4)
+
+Android has a word for it: an app that gives a keyboard a field to type in can say, of that field, that nothing typed there is to be learned from (`IME_FLAG_NO_PERSONALIZED_LEARNING`; Chrome's incognito tabs say it). A private window says it of every field it has:
+
+- **A page's fields.** The web view tells the keyboard about a page's field itself. A private login set's web view is one that adds the request to whatever it tells. The adapter knows which login sets are private: it is told as the web view is made.
+- **The window's own fields**: the address field, the find bar, the fields of a page's prompt and of a sign-in. Everything a private window draws is drawn inside one wrapper that adds the request to whatever Compose tells the keyboard (`InterceptPlatformTextInput`, which Compose still marks as experimental).
+
+An ordinary window's fields are told about as before.
+
+**Apple has no such word in public.** Nothing is asked on the Mac or the iPhone. What WebKit itself tells the keyboard about a page whose store is not persistent was not looked at.
+
 ## 6. Tests
 
 The bar for the whole: after a private window has visited a site, signed in, downloaded, been asked for a permission and closed, **the store on disk and the engine's stores are searched for the site's name and hold none of it**. Part 1 meets it for the core's store.
@@ -138,6 +152,11 @@ The bar for the whole: after a private window has visited a site, signed in, dow
 | The Apple shell's model (`PrivateModelTests`, 3, on the Mac and the iPhone simulator) | A private window is asked for as one and is one from the start; a window the core says is private is one; a link from another app that waited for a window is not opened by a private one, and is by an ordinary one |
 | The iPhone's app (`PrivateTests`, 1, fake mode: the real core and real WebKit) | From the list of Spaces' last row: the window says it is private and names no Space; it signs in to the test site. The page behind the chip says what private means; Back shows the other window, which is not signed in. The list says a private window is open; shown again, it is as it was left. Closed: the other window, and the list no longer says one is open. Another private window is not signed in. Passed three runs one after another. Its first runs found the other window still there behind, and the page's name given to everything in it |
 | The Mac's app (`PrivateTests`, 1, fake mode: the real core and real WebKit) | New Private Window from the File menu opens a second window that says it is private; signed in to the test site there, the ordinary window is not signed in and the private one still is; the page behind the chip says what private means, offers no way back, and Close Private Window closes that window and leaves the other; another, by ⇧⌘N, is not signed in. Broken three ways, each seen to fail: the menu bar said on the first kind of window (this test passes, six others fail: Close Tab is not in the File menu and ⌘W closes the window); the window asked to close at once, and when SwiftUI says the sheet was dismissed (the window stays) |
+| The keyboard, Android's adapter on the JVM (`SystemWebViewEngineTest`, 1 more) | The page of a private login set is made as one whose keyboard is asked not to learn, and an ordinary login set's is not; a window a private page asks for is made so too, and one an ordinary page asks for is not; a second tab of each likewise |
+| The keyboard, Android's window on the JVM (`PrivateWindowTest`, 2 more) | With the address field touched, the window's view is asked what the system asks it for the keyboard: a private window's field says nothing typed there is to be learned from, and still says it is a field that goes somewhere; an ordinary window's says nothing of the kind |
+| The keyboard, the real WebView on the emulator (`SystemWebViewIsolationTest`, 1 more) | The sign-in form in a private login set and in an ordinary one, the cursor put in its first field by a finger: the private one's web view tells the keyboard not to learn, the ordinary one's does not |
+| The keyboard, Android's app on the emulator (`AppPrivateTest`, 1 more, fake mode: the real core and the real WebView) | In the ordinary window neither the address field nor a field of the page asks; in a private window both do; back in the ordinary window the address field does not. It is the real core that says which login set is a private window's |
+| The keyboard, by breaking it | Ten parts (the wrapper adding nothing; every window wrapped, and none; the engine saying no page is private, and every page; the same for a window a page opens; no web view the kind that asks, every web view, and that kind adding nothing): all caught, seven on the JVM and three on the emulator |
 
 ## 7. What is not verified
 
@@ -147,6 +166,9 @@ The bar for the whole: after a private window has visited a site, signed in, dow
 - **"Do not offer to save here"** (§3, passwords): not built. On Android the system's Autofill is asked about a form in a private window as in any other (032).
 - **A link from another app while a private window is shown**: the first window is shown again with it, by the activity's code; no test hands a link over with a private window shown.
 - **The system making the window again** (a rotation, the app brought back from the background after its process was ended): the private window's model is kept with the first window's, by the same holder; that a private window ended with the process does not come back is the core's rule and is tested there, not on a device.
+- **What a keyboard does with the request** (§5.5). The tests read what the keyboard is told. Whether the emulator's keyboard, or any other, then learns nothing was not looked at, and cannot be from here: a keyboard's learned words are its own.
+- **The find bar's field, and the fields of a prompt and of a sign-in, in a private window**: drawn inside the same wrapper as the address field; only the address field was asked about.
+- **Apple and the keyboard**: nothing is asked (§5.5).
 - **Keys** (036) in a private window, and its page behind the chip while a list is open.
 - **Android killed with a private window open.** The profile's file stays until the next start (§5.2). That the next start deletes it was run by hand, with profiles whose pages had been closed; a kill with pages open was not tried.
 - **An older WebView**, which cannot remove everything in one call: caches and service workers of a private login set stay until its profile is deleted. Not run on one.
@@ -165,3 +187,4 @@ The bar for the whole: after a private window has visited a site, signed in, dow
 - [x] Part 3 (Android's adapter): `lint`, `android` (369 and 32 on the JVM) and `android-device` (152 on the emulator, twice from a cold start), on 2026-11-21. Nothing of the core's or of Apple's changed.
 - [x] Part 2 on Android (the window): `lint`, `android` (376 and 32 on the JVM) and `android-device` (153 on the emulator, twice), with the Apple package's own tests (268 on the Mac) and the apps' build, because the shared words gained eight; on 2026-11-21. The Mac's UI suite could not be run: a dialog of the system's was on the screen.
 - [x] Part 2 on the Mac and the iPhone: `Tools/test.sh all` green, and `android-device`, on 2026-11-22: `lint`, `core` (538), `unit` (271 on the Mac), `build`, the Mac's UI suite (37), `ios` (253 on the iPhone simulator, one skipped as before), the iPhone's UI suite (28), `android` (376 and 32 on the JVM) and `android-device` (153 on the emulator).
+- [x] Part 4 (Android: the keyboard is asked not to learn): `lint`, `android` (379 and 32 on the JVM) and `android-device` (155 on the emulator), on 2026-11-22. Nothing of the core's or of Apple's changed, and no words: those stages were not run again.

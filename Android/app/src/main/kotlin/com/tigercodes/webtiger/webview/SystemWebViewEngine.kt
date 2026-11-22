@@ -289,7 +289,7 @@ class SystemWebViewEngine internal constructor(
         }
         val page =
             try {
-                factory.create(create.web_view_id, name, Reports())
+                factory.create(create.web_view_id, name, forgetful = name in thrownAway, Reports())
             } catch (_: RuntimeException) {
                 // The device has no WebView, or it is being updated. The exception's words
                 // stay here.
@@ -312,7 +312,7 @@ class SystemWebViewEngine internal constructor(
         val id = OWN_ID or (ownWebViews + 1)
         val page =
             try {
-                factory.create(id, loginSet, Reports())
+                factory.create(id, loginSet, forgetful = loginSet in thrownAway, Reports())
             } catch (_: RuntimeException) {
                 return null
             }

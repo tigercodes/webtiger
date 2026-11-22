@@ -107,6 +107,17 @@ import com.tigercodes.webtiger.design.Tokens
 /** One window over `model`. The system's Back goes back in the page while it can. */
 @Composable
 fun BrowserWindow(session: BrowserSession, model: BrowserModel, private: PrivateWindows? = null) {
+    // A private window asks the keyboard not to learn from anything typed in it (037 §5.5).
+    // A window is private from the start or never: what is drawn does not change places.
+    if (model.isPrivate) {
+        KeyboardAskedNotToLearn { Window(session, model, private) }
+    } else {
+        Window(session, model, private)
+    }
+}
+
+@Composable
+private fun Window(session: BrowserSession, model: BrowserModel, private: PrivateWindows?) {
     // The page behind a private window's chip (037) is open over the window.
     var showingPrivate by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(model) { model.open() }

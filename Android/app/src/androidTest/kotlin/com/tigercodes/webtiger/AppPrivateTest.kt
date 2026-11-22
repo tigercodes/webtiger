@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import android.webkit.WebView
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -24,6 +25,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -127,6 +130,61 @@ internal class AppPrivateTest {
         awaitCount("private-page", 1)
         compose.onNodeWithTag(button).performClick()
         awaitChip("Space: Home")
+    }
+
+    /**
+     * What the keyboard is told of the field being typed in, as the system asks the view that
+     * has the keyboard's focus: its options. Waited for: a field is the keyboard's a moment
+     * after it is touched.
+     */
+    private fun toldTheKeyboard(what: String): Int {
+        var told: Int? = null
+        compose.waitUntil(15_000) {
+            scenario.onActivity { activity ->
+                val info = EditorInfo()
+                told = activity.window.decorView.findFocus()?.onCreateInputConnection(info)?.let { info.imeOptions }
+            }
+            told != null
+        }
+        return checkNotNull(told) { "$what: no field for the keyboard" }
+    }
+
+    private fun asksNotToLearn(options: Int): Boolean = options and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING != 0
+
+    /** Opens the test site's form in the window on the screen and puts the cursor in its first field with a finger. */
+    private fun touchThePagesField() {
+        go("/sign-in-form", "Sign in")
+        var page: WebView? = null
+        scenario.onActivity { activity -> page = webViewIn(activity.window.decorView) }
+        PageTouch.tap(checkNotNull(page) { "no page is shown" }, "user")
+    }
+
+    /**
+     * What is typed in a private window is not for the keyboard to learn from (037 §5.5): in
+     * its address field, which the window draws, and in a page's field, which the web view
+     * tells the keyboard about. In the other window the keyboard is asked nothing of the kind.
+     * The app, with the real core: it is the core that says which login set is a private one's.
+     */
+    @Test
+    fun aPrivateWindowAsksTheKeyboardNotToLearnAndTheOtherWindowDoesNot() {
+        awaitPage("Home")
+        compose.onNodeWithTag("address-field").performClick()
+        assertFalse("the ordinary window's address field", asksNotToLearn(toldTheKeyboard("the ordinary window's address field")))
+        touchThePagesField()
+        assertFalse("a field of the ordinary window's page", asksNotToLearn(toldTheKeyboard("a field of the ordinary window's page")))
+
+        openPrivate()
+        awaitPage("Home")
+        compose.onNodeWithTag("address-field").performClick()
+        assertTrue("the private window's address field", asksNotToLearn(toldTheKeyboard("the private window's address field")))
+        touchThePagesField()
+        assertTrue("a field of the private window's page", asksNotToLearn(toldTheKeyboard("a field of the private window's page")))
+
+        // And back in the other window, as before.
+        fromPrivate("private-close")
+        awaitPage("Sign in")
+        compose.onNodeWithTag("address-field").performClick()
+        assertFalse("the ordinary window's address field, afterwards", asksNotToLearn(toldTheKeyboard("the ordinary window's address field, afterwards")))
     }
 
     @Test

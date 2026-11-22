@@ -21,6 +21,8 @@ import android.os.Looper
 import android.os.Message
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
 import android.webkit.GeolocationPermissions
 import android.webkit.HttpAuthHandler
 import android.webkit.JsPromptResult
@@ -62,7 +64,8 @@ internal class WebViewPages(private val context: Context) : PageFactory {
                 false
             }
 
-    override fun create(webViewId: Long, loginSet: String, host: PageHost): Page = WebViewPage(context, webViewId, loginSet, host, ::isOnline)
+    override fun create(webViewId: Long, loginSet: String, forgetful: Boolean, host: PageHost): Page =
+        WebViewPage(context, webViewId, loginSet, forgetful, host, ::isOnline)
 
     /** The private login sets whose profiles are to be deleted (037): one name to a line, in a file that is never backed up. */
     private val thrownAway = File(context.noBackupFilesDir, "private-login-sets")
@@ -153,6 +156,8 @@ internal class WebViewPage(
     appContext: Context,
     private val id: Long,
     private val loginSet: String,
+    /** The login set is a private window's: the keyboard is asked not to learn (037 §5.5). */
+    private val forgetful: Boolean,
     private val host: PageHost,
     private val online: () -> Boolean,
 ) : Page {
@@ -317,7 +322,8 @@ internal class WebViewPage(
             // A search the WebView's own bar for selected text asks the system for is the
             // person's wish to search, and the core's to answer (023): the context hears it,
             // and no other app is started.
-            val view = WebView(SearchingContext(context) { words -> host.searchFor(id, words) })
+            val searching = SearchingContext(context) { words -> host.searchFor(id, words) }
+            val view = if (forgetful) UnlearnedWebView(searching) else WebView(searching)
             try {
                 // Before anything else is done with the web view, as the API requires: its pages
                 // run in the login set's profile (made here if it is new).
@@ -652,6 +658,18 @@ internal class WebViewPage(
         const val SMALLEST_ZOOM = 50
         const val LARGEST_ZOOM = 500
     }
+}
+
+/**
+ * A private window's web view (037 §5.5). A web view tells the keyboard about a page's field
+ * itself; this one adds, to whatever it tells, that nothing typed there is to be learned from.
+ * It is asked of the keyboard, which is the person's own: what it does about it is its own.
+ */
+private class UnlearnedWebView(context: Context) : WebView(context) {
+    override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection? =
+        super.onCreateInputConnection(outAttrs).also {
+            outAttrs.imeOptions = outAttrs.imeOptions or EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
+        }
 }
 
 /**
