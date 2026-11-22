@@ -310,6 +310,11 @@ internal class SystemWebViewIsolationTest : AdapterTestCase() {
         val thorough = onMain { WebViewFeature.isFeatureSupported(WebViewFeature.DELETE_BROWSING_DATA) }
         val cookiesCleared = CompletableFuture<Boolean>()
         val dataCleared = CompletableFuture<Boolean>()
+        // The premise, looked at in the login set's own jar: the cookie is there to be cleared.
+        // (The system's word for whether it removed any is not it: see the end.)
+        fun inTheJar(): String = onMain { checkNotNull(ProfileStore.getInstance().getProfile(loginSet)).cookieManager.getCookie(site.url("/whoami")) }.orEmpty()
+        val before = inTheJar()
+        assertTrue("the login set has the cookie before it is cleared; its jar says <$before>", before.contains("ada"))
         onMain {
             val profile = checkNotNull(ProfileStore.getInstance().getProfile(loginSet))
             profile.cookieManager.removeAllCookies { removed -> cookiesCleared.complete(removed) }
@@ -320,13 +325,17 @@ internal class SystemWebViewIsolationTest : AdapterTestCase() {
                 dataCleared.complete(true)
             }
         }
-        assertTrue("the login set had cookies, and they were removed", cookiesCleared.get(10, TimeUnit.SECONDS))
+        // What the system says of whether it removed any cookie is not relied on: on the first
+        // run after the device starts it now and then says it removed none, with the cookie
+        // there before and gone after (003 §8.1). What is in the jar is.
+        val saidRemoved = cookiesCleared.get(10, TimeUnit.SECONDS)
         assertTrue(dataCleared.get(10, TimeUnit.SECONDS))
+        assertEquals("the login set's jar is empty once it is cleared", "", inTheJar())
 
         create(2, loginSet = loginSet)
         load(2, site.url("/whoami"))
         await(2, "the cookie's absence") { finished(it) && lastTitle(2).startsWith("who=") }
-        assertEquals("who=none", lastTitle(2))
+        assertEquals("no cookie is left (the system said it removed some: $saidRemoved)", "who=none", lastTitle(2))
         // The older call says nothing when it is done: its storage goes a moment later.
         var left = ""
         for (attempt in 0 until 50) {
@@ -342,5 +351,6 @@ internal class SystemWebViewIsolationTest : AdapterTestCase() {
             // service workers outlive `deleteAllData`. They go with the profile, at the next start.
             assertEquals("an older WebView clears the stored value and the database, and leaves the cache and the worker", "[null,0,1,1]", left)
         }
+        Log.i("WTFACT", "removeAllCookies said it removed some: $saidRemoved; the jar had <$before> before and nothing after")
     }
 }
