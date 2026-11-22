@@ -180,6 +180,63 @@ import XCTest
             expect(windows: 1, tabs: 2, "New Tab opened a tab in the window that is left")
         }
 
+        /// From tab to tab (035): by the Window menu, by ⌃Tab and ⌃⇧Tab, by ⇧⌘] and ⇧⌘[, by
+        /// ⌘1 to ⌘8 and ⌘9. The core says which tab comes in front; the row goes round.
+        func testFromTabToTabByMenuAndByKey() {
+            let app = launch(start: site.url("/landed"))
+            XCTAssertTrue(pageShows("Landed", in: app), "the window's page loaded")
+            let tabs = app.buttons.matching(identifier: "tab")
+            // Waits for the tab at a place, counted from nought here, to be the one in front.
+            func expectInFront(_ index: Int, _ what: String, line: UInt = #line) {
+                let selected = NSPredicate(format: "selected == YES")
+                let waited = XCTWaiter().wait(
+                    for: [XCTNSPredicateExpectation(predicate: selected, object: tabs.element(boundBy: index))],
+                    timeout: 30
+                )
+                XCTAssertEqual(waited, .completed, what, line: line)
+            }
+
+            // With one tab there is nowhere to go: grey.
+            XCTAssertFalse(canChoose("Show Next Tab", in: "Window", of: app))
+            XCTAssertFalse(canChoose("Show Previous Tab", in: "Window", of: app))
+
+            // Three tabs: the page's, and two empty ones; the last opened is in front.
+            app.typeKey("t", modifierFlags: .command)
+            app.typeKey("t", modifierFlags: .command)
+            awaitTabs(3, in: app, "two more tabs")
+            expectInFront(2, "the tab opened last is in front")
+
+            // The menu: the next tab from the last is the first; the one before, the last.
+            choose("Show Next Tab", in: "Window", of: app)
+            expectInFront(0, "Show Next Tab went round to the first")
+            XCTAssertTrue(pageShows("Landed", in: app), "and its page is the one shown")
+            choose("Show Previous Tab", in: "Window", of: app)
+            expectInFront(2, "Show Previous Tab went round to the last")
+
+            // The keys beside the menu's items.
+            app.typeKey(.tab, modifierFlags: .control)
+            expectInFront(0, "⌃Tab is the next tab")
+            app.typeKey(.tab, modifierFlags: .control)
+            expectInFront(1, "and the next again")
+            app.typeKey(.tab, modifierFlags: [.control, .shift])
+            expectInFront(0, "⌃⇧Tab is the tab before")
+
+            // The keys with no item: the tab at a place, the last, and ⇧⌘] and ⇧⌘[.
+            app.typeKey("2", modifierFlags: .command)
+            expectInFront(1, "⌘2 is the second tab")
+            app.typeKey("9", modifierFlags: .command)
+            expectInFront(2, "⌘9 is the last tab")
+            app.typeKey("1", modifierFlags: .command)
+            expectInFront(0, "⌘1 is the first tab")
+            // A place the row does not reach: nothing happens.
+            app.typeKey("7", modifierFlags: .command)
+            app.typeKey("]", modifierFlags: [.command, .shift])
+            expectInFront(1, "⇧⌘] is the next tab, from the first: ⌘7 had gone nowhere")
+            app.typeKey("[", modifierFlags: [.command, .shift])
+            expectInFront(0, "⇧⌘[ is the tab before")
+            XCTAssertEqual(tabs.count, 3, "no tab was opened or closed by any of it")
+        }
+
         /// The system's own Close gave way to Close Tab and Close Window: a window that is not
         /// a browser's must still close by key. The design catalogue is such a window.
         func testAWindowThatIsNoBrowsersStillClosesByKey() {

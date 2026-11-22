@@ -1580,6 +1580,78 @@ public nonisolated struct WTUndo: Sendable {
   public init() {}
 }
 
+/// Since 1.25. Brings another tab of a window in front, by where it is in the
+/// row the window shows (035): the next, and from the last the first; the one
+/// before, and from the first the last; the last; or the tab at a place.
+/// Coming in front is what ActivateTab makes it. Answered with Ack, also when
+/// nothing changes (one tab, a place beyond the row, the tab already in
+/// front); "window.unknown"; or "tab.step" when no way to go is said.
+public nonisolated struct WTStepTab: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var windowID: UInt64 = 0
+
+  public var to: WTStepTab.To = .unspecified
+
+  /// For TO_PLACE: the place in the row, counted from one. Beyond the row,
+  /// nothing happens.
+  public var place: UInt32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public nonisolated enum To: SwiftProtobuf.Enum, Swift.CaseIterable {
+    public typealias RawValue = Int
+    case unspecified // = 0
+    case next // = 1
+    case previous // = 2
+    case last // = 3
+
+    /// The tab at `place`.
+    case place // = 4
+    case UNRECOGNIZED(Int)
+
+    public init() {
+      self = .unspecified
+    }
+
+    public init?(rawValue: Int) {
+      switch rawValue {
+      case 0: self = .unspecified
+      case 1: self = .next
+      case 2: self = .previous
+      case 3: self = .last
+      case 4: self = .place
+      default: self = .UNRECOGNIZED(rawValue)
+      }
+    }
+
+    public var rawValue: Int {
+      switch self {
+      case .unspecified: return 0
+      case .next: return 1
+      case .previous: return 2
+      case .last: return 3
+      case .place: return 4
+      case .UNRECOGNIZED(let i): return i
+      }
+    }
+
+    // The compiler won't synthesize support with the UNRECOGNIZED case.
+    public static let allCases: [WTStepTab.To] = [
+      .unspecified,
+      .next,
+      .previous,
+      .last,
+      .place,
+    ]
+
+  }
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
@@ -4003,4 +4075,48 @@ nonisolated extension WTUndo: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
+}
+
+nonisolated extension WTStepTab: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".StepTab"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}to\0\u{1}place\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.windowID) }()
+      case 2: try { try decoder.decodeSingularEnumField(value: &self.to) }()
+      case 3: try { try decoder.decodeSingularUInt32Field(value: &self.place) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.windowID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.windowID, fieldNumber: 1)
+    }
+    if self.to != .unspecified {
+      try visitor.visitSingularEnumField(value: self.to, fieldNumber: 2)
+    }
+    if self.place != 0 {
+      try visitor.visitSingularUInt32Field(value: self.place, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTStepTab, rhs: WTStepTab) -> Bool {
+    if lhs.windowID != rhs.windowID {return false}
+    if lhs.to != rhs.to {return false}
+    if lhs.place != rhs.place {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTStepTab.To: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0TO_UNSPECIFIED\0\u{1}TO_NEXT\0\u{1}TO_PREVIOUS\0\u{1}TO_LAST\0\u{1}TO_PLACE\0")
 }

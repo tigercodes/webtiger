@@ -16,17 +16,17 @@ use wt_proto::v1::{
     Ack, ActivateTab, AddressSuggestion, AddressSuggestions, CloseTab, CloseWindow, EngineEvent,
     EngineKind, FindInPage, ForgetHistory, HistoryEntry, HistoryPage, LinkOpenRequested, LoginSet,
     NavigationCommand, OpenAddress, OpenOutside, OpenTab, OutsideLinkRequested, QueryHistory,
-    SearchRequested, SearchWords, SubmitAddress, SuggestAddresses, TabCommand, TabOpened, Undo,
-    WebViewCommand, WebViewCreate, WebViewDestroy, WebViewFind, WebViewLoad, WebViewSetZoom,
+    SearchRequested, SearchWords, StepTab, SubmitAddress, SuggestAddresses, TabCommand, TabOpened,
+    Undo, WebViewCommand, WebViewCreate, WebViewDestroy, WebViewFind, WebViewLoad, WebViewSetZoom,
     WindowOpened, WindowSnapshot, ZoomChange, ZoomPage, engine_event, forget_history, host_request,
-    request, response,
+    request, response, step_tab,
 };
 use wt_store::{ClosedTab, SavedTab, Space, Store};
 
 use crate::downloads::{Downloading, Wanted};
 use crate::error::AppError;
 use crate::host::{Host, HostFuture};
-use crate::model::{LoadTarget, State};
+use crate::model::{LoadTarget, State, Step};
 use crate::spaces::Written;
 
 /// How many visits a page of history holds when the shell does not say
@@ -199,6 +199,7 @@ impl App {
             request::Kind::SearchWords(asked) => self.search_words(&asked),
             request::Kind::OpenAddress(asked) => self.open_address(&asked),
             request::Kind::Undo(undo) => self.undo(&undo),
+            request::Kind::StepTab(step) => self.step_tab(&step),
             request::Kind::OpenDownload(open) => self.open_download(&open),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
@@ -832,6 +833,41 @@ impl App {
         }
         // A tab that came back from the session is loaded now that it is in
         // front (009). The tab is in front whatever becomes of its page.
+        let waking = self.wake();
+        Box::pin(async move {
+            for loading in waking {
+                let _ = loading.await;
+            }
+            Ok(response::Kind::Ack(Ack {}))
+        })
+    }
+
+    /// Another tab of the window comes in front, by where it is in the row
+    /// (035). Which tab that is, is decided here; coming in front is what
+    /// it is for ActivateTab.
+    fn step_tab(&self, step: &StepTab) -> AppFuture {
+        let window = WindowId(step.window_id);
+        let to = match step.to() {
+            step_tab::To::Next => Some(Step::Next),
+            step_tab::To::Previous => Some(Step::Previous),
+            step_tab::To::Last => Some(Step::Last),
+            step_tab::To::Place => Some(Step::Place(step.place)),
+            step_tab::To::Unspecified => None,
+        };
+        // A window there is not is refused first, whatever else was said.
+        let found = match to {
+            Some(to) => self.state.borrow().tab_at_step(window, to),
+            None => self.state.borrow().tab_at_step(window, Step::Last),
+        };
+        let Some(tab) = found else {
+            return refuse(AppError::new("window.unknown").field("window_id"));
+        };
+        if to.is_none() {
+            return refuse(AppError::new("tab.step").field("to"));
+        }
+        self.state.borrow_mut().activate_tab(tab);
+        // A tab that came back from the session is loaded now that it is in
+        // front (009).
         let waking = self.wake();
         Box::pin(async move {
             for loading in waking {

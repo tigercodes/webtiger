@@ -8,6 +8,12 @@ import WTUI
 struct WebTigerApp: App {
     @State private var launch = Launch()
 
+    #if os(macOS)
+        init() {
+            BrowserCommands.useTheBrowsersOwnTabs()
+        }
+    #endif
+
     var body: some Scene {
         WindowGroup {
             switch launch.outcome {

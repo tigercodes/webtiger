@@ -82,6 +82,26 @@ private struct Command: View {
             CommandGroup(after: .pasteboard) { FindItems(window: window) }
             CommandGroup(before: .toolbar) { ViewItems(window: window) }
             CommandMenu(Text("menu.history", bundle: .module)) { HistoryItems(window: window) }
+            CommandGroup(after: .windowSize) { TabItems(window: window) }
+        }
+
+        /// The tabs are the browser's own: the system's way of making tabs of an app's
+        /// windows is turned off, and with it the Window menu's items for those, which have
+        /// the names and the keys of the browser's (035). Called once, as the app starts.
+        public static func useTheBrowsersOwnTabs() {
+            NSWindow.allowsAutomaticWindowTabbing = false
+        }
+    }
+
+    /// From tab to tab (035): the core says which.
+    private struct TabItems: View {
+        let window: WindowCommands?
+
+        var body: some View {
+            let several = (window?.model.tabs.count ?? 0) > 1
+            Divider()
+            Command("tabs.next", .tab, .control, enabled: several) { window?.model.stepTab(.next) }
+            Command("tabs.previous", .tab, [.control, .shift], enabled: several) { window?.model.stepTab(.previous) }
         }
     }
 
@@ -176,6 +196,16 @@ struct KeysNobodySees: View {
     var body: some View {
         Group {
             Command("zoom.in", "=", enabled: true) { window.model.zoom(.in) }
+            #if os(macOS)
+                // From tab to tab (035), as every browser on the Mac has it: ⇧⌘] and ⇧⌘[ beside
+                // the menu's ⌃Tab and ⌃⇧Tab; ⌘1 to ⌘8 for the tab at that place; ⌘9 for the last.
+                Command("tabs.next", "]", [.command, .shift], enabled: true) { window.model.stepTab(.next) }
+                Command("tabs.previous", "[", [.command, .shift], enabled: true) { window.model.stepTab(.previous) }
+                ForEach(1 ..< 9, id: \.self) { place in
+                    Command("tabs.list", KeyEquivalent(Character("\(place)")), enabled: true) { window.model.showTab(at: place) }
+                }
+                Command("tabs.list", "9", enabled: true) { window.model.stepTab(.last) }
+            #endif
             #if !os(macOS)
                 Command("tabs.new", "t", enabled: true) { window.model.openTab() }
                 Command("toolbar.open_location", "l", enabled: true) { window.openLocation() }

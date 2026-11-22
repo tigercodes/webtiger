@@ -660,6 +660,19 @@ struct Row {
     front: TabId,
 }
 
+/// A way to go along a row of tabs (035).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Step {
+    /// The next tab; from the last, the first.
+    Next,
+    /// The tab before; from the first, the last.
+    Previous,
+    /// The last tab.
+    Last,
+    /// The tab at a place, counted from one.
+    Place(u32),
+}
+
 /// A window: the Space it shows, and the row of tabs of each Space it has
 /// shown (024). The Space it shows has a row.
 #[derive(Debug)]
@@ -1060,6 +1073,30 @@ impl State {
             self.dirty.insert(tab.window);
         }
         true
+    }
+
+    /// The tab a step along the row leads to (035), in the row the window
+    /// shows: the tab in front itself when the step leads nowhere (one tab,
+    /// a place the row does not reach). `None` when there is no such
+    /// window.
+    pub(crate) fn tab_at_step(&self, window_id: WindowId, step: Step) -> Option<TabId> {
+        let window = self.windows.get(&window_id)?;
+        let row = window.rows.get(&window.space)?;
+        let last = row.tabs.len().checked_sub(1)?;
+        let front = row.tabs.iter().position(|tab| *tab == row.front)?;
+        let to = match step {
+            Step::Next if front == last => 0,
+            Step::Next => front + 1,
+            Step::Previous if front == 0 => last,
+            Step::Previous => front - 1,
+            Step::Last => last,
+            // Places are counted from one; there is no place nought.
+            Step::Place(place) => match usize::try_from(place).ok()?.checked_sub(1) {
+                Some(at) if at <= last => at,
+                _ => front,
+            },
+        };
+        row.tabs.get(to).copied()
     }
 
     /// A tab is sent to an address: by the user, or (with no address of

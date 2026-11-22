@@ -696,3 +696,25 @@ message OpenAddress {
 message Undo {
   uint64 window_id = 1;
 }
+
+// Since 1.25. Brings another tab of a window in front, by where it is in the
+// row the window shows (035): the next, and from the last the first; the one
+// before, and from the first the last; the last; or the tab at a place.
+// Coming in front is what ActivateTab makes it. Answered with Ack, also when
+// nothing changes (one tab, a place beyond the row, the tab already in
+// front); "window.unknown"; or "tab.step" when no way to go is said.
+message StepTab {
+  uint64 window_id = 1;
+  enum To {
+    TO_UNSPECIFIED = 0;
+    TO_NEXT = 1;
+    TO_PREVIOUS = 2;
+    TO_LAST = 3;
+    // The tab at `place`.
+    TO_PLACE = 4;
+  }
+  To to = 2;
+  // For TO_PLACE: the place in the row, counted from one. Beyond the row,
+  // nothing happens.
+  uint32 place = 3;
+}

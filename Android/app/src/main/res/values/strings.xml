@@ -415,6 +415,10 @@
     <string name="tabs_list">Tabs</string>
     <!-- Button at the end of the strip of tabs, and command (Command-T on a Mac): open an empty tab. -->
     <string name="tabs_new">New Tab</string>
+    <!-- Command in the Mac's Window menu (Control-Tab): bring the next tab in the row in front; from the last, the first. -->
+    <string name="tabs_next">Show Next Tab</string>
+    <!-- Command in the Mac's Window menu (Control-Shift-Tab): bring the tab before in the row in front; from the first, the last. -->
+    <string name="tabs_previous">Show Previous Tab</string>
     <!-- Command (Shift-Command-T on a Mac): bring back the tab that was last closed, where it was. -->
     <string name="tabs_reopen">Reopen Closed Tab</string>
     <!-- The name the strip gives a tab that has no page yet. -->

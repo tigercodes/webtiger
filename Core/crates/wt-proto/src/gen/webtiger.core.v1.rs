@@ -1033,6 +1033,72 @@ pub struct Undo {
     #[prost(uint64, tag = "1")]
     pub window_id: u64,
 }
+/// Since 1.25. Brings another tab of a window in front, by where it is in the
+/// row the window shows (035): the next, and from the last the first; the one
+/// before, and from the first the last; the last; or the tab at a place.
+/// Coming in front is what ActivateTab makes it. Answered with Ack, also when
+/// nothing changes (one tab, a place beyond the row, the tab already in
+/// front); "window.unknown"; or "tab.step" when no way to go is said.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct StepTab {
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
+    #[prost(enumeration = "step_tab::To", tag = "2")]
+    pub to: i32,
+    /// For TO_PLACE: the place in the row, counted from one. Beyond the row,
+    /// nothing happens.
+    #[prost(uint32, tag = "3")]
+    pub place: u32,
+}
+/// Nested message and enum types in `StepTab`.
+pub mod step_tab {
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
+    #[repr(i32)]
+    pub enum To {
+        Unspecified = 0,
+        Next = 1,
+        Previous = 2,
+        Last = 3,
+        /// The tab at `place`.
+        Place = 4,
+    }
+    impl To {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "TO_UNSPECIFIED",
+                Self::Next => "TO_NEXT",
+                Self::Previous => "TO_PREVIOUS",
+                Self::Last => "TO_LAST",
+                Self::Place => "TO_PLACE",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "TO_UNSPECIFIED" => Some(Self::Unspecified),
+                "TO_NEXT" => Some(Self::Next),
+                "TO_PREVIOUS" => Some(Self::Previous),
+                "TO_LAST" => Some(Self::Last),
+                "TO_PLACE" => Some(Self::Place),
+                _ => None,
+            }
+        }
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum LoadState {
@@ -1938,7 +2004,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -2031,6 +2097,9 @@ pub mod request {
         /// Since 1.24
         #[prost(message, tag = "34")]
         Undo(super::Undo),
+        /// Since 1.25
+        #[prost(message, tag = "35")]
+        StepTab(super::StepTab),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.

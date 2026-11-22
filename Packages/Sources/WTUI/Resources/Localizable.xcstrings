@@ -2485,6 +2485,30 @@
         }
       }
     },
+    "tabs.next": {
+      "comment": "Command in the Mac's Window menu (Control-Tab): bring the next tab in the row in front; from the last, the first.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Next Tab"
+          }
+        }
+      }
+    },
+    "tabs.previous": {
+      "comment": "Command in the Mac's Window menu (Control-Shift-Tab): bring the tab before in the row in front; from the first, the last.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Previous Tab"
+          }
+        }
+      }
+    },
     "tabs.reopen": {
       "comment": "Command (Shift-Command-T on a Mac): bring back the tab that was last closed, where it was.",
       "extractionState": "manual",
