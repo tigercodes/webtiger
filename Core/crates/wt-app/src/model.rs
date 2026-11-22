@@ -283,6 +283,11 @@ pub(crate) struct Tab {
     stands_in: bool,
     /// The tab is kept (039): a Site.
     site: Option<Site>,
+    /// A load of the Site's home is on its way: asked for by the person, by
+    /// waking it or by sending it home. Where that load lands is the Site's
+    /// home from then on (WT-D31): a home that sends the browser on to
+    /// another address is at that address.
+    homing: bool,
 }
 
 /// What makes a tab a Site (039): where its home is, and what it is called
@@ -344,6 +349,7 @@ impl Tab {
             silenced: false,
             stands_in: false,
             site: None,
+            homing: false,
         }
     }
 
@@ -481,6 +487,9 @@ impl Tab {
 
     /// The user sent the tab to `address`.
     fn begin_user_load(&mut self, address: Address) {
+        // A Site sent to its own home, however: woken, sent back, or its
+        // address typed. Where the load lands is its home.
+        self.homing = self.site.as_ref().is_some_and(|site| site.home == address);
         self.asleep = false;
         self.own_load = true;
         self.pending = Some(address);
@@ -493,6 +502,7 @@ impl Tab {
     /// address: it is not shown as the tab's until its page commits, and
     /// what comes of it is not the person's own load.
     fn begin_link_load(&mut self) {
+        self.homing = false;
         self.load = Load::Loading;
         self.progress = 0.0;
         self.error.clear();
@@ -500,6 +510,8 @@ impl Tab {
 
     /// The tab's load failed with a code.
     fn fail(&mut self, code: &str) {
+        // Nothing came of a load of the Site's home: its home is as it was.
+        self.homing = false;
         self.load = Load::Failed;
         self.progress = 0.0;
         self.passable = None;
@@ -524,6 +536,15 @@ impl Tab {
                 // An address the engine reports but the parser refuses is
                 // shown as no address at all rather than as the old one.
                 self.committed = Address::parse(&committed.url).ok();
+                // A Site's home was asked for, and this is where the load
+                // landed: its home, wherever the home's address sent the
+                // browser on to (WT-D31). Only an address of the web's is one.
+                if std::mem::take(&mut self.homing)
+                    && let (Some(site), Some(landed)) = (&mut self.site, &self.committed)
+                    && matches!(landed.scheme(), "http" | "https")
+                {
+                    site.home.clone_from(landed);
+                }
                 // What was found went with the page it was found in, and so
                 // did what the person would not let it use. (What it was
                 // still asking is ended by the app, which tells the shell.)
@@ -553,6 +574,7 @@ impl Tab {
                 if failed.code == "net.cancelled" {
                     // The user stopped it, or another load replaced it: the
                     // field goes back to the page that is still on screen.
+                    self.homing = false;
                     self.load = Load::Idle;
                     self.progress = 0.0;
                     self.pending = None;

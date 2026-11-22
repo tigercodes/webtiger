@@ -29,6 +29,7 @@ fn web(shell: &mut FakeShell) {
     shell.engine.page(CARD, "Card 3");
     shell.engine.page(NEWS, "News");
     shell.engine.page(STORY, "A story");
+    shell.engine.page(MOVED, "Mail, moved");
 }
 
 /// A tab of the row as the strip is told of it: its name, and whether it is
@@ -527,6 +528,133 @@ fn a_site_that_has_wandered_is_away_and_is_sent_back_to_its_home() {
     });
 }
 
+/// The address the strip is told a tab shows, by its host: where a sleeping Site will wake.
+fn hosts(shell: &FakeShell, subscription: u64) -> Vec<String> {
+    shell
+        .window(subscription)
+        .tabs
+        .into_iter()
+        .map(|tab| tab.host)
+        .collect()
+}
+
+const MOVED: &str = "https://mail.example.org/inbox";
+
+#[test]
+fn where_a_sites_home_sends_the_browser_on_to_is_its_home() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (_, subscription, [mail, _, news]) = three_tabs(&mut shell).await;
+        shell.activate_tab(mail).await;
+        acked(&shell.keep_tab(mail).await);
+        acked(&shell.close_tab(mail).await);
+        assert_eq!(hosts(&shell, subscription)[0], "mail.example.com");
+
+        // Its home has moved: asked for, it sends the browser on to another address.
+        shell.engine.redirect(MAIL, MOVED);
+        let loaded = loads(&shell);
+
+        // Woken, its home is asked for as it was kept, and where that lands is its home:
+        // it is not away, though it is not at the address it was kept at.
+        acked(&shell.activate_tab(mail).await);
+        assert_eq!(loads(&shell).last().map(String::as_str), Some(MAIL));
+        assert_eq!(
+            sites(&shell, subscription),
+            [site("Mail", "Mail, moved", false)]
+        );
+        assert_eq!(hosts(&shell, subscription)[0], "mail.example.org");
+        // Asleep again, it sleeps at the home it now has, and wakes there: the address it
+        // was kept at is not asked for again.
+        acked(&shell.close_tab(mail).await);
+        assert_eq!(row(&shell, subscription)[0], "Mail S z");
+        assert_eq!(hosts(&shell, subscription)[0], "mail.example.org");
+        acked(&shell.activate_tab(mail).await);
+        assert_eq!(loads(&shell).last().map(String::as_str), Some(MOVED));
+        assert_eq!(loads(&shell).len(), loaded.len() + 2);
+
+        // Sent home from elsewhere, the same: where the load lands is home.
+        shell
+            .engine
+            .page("https://mail.example.net/", "Mail, moved again");
+        shell.engine.redirect(MOVED, "https://mail.example.net/");
+        shell.submit(mail, MESSAGE).await;
+        assert!(sites(&shell, subscription)[0].2, "away at a message");
+        acked(&shell.send_site_home(mail).await);
+        assert_eq!(loads(&shell).last().map(String::as_str), Some(MOVED));
+        assert_eq!(
+            sites(&shell, subscription),
+            [site("Mail", "Mail, moved again", false)]
+        );
+        assert_eq!(hosts(&shell, subscription)[0], "mail.example.net");
+        let _ = news;
+    });
+}
+
+#[test]
+fn only_a_load_of_its_home_moves_a_sites_home() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (_, subscription, [mail, _, _]) = three_tabs(&mut shell).await;
+        shell
+            .engine
+            .fail("https://gone.example.com/", "net.unreachable");
+        shell.activate_tab(mail).await;
+        acked(&shell.keep_tab(mail).await);
+
+        // Sent somewhere else that sends the browser on: the Site is away, at where that
+        // landed, and its home is where it was.
+        shell.engine.redirect(BOARD, CARD);
+        shell.submit(mail, BOARD).await;
+        assert_eq!(sites(&shell, subscription), [site("Mail", "Card 3", true)]);
+        acked(&shell.send_site_home(mail).await);
+        assert_eq!(loads(&shell).last().map(String::as_str), Some(MAIL));
+        assert_eq!(sites(&shell, subscription), [site("Mail", "Mail", false)]);
+
+        // A page that goes on by itself after it has arrived (a link pressed, a script) is
+        // the Site wandering, not its home moving.
+        let web_view = shell.window(subscription).tab.expect("a tab").web_view_id;
+        for event in shell.engine.goes_to(web_view, MESSAGE) {
+            shell.report(event);
+        }
+        shell.settle().await;
+        assert_eq!(
+            sites(&shell, subscription),
+            [site("Mail", "Re: lunch", true)]
+        );
+        acked(&shell.send_site_home(mail).await);
+        assert_eq!(loads(&shell).last().map(String::as_str), Some(MAIL));
+
+        // A home that does not load at all is still its home: a page that arrives in the
+        // tab afterwards by its own doing is not where the home landed; and asleep, the
+        // Site is at the home it had.
+        shell.engine.fail(MAIL, "net.unreachable");
+        acked(&shell.close_tab(mail).await);
+        acked(&shell.activate_tab(mail).await);
+        assert_eq!(loads(&shell).last().map(String::as_str), Some(MAIL));
+        let web_view = shell.window(subscription).tab.expect("a tab").web_view_id;
+        for event in shell.engine.goes_to(web_view, STORY) {
+            shell.report(event);
+        }
+        shell.settle().await;
+        assert_eq!(sites(&shell, subscription), [site("Mail", "A story", true)]);
+        acked(&shell.close_tab(mail).await);
+        assert_eq!(hosts(&shell, subscription)[0], "mail.example.com");
+
+        // A home that sends the browser on to an address that is not the web's has not
+        // moved there: there is no such home.
+        shell.engine.page("about:blank", "Blank");
+        shell.engine.redirect(MAIL, "about:blank");
+        acked(&shell.activate_tab(mail).await);
+        assert_eq!(
+            front(&shell, subscription).0,
+            "Blank",
+            "the load landed there"
+        );
+        acked(&shell.close_tab(mail).await);
+        assert_eq!(hosts(&shell, subscription)[0], "mail.example.com");
+    });
+}
+
 fn start(folder: &Path) -> FakeShell {
     let mut shell = FakeShell::live(folder);
     web(&mut shell);
@@ -580,18 +708,45 @@ fn sites_come_back_after_a_quit_asleep_at_home_but_for_the_one_in_front() {
         let mail = ids(&shell, subscription)[0];
         acked(&shell.activate_tab(mail).await);
         assert_eq!(loads(&shell).last().map(String::as_str), Some(MAIL));
+
+        // The home of the Site that is awake moves, and the Site is sent to it: after the
+        // next quit it wakes where its home now is.
+        shell.engine.redirect(MAIL, MOVED);
+        shell.submit(mail, MESSAGE).await;
+        acked(&shell.send_site_home(mail).await);
+        assert_eq!(hosts(&shell, subscription)[0], "mail.example.org");
+        drop(shell);
+        let mut shell = start(folder.path());
+        let (_, _, subscription) = shell.open_window().await;
+        assert_eq!(row(&shell, subscription)[0], "Mail, moved S");
+        assert_eq!(
+            loads(&shell),
+            [MOVED],
+            "it was in front: loaded where it was, its home"
+        );
+        assert_eq!(
+            sites(&shell, subscription)[0],
+            site("Mail", "Mail, moved", false)
+        );
+        let mail = ids(&shell, subscription)[0];
+        acked(&shell.close_tab(mail).await);
+        assert_eq!(hosts(&shell, subscription)[0], "mail.example.org");
+        acked(&shell.activate_tab(mail).await);
         drop(shell);
 
         // A second quit, with a Site let go in between: it comes back as a tab.
         let mut shell = start(folder.path());
         let (_, _, subscription) = shell.open_window().await;
-        assert_eq!(row(&shell, subscription)[..2], ["Mail S", "Board S z"]);
+        assert_eq!(
+            row(&shell, subscription)[..2],
+            ["Mail, moved S", "Board S z"]
+        );
         let board = ids(&shell, subscription)[1];
         acked(&shell.let_go_site(board).await);
         drop(shell);
         let mut shell = start(folder.path());
         let (_, _, subscription) = shell.open_window().await;
-        assert_eq!(row(&shell, subscription)[..2], ["Mail S", "Board z"]);
+        assert_eq!(row(&shell, subscription)[..2], ["Mail, moved S", "Board z"]);
         let _ = window;
     });
 }

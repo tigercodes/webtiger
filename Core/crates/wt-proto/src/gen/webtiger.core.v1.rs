@@ -270,6 +270,8 @@ pub struct LetGoSite {
 /// Since 1.30. Sends a Site back to its home: the home is loaded in it, as
 /// an address the person asked for. Answered with Ack, also when the tab is
 /// no Site or is not away from its home (nothing happens); or "tab.unknown".
+/// Where a load of a Site's home lands is its home from then on: a home that
+/// sends the browser on to another address is at that address.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SendSiteHome {
     #[prost(uint64, tag = "1")]
