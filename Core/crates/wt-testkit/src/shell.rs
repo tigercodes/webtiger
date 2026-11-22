@@ -9,9 +9,9 @@ use std::time::Duration;
 use wt_app::{Dispatcher, HOST_TIMEOUT, Outbox, StartError};
 use wt_proto::v1::{
     ActivateTab, CloseTab, CoreConfig, EngineEvent, EngineInfo, EngineKind, Envelope, FakeOptions,
-    HostResponse, OpenTab, OpenWindow, Platform, Request, SubmitAddress, Subscribe, TestMode,
-    WindowSnapshot, WindowTopic, envelope, event, host_request, host_response, request, response,
-    snapshot, subscribe,
+    HostResponse, KeepTab, LetGoSite, OpenTab, OpenWindow, Platform, Request, SubmitAddress,
+    Subscribe, TestMode, WindowSnapshot, WindowTopic, envelope, event, host_request, host_response,
+    request, response, snapshot, subscribe,
 };
 use wt_proto::{CONTRACT_MAJOR, CONTRACT_MINOR};
 
@@ -319,6 +319,18 @@ impl FakeShell {
             chosen_while_typing: false,
         }))
         .await
+    }
+
+    /// Keeps a tab, which becomes a Site (039), and waits.
+    pub async fn keep_tab(&mut self, tab: u64) -> response::Kind {
+        self.request(request::Kind::KeepTab(KeepTab { tab_id: tab }))
+            .await
+    }
+
+    /// Lets a Site go (039), and waits.
+    pub async fn let_go_site(&mut self, tab: u64) -> response::Kind {
+        self.request(request::Kind::LetGoSite(LetGoSite { tab_id: tab }))
+            .await
     }
 
     /// Brings a tab in front as one chosen from what was offered while

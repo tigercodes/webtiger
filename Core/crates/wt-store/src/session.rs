@@ -15,6 +15,12 @@ pub struct SavedTab {
     pub title: String,
     /// It was the tab in front.
     pub front: bool,
+    /// The tab is a Site (039), and this is its home: the address it was
+    /// kept at. Empty for a tab that is no Site.
+    pub home: String,
+    /// A Site's name: the title it was kept with. It is what a Site is
+    /// called while it is asleep, wherever it had wandered.
+    pub name: String,
 }
 
 impl Store {
@@ -36,14 +42,16 @@ impl Store {
         {
             let mut insert = transaction
                 .prepare_cached(
-                    "INSERT INTO tab (space_id, position, url, title, front) \
-                     VALUES (?1, ?2, ?3, ?4, ?5)",
+                    "INSERT INTO tab (space_id, position, url, title, front, site_home, site_name) \
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
                 )
                 .map_err(|_| StoreError::Query)?;
             for (position, tab) in tabs.iter().enumerate() {
                 let position = i64::try_from(position).map_err(|_| StoreError::Query)?;
                 insert
-                    .execute(params![space, position, tab.url, tab.title, tab.front])
+                    .execute(params![
+                        space, position, tab.url, tab.title, tab.front, tab.home, tab.name
+                    ])
                     .map_err(|_| StoreError::Query)?;
             }
         }
@@ -59,7 +67,8 @@ impl Store {
         let mut statement = self
             .connection
             .prepare_cached(
-                "SELECT url, title, front FROM tab WHERE space_id = ?1 ORDER BY position",
+                "SELECT url, title, front, site_home, site_name FROM tab \
+                 WHERE space_id = ?1 ORDER BY position",
             )
             .map_err(|_| StoreError::Query)?;
         statement
@@ -68,6 +77,8 @@ impl Store {
                     url: row.get(0)?,
                     title: row.get(1)?,
                     front: row.get(2)?,
+                    home: row.get(3)?,
+                    name: row.get(4)?,
                 })
             })
             .and_then(Iterator::collect)
@@ -89,6 +100,8 @@ mod tests {
             url: url.to_owned(),
             title: title.to_owned(),
             front,
+            home: String::new(),
+            name: String::new(),
         }
     }
 
@@ -190,7 +203,7 @@ mod tests {
         drop(store);
         let old = Connection::open(&path).unwrap();
         old.execute_batch(
-            "DROP TABLE journal; ALTER TABLE space DROP COLUMN colour; DROP TABLE setting; DROP TABLE site_permission; DROP TABLE download; DROP TABLE site_setting; DROP TABLE tab; PRAGMA user_version = 2;",
+            "ALTER TABLE tab DROP COLUMN site_home; ALTER TABLE tab DROP COLUMN site_name; DROP TABLE journal; ALTER TABLE space DROP COLUMN colour; DROP TABLE setting; DROP TABLE site_permission; DROP TABLE download; DROP TABLE site_setting; DROP TABLE tab; PRAGMA user_version = 2;",
         )
             .unwrap();
         drop(old);
@@ -202,5 +215,58 @@ mod tests {
         assert_eq!(store.saved_tabs(made.id).unwrap(), three());
         let history = store.visits(made.login_set, "", None, 10).unwrap();
         assert_eq!(history.visits.len(), 1, "what was visited is still there");
+    }
+
+    #[test]
+    fn a_sites_home_is_kept_with_it_and_a_tab_that_is_no_site_has_none() {
+        let mut store = Store::open_in_memory().unwrap();
+        let space = store.default_space(MINE, Timestamp(1)).unwrap().id;
+        let mut tabs = three();
+        // The first is a Site, kept at one address and since gone to another.
+        tabs[0].home = "https://example.com/".to_owned();
+        tabs[0].name = "Mail".to_owned();
+        tabs[0].url = "https://example.com/inbox/7".to_owned();
+
+        store.save_tabs(space, &tabs).unwrap();
+
+        let read = store.saved_tabs(space).unwrap();
+        assert_eq!(read, tabs);
+        assert_eq!(
+            read.iter()
+                .map(|tab| (tab.home.as_str(), tab.name.as_str()))
+                .collect::<Vec<_>>(),
+            [("https://example.com/", "Mail"), ("", ""), ("", "")]
+        );
+    }
+
+    #[test]
+    fn the_tabs_of_a_store_from_before_sites_are_tabs_with_no_home() {
+        let folder = tempfile::tempdir().unwrap();
+        let path = folder.path().join("webtiger.sqlite");
+        // A store as this build makes it, put back to version 9 by taking a
+        // tab's home away: what 033 left.
+        let mut store = Store::open(&path).unwrap();
+        let made = store.default_space(MINE, Timestamp(1)).unwrap();
+        store.save_tabs(made.id, &three()).unwrap();
+        drop(store);
+        let old = Connection::open(&path).unwrap();
+        old.execute_batch("ALTER TABLE tab DROP COLUMN site_home; ALTER TABLE tab DROP COLUMN site_name; PRAGMA user_version = 9;")
+            .unwrap();
+        drop(old);
+
+        let mut store = Store::open(&path).unwrap();
+
+        assert_eq!(store.schema_version().unwrap(), crate::SCHEMA_VERSION);
+        assert_eq!(
+            store.saved_tabs(made.id).unwrap(),
+            three(),
+            "the tabs it had are still there, and none is a Site"
+        );
+        // And a Site can be kept in it now.
+        let mut tabs = three();
+        tabs[1].home = "https://example.org/".to_owned();
+        tabs[1].name = "Another Place".to_owned();
+        store.save_tabs(made.id, &tabs).unwrap();
+        assert_eq!(store.saved_tabs(made.id).unwrap(), tabs);
     }
 }

@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use crate::StoreError;
 
 /// The version this build's store is at.
-pub const SCHEMA_VERSION: u32 = 9;
+pub const SCHEMA_VERSION: u32 = 10;
 
 /// The migrations, in order: `MIGRATIONS[n]` takes version `n` to `n + 1`.
 const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
@@ -131,6 +131,13 @@ const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
          title TEXT NOT NULL
      ) STRICT;
      CREATE INDEX journal_space ON journal (space_id, id);",
+    // 10 (W2, 039): a tab that is kept is a Site, and a Site has a home, the
+    // address it was kept at, and a name, the title it was kept with. A tab
+    // that is no Site has neither. (The tree 000 §5.6 names, `node`, comes
+    // with Groups: until a Site has a parent its place is its place in its
+    // row.)
+    "ALTER TABLE tab ADD COLUMN site_home TEXT NOT NULL DEFAULT '';
+     ALTER TABLE tab ADD COLUMN site_name TEXT NOT NULL DEFAULT '';",
 ];
 
 pub(crate) fn version(connection: &Connection) -> Result<u32, StoreError> {

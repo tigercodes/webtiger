@@ -281,6 +281,16 @@ pub(crate) struct Tab {
     /// closed (005). It makes way when the closed tab is brought back (033);
     /// an empty tab the person opened does not.
     stands_in: bool,
+    /// The tab is kept (039): a Site.
+    site: Option<Site>,
+}
+
+/// What makes a tab a Site (039): where its home is, and what it is called
+/// while it is asleep. Both are what the page was when the tab was kept.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Site {
+    home: Address,
+    name: String,
 }
 
 /// The visit a tab's page is in the store, and what has been written of it.
@@ -333,6 +343,7 @@ impl Tab {
             spoke: false,
             silenced: false,
             stands_in: false,
+            site: None,
         }
     }
 
@@ -347,11 +358,23 @@ impl Tab {
         saved: &SavedTab,
     ) -> Tab {
         let mut tab = Tab::new(window, space, engine, login_set);
-        let Some(address) = Address::parse(&saved.url)
-            .ok()
-            .filter(|address| matches!(address.scheme(), "http" | "https"))
-        else {
-            return tab;
+        let web = |text: &str| {
+            Address::parse(text)
+                .ok()
+                .filter(|address| matches!(address.scheme(), "http" | "https"))
+        };
+        // A Site comes back as one (039). A home that is no address of the
+        // web's (a store that was meddled with) is no home.
+        tab.site = web(&saved.home).map(|home| Site {
+            home,
+            name: saved.name.clone(),
+        });
+        let Some(address) = web(&saved.url) else {
+            // A Site is never an empty tab: with nowhere kept, it is at home.
+            return match tab.site.clone() {
+                Some(site) => tab.asleep_at(&site),
+                None => tab,
+            };
         };
         tab.session_title =
             (!saved.title.is_empty()).then(|| (address.as_str().to_owned(), saved.title.clone()));
@@ -361,9 +384,47 @@ impl Tab {
         tab
     }
 
+    /// The tab as a Site that is asleep at its home (039): no page, no web
+    /// view, nothing of what its page was doing; its home is where it will
+    /// wake, and its name is what it is called until then.
+    fn asleep_at(&self, site: &Site) -> Tab {
+        let mut tab = Tab::new(self.window, self.space, self.engine, self.login_set);
+        tab.session_title =
+            (!site.name.is_empty()).then(|| (site.home.as_str().to_owned(), site.name.clone()));
+        tab.title.clone_from(&site.name);
+        tab.pending = Some(site.home.clone());
+        tab.asleep = true;
+        tab.site = Some(site.clone());
+        tab
+    }
+
+    /// The page the tab is at: the one that owns its web view, or, for a tab
+    /// that is asleep, the one it will wake at.
+    fn page(&self) -> Option<&Address> {
+        if self.asleep {
+            self.pending.as_ref()
+        } else {
+            self.committed.as_ref()
+        }
+    }
+
     /// The tab as the session keeps it (009): its address when that is the
     /// web's, and the first title its page said.
     fn saved(&mut self, front: bool) -> SavedTab {
+        let (home, name) = self.site.as_ref().map_or_else(Default::default, |site| {
+            (site.home.as_str().to_owned(), site.name.clone())
+        });
+        // A Site that is not in front comes back asleep at its home (039):
+        // a quit closes it, as closing it does.
+        if !front && !home.is_empty() {
+            return SavedTab {
+                url: home.clone(),
+                title: name.clone(),
+                front,
+                home,
+                name,
+            };
+        }
         let url = self
             .shown()
             .filter(|address| matches!(address.scheme(), "http" | "https"))
@@ -375,6 +436,8 @@ impl Tab {
                 url,
                 title: String::new(),
                 front,
+                home,
+                name,
             };
         }
         let kept = self
@@ -392,7 +455,13 @@ impl Tab {
             .filter(|(of, _)| *of == url)
             .map(|(_, title)| title.clone())
             .unwrap_or_default();
-        SavedTab { url, title, front }
+        SavedTab {
+            url,
+            title,
+            front,
+            home,
+            name,
+        }
     }
 
     /// The user sent the tab to `address`.
@@ -551,6 +620,8 @@ impl Tab {
                 .unwrap_or_default()
                 .to_owned(),
             loading: self.load == Load::Loading,
+            kept: self.site.is_some(),
+            asleep: self.asleep,
         }
     }
 
@@ -591,6 +662,7 @@ impl Tab {
                 .and_then(Address::host)
                 .unwrap_or_default()
                 .to_owned(),
+            kept: self.site.is_some(),
         }
     }
 
@@ -659,6 +731,15 @@ pub(crate) struct LoadTarget {
 struct Row {
     tabs: Vec<TabId>,
     front: TabId,
+}
+
+/// How many of a row's tabs are Sites (039): they are the first of it, and
+/// no other tab is put among them.
+fn sites_in(tabs: &BTreeMap<TabId, Tab>, row: &Row) -> usize {
+    row.tabs
+        .iter()
+        .filter(|id| tabs.get(*id).is_some_and(|tab| tab.site.is_some()))
+        .count()
 }
 
 /// A way to go along a row of tabs (035).
@@ -1102,7 +1183,8 @@ impl State {
         let tab = TabId(self.ids.mint());
         let place = after
             .and_then(|after| row.tabs.iter().position(|id| *id == after))
-            .map_or(row.tabs.len(), |index| index + 1);
+            .map_or(row.tabs.len(), |index| index + 1)
+            .max(sites_in(&self.tabs, row));
         row.tabs.insert(place, tab);
         if !background {
             row.front = tab;
@@ -1120,6 +1202,9 @@ impl State {
     /// before it when it was the last. A row always has a tab: an empty one
     /// takes the place of its only tab, in the Space that one was in.
     pub(crate) fn close_tab(&mut self, tab_id: TabId) -> Option<Option<WebViewId>> {
+        if self.tabs.get(&tab_id)?.site.is_some() {
+            return self.sleep_site(tab_id);
+        }
         let tab = self.tabs.remove(&tab_id)?;
         if let Some(web_view) = tab.web_view {
             self.web_views.remove(&web_view);
@@ -1151,6 +1236,115 @@ impl State {
             self.dirty.insert(tab.window);
         }
         Some(tab.web_view)
+    }
+
+    /// Closing a Site puts it to sleep (039): its page and its web view go,
+    /// and it stays in its row, at its home and by its name. Its web view to
+    /// destroy, if it had one.
+    ///
+    /// When it was in front, the tab that comes forward is the nearest that
+    /// is awake or is no Site, the one after before the one before: closing
+    /// a Site does not wake another. With none, an empty tab is opened at
+    /// the end, as when a row's last tab is closed.
+    fn sleep_site(&mut self, tab_id: TabId) -> Option<Option<WebViewId>> {
+        let tab = self.tabs.get(&tab_id)?;
+        let site = tab.site.clone()?;
+        let (window, space, login_set, web_view) =
+            (tab.window, tab.space, tab.login_set, tab.web_view);
+        let asleep = tab.asleep_at(&site);
+        if let Some(web_view) = web_view {
+            self.web_views.remove(&web_view);
+        }
+        self.tabs.insert(tab_id, asleep);
+        let row = self.windows.get(&window)?.rows.get(&space)?;
+        if row.front == tab_id {
+            let index = row.tabs.iter().position(|id| *id == tab_id).unwrap_or(0);
+            let comes_forward = |id: &&TabId| {
+                self.tabs
+                    .get(*id)
+                    .is_some_and(|tab| tab.site.is_none() || !tab.asleep)
+            };
+            let next = row.tabs[index + 1..]
+                .iter()
+                .find(comes_forward)
+                .or_else(|| row.tabs[..index].iter().rev().find(comes_forward))
+                .copied();
+            let next = next.unwrap_or_else(|| {
+                let fresh = TabId(self.ids.mint());
+                self.tabs
+                    .insert(fresh, Tab::new(window, space, self.engine, login_set));
+                fresh
+            });
+            let row = self.windows.get_mut(&window)?.rows.get_mut(&space)?;
+            if !row.tabs.contains(&next) {
+                row.tabs.push(next);
+            }
+            row.front = next;
+        }
+        self.dirty.insert(window);
+        Some(web_view)
+    }
+
+    /// Keeps a tab (039): it becomes a Site, whose home is the page it is
+    /// at and whose name is that page's title, and moves to the end of its
+    /// row's Sites. A tab that is a Site already stays as it is. The code
+    /// to refuse with, for a tab there is not, one with no page of the
+    /// web's, and one of a private window, of which nothing is kept.
+    pub(crate) fn keep_tab(&mut self, tab_id: TabId) -> Result<(), &'static str> {
+        let tab = self.tabs.get(&tab_id).ok_or("tab.unknown")?;
+        if self.is_private_space(tab.space) {
+            return Err("window.private");
+        }
+        if tab.site.is_some() {
+            return Ok(());
+        }
+        let home = tab
+            .page()
+            .filter(|address| matches!(address.scheme(), "http" | "https"))
+            .cloned()
+            .ok_or("tab.no_page")?;
+        let (window, space, name) = (tab.window, tab.space, tab.title.clone());
+        if let Some(tab) = self.tabs.get_mut(&tab_id) {
+            tab.site = Some(Site { home, name });
+        }
+        self.place_among(window, space, tab_id);
+        Ok(())
+    }
+
+    /// Lets a Site go (039): it is a tab like any other again, the first of
+    /// its row's other tabs, as it is. Whether there is such a tab; one that
+    /// is no Site stays where it is.
+    pub(crate) fn let_go_site(&mut self, tab_id: TabId) -> bool {
+        let Some(tab) = self.tabs.get_mut(&tab_id) else {
+            return false;
+        };
+        if tab.site.take().is_some() {
+            let (window, space) = (tab.window, tab.space);
+            self.place_among(window, space, tab_id);
+        }
+        true
+    }
+
+    /// Puts a tab that has just become a Site, or has just stopped being
+    /// one, where the row's order has it: after the row's Sites. For a new
+    /// Site that is the end of the Sites; for a tab let go, the start of the
+    /// other tabs.
+    fn place_among(&mut self, window: WindowId, space: SpaceId, tab_id: TabId) {
+        let Some(row) = self
+            .windows
+            .get_mut(&window)
+            .and_then(|window| window.rows.get_mut(&space))
+        else {
+            return;
+        };
+        row.tabs.retain(|id| *id != tab_id);
+        let sites = row
+            .tabs
+            .iter()
+            .filter(|id| self.tabs.get(*id).is_some_and(|tab| tab.site.is_some()))
+            .count();
+        row.tabs.insert(sites.min(row.tabs.len()), tab_id);
+        self.dirty.insert(window);
     }
 
     /// Brings a tab in front in its row: among its Space's tabs in its
@@ -1681,6 +1875,11 @@ impl State {
         if self.is_private_space(space) {
             return None;
         }
+        // A Site that is closed is asleep, and still there (039): there is
+        // nothing to bring back.
+        if self.tabs.get(&tab_id)?.site.is_some() {
+            return None;
+        }
         let saved = self.tabs.get_mut(&tab_id)?.saved(false);
         if saved.url.is_empty() {
             return None;
@@ -1719,8 +1918,9 @@ impl State {
             }
         }
         let tab = TabId(self.ids.mint());
-        let place =
-            usize::try_from(place).map_or(row.tabs.len(), |place| place.min(row.tabs.len()));
+        let place = usize::try_from(place)
+            .map_or(row.tabs.len(), |place| place.min(row.tabs.len()))
+            .max(sites_in(&self.tabs, row));
         row.tabs.insert(place, tab);
         row.front = tab;
         self.tabs.insert(
@@ -1836,6 +2036,7 @@ impl State {
         }
         let row = self.windows.get_mut(&window_id)?.rows.get_mut(&space)?;
         let tab_id = TabId(self.ids.mint());
+        let place = place.max(sites_in(&self.tabs, row));
         row.tabs.insert(place, tab_id);
         if !background {
             row.front = tab_id;
@@ -1887,7 +2088,8 @@ impl State {
             .tabs
             .iter()
             .position(|id| *id == opener_id)
-            .map_or(row.tabs.len(), |index| index + 1);
+            .map_or(row.tabs.len(), |index| index + 1)
+            .max(sites_in(&self.tabs, row));
         row.tabs.insert(place, tab_id);
         row.front = tab_id;
         self.tabs.insert(tab_id, tab);
@@ -1985,7 +2187,7 @@ impl State {
             .filter(|id| **id != row.front)
             .filter_map(|id| {
                 let tab = self.tabs.get(id)?;
-                let address = tab.committed.as_ref()?;
+                let address = tab.page()?;
                 (matches!(address.scheme(), "http" | "https")
                     && all_found(&typed, &[&tab.title, address.as_str()]))
                 .then(|| (*id, address.clone(), tab.title.clone()))

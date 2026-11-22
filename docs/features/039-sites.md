@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | **Designed; nothing built.** The choices of §6 are put to the owner before any code |
+| **Status** | **The core, the store and the contract are built and tested** (part 1 of §7), on the recommendations of §6, which are **provisional until the owner says**: a tab can be kept and let go, a Site is first in its row, sleeps at its home when closed, wakes when brought in front, and comes back after a quit. **No shell shows or offers any of it yet**: that waits for the owner's word on §6 |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "Spaces, Groups, Sites". This is Sites, without Groups: the first step of the tree |
-| **Contract** | To be 1.29 (§5) |
+| **Contract** | 1.29: `KeepTab`, `LetGoSite`; `TabSummary.kept`, `TabSummary.asleep`, `TabView.kept` |
 | **Builds on** | [005](005-tabs.md): tabs and their row. [009](009-session-restore.md): tabs that come back asleep. [024](024-several-spaces.md): a row for each Space. [033](033-a-closed-tab-comes-back.md): the journal |
 | **Last updated** | 2026-11-22 |
 
@@ -44,9 +44,9 @@ There are pages I am always in: my mail, my calendar, the board my team works fr
 
 ## 4. Where it is kept
 
-The session's table of tabs (009) gains two columns: whether a tab is kept, and its home (schema 10). The plan's tree (`node`: a Group or a Site, its parent and position; 000 §5.6) arrives with Groups, when there is a parent to record; until then a Site's place is its place in its row.
+The session's table of tabs (009) gains two columns (schema 10): a Site's home, and its name. A tab with no home is no Site. The name is kept apart from the tab's title because a Site that wandered has another page's title, and is called by its own again when it sleeps. The plan's tree (`node`: a Group or a Site, its parent and position; 000 §5.6) arrives with Groups, when there is a parent to record; until then a Site's place is its place in its row.
 
-## 5. The contract (to be 1.29)
+## 5. The contract (1.29)
 
 Added; nothing is changed or removed.
 
@@ -71,7 +71,7 @@ message TabSummary {
 
 message TabView {
   …
-  bool kept = N;   // the tab in front is a Site
+  bool kept = 17;   // the tab in front is a Site
 }
 ```
 
@@ -79,7 +79,7 @@ message TabView {
 
 ## 6. Decisions
 
-**All of these are put to the owner; none is built.** The first column is the recommendation.
+**All of these are put to the owner.** The first column is the recommendation. D1, D2, D6 and D7 are what the core was built on, provisionally: each is a few lines to change. D3, D4 and D5 are the shells', and nothing of them is built.
 
 | # | Recommendation | Why | Other ways |
 |---|---|---|---|
@@ -99,16 +99,27 @@ message TabView {
 
 ## 8. Tests
 
-To be filled in as built: the core's rule and its mutants; the store's migration; the shells' models; pictures of a row with Sites, awake and asleep; the apps, in fake mode.
+| Where | What |
+|---|---|
+| The store (`wt-store`, 2 more: `session.rs`) | A Site's home and name are written with its tab and read back; a tab that is no Site has neither. A store from before Sites (version 9) opens at this version with its tabs as they were, none a Site, and a Site can then be kept in it. The older-version tests of every table now take the two columns away as well |
+| The core (`wt-app/tests/sites.rs`, 9, through `FakeShell`; two over a store on disk) | **Keeping:** the tab in front, kept, is the first of the row and still in front; the next one kept goes after the Sites there are; kept again, a Site is as it was; nothing is loaded or destroyed; the tab in front says whether it is a Site. **What cannot be kept:** an empty tab, a tab whose page never arrived, a page that is not the web's (`tab.no_page`); a tab there is not (`tab.unknown`); a private window's tab (`window.private`). **Closing:** a Site that wandered and is closed has its web view destroyed and stays in the row by the name it was kept with, asleep; the tab after it comes in front; nothing is loaded; no closed tab is offered back; closed again, it is as it was. **Waking:** a press loads its home, not where it had wandered. **What comes forward:** a Site before it that is awake when there is nothing after; a sleeping Site is passed over; with no tab that is awake or is no Site, an empty tab at the end, and nothing loaded; a tab that is no Site further along before a sleeping Site nearer; the one after before the one before. **Letting go:** it is the first of the other tabs, as it is; closed then, it is closed and can be brought back, after the Sites; a sleeping Site let go is a sleeping tab. **Nothing among the Sites:** a tab asked for after the first Site, a link of a Site's page opened in a new tab, a window a Site's page asks for, a closed tab brought back to a place that is now a Site's. **By key and by typing:** a sleeping Site is offered while typing by its name and home, which wakes nothing, and a step along the row wakes it. **After a quit:** Sites are Sites, in their order; one that was not in front is asleep at its home by its name; the one in front is loaded where it was and still knows its home; a Site let go comes back as a tab |
+| By breaking it | Twenty-six parts of the rule, each then run against these tests, the store's and the tabs', the undo's and the session's: all caught, two of them only after the tests were given the case (a tab to come forward on either side; a closed tab whose old place is now a Site's) |
+
+**Found on the way, in 038:** a tab that came back asleep after a quit was not offered while typing, though 038 said it was. The core asked a tab for the page that owns its web view, and a sleeping tab has no web view. It is asked for the page it is at, awake or asleep; a test over a store on disk has it (`a_tab_that_came_back_asleep_is_offered_while_typing`).
 
 ## 9. What is not verified
 
-To be filled in as built.
+- **Any shell.** No window shows a Site or offers to keep a tab: the contract's new words are unused outside the core's tests.
+- **Many Sites.** The plan's standard session has 200 (000 §7); the row's order is recounted for each tab put into it. Not measured.
+- **Several windows showing one Space** (D6): each has its own row, as before; a Site is of the row it was kept in.
+- **A Site whose home no longer loads**: it wakes to a failed page, as any tab does; nothing says its home is gone.
+- **What a Site was doing when it was closed**: a page that was asking for something, a find, a zoom of its own. They go with the page, as when a tab is closed; only the closing of prompts with a tab was ever tested (014), not with a Site.
 
 ## 10. Done checklist
 
 - [ ] The owner's word on §6.
-- [ ] The core, the store and the contract.
+- [x] The core, the store and the contract (provisional on §6).
 - [ ] The Apple shell.
 - [ ] The Android shell.
-- [ ] `Tools/test.sh all` green, and `android-device`.
+- [x] Part 1 (the core): `Tools/test.sh all` green, and `android-device`, on 2026-11-22: `lint`, `core` (564), `unit` (272 on the Mac), `build`, the Mac's UI suite (38), `ios` (254 on the iPhone simulator, one skipped as before), the iPhone's UI suite (29), `android` (381 and 32 on the JVM) and `android-device` (156 on the emulator). No shell changed but for the contract's version.
+- [ ] Parts 2 and 3: the same again.

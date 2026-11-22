@@ -341,14 +341,18 @@ mod tests {
             url: "https://example.com/".to_owned(),
             title: "Example".to_owned(),
             front: true,
+            home: String::new(),
+            name: String::new(),
         };
         store
             .save_tabs(made.id, std::slice::from_ref(&kept))
             .unwrap();
         drop(store);
         let old = Connection::open(&path).unwrap();
-        old.execute_batch("DROP TABLE journal; PRAGMA user_version = 8;")
-            .unwrap();
+        old.execute_batch(
+            "ALTER TABLE tab DROP COLUMN site_home; ALTER TABLE tab DROP COLUMN site_name; DROP TABLE journal; PRAGMA user_version = 8;",
+        )
+        .unwrap();
         drop(old);
 
         let mut store = Store::open(&path).unwrap();

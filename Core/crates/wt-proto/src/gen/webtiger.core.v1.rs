@@ -247,6 +247,26 @@ pub struct ActivateTab {
     #[prost(bool, tag = "2")]
     pub chosen_while_typing: bool,
 }
+/// Keeps a tab: it becomes a Site, whose home is the page it shows and whose
+/// name is that page's title. A Site is among the first tabs of its row, after
+/// the Sites that were there. Closing it (CloseTab) puts it to sleep at its
+/// home and leaves it in the row; bringing it in front wakes it. It comes back
+/// after a quit. Answered with Ack, also when the tab is a Site already;
+/// "tab.unknown"; "tab.no_page" for a tab with no page of the web's; or
+/// "window.private": nothing of a private window is kept.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct KeepTab {
+    #[prost(uint64, tag = "1")]
+    pub tab_id: u64,
+}
+/// Lets a Site go: it is a tab like any other again, the first of its row's
+/// other tabs, as it is. Answered with Ack, also when the tab is no Site; or
+/// "tab.unknown".
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct LetGoSite {
+    #[prost(uint64, tag = "1")]
+    pub tab_id: u64,
+}
 /// A window, as its subscription publishes it.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WindowSnapshot {
@@ -299,6 +319,15 @@ pub struct TabSummary {
     pub host: ::prost::alloc::string::String,
     #[prost(bool, tag = "4")]
     pub loading: bool,
+    /// Since 1.29. The tab is a Site (039): kept, among the first of its row,
+    /// and asleep, not gone, when it is closed.
+    #[prost(bool, tag = "5")]
+    pub kept: bool,
+    /// Since 1.29. It has no page now: a Site that was closed, or a tab that
+    /// came back after a quit and has not been in front since. Bringing it in
+    /// front loads it.
+    #[prost(bool, tag = "6")]
+    pub asleep: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TabView {
@@ -350,6 +379,9 @@ pub struct TabView {
     /// not trusted, in its ASCII form, for the warning's words.
     #[prost(string, tag = "16")]
     pub certificate_host: ::prost::alloc::string::String,
+    /// Since 1.29. The tab is a Site (039).
+    #[prost(bool, tag = "17")]
+    pub kept: bool,
 }
 /// What the address field shows. The core builds it so that every shell shows
 /// the same thing and none can be made to lie: a page-initiated load does not
@@ -2023,7 +2055,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -2119,6 +2151,11 @@ pub mod request {
         /// Since 1.25
         #[prost(message, tag = "35")]
         StepTab(super::StepTab),
+        /// Since 1.29
+        #[prost(message, tag = "36")]
+        KeepTab(super::KeepTab),
+        #[prost(message, tag = "37")]
+        LetGoSite(super::LetGoSite),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.

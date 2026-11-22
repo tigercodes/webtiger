@@ -103,7 +103,7 @@ D1 to D4 were built as the recommendation and reported to the owner on 2026-11-2
 
 - **Many tabs.** Three are offered of however many match; the core looks at every tab of the row for each letter typed. With hundreds of tabs that was not measured.
 - **An accent** typed without, in a tab's title: not found (§3), though history finds it. Nobody has complained; it is written down.
-- **A tab that came back asleep** after a quit (009): it has its page's address and title and is offered like any other; choosing it loads it, as bringing it in front always does. Not tested here.
+- **A tab that came back asleep** after a quit (009) was said here to be offered like any other, and was not: found and mended with [039](039-sites.md), which has the test.
 - **The iPad and a keyboard on Android**: the arrow keys in the list are the Mac's only.
 - **The largest text sizes.** The audit says the title beside the words may be cut there, which it is by design; nobody looked at the list at those sizes.
 - **A screen reader** reading the row: the words are part of the row's label on Apple (the app's test reads the label) and of its text on Android; nobody listened.

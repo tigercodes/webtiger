@@ -14,12 +14,12 @@ use wt_core::{
 };
 use wt_proto::v1::{
     Ack, ActivateTab, AddressSuggestion, AddressSuggestions, CloseTab, CloseWindow, EngineEvent,
-    EngineKind, FindInPage, ForgetHistory, HistoryEntry, HistoryPage, LinkOpenRequested, LoginSet,
-    NavigationCommand, OpenAddress, OpenOutside, OpenTab, OpenWindow, OutsideLinkRequested,
-    QueryHistory, SearchRequested, SearchWords, StepTab, SubmitAddress, SuggestAddresses,
-    TabCommand, TabOpened, Undo, WebViewCommand, WebViewCreate, WebViewDestroy, WebViewFind,
-    WebViewLoad, WebViewSetZoom, WindowOpened, WindowSnapshot, ZoomChange, ZoomPage, engine_event,
-    forget_history, host_request, request, response, step_tab,
+    EngineKind, FindInPage, ForgetHistory, HistoryEntry, HistoryPage, KeepTab, LetGoSite,
+    LinkOpenRequested, LoginSet, NavigationCommand, OpenAddress, OpenOutside, OpenTab, OpenWindow,
+    OutsideLinkRequested, QueryHistory, SearchRequested, SearchWords, StepTab, SubmitAddress,
+    SuggestAddresses, TabCommand, TabOpened, Undo, WebViewCommand, WebViewCreate, WebViewDestroy,
+    WebViewFind, WebViewLoad, WebViewSetZoom, WindowOpened, WindowSnapshot, ZoomChange, ZoomPage,
+    engine_event, forget_history, host_request, request, response, step_tab,
 };
 use wt_store::{ClosedTab, MAX_SUGGESTIONS, SavedTab, Space, Store};
 
@@ -210,6 +210,8 @@ impl App {
             request::Kind::OpenAddress(asked) => self.open_address(&asked),
             request::Kind::Undo(undo) => self.undo(&undo),
             request::Kind::StepTab(step) => self.step_tab(&step),
+            request::Kind::KeepTab(keep) => answer(self.keep_tab(&keep)),
+            request::Kind::LetGoSite(let_go) => answer(self.let_go_site(&let_go)),
             request::Kind::OpenDownload(open) => self.open_download(&open),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
@@ -631,6 +633,8 @@ impl App {
             url: closed.url,
             title: closed.title,
             front: true,
+            home: String::new(),
+            name: String::new(),
         };
         let reopened = self
             .state
@@ -940,6 +944,24 @@ impl App {
             }
             Ok(response::Kind::Ack(Ack {}))
         })
+    }
+
+    /// Keeps a tab: it becomes a Site (039). Its place in the row, and what
+    /// closing it means from now on, are the model's.
+    fn keep_tab(&self, keep: &KeepTab) -> Result<response::Kind, AppError> {
+        self.state
+            .borrow_mut()
+            .keep_tab(TabId(keep.tab_id))
+            .map_err(|code| AppError::new(code).field("tab_id"))?;
+        Ok(response::Kind::Ack(Ack {}))
+    }
+
+    /// Lets a Site go (039): it is a tab like any other again.
+    fn let_go_site(&self, let_go: &LetGoSite) -> Result<response::Kind, AppError> {
+        if !self.state.borrow_mut().let_go_site(TabId(let_go.tab_id)) {
+            return Err(AppError::new("tab.unknown").field("tab_id"));
+        }
+        Ok(response::Kind::Ack(Ack {}))
     }
 
     /// Another tab of the window comes in front, by where it is in the row

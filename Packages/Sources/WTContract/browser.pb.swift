@@ -311,6 +311,40 @@ public nonisolated struct WTActivateTab: Sendable {
   public init() {}
 }
 
+/// Keeps a tab: it becomes a Site, whose home is the page it shows and whose
+/// name is that page's title. A Site is among the first tabs of its row, after
+/// the Sites that were there. Closing it (CloseTab) puts it to sleep at its
+/// home and leaves it in the row; bringing it in front wakes it. It comes back
+/// after a quit. Answered with Ack, also when the tab is a Site already;
+/// "tab.unknown"; "tab.no_page" for a tab with no page of the web's; or
+/// "window.private": nothing of a private window is kept.
+public nonisolated struct WTKeepTab: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var tabID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Lets a Site go: it is a tab like any other again, the first of its row's
+/// other tabs, as it is. Answered with Ack, also when the tab is no Site; or
+/// "tab.unknown".
+public nonisolated struct WTLetGoSite: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var tabID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 /// A window, as its subscription publishes it.
 public nonisolated struct WTWindowSnapshot: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
@@ -381,6 +415,15 @@ public nonisolated struct WTTabSummary: Sendable {
   public var host: String = String()
 
   public var loading: Bool = false
+
+  /// Since 1.29. The tab is a Site (039): kept, among the first of its row,
+  /// and asleep, not gone, when it is closed.
+  public var kept: Bool = false
+
+  /// Since 1.29. It has no page now: a Site that was closed, or a tab that
+  /// came back after a quit and has not been in front since. Bringing it in
+  /// front loads it.
+  public var asleep: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -502,6 +545,12 @@ public nonisolated struct WTTabView: @unchecked Sendable {
   public var certificateHost: String {
     get {_storage._certificateHost}
     set {_uniqueStorage()._certificateHost = newValue}
+  }
+
+  /// Since 1.29. The tab is a Site (039).
+  public var kept: Bool {
+    get {_storage._kept}
+    set {_uniqueStorage()._kept = newValue}
   }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -1991,6 +2040,66 @@ nonisolated extension WTActivateTab: SwiftProtobuf.Message, SwiftProtobuf._Messa
   }
 }
 
+nonisolated extension WTKeepTab: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".KeepTab"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.tabID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.tabID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.tabID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTKeepTab, rhs: WTKeepTab) -> Bool {
+    if lhs.tabID != rhs.tabID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTLetGoSite: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".LetGoSite"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.tabID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.tabID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.tabID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTLetGoSite, rhs: WTLetGoSite) -> Bool {
+    if lhs.tabID != rhs.tabID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".WindowSnapshot"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0\u{3}downloads_active\0\u{3}space_id\0\u{3}space_name\0\u{3}space_colour\0\u{1}undo\0\u{3}private_window\0")
@@ -2067,7 +2176,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TabSummary"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{1}title\0\u{1}host\0\u{1}loading\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{1}title\0\u{1}host\0\u{1}loading\0\u{1}kept\0\u{1}asleep\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2079,6 +2188,8 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
       case 2: try { try decoder.decodeSingularStringField(value: &self.title) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.host) }()
       case 4: try { try decoder.decodeSingularBoolField(value: &self.loading) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.kept) }()
+      case 6: try { try decoder.decodeSingularBoolField(value: &self.asleep) }()
       default: break
       }
     }
@@ -2097,6 +2208,12 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if self.loading != false {
       try visitor.visitSingularBoolField(value: self.loading, fieldNumber: 4)
     }
+    if self.kept != false {
+      try visitor.visitSingularBoolField(value: self.kept, fieldNumber: 5)
+    }
+    if self.asleep != false {
+      try visitor.visitSingularBoolField(value: self.asleep, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2105,6 +2222,8 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs.title != rhs.title {return false}
     if lhs.host != rhs.host {return false}
     if lhs.loading != rhs.loading {return false}
+    if lhs.kept != rhs.kept {return false}
+    if lhs.asleep != rhs.asleep {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2112,7 +2231,7 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TabView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}web_view_id\0\u{1}address\0\u{1}title\0\u{3}load_state\0\u{1}progress\0\u{3}can_go_back\0\u{3}can_go_forward\0\u{3}error_code\0\u{1}engine\0\u{3}login_set_id\0\u{1}find\0\u{1}zoom\0\u{1}prompt\0\u{3}certificate_passable\0\u{3}certificate_host\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}web_view_id\0\u{1}address\0\u{1}title\0\u{3}load_state\0\u{1}progress\0\u{3}can_go_back\0\u{3}can_go_forward\0\u{3}error_code\0\u{1}engine\0\u{3}login_set_id\0\u{1}find\0\u{1}zoom\0\u{1}prompt\0\u{3}certificate_passable\0\u{3}certificate_host\0\u{1}kept\0")
 
   fileprivate class _StorageClass {
     var _tabID: UInt64 = 0
@@ -2131,6 +2250,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _prompt: WTPromptView? = nil
     var _certificatePassable: Bool = false
     var _certificateHost: String = String()
+    var _kept: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2157,6 +2277,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _prompt = source._prompt
       _certificatePassable = source._certificatePassable
       _certificateHost = source._certificateHost
+      _kept = source._kept
     }
   }
 
@@ -2191,6 +2312,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 14: try { try decoder.decodeSingularMessageField(value: &_storage._prompt) }()
         case 15: try { try decoder.decodeSingularBoolField(value: &_storage._certificatePassable) }()
         case 16: try { try decoder.decodeSingularStringField(value: &_storage._certificateHost) }()
+        case 17: try { try decoder.decodeSingularBoolField(value: &_storage._kept) }()
         default: break
         }
       }
@@ -2251,6 +2373,9 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       if !_storage._certificateHost.isEmpty {
         try visitor.visitSingularStringField(value: _storage._certificateHost, fieldNumber: 16)
       }
+      if _storage._kept != false {
+        try visitor.visitSingularBoolField(value: _storage._kept, fieldNumber: 17)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2276,6 +2401,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._prompt != rhs_storage._prompt {return false}
         if _storage._certificatePassable != rhs_storage._certificatePassable {return false}
         if _storage._certificateHost != rhs_storage._certificateHost {return false}
+        if _storage._kept != rhs_storage._kept {return false}
         return true
       }
       if !storagesAreEqual {return false}

@@ -86,6 +86,26 @@ message ActivateTab {
   bool chosen_while_typing = 2;
 }
 
+// Sites (039). Since 1.29.
+
+// Keeps a tab: it becomes a Site, whose home is the page it shows and whose
+// name is that page's title. A Site is among the first tabs of its row, after
+// the Sites that were there. Closing it (CloseTab) puts it to sleep at its
+// home and leaves it in the row; bringing it in front wakes it. It comes back
+// after a quit. Answered with Ack, also when the tab is a Site already;
+// "tab.unknown"; "tab.no_page" for a tab with no page of the web's; or
+// "window.private": nothing of a private window is kept.
+message KeepTab {
+  uint64 tab_id = 1;
+}
+
+// Lets a Site go: it is a tab like any other again, the first of its row's
+// other tabs, as it is. Answered with Ack, also when the tab is no Site; or
+// "tab.unknown".
+message LetGoSite {
+  uint64 tab_id = 1;
+}
+
 // A window, as its subscription publishes it.
 message WindowSnapshot {
   uint64 window_id = 1;
@@ -124,6 +144,13 @@ message TabSummary {
   // address field, it is the page's only once the page has committed.
   string host = 3 [(wt.redact) = true];
   bool loading = 4;
+  // Since 1.29. The tab is a Site (039): kept, among the first of its row,
+  // and asleep, not gone, when it is closed.
+  bool kept = 5;
+  // Since 1.29. It has no page now: a Site that was closed, or a tab that
+  // came back after a quit and has not been in front since. Bringing it in
+  // front loads it.
+  bool asleep = 6;
 }
 
 message TabView {
@@ -159,6 +186,8 @@ message TabView {
   // Since 1.20. With `certificate_passable`: the host whose certificate was
   // not trusted, in its ASCII form, for the warning's words.
   string certificate_host = 16 [(wt.redact) = true];
+  // Since 1.29. The tab is a Site (039).
+  bool kept = 17;
 }
 
 enum LoadState {
