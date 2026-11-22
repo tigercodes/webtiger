@@ -371,6 +371,19 @@ pub struct SetFavourite {
     #[prost(bool, tag = "2")]
     pub favourite: bool,
 }
+/// Since 1.33. Switches a window's layout (043), and nothing else: no tab is
+/// moved, loaded or closed by it. The choice is the app's from then on: a
+/// window opened afterwards has it, also after the app has been closed. A
+/// private window's choice is its own, and is not kept (037). Answered with
+/// Ack, also when the window has that layout already; "window.unknown"; or
+/// "layout.unknown" for a layout this core does not have.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SetLayout {
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
+    #[prost(enumeration = "Layout", tag = "2")]
+    pub layout: i32,
+}
 /// A window, as its subscription publishes it.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WindowSnapshot {
@@ -421,6 +434,11 @@ pub struct WindowSnapshot {
     /// no more by it, and needs no number of its own.
     #[prost(bool, tag = "11")]
     pub favourites_full: bool,
+    /// Since 1.33. How the window lays out its tabs (043). A view setting: the
+    /// row, its order and everything else here are the same in every layout.
+    /// A shell that cannot draw the one named draws the strip.
+    #[prost(enumeration = "Layout", tag = "12")]
+    pub layout: i32,
 }
 /// A tab as a strip of tabs shows it: enough to name it, and no more.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -1289,6 +1307,39 @@ pub mod step_tab {
                 "TO_PLACE" => Some(Self::Place),
                 _ => None,
             }
+        }
+    }
+}
+/// The layout of a window (043). Since 1.33.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum Layout {
+    /// A core from before 1.33 names none: the strip.
+    Unspecified = 0,
+    /// The tabs along the top.
+    Strip = 1,
+    /// The tabs down the side.
+    Sidebar = 2,
+}
+impl Layout {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "LAYOUT_UNSPECIFIED",
+            Self::Strip => "LAYOUT_STRIP",
+            Self::Sidebar => "LAYOUT_SIDEBAR",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "LAYOUT_UNSPECIFIED" => Some(Self::Unspecified),
+            "LAYOUT_STRIP" => Some(Self::Strip),
+            "LAYOUT_SIDEBAR" => Some(Self::Sidebar),
+            _ => None,
         }
     }
 }
@@ -2197,7 +2248,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -2317,6 +2368,9 @@ pub mod request {
         /// Since 1.32
         #[prost(message, tag = "45")]
         SetFavourite(super::SetFavourite),
+        /// Since 1.33
+        #[prost(message, tag = "46")]
+        SetLayout(super::SetLayout),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.

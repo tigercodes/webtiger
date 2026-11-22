@@ -9,10 +9,10 @@ use std::time::Duration;
 use wt_app::{Dispatcher, HOST_TIMEOUT, Outbox, StartError};
 use wt_proto::v1::{
     ActivateTab, CloseTab, ColourGroup, CoreConfig, EngineEvent, EngineInfo, EngineKind, Envelope,
-    FakeOptions, HostResponse, KeepTab, LetGoSite, MakeGroup, MoveToGroup, OpenTab, OpenWindow,
-    Platform, RemoveGroup, RenameGroup, Request, SendSiteHome, SetFavourite, ShutGroup,
-    SubmitAddress, Subscribe, TestMode, WindowSnapshot, WindowTopic, envelope, event, host_request,
-    host_response, request, response, snapshot, subscribe,
+    FakeOptions, HostResponse, KeepTab, Layout, LetGoSite, MakeGroup, MoveToGroup, OpenTab,
+    OpenWindow, Platform, RemoveGroup, RenameGroup, Request, SendSiteHome, SetFavourite, SetLayout,
+    ShutGroup, SubmitAddress, Subscribe, TestMode, WindowSnapshot, WindowTopic, envelope, event,
+    host_request, host_response, request, response, snapshot, subscribe,
 };
 use wt_proto::{CONTRACT_MAJOR, CONTRACT_MINOR};
 
@@ -388,6 +388,15 @@ impl FakeShell {
         self.request(request::Kind::MoveToGroup(MoveToGroup {
             tab_id: tab,
             group_id: group,
+        }))
+        .await
+    }
+
+    /// Switches a window's layout (043), and waits.
+    pub async fn set_layout(&mut self, window: u64, layout: Layout) -> response::Kind {
+        self.request(request::Kind::SetLayout(SetLayout {
+            window_id: window,
+            layout: layout.into(),
         }))
         .await
     }

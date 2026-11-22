@@ -10,8 +10,9 @@ use wt_core::{
 };
 use wt_proto::v1::{
     AddressView, DialogKind, DialogPrompt, DownloadPrompt, EngineKind, FindView, GroupSummary,
-    LoadState, NavigationFailed, PermissionKind, PermissionPrompt, PromptView, SignInPrompt,
-    TabSummary, TabView, WindowSnapshot, ZoomView, address_view, engine_event, prompt_view,
+    Layout, LoadState, NavigationFailed, PermissionKind, PermissionPrompt, PromptView,
+    SignInPrompt, TabSummary, TabView, WindowSnapshot, ZoomView, address_view, engine_event,
+    prompt_view,
 };
 use wt_store::{SavedGroup, SavedTab, Space};
 
@@ -885,6 +886,9 @@ pub(crate) enum Step {
 struct Window {
     space: SpaceId,
     rows: BTreeMap<SpaceId, Row>,
+    /// How the window lays out its tabs (043): a view setting, and nothing
+    /// in the model goes by it.
+    layout: Layout,
 }
 
 impl Window {
@@ -932,6 +936,8 @@ pub(crate) struct State {
     /// The Groups of each Space (041), as the store kept them and as last
     /// worked out: what the session's window is given with its tabs.
     pub(crate) saved_groups: BTreeMap<SpaceId, Vec<SavedGroup>>,
+    /// The layout a new window has (043): the one that was last chosen.
+    pub(crate) layout: Layout,
     /// The window whose tabs are the session: the first opened, and the
     /// next one opened once that is closed.
     session_window: Option<WindowId>,
@@ -973,6 +979,7 @@ impl State {
         State {
             saved,
             saved_groups: BTreeMap::new(),
+            layout: Layout::Strip,
             session_window: None,
             downloads_active: BTreeMap::new(),
             exceptions: BTreeSet::new(),
@@ -1030,7 +1037,16 @@ impl State {
         let (row, restored) = self.make_row(window, space, login_set);
         let front = row.front;
         let rows = BTreeMap::from([(space, row)]);
-        self.windows.insert(window, Window { space, rows });
+        // A new window has the layout that was last chosen (043).
+        let layout = self.layout;
+        self.windows.insert(
+            window,
+            Window {
+                space,
+                rows,
+                layout,
+            },
+        );
         self.dirty.insert(window);
         (window, front, restored)
     }
@@ -1678,6 +1694,22 @@ impl State {
         // At the Group's end.
         self.last_of_its_kind(window, space, tab_id);
         Ok(())
+    }
+
+    /// Switches a window's layout (043), and nothing else. Whether the
+    /// choice is the app's from now on: a private window's is its own
+    /// (037). `None` for a window there is not.
+    pub(crate) fn set_layout(&mut self, window_id: WindowId, layout: Layout) -> Option<bool> {
+        let private = self.is_private_window(window_id);
+        let window = self.windows.get_mut(&window_id)?;
+        if window.layout != layout {
+            window.layout = layout;
+            self.dirty.insert(window_id);
+        }
+        if !private {
+            self.layout = layout;
+        }
+        Some(!private)
     }
 
     /// Marks a tab as one of its row's Favourites, or unmarks it (042). A tab
@@ -2820,6 +2852,7 @@ impl State {
                     .unwrap_or(u32::MAX),
                 })
                 .collect(),
+            layout: window.layout as i32,
             favourites_full: row
                 .tabs
                 .iter()

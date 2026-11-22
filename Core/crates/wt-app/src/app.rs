@@ -140,6 +140,7 @@ impl App {
             .collect();
         let mut state = State::new(kept.spaces, &kept.start, options.engine, kept.saved);
         state.saved_groups = kept.groups;
+        state.layout = crate::layout::kept(&store.borrow());
         for (space, count) in closed {
             state.set_closed_tabs(space, count);
         }
@@ -228,6 +229,7 @@ impl App {
             request::Kind::RemoveGroup(remove) => answer(self.remove_group(&remove)),
             request::Kind::MoveToGroup(moved) => answer(self.move_to_group(&moved)),
             request::Kind::SetFavourite(set) => answer(self.set_favourite(&set)),
+            request::Kind::SetLayout(set) => answer(self.set_layout(&set)),
             request::Kind::OpenDownload(open) => self.open_download(&open),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)

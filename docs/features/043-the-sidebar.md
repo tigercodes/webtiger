@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | **Designed; nothing built.** The choices of §6 are put to the owner |
+| **Status** | **The core and the contract are built and tested, on the recommendations of §6, which are provisional:** they are put to the owner and not yet answered. **No shell draws a sidebar yet** (§7) |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "both layouts". 000 §6.1: "Two layouts, one model" |
-| **Contract** | To be 1.33 (§5) |
+| **Contract** | 1.33 (§5). No change to the store's schema: the choice is one of the app's settings (020) |
 | **Builds on** | [039](039-sites.md), [041](041-groups.md), [042](042-favourites.md): the row as a tree, which a strip draws along the top and a sidebar draws down the side. [034](034-the-macs-menus.md): the Mac's menus |
 | **Last updated** | 2026-11-22 |
 
@@ -50,7 +50,7 @@ Down the leading side of the window, as wide as a name needs, the page beside it
 
 Every row does what its chip does in the strip: a press brings a tab in front; the same menus; the same words to a screen reader. The order is the core's, and the shell places the Groups' rows as the strip places their chips (041 §5).
 
-## 5. The contract (to be 1.33)
+## 5. The contract (1.33)
 
 Added; nothing is changed or removed.
 
@@ -66,6 +66,13 @@ message SetLayout { uint64 window_id = 1; Layout layout = 2; }
 
 message WindowSnapshot { … Layout layout = 12; }
 ```
+
+**As built, where the design did not say:**
+
+- **A private window** opens with the layout last chosen, as any window. What is chosen in one is its own: it is not the next window's, and it is not written (037).
+- **A switch to the layout a window has** is not refused and tells nobody anything.
+- **What is kept that this core does not know** (a later build's layout, in a store brought back) is the strip.
+- **In fake mode** the choice lasts the run: the store is in memory.
 
 ## 6. Decisions
 
@@ -89,15 +96,21 @@ message WindowSnapshot { … Layout layout = 12; }
 
 ## 8. Tests
 
-To be filled in as built. The plan's own bar for W2: "switching layout changes nothing in the model".
+The plan's own bar for W2: "switching layout changes nothing in the model".
+
+| Where | What |
+|---|---|
+| The core, through the contract (`layout.rs`, 5) | **Nothing else changes:** a window with a row of every kind of thing (a Favourite, a Site in no Group, an open Group with a Site asleep, a shut Group with its Site left out, a tab in front) is switched to the side and back: what the window is told is, but for its layout, what it was told, and the shell is asked for nothing; asked for the layout it has, it is as it is; a tab closed at the side is closed. **Refused:** a window there is not; no layout named; a layout this core does not have; none of it is taken for a choice. **Each window its own:** switching one does not switch another; a window opened afterwards has the one last chosen, and the open ones keep theirs; a private window opens with it, and what is chosen there is not the next window's. **Across a quit** (a store on disk): a new installation has the strip; the choice is the first window's after a quit, with its tabs; a private window's is not written; back along the top and quit. **A store that names a layout nobody has** is the strip |
+| The rule broken, a part at a time | 16 parts, in the model, in what is written and read, and where the app starts: all caught |
 
 ## 9. What is not verified
 
-To be filled in as built.
+- **No shell draws a sidebar, or asks for one.** The shells are told the layout (1.33) and draw the strip.
+- **The choices of §6** are the recommendations, not the owner's word.
 
 ## 10. Done checklist
 
 - [ ] The owner's word on §6.
-- [ ] The core, the store and the contract.
+- [x] The core and the contract.
 - [ ] The Mac's sidebar.
 - [ ] `Tools/test.sh all` green, and `android-device`.

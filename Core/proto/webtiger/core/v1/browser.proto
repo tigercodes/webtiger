@@ -193,6 +193,27 @@ message SetFavourite {
   bool favourite = 2;
 }
 
+// The layout of a window (043). Since 1.33.
+enum Layout {
+  // A core from before 1.33 names none: the strip.
+  LAYOUT_UNSPECIFIED = 0;
+  // The tabs along the top.
+  LAYOUT_STRIP = 1;
+  // The tabs down the side.
+  LAYOUT_SIDEBAR = 2;
+}
+
+// Since 1.33. Switches a window's layout (043), and nothing else: no tab is
+// moved, loaded or closed by it. The choice is the app's from then on: a
+// window opened afterwards has it, also after the app has been closed. A
+// private window's choice is its own, and is not kept (037). Answered with
+// Ack, also when the window has that layout already; "window.unknown"; or
+// "layout.unknown" for a layout this core does not have.
+message SetLayout {
+  uint64 window_id = 1;
+  Layout layout = 2;
+}
+
 // A window, as its subscription publishes it.
 message WindowSnapshot {
   uint64 window_id = 1;
@@ -231,6 +252,10 @@ message WindowSnapshot {
   // marking another would be refused ("favourite.too_many"). A shell offers
   // no more by it, and needs no number of its own.
   bool favourites_full = 11;
+  // Since 1.33. How the window lays out its tabs (043). A view setting: the
+  // row, its order and everything else here are the same in every layout.
+  // A shell that cannot draw the one named draws the strip.
+  Layout layout = 12;
 }
 
 // A tab as a strip of tabs shows it: enough to name it, and no more.

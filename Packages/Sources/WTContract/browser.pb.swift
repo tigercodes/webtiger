@@ -26,6 +26,51 @@ fileprivate nonisolated struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobu
   typealias Version = _2
 }
 
+/// The layout of a window (043). Since 1.33.
+public nonisolated enum WTLayout: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+
+  /// A core from before 1.33 names none: the strip.
+  case unspecified // = 0
+
+  /// The tabs along the top.
+  case strip // = 1
+
+  /// The tabs down the side.
+  case sidebar // = 2
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .strip
+    case 2: self = .sidebar
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .strip: return 1
+    case .sidebar: return 2
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [WTLayout] = [
+    .unspecified,
+    .strip,
+    .sidebar,
+  ]
+
+}
+
 public nonisolated enum WTLoadState: SwiftProtobuf.Enum, Swift.CaseIterable {
   public typealias RawValue = Int
   case unspecified // = 0
@@ -519,6 +564,26 @@ public nonisolated struct WTSetFavourite: Sendable {
   public init() {}
 }
 
+/// Since 1.33. Switches a window's layout (043), and nothing else: no tab is
+/// moved, loaded or closed by it. The choice is the app's from then on: a
+/// window opened afterwards has it, also after the app has been closed. A
+/// private window's choice is its own, and is not kept (037). Answered with
+/// Ack, also when the window has that layout already; "window.unknown"; or
+/// "layout.unknown" for a layout this core does not have.
+public nonisolated struct WTSetLayout: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var windowID: UInt64 = 0
+
+  public var layout: WTLayout = .unspecified
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 /// A window, as its subscription publishes it.
 public nonisolated struct WTWindowSnapshot: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
@@ -578,6 +643,11 @@ public nonisolated struct WTWindowSnapshot: Sendable {
   /// marking another would be refused ("favourite.too_many"). A shell offers
   /// no more by it, and needs no number of its own.
   public var favouritesFull: Bool = false
+
+  /// Since 1.33. How the window lays out its tabs (043). A view setting: the
+  /// row, its order and everything else here are the same in every layout.
+  /// A shell that cannot draw the one named draws the strip.
+  public var layout: WTLayout = .unspecified
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1944,6 +2014,10 @@ public nonisolated struct WTStepTab: Sendable {
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
 
+nonisolated extension WTLayout: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0LAYOUT_UNSPECIFIED\0\u{1}LAYOUT_STRIP\0\u{1}LAYOUT_SIDEBAR\0")
+}
+
 nonisolated extension WTLoadState: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0LOAD_STATE_UNSPECIFIED\0\u{1}LOAD_STATE_IDLE\0\u{1}LOAD_STATE_LOADING\0\u{1}LOAD_STATE_FAILED\0")
 }
@@ -2671,9 +2745,44 @@ nonisolated extension WTSetFavourite: SwiftProtobuf.Message, SwiftProtobuf._Mess
   }
 }
 
+nonisolated extension WTSetLayout: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SetLayout"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}layout\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.windowID) }()
+      case 2: try { try decoder.decodeSingularEnumField(value: &self.layout) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.windowID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.windowID, fieldNumber: 1)
+    }
+    if self.layout != .unspecified {
+      try visitor.visitSingularEnumField(value: self.layout, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTSetLayout, rhs: WTSetLayout) -> Bool {
+    if lhs.windowID != rhs.windowID {return false}
+    if lhs.layout != rhs.layout {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".WindowSnapshot"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0\u{3}downloads_active\0\u{3}space_id\0\u{3}space_name\0\u{3}space_colour\0\u{1}undo\0\u{3}private_window\0\u{1}groups\0\u{3}favourites_full\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0\u{3}downloads_active\0\u{3}space_id\0\u{3}space_name\0\u{3}space_colour\0\u{1}undo\0\u{3}private_window\0\u{1}groups\0\u{3}favourites_full\0\u{1}layout\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2692,6 +2801,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 9: try { try decoder.decodeSingularBoolField(value: &self.privateWindow) }()
       case 10: try { try decoder.decodeRepeatedMessageField(value: &self.groups) }()
       case 11: try { try decoder.decodeSingularBoolField(value: &self.favouritesFull) }()
+      case 12: try { try decoder.decodeSingularEnumField(value: &self.layout) }()
       default: break
       }
     }
@@ -2735,6 +2845,9 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
     if self.favouritesFull != false {
       try visitor.visitSingularBoolField(value: self.favouritesFull, fieldNumber: 11)
     }
+    if self.layout != .unspecified {
+      try visitor.visitSingularEnumField(value: self.layout, fieldNumber: 12)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2750,6 +2863,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.privateWindow != rhs.privateWindow {return false}
     if lhs.groups != rhs.groups {return false}
     if lhs.favouritesFull != rhs.favouritesFull {return false}
+    if lhs.layout != rhs.layout {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
