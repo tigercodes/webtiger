@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **The core, the store and the contract are built and tested** (part 1 of §7), on the recommendations of §6, which are **provisional until the owner says**: a tab can be kept and let go, a Site is first in its row, sleeps at its home when closed, wakes when brought in front, and comes back after a quit. **No shell shows or offers any of it yet**: that waits for the owner's word on §6 |
+| **Status** | **The core, the store and the contract are built and tested** (part 1 of §7), on the choices of §6, which are **the owner's since 2026-11-22** (WT-D29): a tab can be kept and let go, a Site is first in its row, sleeps at its home when closed, wakes when brought in front, and comes back after a quit. **No shell shows or offers any of it yet**: the shells' part is next |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "Spaces, Groups, Sites". This is Sites, without Groups: the first step of the tree |
 | **Contract** | 1.29: `KeepTab`, `LetGoSite`; `TabSummary.kept`, `TabSummary.asleep`, `TabView.kept` |
 | **Builds on** | [005](005-tabs.md): tabs and their row. [009](009-session-restore.md): tabs that come back asleep. [024](024-several-spaces.md): a row for each Space. [033](033-a-closed-tab-comes-back.md): the journal |
@@ -79,7 +79,7 @@ message TabView {
 
 ## 6. Decisions
 
-**All of these are put to the owner.** The first column is the recommendation. D1, D2, D6 and D7 are what the core was built on, provisionally: each is a few lines to change. D3, D4 and D5 are the shells', and nothing of them is built.
+**The owner's, 2026-11-22 (WT-D29): all seven as recommended.** They were put to the owner with the core built on D1, D2, D6 and D7; D3, D4 and D5 are the shells', and are built next.
 
 | # | Recommendation | Why | Other ways |
 |---|---|---|---|
@@ -96,6 +96,24 @@ message TabView {
 1. **The core and the contract**: the rule of §3, the two columns, through `FakeShell`, over a store on disk for what comes back after a quit.
 2. **The shells**: the mark, the two commands (the tab's menu; the Mac's File menu and key; a held tab on a phone), a sleeping Site's look, the words.
 3. **Home again without closing**: an awake Site that is not at its home says so, and one command sends it back.
+
+## 7a. The shells (part 2)
+
+Nothing is decided in a shell: it asks `KeepTab` and `LetGoSite`, and draws what the snapshot says (`kept`, `asleep`).
+
+**The command** is one, with two names: "Keep as Site" for a tab that is none, "Stop Keeping" for a Site. It is for the tab in front, and is grey for a tab with no page.
+
+| Where | How |
+|---|---|
+| The Mac | File menu, after Reopen Closed Tab; ⌘D |
+| The iPhone and the iPad | A tab's own menu (a long press on it); ⌘D with a keyboard |
+| Android | A tab's own menu (a long press on it); Ctrl+D with a keyboard ([036](036-androids-keys.md)) |
+
+On the Mac a tab has no menu of its own: a button there takes a right-click for itself (033 found it), so the menu bar and the key are the ways.
+
+**In the strip** a Site has a small mark before its name, and is said to be a Site to a screen reader. Asleep, its name is drawn fainter, and it is said to be asleep. The button at a Site's end puts it to sleep, and says so; a sleeping Site has no such button: there is no page to close.
+
+**The words** (WT-D29): "Keep as Site", "Stop Keeping", "Site", "Asleep", "Put to Sleep".
 
 ## 8. Tests
 
@@ -117,8 +135,8 @@ message TabView {
 
 ## 10. Done checklist
 
-- [ ] The owner's word on §6.
-- [x] The core, the store and the contract (provisional on §6).
+- [x] The owner's word on §6 (2026-11-22).
+- [x] The core, the store and the contract.
 - [ ] The Apple shell.
 - [ ] The Android shell.
 - [x] Part 1 (the core): `Tools/test.sh all` green, and `android-device`, on 2026-11-22: `lint`, `core` (564), `unit` (272 on the Mac), `build`, the Mac's UI suite (38), `ios` (254 on the iPhone simulator, one skipped as before), the iPhone's UI suite (29), `android` (381 and 32 on the JVM) and `android-device` (156 on the emulator). No shell changed but for the contract's version.
