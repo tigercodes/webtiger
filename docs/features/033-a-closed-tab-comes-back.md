@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built and tested in the store, the core and every shell there is: the journal, undo for a closed tab, and a way to ask on each system. The Mac: ⇧⌘T, and a right-click in the strip of tabs. The iPhone, the iPad and Android: the button for a new tab, held (provisional, §6). Not run on a phone, nor with a screen reader (§9) |
+| **Status** | Built and tested in the store, the core and every shell there is: the journal, undo for a closed tab, and a way to ask on each system. The Mac: ⇧⌘T, and a right-click in the strip of tabs. The iPhone, the iPad and Android: the button for a new tab, held (the owner's decision, §6). Not run on a phone, nor with a screen reader (§9) |
 | **Phase** | W1 of [000](000-master-plan.md) §9: "the store and journal", the journal's first form. W2: "undo", for the one organising action there is to undo so far, closing a tab (000 §6.2: "Undo for every organising action, including closing a tab") |
 | **Contract** | 1.24: `Undo`; `WindowSnapshot.undo` |
 | **Builds on** | [005](005-tabs.md): a tab closed. [009](009-session-restore.md): a tab kept by its address and its title, and brought back asleep. [024](024-several-spaces.md): a window shows one Space's tabs. [008](008-history.md): forgetting |
@@ -93,7 +93,7 @@ An entry that is undone is deleted, and so are a Space's entries beyond its fift
 
 **The iPhone, the iPad and Android: the button for a new tab, held.** A finger held on the button that opens a new tab brings up a menu with "Reopen Closed Tab". Chosen, the core is asked to undo.
 
-> **Provisional (2026-11-21), under the owner's word to go on with what is suggested:** the other course was a line across the window when a tab is closed ("Tab closed", with "Undo"), as one browser has it. The held button was taken because it adds nothing to a strip that is already full on a phone ([024](024-several-spaces.md) found how little room there is), and because a line that goes away by itself after some seconds is one a person who reads slowly, or by ear, may miss. The owner's to change.
+> **The owner's decision (2026-11-21, WT-D25): the held button is kept.** It was built as provisional and put to them. The other course was a line across the window when a tab is closed ("Tab closed", with "Undo"), as one browser has it. The held button was taken because it adds nothing to a strip that is already full on a phone ([024](024-several-spaces.md) found how little room there is), and because a line that goes away by itself after some seconds is one a person who reads slowly, or by ear, may miss.
 
 - **Nothing is offered when there is nothing to bring back**: the button held is then only a button, and a finger held on it and lifted is a press of it. An item that does nothing is not shown ([022](022-picture-menu.md) D5).
 - **A screen reader is told**: the button says it has the action, by name, while there is a closed tab to bring back.
@@ -113,7 +113,7 @@ An entry that is undone is deleted, and so are a Space's entries beyond its fift
 | D3 | The page is loaded again | What the address is, the core knows. What else a page was is the engine's to keep, and that is W3 |
 | D4 | The journal has the columns its one kind needs | As the store's other tables began (009, 012). A general shape for entries is better made when there is a second kind to make it for |
 | D5 | Forgetting history forgets the closed tabs, all of them for those logins | The person asked for something not to be kept. Working out which closed tabs a time or one visit covers gains little, and getting it wrong keeps what was to be forgotten |
-| D6 | On a phone, the button for a new tab, held (provisional) | §6: no new chrome on a narrow strip, and nothing that is there only for a moment |
+| D6 | On a phone, the button for a new tab, held (the owner's, WT-D25) | §6: no new chrome on a narrow strip, and nothing that is there only for a moment |
 | D7 | On the Mac the menu is the strip's, not the button's | §6: a button on the Mac gives no menu for a right-click. A right-click in the strip of tabs is where other browsers on the Mac have it |
 
 ## 8. Tests
@@ -147,6 +147,6 @@ An entry that is undone is deleted, and so are a Space's entries beyond its fift
 - [x] The store's journal (its ninth version).
 - [x] The core: the rule of §3.
 - [x] The Mac: the command, in the app.
-- [x] The iPhone, the iPad and Android: a way to ask (provisional, §6); the Mac: a right-click in the strip.
+- [x] The iPhone, the iPad and Android: a way to ask (the owner's, §6); the Mac: a right-click in the strip.
 - [x] `Tools/test.sh all` green, and `android-device`, on 2026-11-21: `lint`, `core` (519), `unit` (267 on the Mac), `build`, the Mac's UI suite (30), `ios` (249 on the iPhone simulator, one skipped as before), the iPhone's UI suite (26), `android` (351 and 32 on the JVM) and `android-device` (147 on the emulator).
 - [x] `Tools/test.sh all` green, and `android-device`, with the shells' ways to ask, on 2026-11-21: `lint`, `core` (519), `unit` (267 on the Mac), `build`, the Mac's UI suite (31), `ios` (249 on the iPhone simulator, one skipped as before), the iPhone's UI suite (27), `android` (354 and 32 on the JVM) and `android-device` (148 on the emulator).

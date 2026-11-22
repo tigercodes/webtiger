@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Written before the code. Nothing is built. The rule's choices are provisional (§4): the owner's to confirm |
+| **Status** | Written before the code. Nothing is built. The rule's choices (§4) are the owner's, confirmed 2026-11-21 (WT-D26) |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "private windows". 000 §5.6: "A throwaway login set. Nothing is written; closing it wipes it" |
 | **Contract** | To come: a window opened as private; the window told that it is. `LoginSet.ephemeral` has been there since W0 |
 | **Builds on** | [001](001-foundations.md): login sets, and the adapters' isolation tests. [008](008-history.md), [009](009-session-restore.md), [013](013-downloads.md), [014](014-permissions.md), [012](012-zoom.md), [033](033-a-closed-tab-comes-back.md): each writes something a private window must not |
@@ -50,9 +50,9 @@ And what it is not: it does not hide me from the sites I visit, from the network
 
 **Passwords.** The system's password manager is the person's and is not WebTiger's to switch off; where the system lets a browser say "do not offer to save here" (Android's Autofill, [032](032-passwords-android.md)), a private window says it.
 
-## 4. Decisions, all provisional
+## 4. Decisions
 
-> **Provisional (2026-11-21), under the owner's word to go on with what is suggested.** Each of these could go the other way, and other browsers differ on them. They are written down before any code so that they can be changed cheaply.
+> **The owner's decision (2026-11-21, WT-D26): "private choices are fine".** Each of these could have gone the other way, and other browsers differ on them. They were written down before any code and put to the owner, who confirmed them as written.
 
 | # | Decision | The other course | Why this one |
 |---|---|---|---|
@@ -79,7 +79,7 @@ Nothing is built.
 
 ## 8. Done checklist
 
-- [ ] The owner's word on §4.
+- [x] The owner's word on §4 (2026-11-21).
 - [ ] The core and the contract.
 - [ ] The Apple shell.
 - [ ] Android.
