@@ -18,20 +18,22 @@ internal class SystemWebViewCertificateTest : AdapterTestCase() {
     private fun failures(id: Long = 1): List<String> = reports(id).mapNotNull { it.navigation_failed?.code }
 
     /**
-     * What the adapter said of a web view, in order, by kind: for a failure's message. A load
-     * that started, committed, finished or failed, with a failure's code; anything else is
-     * "other". No address is in it.
+     * What the adapter said of a web view, and what it was told by the engine, lately and in
+     * order, by kind: for a failure's message. No address is in it.
      */
-    private fun said(id: Long = 1): String =
-        reports(id).joinToString(", ") { report ->
-            when {
-                report.navigation_started != null -> "started"
-                report.navigation_committed != null -> "committed"
-                report.navigation_finished != null -> "finished"
-                report.navigation_failed != null -> "failed(${report.navigation_failed?.code})"
-                else -> "other"
+    private fun said(id: Long = 1): String {
+        val reported =
+            reports(id).joinToString(", ") { report ->
+                when {
+                    report.navigation_started != null -> "started"
+                    report.navigation_committed != null -> "committed"
+                    report.navigation_finished != null -> "finished"
+                    report.navigation_failed != null -> "failed(${report.navigation_failed?.code})"
+                    else -> "other"
+                }
             }
-        }
+        return "reported [$reported]; heard ${heard(id)}"
+    }
 
     /**
      * No page of the site came of a load that failed: once the engine has had the time to show
@@ -103,7 +105,7 @@ internal class SystemWebViewCertificateTest : AdapterTestCase() {
 
             await(1, "the site's page") { hasTitle("Trusted after all")(it) && finished(it) }
             assertEquals("the site was asked for its page, once", 1, secure.served.get())
-            assertEquals("no failure but the first", listOf("net.tls.untrusted"), failures(1))
+            assertEquals("no failure but the first; the adapter: ${said(1)}", listOf("net.tls.untrusted"), failures(1))
 
             // Another web view of the same login set: let through already.
             create(2, loginSet = home)

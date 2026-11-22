@@ -150,6 +150,12 @@ class SystemWebViewEngine internal constructor(
     /** The view of the web view the core named `id`, for a window to show. */
     fun webView(id: Long): View? = pages[id]?.view
 
+    /**
+     * What the engine and the adapter said last of the web view the core named `id`, by kind
+     * and with no address: for a test's failure message.
+     */
+    internal fun heard(id: Long): List<String> = (pages[id] as? WebViewPage)?.heard().orEmpty()
+
     /** How many web views exist. A tab that is asleep has none. */
     val webViewCount: Int get() = pages.size
 

@@ -85,6 +85,9 @@ internal class WebViewPage(
     private val context = MutableContextWrapper(appContext)
     private val tracker = PageTracker(id, host::report)
 
+    /** What the engine and the adapter said of this page last, by kind and with no address: for a test's message. */
+    fun heard(): List<String> = tracker.heardLately()
+
     /**
      * The zoom the page was last given, in per cent: a web view made anew is given it again.
      * Before the web view, which is given it as it is made: a field below that one is still

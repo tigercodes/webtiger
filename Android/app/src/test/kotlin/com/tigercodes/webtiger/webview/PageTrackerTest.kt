@@ -583,4 +583,133 @@ class PageTrackerTest {
         tracker.becameDownload("https://example.com/other.zip")
         assertEquals(before + 2, reported.size)
     }
+
+    // A load's last words come late (003 §8.1)
+
+    /** What was reported, but for progress and the way back and forward, which these tests are not about. */
+    private fun ends(): List<String> = told().filterNot { it.startsWith("progress") || it.startsWith("history") }
+
+    @Test
+    fun theLoadBeforesLastWordsDoNotEndTheLoadTheAdapterBegan() {
+        // As observed (WebView 133, 2026-11-21): load, progress 10, started, commit,
+        // progress 100, load, progress 100, finished, progress 10. The first load is over at
+        // its first progress 100; the adapter begins another at once; then the engine says
+        // progress 100 once more and "finished" for the first, and only then its first word
+        // of the second.
+        tracker.willLoad(A)
+        tracker.progress(10)
+        tracker.pageStarted(A)
+        tracker.committed(A, canGoBack = false, canGoForward = false)
+        tracker.progress(100)
+        assertEquals(listOf("started $A", "committed $A", "finished"), ends())
+
+        tracker.willLoad(A)
+        tracker.progress(100)
+        tracker.pageFinished(A)
+        assertEquals("the first load's last words end nothing", listOf("started $A"), ends())
+
+        tracker.progress(10)
+        tracker.pageStarted(A)
+        tracker.committed(A, canGoBack = false, canGoForward = false)
+        tracker.progress(100)
+        tracker.pageFinished(A)
+        assertEquals("the second load is a load like any other, and ends once", listOf("committed $A", "finished"), ends())
+    }
+
+    @Test
+    fun aLoadOverAtFinishedIsNotEndedAgainByItsLateProgress() {
+        tracker.willLoad(A)
+        tracker.progress(10)
+        tracker.pageStarted(A)
+        tracker.committed(A, canGoBack = false, canGoForward = false)
+        tracker.pageFinished(A)
+        assertEquals(listOf("started $A", "committed $A", "finished"), ends())
+
+        // Another address this time, begun before the first load's progress 100 arrives.
+        tracker.willLoad(B)
+        tracker.progress(100)
+        assertEquals(listOf("started $B"), ends())
+        tracker.progress(10)
+        tracker.committed(B, canGoBack = true, canGoForward = false)
+        tracker.pageFinished(B)
+        assertEquals(listOf("committed $B", "finished"), ends())
+    }
+
+    @Test
+    fun aReloadBegunAtOnceIsNotEndedByTheLoadBefore() {
+        tracker.willLoad(A)
+        tracker.progress(10)
+        tracker.committed(A, canGoBack = false, canGoForward = false)
+        tracker.progress(100)
+        ends()
+        tracker.willReload()
+        tracker.pageFinished(A)
+        tracker.progress(100)
+        assertEquals(listOf("started $A"), ends())
+        tracker.progress(10)
+        tracker.committed(A, canGoBack = false, canGoForward = false)
+        tracker.progress(100)
+        assertEquals(listOf("committed $A", "finished"), ends())
+    }
+
+    @Test
+    fun aLoadBegunWhileAnErrorPageIsOnItsWayIsNotEndedByIt() {
+        // A certificate is refused; the person goes on at once (026), and the adapter loads
+        // the address again while the engine's own error page for the first load is still on
+        // its way. The error page starts, commits and finishes like a page.
+        tracker.willLoad(A)
+        tracker.progress(10)
+        assertTrue(tracker.certificateRefused(A, "net.tls.untrusted", held = true))
+        assertEquals(listOf("started $A", "failed net.tls.untrusted $A (held)"), ends())
+
+        tracker.willLoad(A)
+        tracker.pageStarted(A)
+        tracker.pageFinished(A)
+        tracker.progress(100)
+        assertEquals("the error page's words end nothing, and are no page", listOf("started $A"), ends())
+
+        // The load itself: the certificate is refused again (it was another, or nobody said
+        // to let it through), and that is said as this load's failure.
+        tracker.progress(10)
+        assertTrue("the failure is the load's own", tracker.certificateRefused(A, "net.tls.untrusted", held = true))
+        assertEquals(listOf("failed net.tls.untrusted $A (held)"), ends())
+    }
+
+    @Test
+    fun aLoadBegunWhileAnErrorPageIsOnItsWayLoadsItsPage() {
+        tracker.willLoad(A)
+        tracker.progress(10)
+        tracker.failed("net.dns", A)
+        ends()
+        tracker.willLoad(A)
+        // The error page's title is the engine's words: not the page's, now either.
+        tracker.title("Webpage not available")
+        tracker.pageFinished(A)
+        assertEquals(listOf("started $A"), ends())
+        tracker.progress(10)
+        tracker.pageStarted(A)
+        tracker.committed(A, canGoBack = false, canGoForward = false)
+        tracker.title("Example")
+        tracker.progress(100)
+        tracker.pageFinished(A)
+        assertEquals(listOf("committed $A", "title Example", "finished"), ends())
+    }
+
+    @Test
+    fun aLoadTheEngineSaidSomethingOfEndsAsBefore() {
+        // What the engine says of a load is what ends the wait: a load that stops with no
+        // page is still said to be cancelled, and one that is stopped by the adapter too.
+        tracker.willLoad(A)
+        tracker.progress(10)
+        tracker.pageFinished(A)
+        assertEquals(listOf("started $A", "failed net.cancelled $A"), ends())
+
+        tracker.willLoad(B)
+        tracker.willStop()
+        assertEquals(listOf("started $B", "failed net.cancelled $B"), ends())
+        // And what the engine then says of the stopped load ends nothing more.
+        tracker.pageFinished(B)
+        tracker.progress(100)
+        assertEquals(emptyList<String>(), ends())
+    }
 }

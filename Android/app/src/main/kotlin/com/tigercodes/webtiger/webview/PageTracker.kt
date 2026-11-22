@@ -39,6 +39,14 @@ import com.tigercodes.webtiger.core.v1.TitleChanged
  *   address and finishes like any page. None of that is a new load.
  * - **A refused navigation is followed by progress of its own**, 10 and then 100, or by a
  *   finished page when it was a redirect. Neither is a load.
+ * - **A load's last words come late.** After a load has ended here (at the first of
+ *   `onPageFinished` and progress 100) the engine may still say the other, and progress 100
+ *   once more; and after a failure its error page is still on its way. When the adapter
+ *   begins another load in that moment, those words arrive after it, and before the engine's
+ *   first word about the new load, which is progress below 100. So a load the adapter began
+ *   is not ended by `onPageFinished` or progress 100 until the engine has said something of
+ *   it (seen on a device: `load, progress 10, started, commit, progress 100, load,
+ *   progress 100, finished, progress 10`, where the second load was said to be cancelled).
  *
  * The two rules of engine.proto hold throughout: an address is reported as the page's only
  * from a commit, and a navigation refused on the core's verdict is reported as cancelled. A
@@ -67,9 +75,36 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
     /** The process drawing the page died, and nothing has been loaded since. */
     private var gone = false
 
+    /**
+     * The adapter began a load, and the engine has said nothing of it yet: an end that is
+     * said now is the load before's, late.
+     */
+    private var unannounced = false
+
+    /**
+     * A load failed, and the engine's own error page for it may still be on its way. While it
+     * is, only progress below 100 is taken as the engine's word about a load begun since: the
+     * error page starts and commits like a page.
+     */
+    private var errorPageOwed = false
+
     /** The address last reported as the page's. */
     var pageUrl: String? = null
         private set
+
+    /**
+     * What the engine and the adapter said here last, by kind and with no address: kept in
+     * memory for a test's failure message, and never written anywhere.
+     */
+    private val heard = ArrayDeque<String>()
+
+    /** The last things said here, oldest first, by kind. */
+    fun heardLately(): List<String> = heard.toList()
+
+    private fun hear(what: String) {
+        if (heard.size == HEARD_KEPT) heard.removeFirst()
+        heard.addLast(what)
+    }
 
     /** What a reload should load, when the engine itself has nothing to reload: the address that failed, or the page a dead renderer was showing. */
     val reloadTarget: String? get() = failedUrl ?: pageUrl.takeIf { gone }
@@ -81,10 +116,16 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
     val headingFor: String get() = heading.orEmpty()
 
     /** The adapter is about to load an address. */
-    fun willLoad(url: String) = begin(url)
+    fun willLoad(url: String) {
+        hear("load")
+        begin(url)
+        unannounced = true
+    }
 
     /** The adapter is about to reload the page. With nothing ever committed the engine has nothing to reload, and nothing is said. */
     fun willReload() {
+        hear("reload")
+        unannounced = pageUrl != null
         pageUrl?.let(::begin)
     }
 
@@ -93,16 +134,25 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
      * state of this one, so the engine says which; but the page a failure covered is left.
      */
     fun willTraverse() {
+        hear("traverse")
         failedUrl = null
         lateCommit = null
         refusedUrl = null
     }
 
     /** The adapter is about to stop the load. The engine may say nothing more about it, so its end is reported here. */
-    fun willStop() = end(heading.orEmpty())
+    fun willStop() {
+        hear("stop")
+        end(heading.orEmpty())
+    }
 
     /** `shouldOverrideUrlLoading`: the policy let a main-frame navigation go ahead. */
-    fun navigationAllowed(url: String) = begin(url)
+    fun navigationAllowed(url: String) {
+        hear("allowed")
+        // A redirect of the load the adapter began, or a link pressed: the engine's word.
+        unannounced = false
+        begin(url)
+    }
 
     /**
      * `shouldOverrideUrlLoading`: the page, or a frame of it, tried to go to an address that is
@@ -119,6 +169,7 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
      * The engine only reports a page as finished, so the adapter says the navigation ended.
      */
     fun navigationRefused(url: String, isRedirect: Boolean) {
+        hear("refused")
         refusedUrl = url
         val endsTheLoad = loading && awaitingCommit && isRedirect
         if (endsTheLoad) {
@@ -140,13 +191,18 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
      * and the page on screen stays.
      */
     fun becameDownload(url: String) {
+        hear("download")
         if (loading && awaitingCommit && (heading == null || heading == url)) end(url)
     }
 
     /** `onPageStarted`. */
     fun pageStarted(url: String) {
+        hear("started")
         // The engine announcing the load whose failure has been reported already.
         if (url == failedUrl) return
+        // The error page of the load before, late: not the load the adapter has begun since.
+        if (unannounced && errorPageOwed) return
+        unannounced = false
         begin(url)
     }
 
@@ -155,6 +211,10 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
      * new page, and not the page changing its own address.
      */
     fun committed(url: String, canGoBack: Boolean, canGoForward: Boolean): Boolean {
+        hear("commit")
+        // A commit is the engine's word about the load the adapter began; but not while an
+        // error page is owed, whose commit this may be.
+        if (!errorPageOwed) unannounced = false
         val newDocument = awaitingCommit || url == lateCommit
         awaitingCommit = false
         lateCommit = null
@@ -172,18 +232,32 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
 
     /** `onPageFinished`. */
     fun pageFinished(url: String) {
+        hear("finished")
         if (url == refusedUrl) {
             // The end of the navigation that was refused, not of the page.
             refusedUrl = null
             return
         }
+        // With the error page finished, nothing of the failed load is still to come.
+        if (!loading || unannounced) errorPageOwed = false
+        // The load before's end, late: the adapter has begun another, and the engine has
+        // said nothing of it yet.
+        if (unannounced) return
         end(url)
     }
 
     /** `onProgressChanged`, 0 to 100. */
     fun progress(percent: Int) {
+        hear("progress $percent")
         // The engine loading its own error page.
         if (failedUrl != null) return
+        if (unannounced) {
+            // The load before's last progress, late.
+            if (percent >= 100) return
+            // The engine's first word about the load the adapter began.
+            unannounced = false
+            errorPageOwed = false
+        }
         if (refusedUrl != null) {
             // A navigation that was refused has progress of its own, 10 and then 100, with no
             // page on its way: not a load, and not the end of one that is going on.
@@ -205,6 +279,7 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
     fun title(title: String) {
         // The error page's title is the engine's words, not the page's.
         if (failedUrl != null) return
+        if (unannounced && errorPageOwed) return
         emit(EngineEvent(web_view_id = webViewId, title_changed = TitleChanged(title = title)))
     }
 
@@ -213,10 +288,13 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
      * adapter holds the certificate it refused, and can be told to let it through (026).
      */
     fun failed(code: String, url: String, held: Boolean = false) {
+        hear("failed $code")
         // Said already: a certificate failure the engine then reports in its own way.
         if (url == failedUrl) return
         failedUrl = url
         loading = false
+        unannounced = false
+        errorPageOwed = true
         // The error page's commit, if one comes, is a new document's.
         lateCommit = url
         emit(EngineEvent(web_view_id = webViewId, navigation_failed = NavigationFailed(code = code, url = url, certificate_held = held)))
@@ -228,6 +306,7 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
      * was the page's own load: only then is the certificate one a person can be asked about.
      */
     fun certificateRefused(url: String, code: String = "net.tls", held: Boolean = false): Boolean {
+        hear("certificate $code")
         val own = loading && awaitingCommit && url == heading
         if (own) failed(code, url, held)
         return own
@@ -235,6 +314,9 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
 
     /** `onRenderProcessGone`. The adapter replaces the web view, so its history is gone too. */
     fun rendererGone() {
+        hear("renderer gone")
+        unannounced = false
+        errorPageOwed = false
         loading = false
         awaitingCommit = false
         heading = null
@@ -292,3 +374,6 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
 
     private fun emit(event: EngineEvent) = report(event)
 }
+
+/** How many of the last things said to a tracker are kept for a test's message. */
+private const val HEARD_KEPT = 48

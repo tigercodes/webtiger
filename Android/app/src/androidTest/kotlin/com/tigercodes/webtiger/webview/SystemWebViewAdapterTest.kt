@@ -264,4 +264,27 @@ internal class SystemWebViewAdapterTest : AdapterTestCase() {
         val answer = answer(HostRequest(ping = HostPing(payload = "hello".encodeUtf8())))
         assertEquals("hello".encodeUtf8(), answer.pong?.payload)
     }
+
+    /**
+     * Loads begun back to back, each the moment the one before is over (003 §8.1): every one
+     * is a load, and none is said to have been cancelled. The engine's last words about a
+     * load now and then arrive after the adapter has begun the next; they end nothing.
+     */
+    @Test
+    fun loadsBegunBackToBackAreEachALoad() {
+        create(1)
+        val rounds = 100
+        repeat(rounds) { round ->
+            load(1, site.url("/landed"))
+            // Looked at without a pause: the next load is begun the moment this one is over.
+            val until = System.nanoTime() + 15_000_000_000
+            while (reports(1).count { it.navigation_finished != null || it.navigation_failed != null } <= round) {
+                if (System.nanoTime() > until) throw AssertionError("load ${round + 1} was never over; heard ${heard(1)}")
+            }
+            val failures = reports(1).mapNotNull { it.navigation_failed?.code }
+            if (failures.isNotEmpty()) throw AssertionError("load ${round + 1} was said to have failed ($failures); heard ${heard(1)}")
+        }
+        assertEquals("each load finished, once", rounds, reports(1).count { it.navigation_finished != null })
+        assertEquals("and each committed", rounds, reports(1).count { it.navigation_committed != null })
+    }
 }

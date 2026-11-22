@@ -165,6 +165,16 @@ internal abstract class AdapterTestCase {
     /** What the adapter has reported about a web view, in order. */
     protected fun reports(id: Long): List<EngineEvent> = core.reports.filter { it.web_view_id == id }
 
+    /**
+     * What the engine and the adapter said last of a web view, in order and by kind, with no
+     * address: for a failure's message.
+     */
+    protected fun heard(id: Long): List<String> {
+        var heard = emptyList<String>()
+        InstrumentationRegistry.getInstrumentation().runOnMainSync { heard = engine.heard(id) }
+        return heard
+    }
+
     /** Waits until the reports about a web view satisfy `done`, for up to fifteen seconds. */
     protected fun await(id: Long, what: String, done: (List<EngineEvent>) -> Boolean) {
         repeat(1500) {
