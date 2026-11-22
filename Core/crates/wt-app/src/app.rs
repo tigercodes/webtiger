@@ -9,17 +9,18 @@ use std::time::Duration;
 
 use tokio::time::Instant;
 use wt_core::{
-    ACTUAL_SIZE, Address, Clock, Input, LoginSetId, SearchEngine, TabId, Timestamp, Uuid,
+    ACTUAL_SIZE, Address, Clock, GroupId, Input, LoginSetId, SearchEngine, TabId, Timestamp, Uuid,
     WebViewId, WindowId, classify, opens_outside, searched_words, zoom_in, zoom_out,
 };
 use wt_proto::v1::{
     Ack, ActivateTab, AddressSuggestion, AddressSuggestions, CloseTab, CloseWindow, EngineEvent,
-    EngineKind, FindInPage, ForgetHistory, HistoryEntry, HistoryPage, KeepTab, LetGoSite,
-    LinkOpenRequested, LoginSet, NavigationCommand, OpenAddress, OpenOutside, OpenTab, OpenWindow,
-    OutsideLinkRequested, QueryHistory, SearchRequested, SearchWords, SendSiteHome, StepTab,
-    SubmitAddress, SuggestAddresses, TabCommand, TabOpened, Undo, WebViewCommand, WebViewCreate,
-    WebViewDestroy, WebViewFind, WebViewLoad, WebViewSetZoom, WindowOpened, WindowSnapshot,
-    ZoomChange, ZoomPage, engine_event, forget_history, host_request, request, response, step_tab,
+    EngineKind, FindInPage, ForgetHistory, GroupMade, HistoryEntry, HistoryPage, KeepTab,
+    LetGoSite, LinkOpenRequested, LoginSet, MakeGroup, MoveToGroup, NavigationCommand, OpenAddress,
+    OpenOutside, OpenTab, OpenWindow, OutsideLinkRequested, QueryHistory, RemoveGroup,
+    SearchRequested, SearchWords, SendSiteHome, StepTab, SubmitAddress, SuggestAddresses,
+    TabCommand, TabOpened, Undo, WebViewCommand, WebViewCreate, WebViewDestroy, WebViewFind,
+    WebViewLoad, WebViewSetZoom, WindowOpened, WindowSnapshot, ZoomChange, ZoomPage, engine_event,
+    forget_history, host_request, request, response, step_tab,
 };
 use wt_store::{ClosedTab, MAX_SUGGESTIONS, SavedTab, Space, Store};
 
@@ -138,6 +139,7 @@ impl App {
             .map(|space| (space.id, store.borrow().closed_tabs(space.id).unwrap_or(0)))
             .collect();
         let mut state = State::new(kept.spaces, &kept.start, options.engine, kept.saved);
+        state.saved_groups = kept.groups;
         for (space, count) in closed {
             state.set_closed_tabs(space, count);
         }
@@ -213,6 +215,18 @@ impl App {
             request::Kind::KeepTab(keep) => answer(self.keep_tab(&keep)),
             request::Kind::LetGoSite(let_go) => answer(self.let_go_site(&let_go)),
             request::Kind::SendSiteHome(send) => self.send_site_home(&send),
+            request::Kind::MakeGroup(make) => answer(self.make_group(&make)),
+            request::Kind::RenameGroup(rename) => {
+                answer(self.change_group(rename.group_id, Some(&rename.name), None, None))
+            }
+            request::Kind::ColourGroup(colour) => {
+                answer(self.change_group(colour.group_id, None, Some(&colour.colour), None))
+            }
+            request::Kind::ShutGroup(shut) => {
+                answer(self.change_group(shut.group_id, None, None, Some(shut.shut)))
+            }
+            request::Kind::RemoveGroup(remove) => answer(self.remove_group(&remove)),
+            request::Kind::MoveToGroup(moved) => answer(self.move_to_group(&moved)),
             request::Kind::OpenDownload(open) => self.open_download(&open),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
@@ -636,6 +650,7 @@ impl App {
             front: true,
             home: String::new(),
             name: String::new(),
+            group: 0,
         };
         let reopened = self
             .state
@@ -965,6 +980,56 @@ impl App {
         Ok(response::Kind::Ack(Ack {}))
     }
 
+    /// Makes a Group in the row a window shows (041).
+    fn make_group(&self, make: &MakeGroup) -> Result<response::Kind, AppError> {
+        let group = self
+            .state
+            .borrow_mut()
+            .make_group(WindowId(make.window_id), &make.name)
+            .map_err(|code| AppError::new(code).field(group_field(code)))?;
+        Ok(response::Kind::GroupMade(GroupMade {
+            group_id: group.get(),
+        }))
+    }
+
+    /// Names a Group, colours it, or shuts and opens it (041): whichever is
+    /// given.
+    fn change_group(
+        &self,
+        group: u64,
+        name: Option<&str>,
+        colour: Option<&str>,
+        shut: Option<bool>,
+    ) -> Result<response::Kind, AppError> {
+        self.state
+            .borrow_mut()
+            .change_group(GroupId(group), name, colour, shut)
+            .map_err(|code| AppError::new(code).field(group_field(code)))?;
+        Ok(response::Kind::Ack(Ack {}))
+    }
+
+    /// Takes a Group away (041): its Sites stay.
+    fn remove_group(&self, remove: &RemoveGroup) -> Result<response::Kind, AppError> {
+        if !self
+            .state
+            .borrow_mut()
+            .remove_group(GroupId(remove.group_id))
+        {
+            return Err(AppError::new("group.unknown").field("group_id"));
+        }
+        Ok(response::Kind::Ack(Ack {}))
+    }
+
+    /// Puts a tab in a Group, or takes a Site out of its Group (041).
+    fn move_to_group(&self, moved: &MoveToGroup) -> Result<response::Kind, AppError> {
+        let group = (moved.group_id != 0).then_some(GroupId(moved.group_id));
+        self.state
+            .borrow_mut()
+            .move_to_group(TabId(moved.tab_id), group)
+            .map_err(|code| AppError::new(code).field(group_field(code)))?;
+        Ok(response::Kind::Ack(Ack {}))
+    }
+
     /// Sends a Site back to its home (039): the home is loaded in it, as an
     /// address the person asked for. Nothing to do for a tab that is no
     /// Site, or is not away.
@@ -1244,6 +1309,17 @@ impl App {
             }
             Ok(())
         })
+    }
+}
+
+/// The field of a Group's request that a code is about.
+fn group_field(code: &str) -> &'static str {
+    match code {
+        "group.name_empty" => "name",
+        "group.colour_unknown" => "colour",
+        "group.unknown" => "group_id",
+        "window.unknown" | "window.private" | "group.too_many" => "window_id",
+        _ => "tab_id",
     }
 }
 

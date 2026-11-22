@@ -1,6 +1,6 @@
 // WebTiger Core ↔ shell contract (docs/features/000-master-plan.md §5.5,
 // docs/features/001-foundations.md §4).
-// Contract version: 1.30 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
+// Contract version: 1.31 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
 //   1.1  Tabs: OpenTab, CloseTab, ActivateTab, TabOpened; WindowSnapshot.tabs.
 //   1.2  A page that asks for a new window: NewWindowRequested, CloseRequested;
 //        web view ids with their top bit set are the shell's.
@@ -135,6 +135,13 @@ message Request {
     LetGoSite let_go_site = 37;
     // Since 1.30
     SendSiteHome send_site_home = 38;
+    // Since 1.31
+    MakeGroup make_group = 39;
+    RenameGroup rename_group = 40;
+    ColourGroup colour_group = 41;
+    ShutGroup shut_group = 42;
+    RemoveGroup remove_group = 43;
+    MoveToGroup move_to_group = 44;
   }
 }
 
@@ -161,6 +168,8 @@ message Response {
     // Since 1.18
     SpacesPage spaces_page = 12;
     SpaceCreated space_created = 13;
+    // Since 1.31
+    GroupMade group_made = 14;
   }
 }
 

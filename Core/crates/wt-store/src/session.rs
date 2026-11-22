@@ -21,6 +21,19 @@ pub struct SavedTab {
     /// A Site's name: the title it was kept with. It is what a Site is
     /// called while it is asleep, wherever it had wandered.
     pub name: String,
+    /// The Group a Site is in (041): its place among its Space's Groups,
+    /// counted from one. Nought for a tab that is in none.
+    pub group: u32,
+}
+
+/// A Group as it is kept between runs (041).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SavedGroup {
+    pub name: String,
+    /// The name of its colour, one of a Space's (025). Empty for none.
+    pub colour: String,
+    /// It is shut: its Sites are out of the way.
+    pub shut: bool,
 }
 
 impl Store {
@@ -42,15 +55,16 @@ impl Store {
         {
             let mut insert = transaction
                 .prepare_cached(
-                    "INSERT INTO tab (space_id, position, url, title, front, site_home, site_name) \
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                    "INSERT INTO tab (space_id, position, url, title, front, site_home, site_name, site_group) \
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
                 )
                 .map_err(|_| StoreError::Query)?;
             for (position, tab) in tabs.iter().enumerate() {
                 let position = i64::try_from(position).map_err(|_| StoreError::Query)?;
                 insert
                     .execute(params![
-                        space, position, tab.url, tab.title, tab.front, tab.home, tab.name
+                        space, position, tab.url, tab.title, tab.front, tab.home, tab.name,
+                        tab.group
                     ])
                     .map_err(|_| StoreError::Query)?;
             }
@@ -67,7 +81,7 @@ impl Store {
         let mut statement = self
             .connection
             .prepare_cached(
-                "SELECT url, title, front, site_home, site_name FROM tab \
+                "SELECT url, title, front, site_home, site_name, site_group FROM tab \
                  WHERE space_id = ?1 ORDER BY position",
             )
             .map_err(|_| StoreError::Query)?;
@@ -79,6 +93,70 @@ impl Store {
                     front: row.get(2)?,
                     home: row.get(3)?,
                     name: row.get(4)?,
+                    group: row.get(5)?,
+                })
+            })
+            .and_then(Iterator::collect)
+            .map_err(|_| StoreError::Query)
+    }
+
+    /// Replaces a Space's saved Groups with `groups`, in their order, as a
+    /// whole (041).
+    ///
+    /// # Errors
+    /// `Query` when the database refuses; what was saved before is then
+    /// what is still there.
+    pub fn save_groups(&mut self, space: SpaceId, groups: &[SavedGroup]) -> Result<(), StoreError> {
+        let space = i64::try_from(space.get()).map_err(|_| StoreError::Query)?;
+        let transaction = self
+            .connection
+            .transaction()
+            .map_err(|_| StoreError::Query)?;
+        transaction
+            .execute("DELETE FROM node WHERE space_id = ?1", params![space])
+            .map_err(|_| StoreError::Query)?;
+        {
+            let mut insert = transaction
+                .prepare_cached(
+                    "INSERT INTO node (space_id, position, kind, name, colour, shut) \
+                     VALUES (?1, ?2, 'group', ?3, ?4, ?5)",
+                )
+                .map_err(|_| StoreError::Query)?;
+            for (position, group) in groups.iter().enumerate() {
+                let position = i64::try_from(position).map_err(|_| StoreError::Query)?;
+                insert
+                    .execute(params![
+                        space,
+                        position,
+                        group.name,
+                        group.colour,
+                        group.shut
+                    ])
+                    .map_err(|_| StoreError::Query)?;
+            }
+        }
+        transaction.commit().map_err(|_| StoreError::Query)
+    }
+
+    /// A Space's saved Groups, in their order. None saved is none.
+    ///
+    /// # Errors
+    /// `Query` when the database refuses.
+    pub fn saved_groups(&self, space: SpaceId) -> Result<Vec<SavedGroup>, StoreError> {
+        let space = i64::try_from(space.get()).map_err(|_| StoreError::Query)?;
+        let mut statement = self
+            .connection
+            .prepare_cached(
+                "SELECT name, colour, shut FROM node \
+                 WHERE space_id = ?1 AND kind = 'group' ORDER BY position",
+            )
+            .map_err(|_| StoreError::Query)?;
+        statement
+            .query_map(params![space], |row| {
+                Ok(SavedGroup {
+                    name: row.get(0)?,
+                    colour: row.get(1)?,
+                    shut: row.get(2)?,
                 })
             })
             .and_then(Iterator::collect)
@@ -102,6 +180,7 @@ mod tests {
             front,
             home: String::new(),
             name: String::new(),
+            group: 0,
         }
     }
 
@@ -203,7 +282,7 @@ mod tests {
         drop(store);
         let old = Connection::open(&path).unwrap();
         old.execute_batch(
-            "ALTER TABLE tab DROP COLUMN site_home; ALTER TABLE tab DROP COLUMN site_name; DROP TABLE journal; ALTER TABLE space DROP COLUMN colour; DROP TABLE setting; DROP TABLE site_permission; DROP TABLE download; DROP TABLE site_setting; DROP TABLE tab; PRAGMA user_version = 2;",
+            "DROP TABLE node; ALTER TABLE tab DROP COLUMN site_group; ALTER TABLE tab DROP COLUMN site_home; ALTER TABLE tab DROP COLUMN site_name; DROP TABLE journal; ALTER TABLE space DROP COLUMN colour; DROP TABLE setting; DROP TABLE site_permission; DROP TABLE download; DROP TABLE site_setting; DROP TABLE tab; PRAGMA user_version = 2;",
         )
             .unwrap();
         drop(old);
@@ -250,7 +329,7 @@ mod tests {
         store.save_tabs(made.id, &three()).unwrap();
         drop(store);
         let old = Connection::open(&path).unwrap();
-        old.execute_batch("ALTER TABLE tab DROP COLUMN site_home; ALTER TABLE tab DROP COLUMN site_name; PRAGMA user_version = 9;")
+        old.execute_batch("DROP TABLE node; ALTER TABLE tab DROP COLUMN site_group; ALTER TABLE tab DROP COLUMN site_home; ALTER TABLE tab DROP COLUMN site_name; PRAGMA user_version = 9;")
             .unwrap();
         drop(old);
 
@@ -268,5 +347,91 @@ mod tests {
         tabs[1].name = "Another Place".to_owned();
         store.save_tabs(made.id, &tabs).unwrap();
         assert_eq!(store.saved_tabs(made.id).unwrap(), tabs);
+    }
+
+    #[test]
+    fn a_spaces_groups_are_kept_in_their_order_and_a_site_says_which_it_is_in() {
+        let folder = tempfile::tempdir().unwrap();
+        let path = folder.path().join("webtiger.sqlite");
+        let mut store = Store::open(&path).unwrap();
+        let space = store.default_space(MINE, Timestamp(1)).unwrap().id;
+        assert_eq!(
+            store.saved_groups(space).unwrap(),
+            [],
+            "a new store has none"
+        );
+        let group = |name: &str, colour: &str, shut: bool| SavedGroup {
+            name: name.to_owned(),
+            colour: colour.to_owned(),
+            shut,
+        };
+        let groups = [group("Work", "blue", false), group("House", "", true)];
+        let mut tabs = three();
+        tabs[0].home = "https://example.com/".to_owned();
+        tabs[0].name = "Example".to_owned();
+        tabs[0].group = 2;
+
+        store.save_groups(space, &groups).unwrap();
+        store.save_tabs(space, &tabs).unwrap();
+        assert_eq!(store.saved_groups(space).unwrap(), groups);
+        assert_eq!(store.saved_tabs(space).unwrap()[0].group, 2);
+        // Saved again, they are replaced as a whole.
+        store
+            .save_groups(space, std::slice::from_ref(&groups[1]))
+            .unwrap();
+        assert_eq!(
+            store.saved_groups(space).unwrap(),
+            [group("House", "", true)]
+        );
+        drop(store);
+
+        // After a restart, as they were.
+        let store = Store::open(&path).unwrap();
+        assert_eq!(
+            store.saved_groups(space).unwrap(),
+            [group("House", "", true)]
+        );
+        assert_eq!(store.saved_tabs(space).unwrap(), tabs);
+    }
+
+    #[test]
+    fn a_store_from_before_groups_has_none_and_its_sites_are_in_none() {
+        let folder = tempfile::tempdir().unwrap();
+        let path = folder.path().join("webtiger.sqlite");
+        // A store as this build makes it, put back to version 10 by taking
+        // the Groups away: what 039 left.
+        let mut store = Store::open(&path).unwrap();
+        let made = store.default_space(MINE, Timestamp(1)).unwrap();
+        let mut tabs = three();
+        tabs[0].home = "https://example.com/".to_owned();
+        tabs[0].name = "Example".to_owned();
+        store.save_tabs(made.id, &tabs).unwrap();
+        drop(store);
+        let old = Connection::open(&path).unwrap();
+        old.execute_batch(
+            "DROP TABLE node; ALTER TABLE tab DROP COLUMN site_group; PRAGMA user_version = 10;",
+        )
+        .unwrap();
+        drop(old);
+
+        let mut store = Store::open(&path).unwrap();
+
+        assert_eq!(store.schema_version().unwrap(), crate::SCHEMA_VERSION);
+        assert_eq!(store.saved_groups(made.id).unwrap(), []);
+        assert_eq!(
+            store.saved_tabs(made.id).unwrap(),
+            tabs,
+            "its tabs and its Site are as they were, in no Group"
+        );
+        // And a Group can be kept in it now.
+        let group = SavedGroup {
+            name: "Work".to_owned(),
+            colour: String::new(),
+            shut: false,
+        };
+        store
+            .save_groups(made.id, std::slice::from_ref(&group))
+            .unwrap();
+        assert_eq!(store.saved_groups(made.id).unwrap(), [group]);
     }
 }

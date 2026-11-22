@@ -115,6 +115,70 @@ message SendSiteHome {
   uint64 tab_id = 1;
 }
 
+// Groups (041). Since 1.31. A Group is a folder of Sites in a Space's row:
+// one level deep. A private window has none ("window.private").
+
+// Makes a Group in the row a window shows, after the Groups there are.
+// The name is what a Space's may be: trimmed, and not empty
+// ("group.name_empty"). Answered with GroupMade; "window.unknown";
+// "window.private"; or "group.too_many".
+message MakeGroup {
+  uint64 window_id = 1;
+  string name = 2 [(wt.redact) = true];
+}
+
+message GroupMade {
+  uint64 group_id = 1;
+}
+
+// Answered with Ack; "group.unknown"; or "group.name_empty".
+message RenameGroup {
+  uint64 group_id = 1;
+  string name = 2 [(wt.redact) = true];
+}
+
+// Gives a Group one of the colours a Space can have, by its name, or none
+// (empty). Answered with Ack; "group.unknown"; or "group.colour_unknown".
+message ColourGroup {
+  uint64 group_id = 1;
+  string colour = 2;
+}
+
+// Shuts a Group, or opens it. Shut, its Sites are out of the way: they are
+// left out of what the window is told to draw, and no tab is changed by it.
+// Answered with Ack, also when it is so already; or "group.unknown".
+message ShutGroup {
+  uint64 group_id = 1;
+  bool shut = 2;
+}
+
+// Takes a Group away. Its Sites stay, in no Group. Answered with Ack; or
+// "group.unknown".
+message RemoveGroup {
+  uint64 group_id = 1;
+}
+
+// Puts a tab in a Group of its row, at the Group's end. A tab that is no
+// Site is kept first (KeepTab), and one that cannot be kept is refused as
+// KeepTab refuses it. With group_id 0 a Site is taken out of its Group, and
+// a tab that is in none is left as it is. Answered with Ack; "tab.unknown";
+// "group.unknown" (also for a Group of another row); "tab.no_page"; or
+// "window.private".
+message MoveToGroup {
+  uint64 tab_id = 1;
+  uint64 group_id = 2;
+}
+
+message GroupSummary {
+  uint64 group_id = 1;
+  string name = 2 [(wt.redact) = true];
+  // The name of its colour; empty for none.
+  string colour = 3;
+  bool shut = 4;
+  // How many Sites it holds, shown or not.
+  uint32 sites = 5;
+}
+
 // A window, as its subscription publishes it.
 message WindowSnapshot {
   uint64 window_id = 1;
@@ -141,6 +205,13 @@ message WindowSnapshot {
   string undo = 8;
   // Since 1.26. The window is private (037). A shell says so in words.
   bool private_window = 9;
+  // Since 1.31. The Groups of the row the window shows (041), in their
+  // order. The row is: the Sites that are in no Group; then each Group's
+  // Sites, Group by Group in this order; then the tabs that are no Sites.
+  // `tabs` has the Sites of a Group that is shut left out, but for the tab in
+  // front, which is always there: a shut Group, and one with no Site, is
+  // drawn from this list alone.
+  repeated GroupSummary groups = 10;
 }
 
 // A tab as a strip of tabs shows it: enough to name it, and no more.
@@ -166,6 +237,8 @@ message TabSummary {
   // Since 1.30. The name a Site was kept with: what it is called when the
   // page it shows is not its home. Empty for a tab that is no Site.
   string site_name = 8 [(wt.redact) = true];
+  // Since 1.31. The Group a Site is in (041); 0 for a tab that is in none.
+  uint64 group_id = 9;
 }
 
 message TabView {

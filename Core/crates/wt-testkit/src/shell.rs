@@ -8,10 +8,11 @@ use std::time::Duration;
 
 use wt_app::{Dispatcher, HOST_TIMEOUT, Outbox, StartError};
 use wt_proto::v1::{
-    ActivateTab, CloseTab, CoreConfig, EngineEvent, EngineInfo, EngineKind, Envelope, FakeOptions,
-    HostResponse, KeepTab, LetGoSite, OpenTab, OpenWindow, Platform, Request, SendSiteHome,
-    SubmitAddress, Subscribe, TestMode, WindowSnapshot, WindowTopic, envelope, event, host_request,
-    host_response, request, response, snapshot, subscribe,
+    ActivateTab, CloseTab, ColourGroup, CoreConfig, EngineEvent, EngineInfo, EngineKind, Envelope,
+    FakeOptions, HostResponse, KeepTab, LetGoSite, MakeGroup, MoveToGroup, OpenTab, OpenWindow,
+    Platform, RemoveGroup, RenameGroup, Request, SendSiteHome, ShutGroup, SubmitAddress, Subscribe,
+    TestMode, WindowSnapshot, WindowTopic, envelope, event, host_request, host_response, request,
+    response, snapshot, subscribe,
 };
 use wt_proto::{CONTRACT_MAJOR, CONTRACT_MINOR};
 
@@ -337,6 +338,58 @@ impl FakeShell {
     pub async fn send_site_home(&mut self, tab: u64) -> response::Kind {
         self.request(request::Kind::SendSiteHome(SendSiteHome { tab_id: tab }))
             .await
+    }
+
+    /// Makes a Group in the row a window shows (041), and waits.
+    pub async fn make_group(&mut self, window: u64, name: &str) -> response::Kind {
+        self.request(request::Kind::MakeGroup(MakeGroup {
+            window_id: window,
+            name: name.to_owned(),
+        }))
+        .await
+    }
+
+    /// Names a Group again (041), and waits.
+    pub async fn rename_group(&mut self, group: u64, name: &str) -> response::Kind {
+        self.request(request::Kind::RenameGroup(RenameGroup {
+            group_id: group,
+            name: name.to_owned(),
+        }))
+        .await
+    }
+
+    /// Gives a Group a colour, or with an empty name none (041), and waits.
+    pub async fn colour_group(&mut self, group: u64, colour: &str) -> response::Kind {
+        self.request(request::Kind::ColourGroup(ColourGroup {
+            group_id: group,
+            colour: colour.to_owned(),
+        }))
+        .await
+    }
+
+    /// Shuts a Group, or opens it (041), and waits.
+    pub async fn shut_group(&mut self, group: u64, shut: bool) -> response::Kind {
+        self.request(request::Kind::ShutGroup(ShutGroup {
+            group_id: group,
+            shut,
+        }))
+        .await
+    }
+
+    /// Takes a Group away (041), and waits.
+    pub async fn remove_group(&mut self, group: u64) -> response::Kind {
+        self.request(request::Kind::RemoveGroup(RemoveGroup { group_id: group }))
+            .await
+    }
+
+    /// Puts a tab in a Group, or with Group 0 takes a Site out of its Group
+    /// (041), and waits.
+    pub async fn move_to_group(&mut self, tab: u64, group: u64) -> response::Kind {
+        self.request(request::Kind::MoveToGroup(MoveToGroup {
+            tab_id: tab,
+            group_id: group,
+        }))
+        .await
     }
 
     /// Brings a tab in front as one chosen from what was offered while

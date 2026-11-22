@@ -10,7 +10,7 @@ use wt_proto::v1::{
     Ack, ColourSpace, CreateSpace, RenameSpace, SpaceCreated, SpaceSummary, SpacesPage,
     SwitchSpace, response,
 };
-use wt_store::{Logins, SavedTab, Space, Store};
+use wt_store::{Logins, SavedGroup, SavedTab, Space, Store};
 
 use crate::app::{App, AppFuture, refuse};
 use crate::error::AppError;
@@ -20,6 +20,8 @@ use crate::error::AppError;
 pub(crate) struct Written {
     shown: Option<SpaceId>,
     rows: BTreeMap<SpaceId, Vec<SavedTab>>,
+    /// Each Space's Groups (041).
+    groups: BTreeMap<SpaceId, Vec<SavedGroup>>,
 }
 
 /// What the store has of the Spaces as the app starts.
@@ -31,6 +33,8 @@ pub(crate) struct Kept {
     pub(crate) start: Space,
     /// Each Space's tabs, where a session is kept at all.
     pub(crate) saved: Option<BTreeMap<SpaceId, Vec<SavedTab>>>,
+    /// Each Space's Groups (041), where a session is kept.
+    pub(crate) groups: BTreeMap<SpaceId, Vec<SavedGroup>>,
     pub(crate) written: Written,
 }
 
@@ -57,14 +61,25 @@ pub(crate) fn kept(store: &Store, own: Space, session: bool) -> Kept {
             .map(|space| (space.id, store.saved_tabs(space.id).unwrap_or_default()))
             .collect::<BTreeMap<_, _>>()
     });
+    // The Groups a Space had (041): kept with the session, and read with it.
+    let groups: BTreeMap<SpaceId, Vec<SavedGroup>> = if session {
+        spaces
+            .iter()
+            .map(|space| (space.id, store.saved_groups(space.id).unwrap_or_default()))
+            .collect()
+    } else {
+        BTreeMap::new()
+    };
     let written = Written {
         shown,
         rows: saved.clone().unwrap_or_default(),
+        groups: groups.clone(),
     };
     Kept {
         spaces,
         start,
         saved,
+        groups,
         written,
     }
 }
@@ -81,6 +96,20 @@ impl App {
         };
         let mut written = self.written.borrow_mut();
         let mut store = self.store.borrow_mut();
+        // The Groups before the tabs (041): a tab says which Group it is in
+        // by the Group's place, and a place with no Group at it is none.
+        for (space, groups) in session.groups {
+            if written.groups.get(&space) == Some(&groups) {
+                continue;
+            }
+            // A Space with no Groups that never had any has nothing to write.
+            if groups.is_empty() && !written.groups.contains_key(&space) {
+                continue;
+            }
+            if store.save_groups(space, &groups).is_ok() {
+                written.groups.insert(space, groups);
+            }
+        }
         for (space, tabs) in session.rows {
             if written.rows.get(&space) == Some(&tabs) {
                 continue;

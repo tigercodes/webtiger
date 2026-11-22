@@ -5,15 +5,15 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use wt_core::words::{all_found, typed_words};
 use wt_core::{
-    ACTUAL_SIZE, Address, IdMint, LoginSetId, Security, SpaceId, TabId, WebViewId, WindowId,
-    zoom_in, zoom_out,
+    ACTUAL_SIZE, Address, GroupId, IdMint, LoginSetId, Security, SpaceId, TabId, WebViewId,
+    WindowId, space_colour, space_name, zoom_in, zoom_out,
 };
 use wt_proto::v1::{
-    AddressView, DialogKind, DialogPrompt, DownloadPrompt, EngineKind, FindView, LoadState,
-    NavigationFailed, PermissionKind, PermissionPrompt, PromptView, SignInPrompt, TabSummary,
-    TabView, WindowSnapshot, ZoomView, address_view, engine_event, prompt_view,
+    AddressView, DialogKind, DialogPrompt, DownloadPrompt, EngineKind, FindView, GroupSummary,
+    LoadState, NavigationFailed, PermissionKind, PermissionPrompt, PromptView, SignInPrompt,
+    TabSummary, TabView, WindowSnapshot, ZoomView, address_view, engine_event, prompt_view,
 };
-use wt_store::{SavedTab, Space};
+use wt_store::{SavedGroup, SavedTab, Space};
 
 use crate::error::is_code;
 
@@ -283,6 +283,8 @@ pub(crate) struct Tab {
     stands_in: bool,
     /// The tab is kept (039): a Site.
     site: Option<Site>,
+    /// The Group a Site is in (041), when it is in one.
+    group: Option<GroupId>,
     /// A load of the Site's home is on its way: asked for by the person, by
     /// waking it or by sending it home. Where that load lands is the Site's
     /// home from then on (WT-D31): a home that sends the browser on to
@@ -349,6 +351,7 @@ impl Tab {
             silenced: false,
             stands_in: false,
             site: None,
+            group: None,
             homing: false,
         }
     }
@@ -401,6 +404,7 @@ impl Tab {
         tab.pending = Some(site.home.clone());
         tab.asleep = true;
         tab.site = Some(site.clone());
+        tab.group = self.group;
         tab
     }
 
@@ -444,6 +448,7 @@ impl Tab {
                 front,
                 home,
                 name,
+                group: 0,
             };
         }
         let url = self
@@ -459,6 +464,7 @@ impl Tab {
                 front,
                 home,
                 name,
+                group: 0,
             };
         }
         let kept = self
@@ -482,6 +488,7 @@ impl Tab {
             front,
             home,
             name,
+            group: 0,
         }
     }
 
@@ -661,6 +668,7 @@ impl Tab {
             asleep: self.asleep,
             away: self.away_from().is_some(),
             site_name: self.site_name(),
+            group_id: self.group.map_or(0, GroupId::get),
         }
     }
 
@@ -770,8 +778,68 @@ pub(crate) struct LoadTarget {
 /// and the one in front. It always has a tab (005, T1).
 #[derive(Debug)]
 struct Row {
+    /// The tabs, in the row's order (041): the Sites that are in no Group;
+    /// each Group's Sites, Group by Group; the tabs that are no Sites.
     tabs: Vec<TabId>,
     front: TabId,
+    /// The Groups, in their order.
+    groups: Vec<Group>,
+}
+
+/// A Group of a row (041): a folder of Sites, one level deep.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Group {
+    id: GroupId,
+    name: String,
+    /// The name of its colour, one of a Space's (025); empty for none.
+    colour: String,
+    /// Its Sites are out of the way: not among the tabs a window is told to
+    /// draw, but for one that is in front.
+    shut: bool,
+}
+
+/// The most Groups a row has.
+const MOST_GROUPS: usize = 64;
+
+/// Puts a row's tabs in the order a row has (041): the Sites that are in no
+/// Group; each Group's Sites, Group by Group; the tabs that are no Sites.
+/// Within each, the tabs stay in the order they were in.
+fn arrange(tabs: &BTreeMap<TabId, Tab>, row: &mut Row) {
+    let places: BTreeMap<TabId, (u8, usize)> = row
+        .tabs
+        .iter()
+        .map(|id| {
+            let place = match tabs.get(id) {
+                Some(tab) if tab.site.is_some() => tab
+                    .group
+                    .and_then(|group| row.groups.iter().position(|one| one.id == group))
+                    .map_or((0, 0), |group| (1, group)),
+                _ => (2, 0),
+            };
+            (*id, place)
+        })
+        .collect();
+    row.tabs
+        .sort_by_key(|id| places.get(id).copied().unwrap_or((2, 0)));
+}
+
+/// Whether a tab is out of the way (041): a Site of a Group that is shut,
+/// unless it is the tab in front, which is always shown.
+fn is_hidden(tabs: &BTreeMap<TabId, Tab>, row: &Row, id: TabId) -> bool {
+    id != row.front
+        && tabs
+            .get(&id)
+            .and_then(|tab| tab.group)
+            .is_some_and(|group| row.groups.iter().any(|one| one.id == group && one.shut))
+}
+
+/// The tabs of a row that are shown, in order: all but those out of the way.
+fn shown_tabs(tabs: &BTreeMap<TabId, Tab>, row: &Row) -> Vec<TabId> {
+    row.tabs
+        .iter()
+        .copied()
+        .filter(|id| !is_hidden(tabs, row, *id))
+        .collect()
 }
 
 /// How many of a row's tabs are Sites (039): they are the first of it, and
@@ -819,6 +887,8 @@ pub(crate) struct Session {
     /// The tabs of each Space the window has shown in this run, in order.
     /// A Space it has not shown has what was kept of it.
     pub(crate) rows: BTreeMap<SpaceId, Vec<SavedTab>>,
+    /// The Groups of each of those Spaces (041), in order.
+    pub(crate) groups: BTreeMap<SpaceId, Vec<SavedGroup>>,
 }
 
 /// Everything the app knows.
@@ -844,6 +914,9 @@ pub(crate) struct State {
     /// worked out, which is what a window opened when there is none is
     /// given. `None` when nothing is kept between runs: fake mode.
     saved: Option<BTreeMap<SpaceId, Vec<SavedTab>>>,
+    /// The Groups of each Space (041), as the store kept them and as last
+    /// worked out: what the session's window is given with its tabs.
+    pub(crate) saved_groups: BTreeMap<SpaceId, Vec<SavedGroup>>,
     /// The window whose tabs are the session: the first opened, and the
     /// next one opened once that is closed.
     session_window: Option<WindowId>,
@@ -884,6 +957,7 @@ impl State {
     ) -> State {
         State {
             saved,
+            saved_groups: BTreeMap::new(),
             session_window: None,
             downloads_active: BTreeMap::new(),
             exceptions: BTreeSet::new(),
@@ -957,14 +1031,35 @@ impl State {
             }
             _ => Vec::new(),
         };
+        // The Groups the Space had (041), under ids of this run's own.
+        let kept_groups = if self.session_window == Some(window) {
+            self.saved_groups.get(&space).cloned().unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+        let groups: Vec<Group> = kept_groups
+            .into_iter()
+            .map(|group| Group {
+                id: GroupId(self.ids.mint()),
+                name: group.name,
+                colour: group.colour,
+                shut: group.shut,
+            })
+            .collect();
         let mut tabs = Vec::new();
         let mut front = None;
         for saved in &kept {
             let id = TabId(self.ids.mint());
-            self.tabs.insert(
-                id,
-                Tab::restored(window, space, self.engine, login_set, saved),
-            );
+            let mut tab = Tab::restored(window, space, self.engine, login_set, saved);
+            // A Site is in the Group it was in, by that Group's place; a place
+            // there is no Group at (a store that was meddled with) is none.
+            tab.group = usize::try_from(saved.group)
+                .ok()
+                .and_then(|place| place.checked_sub(1))
+                .and_then(|place| groups.get(place))
+                .filter(|_| tab.site.is_some())
+                .map(|group| group.id);
+            self.tabs.insert(id, tab);
             if saved.front {
                 front = Some(id);
             }
@@ -984,7 +1079,15 @@ impl State {
         // A session with nobody in front (a store that was meddled with)
         // puts its first tab there: a row always has one.
         let front = front.unwrap_or(first);
-        (Row { tabs, front }, restored)
+        let mut row = Row {
+            tabs,
+            front,
+            groups,
+        };
+        // What was kept is in a row's order already; a store that was
+        // meddled with is put in it.
+        arrange(&self.tabs, &mut row);
+        (row, restored)
     }
 
     /// A Space, or a private window's row, which is one in name only.
@@ -1144,23 +1247,50 @@ impl State {
         self.saved.as_ref()?;
         let window = self.windows.get(&self.session_window?)?;
         let shown = window.space;
-        let listed: Vec<(SpaceId, TabId, Vec<TabId>)> = window
+        let listed: Vec<(SpaceId, TabId, Vec<TabId>, Vec<Group>)> = window
             .rows
             .iter()
-            .map(|(space, row)| (*space, row.front, row.tabs.clone()))
+            .map(|(space, row)| (*space, row.front, row.tabs.clone(), row.groups.clone()))
             .collect();
         let mut rows = BTreeMap::new();
-        for (space, front, ids) in listed {
+        let mut groups = BTreeMap::new();
+        for (space, front, ids, row_groups) in listed {
             let tabs: Vec<SavedTab> = ids
                 .into_iter()
-                .filter_map(|id| Some(self.tabs.get_mut(&id)?.saved(id == front)))
+                .filter_map(|id| {
+                    let tab = self.tabs.get_mut(&id)?;
+                    let mut saved = tab.saved(id == front);
+                    // A Site's Group by its place among the row's, from one.
+                    saved.group = tab
+                        .group
+                        .and_then(|group| row_groups.iter().position(|one| one.id == group))
+                        .and_then(|place| u32::try_from(place + 1).ok())
+                        .unwrap_or(0);
+                    Some(saved)
+                })
                 .collect();
             rows.insert(space, tabs);
+            groups.insert(
+                space,
+                row_groups
+                    .into_iter()
+                    .map(|group| SavedGroup {
+                        name: group.name,
+                        colour: group.colour,
+                        shut: group.shut,
+                    })
+                    .collect::<Vec<_>>(),
+            );
         }
         if let Some(saved) = &mut self.saved {
             saved.extend(rows.clone());
         }
-        Some(Session { shown, rows })
+        self.saved_groups.extend(groups.clone());
+        Some(Session {
+            shown,
+            rows,
+            groups,
+        })
     }
 
     /// Closes a window. The web views to destroy, or `None` when there is no
@@ -1267,11 +1397,35 @@ impl State {
             } else if row.front == tab_id {
                 // Back to the tab whose page opened it, when that is still
                 // here. Otherwise what was after it, which is now where it
-                // was; past the end, the last.
+                // was; past the end, the last. Only among the tabs that are
+                // shown: a Site out of the way in a Group that is shut is
+                // not brought out by another tab's closing (041). When
+                // nothing is shown, an empty tab is opened, as for a row
+                // with no tab left.
                 let opener = tab.opener.filter(|opener| row.tabs.contains(opener));
-                let next = index.unwrap_or(0).min(row.tabs.len() - 1);
-                if let Some(next) = opener.or_else(|| row.tabs.get(next).copied()) {
-                    row.front = next;
+                let index = index.unwrap_or(0);
+                let shown = |id: &&TabId| !is_hidden(&self.tabs, row, **id);
+                let next = row.tabs[index.min(row.tabs.len())..]
+                    .iter()
+                    .find(shown)
+                    .or_else(|| {
+                        row.tabs[..index.min(row.tabs.len())]
+                            .iter()
+                            .rev()
+                            .find(shown)
+                    })
+                    .copied();
+                match opener.or(next) {
+                    Some(next) => row.front = next,
+                    None => {
+                        let fresh = TabId(self.ids.mint());
+                        self.tabs.insert(
+                            fresh,
+                            Tab::new(tab.window, tab.space, self.engine, tab.login_set),
+                        );
+                        row.tabs.push(fresh);
+                        row.front = fresh;
+                    }
                 }
             }
             self.dirty.insert(tab.window);
@@ -1300,10 +1454,13 @@ impl State {
         let row = self.windows.get(&window)?.rows.get(&space)?;
         if row.front == tab_id {
             let index = row.tabs.iter().position(|id| *id == tab_id).unwrap_or(0);
+            // Nor one that is out of the way in a Group that is shut (041).
             let comes_forward = |id: &&TabId| {
-                self.tabs
-                    .get(*id)
-                    .is_some_and(|tab| tab.site.is_none() || !tab.asleep)
+                !is_hidden(&self.tabs, row, **id)
+                    && self
+                        .tabs
+                        .get(*id)
+                        .is_some_and(|tab| tab.site.is_none() || !tab.asleep)
             };
             let next = row.tabs[index + 1..]
                 .iter()
@@ -1348,7 +1505,163 @@ impl State {
         if let Some(tab) = self.tabs.get_mut(&tab_id) {
             tab.site = Some(Site { home, name });
         }
-        self.place_among(window, space, tab_id);
+        // Among the tabs that were no Sites it was after every Site: in a
+        // row's order it is the last of the Sites that are in no Group.
+        self.arrange_row(window, space);
+        Ok(())
+    }
+
+    /// The window and the Space whose row a Group is in.
+    fn row_of_group(&self, group: GroupId) -> Option<(WindowId, SpaceId)> {
+        self.windows.iter().find_map(|(id, window)| {
+            window
+                .rows
+                .iter()
+                .find(|(_, row)| row.groups.iter().any(|one| one.id == group))
+                .map(|(space, _)| (*id, *space))
+        })
+    }
+
+    /// Makes a Group in the row a window shows (041), after the Groups
+    /// there are. Its id; or the code to refuse with.
+    pub(crate) fn make_group(
+        &mut self,
+        window_id: WindowId,
+        name: &str,
+    ) -> Result<GroupId, &'static str> {
+        if !self.windows.contains_key(&window_id) {
+            return Err("window.unknown");
+        }
+        // Nothing of a private window is kept (037): it has no Sites, and
+        // so no Groups.
+        if self.is_private_window(window_id) {
+            return Err("window.private");
+        }
+        let name = space_name(name).ok_or("group.name_empty")?;
+        let window = self.windows.get_mut(&window_id).ok_or("window.unknown")?;
+        let row = window.rows.get_mut(&window.space).ok_or("window.unknown")?;
+        if row.groups.len() >= MOST_GROUPS {
+            return Err("group.too_many");
+        }
+        let id = GroupId(self.ids.mint());
+        row.groups.push(Group {
+            id,
+            name,
+            colour: String::new(),
+            shut: false,
+        });
+        self.dirty.insert(window_id);
+        Ok(id)
+    }
+
+    /// Names a Group, gives it a colour or none, or shuts and opens it
+    /// (041): whichever of the three is given. The code to refuse with.
+    pub(crate) fn change_group(
+        &mut self,
+        group: GroupId,
+        name: Option<&str>,
+        colour: Option<&str>,
+        shut: Option<bool>,
+    ) -> Result<(), &'static str> {
+        let (window, space) = self.row_of_group(group).ok_or("group.unknown")?;
+        let name = name
+            .map(|name| space_name(name).ok_or("group.name_empty"))
+            .transpose()?;
+        let colour = colour
+            .map(|colour| match colour {
+                "" => Ok(""),
+                named => space_colour(named).ok_or("group.colour_unknown"),
+            })
+            .transpose()?;
+        let one = self
+            .windows
+            .get_mut(&window)
+            .and_then(|found| found.rows.get_mut(&space))
+            .and_then(|row| row.groups.iter_mut().find(|one| one.id == group))
+            .ok_or("group.unknown")?;
+        if let Some(name) = name {
+            one.name = name;
+        }
+        if let Some(colour) = colour {
+            colour.clone_into(&mut one.colour);
+        }
+        if let Some(shut) = shut {
+            one.shut = shut;
+        }
+        self.dirty.insert(window);
+        Ok(())
+    }
+
+    /// Takes a Group away (041). Its Sites stay, in no Group, after the
+    /// Sites that were in none. Whether there was such a Group.
+    pub(crate) fn remove_group(&mut self, group: GroupId) -> bool {
+        let Some((window, space)) = self.row_of_group(group) else {
+            return false;
+        };
+        if let Some(row) = self
+            .windows
+            .get_mut(&window)
+            .and_then(|found| found.rows.get_mut(&space))
+        {
+            row.groups.retain(|one| one.id != group);
+        }
+        for tab in self.tabs.values_mut() {
+            if tab.group == Some(group) {
+                tab.group = None;
+            }
+        }
+        self.arrange_row(window, space);
+        true
+    }
+
+    /// Puts a tab in a Group of its row, at the Group's end (041); with no
+    /// Group, takes a Site out of the one it is in. A tab that is no Site
+    /// is kept first, and one that cannot be kept is refused as keeping
+    /// refuses it. The code to refuse with.
+    pub(crate) fn move_to_group(
+        &mut self,
+        tab_id: TabId,
+        group: Option<GroupId>,
+    ) -> Result<(), &'static str> {
+        let tab = self.tabs.get(&tab_id).ok_or("tab.unknown")?;
+        let (window, space) = (tab.window, tab.space);
+        let Some(group) = group else {
+            // Out of its Group: after the Sites that are in none. A tab that
+            // is in no Group is as it was.
+            if let Some(tab) = self.tabs.get_mut(&tab_id)
+                && tab.group.take().is_some()
+            {
+                self.arrange_row(window, space);
+            }
+            return Ok(());
+        };
+        // Nothing of a private window is kept (037).
+        if self.is_private_window(window) {
+            return Err("window.private");
+        }
+        let in_this_row = self
+            .windows
+            .get(&window)
+            .and_then(|found| found.rows.get(&space))
+            .is_some_and(|row| row.groups.iter().any(|one| one.id == group));
+        if !in_this_row {
+            return Err("group.unknown");
+        }
+        self.keep_tab(tab_id)?;
+        if let Some(tab) = self.tabs.get_mut(&tab_id) {
+            tab.group = Some(group);
+        }
+        // At the Group's end: last in the row, and then put in a row's order,
+        // which leaves it last of its Group.
+        if let Some(row) = self
+            .windows
+            .get_mut(&window)
+            .and_then(|found| found.rows.get_mut(&space))
+        {
+            row.tabs.retain(|id| *id != tab_id);
+            row.tabs.push(tab_id);
+        }
+        self.arrange_row(window, space);
         Ok(())
     }
 
@@ -1368,31 +1681,25 @@ impl State {
             return false;
         };
         if tab.site.take().is_some() {
+            // No Site is in a Group (041). Among the Sites it was before every
+            // other tab: in a row's order it is the first of those.
+            tab.group = None;
             let (window, space) = (tab.window, tab.space);
-            self.place_among(window, space, tab_id);
+            self.arrange_row(window, space);
         }
         true
     }
 
-    /// Puts a tab that has just become a Site, or has just stopped being
-    /// one, where the row's order has it: after the row's Sites. For a new
-    /// Site that is the end of the Sites; for a tab let go, the start of the
-    /// other tabs.
-    fn place_among(&mut self, window: WindowId, space: SpaceId, tab_id: TabId) {
-        let Some(row) = self
+    /// Puts a row's tabs in a row's order again (041), after a tab became a
+    /// Site, stopped being one, or changed its Group.
+    fn arrange_row(&mut self, window: WindowId, space: SpaceId) {
+        if let Some(row) = self
             .windows
             .get_mut(&window)
             .and_then(|window| window.rows.get_mut(&space))
-        else {
-            return;
-        };
-        row.tabs.retain(|id| *id != tab_id);
-        let sites = row
-            .tabs
-            .iter()
-            .filter(|id| self.tabs.get(*id).is_some_and(|tab| tab.site.is_some()))
-            .count();
-        row.tabs.insert(sites.min(row.tabs.len()), tab_id);
+        {
+            arrange(&self.tabs, row);
+        }
         self.dirty.insert(window);
     }
 
@@ -1435,8 +1742,11 @@ impl State {
     pub(crate) fn tab_at_step(&self, window_id: WindowId, step: Step) -> Option<TabId> {
         let window = self.windows.get(&window_id)?;
         let row = window.rows.get(&window.space)?;
-        let last = row.tabs.len().checked_sub(1)?;
-        let front = row.tabs.iter().position(|tab| *tab == row.front)?;
+        // Among the tabs that are shown: a step does not go into a Group that
+        // is shut (041).
+        let shown = shown_tabs(&self.tabs, row);
+        let last = shown.len().checked_sub(1)?;
+        let front = shown.iter().position(|tab| *tab == row.front)?;
         let to = match step {
             Step::Next if front == last => 0,
             Step::Next => front + 1,
@@ -1449,7 +1759,7 @@ impl State {
                 _ => front,
             },
         };
-        row.tabs.get(to).copied()
+        shown.get(to).copied()
     }
 
     /// A tab is sent to an address: by the user, or (with no address of
@@ -2399,10 +2709,30 @@ impl State {
         Some(WindowSnapshot {
             window_id: window_id.get(),
             tab: Some(view),
-            tabs: row
-                .tabs
+            tabs: shown_tabs(&self.tabs, row)
                 .iter()
                 .filter_map(|id| self.tabs.get(id).map(|tab| tab.summary(*id)))
+                .collect(),
+            groups: row
+                .groups
+                .iter()
+                .map(|group| GroupSummary {
+                    group_id: group.id.get(),
+                    name: group.name.clone(),
+                    colour: group.colour.clone(),
+                    shut: group.shut,
+                    sites: u32::try_from(
+                        row.tabs
+                            .iter()
+                            .filter(|id| {
+                                self.tabs
+                                    .get(*id)
+                                    .is_some_and(|tab| tab.group == Some(group.id))
+                            })
+                            .count(),
+                    )
+                    .unwrap_or(u32::MAX),
+                })
                 .collect(),
             downloads_active: self
                 .downloads_active

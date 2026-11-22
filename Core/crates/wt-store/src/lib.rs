@@ -32,7 +32,7 @@ pub use journal::{CLOSED_TABS_KEPT, ClosedTab};
 pub use permission::Allowed;
 pub use private::PRIVATE_DOWNLOADS_FROM;
 pub use schema::SCHEMA_VERSION;
-pub use session::SavedTab;
+pub use session::{SavedGroup, SavedTab};
 pub use space::Logins;
 pub use suggest::{MAX_SUGGESTIONS, Suggested};
 

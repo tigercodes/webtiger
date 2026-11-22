@@ -26,6 +26,11 @@ macro_rules! id {
 }
 
 id!(
+    /// A Group of a Space's row (041).
+    GroupId
+);
+
+id!(
     /// A window.
     WindowId
 );

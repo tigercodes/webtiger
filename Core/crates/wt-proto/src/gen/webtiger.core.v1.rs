@@ -277,6 +277,84 @@ pub struct SendSiteHome {
     #[prost(uint64, tag = "1")]
     pub tab_id: u64,
 }
+/// Makes a Group in the row a window shows, after the Groups there are.
+/// The name is what a Space's may be: trimmed, and not empty
+/// ("group.name_empty"). Answered with GroupMade; "window.unknown";
+/// "window.private"; or "group.too_many".
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct MakeGroup {
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
+    #[prost(string, tag = "2")]
+    pub name: ::prost::alloc::string::String,
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GroupMade {
+    #[prost(uint64, tag = "1")]
+    pub group_id: u64,
+}
+/// Answered with Ack; "group.unknown"; or "group.name_empty".
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct RenameGroup {
+    #[prost(uint64, tag = "1")]
+    pub group_id: u64,
+    #[prost(string, tag = "2")]
+    pub name: ::prost::alloc::string::String,
+}
+/// Gives a Group one of the colours a Space can have, by its name, or none
+/// (empty). Answered with Ack; "group.unknown"; or "group.colour_unknown".
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ColourGroup {
+    #[prost(uint64, tag = "1")]
+    pub group_id: u64,
+    #[prost(string, tag = "2")]
+    pub colour: ::prost::alloc::string::String,
+}
+/// Shuts a Group, or opens it. Shut, its Sites are out of the way: they are
+/// left out of what the window is told to draw, and no tab is changed by it.
+/// Answered with Ack, also when it is so already; or "group.unknown".
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ShutGroup {
+    #[prost(uint64, tag = "1")]
+    pub group_id: u64,
+    #[prost(bool, tag = "2")]
+    pub shut: bool,
+}
+/// Takes a Group away. Its Sites stay, in no Group. Answered with Ack; or
+/// "group.unknown".
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct RemoveGroup {
+    #[prost(uint64, tag = "1")]
+    pub group_id: u64,
+}
+/// Puts a tab in a Group of its row, at the Group's end. A tab that is no
+/// Site is kept first (KeepTab), and one that cannot be kept is refused as
+/// KeepTab refuses it. With group_id 0 a Site is taken out of its Group, and
+/// a tab that is in none is left as it is. Answered with Ack; "tab.unknown";
+/// "group.unknown" (also for a Group of another row); "tab.no_page"; or
+/// "window.private".
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct MoveToGroup {
+    #[prost(uint64, tag = "1")]
+    pub tab_id: u64,
+    #[prost(uint64, tag = "2")]
+    pub group_id: u64,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GroupSummary {
+    #[prost(uint64, tag = "1")]
+    pub group_id: u64,
+    #[prost(string, tag = "2")]
+    pub name: ::prost::alloc::string::String,
+    /// The name of its colour; empty for none.
+    #[prost(string, tag = "3")]
+    pub colour: ::prost::alloc::string::String,
+    #[prost(bool, tag = "4")]
+    pub shut: bool,
+    /// How many Sites it holds, shown or not.
+    #[prost(uint32, tag = "5")]
+    pub sites: u32,
+}
 /// A window, as its subscription publishes it.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WindowSnapshot {
@@ -313,6 +391,14 @@ pub struct WindowSnapshot {
     /// Since 1.26. The window is private (037). A shell says so in words.
     #[prost(bool, tag = "9")]
     pub private_window: bool,
+    /// Since 1.31. The Groups of the row the window shows (041), in their
+    /// order. The row is: the Sites that are in no Group; then each Group's
+    /// Sites, Group by Group in this order; then the tabs that are no Sites.
+    /// `tabs` has the Sites of a Group that is shut left out, but for the tab in
+    /// front, which is always there: a shut Group, and one with no Site, is
+    /// drawn from this list alone.
+    #[prost(message, repeated, tag = "10")]
+    pub groups: ::prost::alloc::vec::Vec<GroupSummary>,
 }
 /// A tab as a strip of tabs shows it: enough to name it, and no more.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -346,6 +432,9 @@ pub struct TabSummary {
     /// page it shows is not its home. Empty for a tab that is no Site.
     #[prost(string, tag = "8")]
     pub site_name: ::prost::alloc::string::String,
+    /// Since 1.31. The Group a Site is in (041); 0 for a tab that is in none.
+    #[prost(uint64, tag = "9")]
+    pub group_id: u64,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TabView {
@@ -2079,7 +2168,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -2183,6 +2272,19 @@ pub mod request {
         /// Since 1.30
         #[prost(message, tag = "38")]
         SendSiteHome(super::SendSiteHome),
+        /// Since 1.31
+        #[prost(message, tag = "39")]
+        MakeGroup(super::MakeGroup),
+        #[prost(message, tag = "40")]
+        RenameGroup(super::RenameGroup),
+        #[prost(message, tag = "41")]
+        ColourGroup(super::ColourGroup),
+        #[prost(message, tag = "42")]
+        ShutGroup(super::ShutGroup),
+        #[prost(message, tag = "43")]
+        RemoveGroup(super::RemoveGroup),
+        #[prost(message, tag = "44")]
+        MoveToGroup(super::MoveToGroup),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.
@@ -2190,7 +2292,7 @@ pub mod request {
 pub struct Response {
     #[prost(
         oneof = "response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14"
     )]
     pub kind: ::core::option::Option<response::Kind>,
 }
@@ -2231,6 +2333,9 @@ pub mod response {
         SpacesPage(super::SpacesPage),
         #[prost(message, tag = "13")]
         SpaceCreated(super::SpaceCreated),
+        /// Since 1.31
+        #[prost(message, tag = "14")]
+        GroupMade(super::GroupMade),
     }
 }
 /// Core → shell, unasked.

@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use crate::StoreError;
 
 /// The version this build's store is at.
-pub const SCHEMA_VERSION: u32 = 10;
+pub const SCHEMA_VERSION: u32 = 11;
 
 /// The migrations, in order: `MIGRATIONS[n]` takes version `n` to `n + 1`.
 const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
@@ -138,6 +138,21 @@ const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
     // row.)
     "ALTER TABLE tab ADD COLUMN site_home TEXT NOT NULL DEFAULT '';
      ALTER TABLE tab ADD COLUMN site_name TEXT NOT NULL DEFAULT '';",
+    // 11 (W2, 041): Groups. The table 000 §5.6 names, with the one kind of
+    // node there is so far and the columns it needs: a Space's Groups by
+    // their place, each with its name, its colour or none, and whether it
+    // is shut. A Site says which Group it is in by that Group's place,
+    // counted from one; nought is none.
+    "CREATE TABLE node (
+         space_id INTEGER NOT NULL REFERENCES space (id),
+         position INTEGER NOT NULL CHECK (position >= 0),
+         kind TEXT NOT NULL CHECK (kind IN ('group')),
+         name TEXT NOT NULL,
+         colour TEXT NOT NULL,
+         shut INTEGER NOT NULL CHECK (shut IN (0, 1)),
+         PRIMARY KEY (space_id, position)
+     ) STRICT, WITHOUT ROWID;
+     ALTER TABLE tab ADD COLUMN site_group INTEGER NOT NULL DEFAULT 0;",
 ];
 
 pub(crate) fn version(connection: &Connection) -> Result<u32, StoreError> {
