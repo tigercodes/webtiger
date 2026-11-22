@@ -12,14 +12,15 @@ final class SiteTests: AppTestCase {
         XCTAssertEqual(waited, .completed, "\(what): the tab says '\(tab.value as? String ?? "")'", line: line)
     }
 
-    /// Asks for the one command by its name now: from the File menu on a Mac (for the tab in
-    /// front), from the tab's own menu on a phone.
-    private func choose(_ words: String, for tab: XCUIElement, in app: XCUIApplication, line: UInt = #line) {
+    /// Asks for a command by its name now: from the menu bar on a Mac (for the tab in front;
+    /// the File menu, or the one named), from the tab's own menu on a phone.
+    private func choose(_ words: String, for tab: XCUIElement, in app: XCUIApplication, menu: String = "File", line: UInt = #line) {
         #if os(macOS)
-            let file = app.menuBars.menuBarItems["File"]
-            file.click()
-            let item = file.menuItems[words]
-            XCTAssertTrue(item.waitForExistence(timeout: 30), "the File menu has \(words)", line: line)
+            let title = app.menuBars.menuBarItems[menu]
+            title.click()
+            let item = title.menuItems[words]
+            XCTAssertTrue(item.waitForExistence(timeout: 30), "the \(menu) menu has \(words)", line: line)
+            XCTAssertTrue(item.isEnabled, "\(words) can be chosen", line: line)
             item.click()
         #else
             tab.press(forDuration: 1)
@@ -55,10 +56,30 @@ final class SiteTests: AppTestCase {
         expect(first, toSay: "Site", "kept")
         XCTAssertEqual(app.buttons.matching(identifier: "close-tab").firstMatch.label, "Put to Sleep")
 
-        // It wanders from its home; and a second tab is opened, somewhere else.
+        // It wanders from its home, and says it is away; sent back by its name, it is at its
+        // home again, which was loaded once more.
         openLocation(field, in: app)
         field.typeText("127.0.0.1:\(site.port)/\n")
         XCTAssertTrue(pageShows("Home", in: app), "the Site went somewhere else")
+        expect(first, toSay: "Site, Away", "wandered")
+        let before = askedForItsHome()
+        choose("Return to Landed", for: first, in: app, menu: "History")
+        XCTAssertTrue(pageShows("Landed", in: app), "it is at its home again")
+        expect(first, toSay: "Site", "home again")
+        XCTAssertEqual(askedForItsHome(), before + 1, "its home was loaded")
+        #if os(macOS)
+            // At its home there is nowhere to send it: the item names no Site, and is grey.
+            let history = app.menuBars.menuBarItems["History"]
+            history.click()
+            XCTAssertTrue(history.menuItems["Return to Site"].waitForExistence(timeout: 30), "the item, with no name to say")
+            XCTAssertFalse(history.menuItems["Return to Site"].isEnabled)
+            app.typeKey(.escape, modifierFlags: [])
+        #endif
+
+        // It wanders again; and a second tab is opened, somewhere else.
+        openLocation(field, in: app)
+        field.typeText("127.0.0.1:\(site.port)/\n")
+        XCTAssertTrue(pageShows("Home", in: app), "the Site went somewhere else again")
         press(app.buttons["new-tab"])
         XCTAssertTrue(app.staticTexts["empty-tab"].waitForExistence(timeout: 30), "a second, empty tab")
         openLocation(field, in: app)

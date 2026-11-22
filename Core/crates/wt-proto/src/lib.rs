@@ -8,7 +8,7 @@
 /// The contract's major version. A shell built with another is refused.
 pub const CONTRACT_MAJOR: u32 = 1;
 /// The contract's minor version. Minors only add.
-pub const CONTRACT_MINOR: u32 = 29;
+pub const CONTRACT_MINOR: u32 = 30;
 
 /// `webtiger.core.v1`.
 #[allow(

@@ -303,7 +303,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | `cd Core && cargo test --workspace --locked` | 139 passed |
 | `Tools/test.sh android`, from nothing | OK, 48 s |
 | … `:core-engine:testDebugUnitTest` | 32 passed |
-| … `:app:testDebugUnitTest` | 384 passed |
+| … `:app:testDebugUnitTest` | 386 passed |
 | … `:app:assembleDebug` | `app-debug.apk`, with `libwebtiger_core.so` for `arm64-v8a` and `x86_64` |
 | `Tools/strings/generate.sh --check` (as first run, the Python script it replaced), `Tools/design/tokens.py --check` | up to date; the Apple outputs' checksums unchanged |
 | `./gradlew :app:lintDebug` | no errors. Apart from notices that newer versions exist, two warnings are left on purpose: no launcher icon (the brand is not settled, 001 F10), and `toolbar_open_location` unused (it is the Mac's ⌘L) |
@@ -344,7 +344,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | `UndoTest` | 3 | Undo (033): the window's model offers a closed tab back only while the core says there is one, and asks with the window; the button for a new tab, held, brings the menu, and a screen reader is told so by name; with nothing to bring back the button is only a button |
 | `KeysTest` | 6 | A keyboard's keys (036): the table of which key asks for what, and what is left alone; the window answering them with the focus nowhere, once for a key held down, not under the lists, and not at all when no window is drawn |
 | `PrivateWindowTest` | 9 | A private window on a phone (037): asked for as one; what it says of itself; the page behind its chip; the row that opens it in the list of Spaces; the holder that shows one window at a time and closes the private one in the core; what the keyboard is told of the address field, in a private window and in an ordinary one (037 §5.5) |
-| `SitesTest` | 3 | Sites (039): the one command with two names against a scripted core; the strip's mark, what each tab says of itself, the button at a Site's end; a tab's own menu, held |
+| `SitesTest` | 5 | Sites (039): the one command with two names against a scripted core; the strip's mark, what each tab says of itself, the button at a Site's end; a tab's own menu, held; a Site that is away: sent home only when the core says it is away; the outline for its mark, what it says, and the way home in its menu by its name |
 | `CatalogueSnapshotTest` | 23 | The design catalogue as pictures, drawn on the JVM, and the failed page at twice the text size (004) |
 | `ThroughTheCoreTest` | 11 | The model, the session, the engine and the tracker over the **real core**: a page loads in the Space's login set; a page cannot put an address in the field it has not become; a failure by its code; fake mode, where each mode saves a download (013), and that only the app started for real may have the system ask the person (014); no profiles; a Space's colour ([025](025-space-colours.md)); words another app hands over are searched for in a new tab ([028](028-search-from-other-apps.md)); an address another app hands over opens in a new tab, and what is no address of the web opens nothing ([031](031-links-from-other-apps.md)) |
 

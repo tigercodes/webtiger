@@ -151,8 +151,8 @@ enum CatalogueState: String, CaseIterable, Identifiable {
             window.tab.canGoBack = true
             window.tab.canGoForward = true
         case .sites:
-            // Sites (039): the tab in front is one, awake; beside it one that is asleep, and
-            // a tab that is none.
+            // Sites (039): the tab in front is one, at its home; beside it one that has
+            // wandered, one that is asleep, and a tab that is none.
             page(&window, url: "https://mail.example.com/", display: "mail.example.com", security: .secure)
             window.tab.title = "Mail"
             window.tab.kept = true
@@ -226,10 +226,15 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         front.kept = window.tab.kept
         window.tabs = [front]
         if self == .sites {
+            var away = Self.neighbour(20, title: "A page", host: "wiki.example.com")
+            away.kept = true
+            away.away = true
+            away.siteName = "Wiki"
             var asleep = Self.neighbour(21, title: "Board", host: "board.example.com")
             asleep.kept = true
             asleep.asleep = true
-            window.tabs = [front, asleep, Self.neighbour(22, title: "News", host: "news.example.com")]
+            asleep.siteName = "Board"
+            window.tabs = [front, away, asleep, Self.neighbour(22, title: "News", host: "news.example.com")]
         }
         if self == .tabs {
             window.tabs = [

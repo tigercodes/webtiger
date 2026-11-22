@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | **The core, the store and the contract are built and tested** (part 1 of §7), on the choices of §6, which are **the owner's since 2026-11-22** (WT-D29): a tab can be kept and let go, a Site is first in its row, sleeps at its home when closed, wakes when brought in front, and comes back after a quit. **The shells show a Site and offer the command** (part 2, §7a): the Mac, the iPhone simulator and an Android emulator |
+| **Status** | **The core, the store and the contract are built and tested** (part 1 of §7), on the choices of §6, which are **the owner's since 2026-11-22** (WT-D29): a tab can be kept and let go, a Site is first in its row, sleeps at its home when closed, wakes when brought in front, and comes back after a quit. **The shells show a Site and offer the command** (part 2, §7a), **and a Site that has wandered says so and is sent back to its home** (part 3, §7b, whose words, keys and mark are provisional): the Mac, the iPhone simulator and an Android emulator |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "Spaces, Groups, Sites". This is Sites, without Groups: the first step of the tree |
-| **Contract** | 1.29: `KeepTab`, `LetGoSite`; `TabSummary.kept`, `TabSummary.asleep`, `TabView.kept` |
+| **Contract** | 1.29: `KeepTab`, `LetGoSite`; `TabSummary.kept`, `TabSummary.asleep`, `TabView.kept`. 1.30: `SendSiteHome`; `away` and `site_name` on both |
 | **Builds on** | [005](005-tabs.md): tabs and their row. [009](009-session-restore.md): tabs that come back asleep. [024](024-several-spaces.md): a row for each Space. [033](033-a-closed-tab-comes-back.md): the journal |
 | **Last updated** | 2026-11-22 |
 
@@ -121,6 +121,39 @@ On the Mac a tab has no menu of its own: a button there takes a right-click for 
 - **On the Mac, ⌘W closes the window when nothing else would be left to show.** ⌘W on a window's last tab has always closed the window (005). A sleeping Site is no tab to be left with: when the tab in front is the only one that is not a Site asleep, ⌘W closes the window. Without this ⌘W went round for ever: the core opens an empty tab when a row's last Site is closed, and closing that tab woke the Site again. The app's first key test found it, with a Site as the window's only tab. The Sites are kept, and are there when a window next opens. The button at a tab's end is not the key: it asks the core, which puts the Site to sleep and opens the empty tab.
 - **A tab with no page has no menu on a phone**, and the menu bar's item is grey for it. A tab whose page never arrived does have the menu; the core refuses to keep it, and nothing is said.
 
+## 7b. Home again without closing (part 3)
+
+A Site that is awake and somewhere other than its home is **away**. It says so, and one command sends it back.
+
+**The rule (core).** A Site is away when it is awake and the address it shows is not its home's, letter for letter. Asleep, it is at its home. `SendSiteHome` loads the home in it, as an address the person asked for; for a tab that is no Site, or a Site that is not away, nothing happens and nothing is refused. The window is told which tabs are away, and a Site's name, which is not the title of the page it has wandered to.
+
+**The contract (1.30)**, added:
+
+```proto
+// Sends a Site back to its home (039). Answered with Ack, also when the tab
+// is no Site or is not away from its home: nothing happens; or "tab.unknown".
+message SendSiteHome { uint64 tab_id = 1; }
+
+message TabSummary {
+  …
+  bool away = 7;          // a Site that is awake and not at its home
+  string site_name = 8;   // redacted: the name a Site was kept with
+}
+message TabView { … bool away = 18; string site_name = 19; }
+```
+
+**The shells.** The command is named for the Site: "Return to Mail". It is there only for a Site that is away.
+
+| Where | How |
+|---|---|
+| The Mac | History menu, after Back and Forward; ⇧⌘H (the key Safari gives to its home page) |
+| The iPhone and the iPad | The tab's own menu, with Stop Keeping; ⇧⌘H with a keyboard |
+| Android | The tab's own menu; Alt+Home with a keyboard (the key Chrome gives to its home page) |
+
+In the strip an away Site's mark is an outline, where a Site at home has it filled; and it is said to be away.
+
+**Provisional, the owner's to say** (built as recommended): the words "Return to" and the Site's name, and "Away" to a screen reader; the two keys; the outline for a Site that is away. A home that sends the browser on to another address (a page that redirects when it is asked for) is away as soon as it has loaded: letter for letter is the simplest rule, and whether to look past such a move is not settled.
+
 ## 8. Tests
 
 | Where | What |
@@ -135,6 +168,9 @@ On the Mac a tab has no menu of its own: a button there takes a right-click for 
 | The Mac's app (`SiteTests`, 2, fake mode: the real core and real WebKit) | From the File menu: kept, the tab says it is a Site and its button says "Put to Sleep"; it wanders; a second tab; closed by its button it stays, by the name it was kept with, asleep, the other tab in front, nothing loaded, and only the other tab has a button; Apple's accessibility audit over that; pressed, it wakes at its home, which is loaded once more; Stop Keeping, and its button closes again. By key: ⌘D keeps; the item is grey for an empty tab; ⌘W puts the Site to sleep and the other tab comes in front; the menu names the command for a Site; ⌘D lets it go; and ⌘W on the last tab there is to show beside a sleeping Site closes the window |
 | The iPhone's app (`SiteTests`, 1) | The same as the Mac's first, from the tab's own menu (a long press) |
 | Android's app on the emulator (`AppSitesTest`, 1, fake mode: the real core and the real WebView) | The same, from the tab's own menu; and Ctrl+D, sent as a keyboard sends it, lets the tab in front go and keeps it again |
+| Home again: the core (`sites.rs`, 1 more: 10) | At its home a Site is not away and is known by the name it was kept with; a tab that is no Site has no such name and is never away. Gone elsewhere it is away, under the page's title, and still the Site it was, in the strip and in front. Sent home: its home is loaded in the same tab, it is at home, and no tab is opened or closed. Sent home when it is there, or for a tab that is no Site: nothing is loaded, nothing refused; a tab there is not is refused. A page that changes its own address makes it away. Asleep it is at its home, and sending it there wakes nothing. Let go while away, it has no home to be away from. After a quit the Site that was in front is away as it was, with its name (in the quit test). Seven parts broken in turn: all caught |
+| Home again: the shells' models, strips and keys (`SiteModelTests`, 1 more: 4; Android's `SitesTest`, 2 more: 5; `KeysTest`) | The words are "Return to Mail", and "Return to Site" for a Site with no name; the model asks the core only for a Site in front that is away, and for any tab from its own menu. The strip says "Site, Away". On Android the mark is the outline, the tab's menu has the way home first, by name, and a tab that is no Site has none; Alt+Home asks, and Home alone, with Control, or with Alt and Shift does not |
+| Home again: the apps (the same `SiteTests` and `AppSitesTest`) | A Site that wandered says it is away; sent back by its name (the Mac's History menu, the tab's own menu on the phones, and Alt+Home on Android) it is at its home, which was loaded once more; on the Mac the item then names no Site and is grey |
 | The shells, by breaking them | Eleven parts (Android: a Site asked to be kept and a tab let go, Ctrl+D asking nothing, a tab saying nothing of itself, a sleeping Site with a button, an empty tab with a menu, a Site's button saying Close Tab, no mark; Apple: a tab of the strip always kept, a sleeping Site in front that cannot be let go, the strip not saying asleep, not saying Site), each run against the shells' model and strip tests: all caught. The apps' own tests were not run against them |
 
 **Found on the way, in 038:** a tab that came back asleep after a quit was not offered while typing, though 038 said it was. The core asked a tab for the page that owns its web view, and a sleeping tab has no web view. It is asked for the page it is at, awake or asleep; a test over a store on disk has it (`a_tab_that_came_back_asleep_is_offered_while_typing`).
@@ -142,6 +178,8 @@ On the Mac a tab has no menu of its own: a button there takes a right-click for 
 ## 9. What is not verified
 
 - **The Mac's close rule and the tab's menu on an iPhone were not broken on purpose**: the apps' tests have them, and no part of them was taken out to see a test fail.
+- **A home that moves.** A Site whose home sends the browser on to another address is away as soon as it has loaded, and "Return to" loads the home again, which moves again. No test has such a home; what to do about one is not settled (§7b).
+- **The shells' going home was not broken on purpose**: the core's rule was.
 - **A real phone, an iPad, a keyboard on an iPad.** The iPad has ⌘D by the same button nobody sees as its other keys; no test presses it.
 - **A screen reader.** What is said of a tab is read by the tests; nobody listened.
 - **A tab whose page never arrived, kept from its menu**: the core refuses, and the window says nothing of it.
@@ -158,4 +196,4 @@ On the Mac a tab has no menu of its own: a button there takes a right-click for 
 - [x] The Android shell.
 - [x] Part 1 (the core): `Tools/test.sh all` green, and `android-device`, on 2026-11-22: `lint`, `core` (564), `unit` (272 on the Mac), `build`, the Mac's UI suite (38), `ios` (254 on the iPhone simulator, one skipped as before), the iPhone's UI suite (29), `android` (381 and 32 on the JVM) and `android-device` (156 on the emulator). No shell changed but for the contract's version.
 - [x] Part 2 (the shells): the same again, on 2026-11-22: `lint`, `core` (564, and the strings tool's 24), `unit` (278 on the Mac), `build`, the Mac's UI suite (40), `ios` (260 on the iPhone simulator, one skipped as before), the iPhone's UI suite (30), `android` (384 and 32 on the JVM) and `android-device` (157 on the emulator).
-- [ ] Part 3 (home again without closing).
+- [x] Part 3 (home again without closing): the same again, on 2026-11-22: `lint`, `core` (565, and the strings tool's 24), `unit` (279 on the Mac), `build`, the Mac's UI suite (40), `ios` (261 on the iPhone simulator, one skipped as before), the iPhone's UI suite (30), `android` (386 and 32 on the JVM) and `android-device` (157 on the emulator).

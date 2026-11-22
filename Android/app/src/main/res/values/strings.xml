@@ -357,10 +357,16 @@
     <string name="selection_search_with">Search with %s</string>
     <!-- Said of a tab that has no page loaded now, to a screen reader, with the tab's name: a Site that was closed, or a tab that came back after a quit. Opening it loads it. -->
     <string name="sites_asleep">Asleep</string>
+    <!-- Said of a Site that is awake and shows a page that is not its home, to a screen reader, with the tab's name. -->
+    <string name="sites_away">Away</string>
     <!-- Command (Command-D on a Mac, Control-D with a keyboard on Android; in a tab's own menu on a phone): keep the tab as a Site. A Site stays first in the row, and is put to sleep, not closed, when it is closed. -->
     <string name="sites_keep">Keep as Site</string>
     <!-- The same command for a tab that is a Site: it becomes a tab like any other again. -->
     <string name="sites_let_go">Stop Keeping</string>
+    <!-- Command for a Site that has wandered from its home (Shift-Command-H on a Mac, Alt-Home with a keyboard on Android; in the tab's own menu on a phone): its home is loaded in it again. %@ is the name the Site was kept with. -->
+    <string name="sites_return">Return to %s</string>
+    <!-- The same command in the Mac's menu bar while there is nothing for it to do (the tab in front is no Site, or is at its home): shown grey. -->
+    <string name="sites_return_site">Return to Site</string>
     <!-- Said of a tab that is kept, to a screen reader, with the tab's name. -->
     <string name="sites_site">Site</string>
     <!-- Label of the button at the end of a Site's tab, where another tab has Close Tab: the Site's page is closed and the Site stays in the row. -->

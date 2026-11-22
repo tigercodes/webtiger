@@ -28,6 +28,9 @@ internal sealed interface KeyCommand {
     /** Keep the tab in front as a Site, or let a Site go (039). */
     data object KeepOrLetGo : KeyCommand
 
+    /** Send the Site in front back to its home (039). */
+    data object SiteHome : KeyCommand
+
     data object NextTab : KeyCommand
 
     data object PreviousTab : KeyCommand
@@ -70,6 +73,8 @@ internal fun keyCommand(key: Key, ctrl: Boolean, shift: Boolean, alt: Boolean, m
             when (key) {
                 Key.DirectionLeft -> KeyCommand.Back
                 Key.DirectionRight -> KeyCommand.Forward
+                // Alt+Home is a browser's key for its home page: here, the Site's own (039).
+                Key.MoveHome -> KeyCommand.SiteHome
                 else -> null
             }
         !ctrl || alt -> null
@@ -138,6 +143,7 @@ internal fun BrowserModel.perform(command: KeyCommand, openLocation: () -> Unit,
         KeyCommand.CloseTab -> closeTab(tab.tab_id)
         KeyCommand.ReopenClosedTab -> reopenClosedTab()
         KeyCommand.KeepOrLetGo -> keepOrLetGoTheTabInFront()
+        KeyCommand.SiteHome -> sendHomeTheTabInFront()
         KeyCommand.NextTab -> stepTab(StepTab.To.TO_NEXT)
         KeyCommand.PreviousTab -> stepTab(StepTab.To.TO_PREVIOUS)
         KeyCommand.LastTab -> stepTab(StepTab.To.TO_LAST)

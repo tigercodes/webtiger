@@ -398,6 +398,21 @@ impl Tab {
         tab
     }
 
+    /// The home the tab is away from (039): for a Site that is awake and
+    /// shows an address that is not its home's. `None` for a tab that is no
+    /// Site, for one asleep (it is at its home), and for one at its home.
+    fn away_from(&self) -> Option<&Address> {
+        let site = self.site.as_ref()?;
+        (!self.asleep && self.shown().is_some_and(|at| *at != site.home)).then_some(&site.home)
+    }
+
+    /// The name the tab was kept with, when it is a Site.
+    fn site_name(&self) -> String {
+        self.site
+            .as_ref()
+            .map_or_else(String::new, |site| site.name.clone())
+    }
+
     /// The page the tab is at: the one that owns its web view, or, for a tab
     /// that is asleep, the one it will wake at.
     fn page(&self) -> Option<&Address> {
@@ -622,6 +637,8 @@ impl Tab {
             loading: self.load == Load::Loading,
             kept: self.site.is_some(),
             asleep: self.asleep,
+            away: self.away_from().is_some(),
+            site_name: self.site_name(),
         }
     }
 
@@ -663,6 +680,8 @@ impl Tab {
                 .unwrap_or_default()
                 .to_owned(),
             kept: self.site.is_some(),
+            away: self.away_from().is_some(),
+            site_name: self.site_name(),
         }
     }
 
@@ -1309,6 +1328,14 @@ impl State {
         }
         self.place_among(window, space, tab_id);
         Ok(())
+    }
+
+    /// Where a Site is to be sent to be home again (039): its home, when it
+    /// is away from it. `Ok(None)` for a tab that is no Site or is not away:
+    /// there is nothing to do. `Err` for a tab there is not.
+    pub(crate) fn home_to_go_to(&self, tab_id: TabId) -> Result<Option<Address>, &'static str> {
+        let tab = self.tabs.get(&tab_id).ok_or("tab.unknown")?;
+        Ok(tab.away_from().cloned())
     }
 
     /// Lets a Site go (039): it is a tab like any other again, the first of

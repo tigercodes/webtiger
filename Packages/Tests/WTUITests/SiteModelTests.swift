@@ -28,11 +28,12 @@ final class SiteModelTests: XCTestCase {
         return (BrowserModel(session: BrowserSession(core: core, engine: WebKitEngine())), core)
     }
 
-    private func tab(_ id: UInt64, kept: Bool = false, asleep: Bool = false) -> WTTabSummary {
+    private func tab(_ id: UInt64, kept: Bool = false, asleep: Bool = false, away: Bool = false) -> WTTabSummary {
         var summary = WTTabSummary()
         summary.tabID = id
         summary.kept = kept
         summary.asleep = asleep
+        summary.away = away
         return summary
     }
 
@@ -48,12 +49,13 @@ final class SiteModelTests: XCTestCase {
         return said
     }
 
-    /// What the core was asked about Sites, in order: "keep 2", "let go 5".
+    /// What the core was asked about Sites, in order: "keep 2", "let go 5", "home 2".
     private func asked(_ core: ScriptedCore) -> [String] {
         core.requests.compactMap { request -> String? in
             switch request {
             case let .keepTab(keep): "keep \(keep.tabID)"
             case let .letGoSite(letGo): "let go \(letGo.tabID)"
+            case let .sendSiteHome(send): "home \(send.tabID)"
             default: nil
             }
         }
@@ -124,5 +126,37 @@ final class SiteModelTests: XCTestCase {
         XCTAssertEqual(TabStrip.said(of: tab(1, kept: true), locale: english), "Site")
         XCTAssertEqual(TabStrip.said(of: tab(1, asleep: true), locale: english), "Asleep")
         XCTAssertEqual(TabStrip.said(of: tab(1, kept: true, asleep: true), locale: english), "Site, Asleep")
+        XCTAssertEqual(TabStrip.said(of: tab(1, kept: true, away: true), locale: english), "Site, Away")
+    }
+
+    /// A Site that has wandered is sent back to its home, by its name (039 §7b).
+    func testASiteThatIsAwayIsSentHomeByItsName() async {
+        let english = Locale(identifier: "en")
+        XCTAssertEqual(BrowserModel.returnWords(to: "Mail", locale: english), "Return to Mail")
+        XCTAssertEqual(BrowserModel.returnWords(to: "", locale: english), "Return to Site", "a Site kept with no name is not named")
+
+        let (model, core) = model()
+        await model.open()
+        // A Site at its home: there is nowhere to send it, and the command says no name.
+        core.emit(snapshot(page: true, kept: true), subscription: 3)
+        await settle { model.tab.kept }
+        XCTAssertEqual(model.returnWords, "Return to Site")
+        model.sendHomeTheTabInFront()
+        XCTAssertEqual(asked(core), [], "a Site at its home is not asked to go there")
+
+        // Away: the command names it, and asks the core to send it home.
+        var wandered = snapshot(page: true, kept: true)
+        wandered.tab.away = true
+        wandered.tab.siteName = "Mail"
+        wandered.tab.title = "Re: lunch"
+        core.emit(wandered, subscription: 3)
+        await settle { model.tab.away }
+        XCTAssertEqual(model.returnWords, "Return to Mail")
+        model.sendHomeTheTabInFront()
+        XCTAssertEqual(asked(core), ["home 2"])
+        // From a tab's own menu the core is asked for that tab: whether it is away is the
+        // core's to say.
+        model.sendHome(5)
+        XCTAssertEqual(asked(core), ["home 2", "home 5"])
     }
 }

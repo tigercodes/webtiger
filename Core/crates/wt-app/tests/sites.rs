@@ -428,6 +428,105 @@ fn a_step_along_the_row_wakes_a_sleeping_site_and_it_is_offered_while_typing() {
     });
 }
 
+/// Each Site of the row: the name it was kept with, the name the strip shows for it now, and
+/// whether it is away from its home.
+fn sites(shell: &FakeShell, subscription: u64) -> Vec<(String, String, bool)> {
+    shell
+        .window(subscription)
+        .tabs
+        .into_iter()
+        .filter(|tab| tab.kept)
+        .map(|tab| (tab.site_name, tab.title, tab.away))
+        .collect()
+}
+
+fn site(name: &str, shown: &str, away: bool) -> (String, String, bool) {
+    (name.to_owned(), shown.to_owned(), away)
+}
+
+#[test]
+fn a_site_that_has_wandered_is_away_and_is_sent_back_to_its_home() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (_, subscription, [mail, board, _]) = three_tabs(&mut shell).await;
+        shell.activate_tab(mail).await;
+        acked(&shell.keep_tab(mail).await);
+        // At its home it is not away, and is known by the name it was kept with.
+        assert_eq!(sites(&shell, subscription), [site("Mail", "Mail", false)]);
+        let front = shell.window(subscription).tab.expect("a tab");
+        assert_eq!((front.away, front.site_name.as_str()), (false, "Mail"));
+        // A tab that is no Site has no such name, and is never away.
+        assert!(
+            shell
+                .window(subscription)
+                .tabs
+                .iter()
+                .filter(|tab| !tab.kept)
+                .all(|tab| tab.site_name.is_empty() && !tab.away)
+        );
+
+        // It goes somewhere else: away, under the page's title, and still the Site it was.
+        shell.submit(mail, MESSAGE).await;
+        assert_eq!(
+            sites(&shell, subscription),
+            [site("Mail", "Re: lunch", true)]
+        );
+        let front = shell.window(subscription).tab.expect("a tab");
+        assert_eq!((front.away, front.site_name.as_str()), (true, "Mail"));
+        let loaded = loads(&shell);
+
+        // Sent back: its home is loaded, in the same tab, and it is at home again.
+        acked(&shell.send_site_home(mail).await);
+        let mut now = loaded.clone();
+        now.push(MAIL.to_owned());
+        assert_eq!(loads(&shell), now);
+        assert_eq!(sites(&shell, subscription), [site("Mail", "Mail", false)]);
+        assert_eq!(front_id(&shell, subscription), mail);
+        assert_eq!(
+            ids(&shell, subscription).len(),
+            3,
+            "no tab was opened or closed"
+        );
+
+        // At its home, there is nowhere to send it: nothing is loaded, nothing refused.
+        acked(&shell.send_site_home(mail).await);
+        assert_eq!(loads(&shell), now);
+        // A tab that is no Site, likewise; and a tab there is not is refused.
+        acked(&shell.send_site_home(board).await);
+        assert_eq!(loads(&shell), now);
+        assert_eq!(code(shell.send_site_home(board + 100).await), "tab.unknown");
+
+        // A page that changes its own address, as a one-page site does, is away too.
+        let web_view = shell.window(subscription).tab.expect("a tab").web_view_id;
+        shell.report(FakeEngine::address_changed(web_view, MESSAGE));
+        shell.settle().await;
+        assert!(
+            sites(&shell, subscription)[0].2,
+            "away by the page's own doing"
+        );
+
+        // Asleep, it is at its home: not away, and sending it home wakes nothing.
+        acked(&shell.close_tab(mail).await);
+        assert_eq!(sites(&shell, subscription), [site("Mail", "Mail", false)]);
+        acked(&shell.send_site_home(mail).await);
+        assert_eq!(
+            loads(&shell),
+            now,
+            "a sleeping Site is not woken to be sent where it is"
+        );
+
+        // Away again, and let go: it is a tab, with no home to be away from.
+        shell.activate_tab(mail).await;
+        shell.submit(mail, MESSAGE).await;
+        assert!(sites(&shell, subscription)[0].2);
+        acked(&shell.let_go_site(mail).await);
+        assert_eq!(sites(&shell, subscription), []);
+        let before = loads(&shell);
+        acked(&shell.send_site_home(mail).await);
+        assert_eq!(loads(&shell), before);
+    });
+}
+
 fn start(folder: &Path) -> FakeShell {
     let mut shell = FakeShell::live(folder);
     web(&mut shell);
@@ -466,6 +565,12 @@ fn sites_come_back_after_a_quit_asleep_at_home_but_for_the_one_in_front() {
         );
         assert_eq!(loads(&shell), [CARD]);
         assert_eq!(front(&shell, subscription), ("Card 3".to_owned(), true));
+        // The one in front is away from its home, as it was, and has the name it was kept
+        // with; the other is at its home.
+        assert_eq!(
+            sites(&shell, subscription),
+            [site("Mail", "Mail", false), site("Board", "Card 3", true)]
+        );
 
         // The one in front still knows its home and its name: closed, it sleeps there.
         let board = front_id(&shell, subscription);

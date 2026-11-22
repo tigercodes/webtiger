@@ -267,6 +267,14 @@ pub struct LetGoSite {
     #[prost(uint64, tag = "1")]
     pub tab_id: u64,
 }
+/// Since 1.30. Sends a Site back to its home: the home is loaded in it, as
+/// an address the person asked for. Answered with Ack, also when the tab is
+/// no Site or is not away from its home (nothing happens); or "tab.unknown".
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SendSiteHome {
+    #[prost(uint64, tag = "1")]
+    pub tab_id: u64,
+}
 /// A window, as its subscription publishes it.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WindowSnapshot {
@@ -328,6 +336,14 @@ pub struct TabSummary {
     /// front loads it.
     #[prost(bool, tag = "6")]
     pub asleep: bool,
+    /// Since 1.30. A Site that is awake and shows an address that is not its
+    /// home's: SendSiteHome sends it back.
+    #[prost(bool, tag = "7")]
+    pub away: bool,
+    /// Since 1.30. The name a Site was kept with: what it is called when the
+    /// page it shows is not its home. Empty for a tab that is no Site.
+    #[prost(string, tag = "8")]
+    pub site_name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TabView {
@@ -382,6 +398,12 @@ pub struct TabView {
     /// Since 1.29. The tab is a Site (039).
     #[prost(bool, tag = "17")]
     pub kept: bool,
+    /// Since 1.30. As TabSummary's: the tab is a Site that is away from its
+    /// home, and the name it was kept with.
+    #[prost(bool, tag = "18")]
+    pub away: bool,
+    #[prost(string, tag = "19")]
+    pub site_name: ::prost::alloc::string::String,
 }
 /// What the address field shows. The core builds it so that every shell shows
 /// the same thing and none can be made to lie: a page-initiated load does not
@@ -2055,7 +2077,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -2156,6 +2178,9 @@ pub mod request {
         KeepTab(super::KeepTab),
         #[prost(message, tag = "37")]
         LetGoSite(super::LetGoSite),
+        /// Since 1.30
+        #[prost(message, tag = "38")]
+        SendSiteHome(super::SendSiteHome),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.

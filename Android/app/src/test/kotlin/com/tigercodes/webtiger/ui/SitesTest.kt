@@ -6,6 +6,7 @@ package com.tigercodes.webtiger.ui
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -56,9 +57,13 @@ class SitesTest {
             tabs = listOf(TabSummary(tab_id = 2, title = "Mail", host = "mail.example.com", kept = kept)) + others,
         )
 
-    /** What a core was asked about Sites, in order: "keep 2", "let go 5". */
+    /** What a core was asked about Sites, in order: "keep 2", "let go 5", "home 2". */
     private fun asked(core: ScriptedCore = this.core): List<String> =
-        core.requests.mapNotNull { request -> request.keep_tab?.let { "keep ${it.tab_id}" } ?: request.let_go_site?.let { "let go ${it.tab_id}" } }
+        core.requests.mapNotNull { request ->
+            request.keep_tab?.let { "keep ${it.tab_id}" }
+                ?: request.let_go_site?.let { "let go ${it.tab_id}" }
+                ?: request.send_site_home?.let { "home ${it.tab_id}" }
+        }
 
     @Test
     fun theCommandKeepsATabWithAPageAndLetsASiteGo() =
@@ -98,6 +103,26 @@ class SitesTest {
             assertEquals(listOf("let go 5", "keep 6"), asked(core).takeLast(2))
         }
 
+    /** A Site that has wandered is sent back to its home (039 §7b): only when the core says it is away. */
+    @Test
+    fun aSiteThatIsAwayIsSentHome() =
+        runTest {
+            val core = ScriptedCore(::windowScript)
+            val model = BrowserModel(unconfinedSession(core))
+            model.open()
+            core.emit(said(page = true, kept = true), subscription = 3)
+            model.sendHomeTheTabInFront()
+            assertEquals("a Site at its home is not asked to go there", emptyList<String>(), asked(core))
+
+            val wandered = said(page = true, kept = true)
+            core.emit(wandered.copy(tab = wandered.tab?.copy(away = true, site_name = "Mail", title = "Re: lunch")), subscription = 3)
+            model.sendHomeTheTabInFront()
+            assertEquals(listOf("home 2"), asked(core))
+            // From a tab's own menu the core is asked for that tab.
+            model.sendHome(5)
+            assertEquals(listOf("home 2", "home 5"), asked(core))
+        }
+
     /** A window whose strip has a Site awake in front, a Site asleep, a tab with a page, and an empty tab. */
     private fun showFourTabs() {
         compose.setContent { WebTigerTheme { BrowserWindow(session, model) } }
@@ -130,6 +155,7 @@ class SitesTest {
         compose.onAllNodesWithTag("tab").assertCountEquals(4)
         // Two Sites are marked; each tab says what it is, and an ordinary one says nothing.
         compose.onAllNodesWithTag("site-mark", useUnmergedTree = true).assertCountEquals(2)
+        compose.onAllNodesWithTag("site-mark-away", useUnmergedTree = true).assertCountEquals(0)
         assertEquals(listOf("Site", "Site, Asleep", "", ""), saidOfTabs())
         // The button at each tab's end: a Site's puts it to sleep, and says so; a sleeping
         // Site has none; the others close.
@@ -175,5 +201,42 @@ class SitesTest {
         // A press on a tab is still a press: it brings the tab in front.
         compose.onAllNodesWithTag("tab")[2].performScrollTo().performClick()
         assertEquals(6L, core.requests.last().activate_tab?.tab_id)
+    }
+
+    @Test
+    fun aSiteThatIsAwayHasAnOutlineForItsMarkSaysSoAndItsMenuSendsItHome() {
+        compose.setContent { WebTigerTheme { BrowserWindow(session, model) } }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            core.emit(
+                said(
+                    page = true,
+                    kept = false,
+                    others = listOf(TabSummary(tab_id = 5, title = "Re: lunch", host = "mail.example.com", kept = true, away = true, site_name = "Mail")),
+                ),
+                subscription = 3,
+            )
+        }
+        compose.waitForIdle()
+        // The mark is the outline, and the tab says it is away.
+        compose.onAllNodesWithTag("site-mark-away", useUnmergedTree = true).assertCountEquals(1)
+        compose.onAllNodesWithTag("site-mark", useUnmergedTree = true).assertCountEquals(0)
+        assertEquals(listOf("", "Site, Away"), saidOfTabs())
+
+        // Its menu has the way home first, by the name it was kept with, and then Stop Keeping.
+        compose.onAllNodesWithTag("tab")[1].performScrollTo().performTouchInput { longClick() }
+        compose.waitForIdle()
+        compose.onNodeWithTag("site-home").assertTextEquals("Return to Mail")
+        compose.onNodeWithTag("keep-or-let-go").assertExists()
+        compose.onNodeWithTag("site-home").performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("home 5"), asked())
+        compose.onAllNodesWithTag("site-home").assertCountEquals(0)
+
+        // A tab that is no Site, held, has no way home to offer.
+        compose.onAllNodesWithTag("tab")[0].performScrollTo().performTouchInput { longClick() }
+        compose.waitForIdle()
+        compose.onNodeWithTag("keep-or-let-go").assertExists()
+        compose.onAllNodesWithTag("site-home").assertCountEquals(0)
     }
 }

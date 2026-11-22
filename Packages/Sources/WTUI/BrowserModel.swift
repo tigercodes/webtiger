@@ -1,6 +1,8 @@
-// A window's model: what the core last said about it, and the user's intents sent back.
 public import Observation
 public import WTContract
+
+// A window's model: what the core last said about it, and the user's intents sent back.
+import Foundation
 import WTCoreClient
 
 @MainActor
@@ -418,6 +420,34 @@ public final class BrowserModel {
     public func keepOrLetGoTheTabInFront() {
         guard let frontTabID, canKeepOrLetGo else { return }
         keepOrLetGo(frontTabID)
+    }
+
+    /// The words of the command that sends the Site in front back to its home, with its
+    /// name ("Return to Mail"); the words with no name when the tab in front is not a Site
+    /// that is away, for which the command is grey.
+    public var returnWords: String {
+        tab.away ? Self.returnWords(to: tab.siteName) : Words.sitesReturnSite.string()
+    }
+
+    /// "Return to Mail": for a Site by the name it was kept with. A Site kept with no name
+    /// is not named.
+    static func returnWords(to name: String, locale: Locale = .current) -> String {
+        name.isEmpty ? Words.sitesReturnSite.string(locale) : Words.sitesReturn.filled(name, locale: locale)
+    }
+
+    /// Sends a Site back to its home (039). Whether the tab is one that is away is the
+    /// core's to say: for any other it does nothing.
+    public func sendHome(_ id: UInt64) {
+        var send = WTSendSiteHome()
+        send.tabID = id
+        self.send(.sendSiteHome(send))
+    }
+
+    /// The same for the tab in front, when it is a Site that is away: what the menu's item
+    /// and its key ask.
+    public func sendHomeTheTabInFront() {
+        guard let frontTabID, tab.away else { return }
+        sendHome(frontTabID)
     }
 
     private func apply(_ snapshot: WTWindowSnapshot) {

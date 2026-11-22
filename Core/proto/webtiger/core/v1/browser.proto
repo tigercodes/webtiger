@@ -106,6 +106,13 @@ message LetGoSite {
   uint64 tab_id = 1;
 }
 
+// Since 1.30. Sends a Site back to its home: the home is loaded in it, as
+// an address the person asked for. Answered with Ack, also when the tab is
+// no Site or is not away from its home (nothing happens); or "tab.unknown".
+message SendSiteHome {
+  uint64 tab_id = 1;
+}
+
 // A window, as its subscription publishes it.
 message WindowSnapshot {
   uint64 window_id = 1;
@@ -151,6 +158,12 @@ message TabSummary {
   // came back after a quit and has not been in front since. Bringing it in
   // front loads it.
   bool asleep = 6;
+  // Since 1.30. A Site that is awake and shows an address that is not its
+  // home's: SendSiteHome sends it back.
+  bool away = 7;
+  // Since 1.30. The name a Site was kept with: what it is called when the
+  // page it shows is not its home. Empty for a tab that is no Site.
+  string site_name = 8 [(wt.redact) = true];
 }
 
 message TabView {
@@ -188,6 +201,10 @@ message TabView {
   string certificate_host = 16 [(wt.redact) = true];
   // Since 1.29. The tab is a Site (039).
   bool kept = 17;
+  // Since 1.30. As TabSummary's: the tab is a Site that is away from its
+  // home, and the name it was kept with.
+  bool away = 18;
+  string site_name = 19 [(wt.redact) = true];
 }
 
 enum LoadState {

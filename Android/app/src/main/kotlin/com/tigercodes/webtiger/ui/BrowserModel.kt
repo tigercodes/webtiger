@@ -29,6 +29,7 @@ import com.tigercodes.webtiger.core.v1.RenameSpace
 import com.tigercodes.webtiger.core.v1.Request
 import com.tigercodes.webtiger.core.v1.SearchSettings
 import com.tigercodes.webtiger.core.v1.SearchWords
+import com.tigercodes.webtiger.core.v1.SendSiteHome
 import com.tigercodes.webtiger.core.v1.SpaceSummary
 import com.tigercodes.webtiger.core.v1.SubmitAddress
 import com.tigercodes.webtiger.core.v1.SuggestAddresses
@@ -283,6 +284,20 @@ class BrowserModel(
     fun keepOrLetGoTheTabInFront() {
         val front = frontTabId ?: return
         if (canKeepOrLetGo) keepOrLetGo(front)
+    }
+
+    /**
+     * Sends a Site back to its home (039). Whether the tab is one that is away is the core's
+     * to say: for any other it does nothing.
+     */
+    fun sendHome(id: Long) {
+        session.send(Request(send_site_home = SendSiteHome(tab_id = id)))
+    }
+
+    /** The same for the tab in front, when it is a Site that is away: what the key asks. */
+    fun sendHomeTheTabInFront() {
+        val front = frontTabId ?: return
+        if (tab.away) sendHome(front)
     }
 
     // Places offered as the address field is typed in (011)

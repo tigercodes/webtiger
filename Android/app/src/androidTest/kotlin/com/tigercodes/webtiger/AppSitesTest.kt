@@ -11,6 +11,7 @@ import android.view.ViewGroup
 import android.webkit.WebView
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -121,12 +122,34 @@ internal class AppSitesTest {
         fromItsMenu(0)
         awaitTabs("Home (Site)")
 
-        // It wanders from its home; and a second tab is opened, somewhere else.
+        // It wanders from its home, and says it is away; sent back from its menu, by its
+        // name, it is at its home again, which was loaded once more.
+        go("/landed", "Landed")
+        awaitTabs("Landed (Site, Away)")
+        val before = askedForItsHome()
+        compose.onAllNodesWithTag("tab")[0].performScrollTo().performTouchInput { longClick() }
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("site-home").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("site-home").assertTextEquals("Return to Home")
+        compose.onNodeWithTag("site-home").performClick()
+        awaitPage("Home")
+        awaitTabs("Home (Site)")
+        assertEquals("its home was loaded", before + 1, askedForItsHome())
+        // And by Alt+Home, from a keyboard.
+        go("/landed", "Landed")
+        awaitTabs("Landed (Site, Away)")
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val now = android.os.SystemClock.uptimeMillis()
+        instrumentation.sendKeySync(KeyEvent(now, now, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MOVE_HOME, 0, KeyEvent.META_ALT_ON or KeyEvent.META_ALT_LEFT_ON))
+        instrumentation.sendKeySync(KeyEvent(now, now, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MOVE_HOME, 0, KeyEvent.META_ALT_ON or KeyEvent.META_ALT_LEFT_ON))
+        awaitPage("Home")
+        awaitTabs("Home (Site)")
+
+        // It wanders again; and a second tab is opened, somewhere else.
         go("/landed", "Landed")
         compose.onNodeWithTag("new-tab").performScrollTo().performClick()
         compose.waitUntil(15_000) { compose.onAllNodesWithTag("empty-tab").fetchSemanticsNodes().isNotEmpty() }
         go("/whoami", "who=none")
-        awaitTabs("Landed (Site)", "who=none")
+        awaitTabs("Landed (Site, Away)", "who=none")
         val asked = askedForItsHome()
 
         // The Site in front again, and closed by the button at its end: it is still there, by
@@ -146,7 +169,6 @@ internal class AppSitesTest {
         assertEquals("its home was loaded", asked + 1, askedForItsHome())
 
         // Ctrl+D, from a keyboard, lets the tab in front go; and keeps it again.
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
         fun ctrlD() {
             val now = android.os.SystemClock.uptimeMillis()
             instrumentation.sendKeySync(KeyEvent(now, now, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_D, 0, KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON))

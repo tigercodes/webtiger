@@ -893,6 +893,11 @@ enum Words {
     /// Said of a tab that has no page loaded now, to a screen reader, with the tab's name: a Site that was closed, or a tab that came back after a quit. Opening it loads it.
     static let sitesAsleep = Word(key: "sites.asleep")
 
+    /// Away
+    ///
+    /// Said of a Site that is awake and shows a page that is not its home, to a screen reader, with the tab's name.
+    static let sitesAway = Word(key: "sites.away")
+
     /// Keep as Site
     ///
     /// Command (Command-D on a Mac, Control-D with a keyboard on Android; in a tab's own menu on a phone): keep the tab as a Site. A Site stays first in the row, and is put to sleep, not closed, when it is closed.
@@ -902,6 +907,16 @@ enum Words {
     ///
     /// The same command for a tab that is a Site: it becomes a tab like any other again.
     static let sitesLetGo = Word(key: "sites.let_go")
+
+    /// Return to %@
+    ///
+    /// Command for a Site that has wandered from its home (Shift-Command-H on a Mac, Alt-Home with a keyboard on Android; in the tab's own menu on a phone): its home is loaded in it again. %@ is the name the Site was kept with.
+    static let sitesReturn = Word(key: "sites.return")
+
+    /// Return to Site
+    ///
+    /// The same command in the Mac's menu bar while there is nothing for it to do (the tab in front is no Site, or is at its home): shown grey.
+    static let sitesReturnSite = Word(key: "sites.return_site")
 
     /// Site
     ///
@@ -1375,8 +1390,11 @@ extension Word {
         "search.question.title",
         "selection.search_with",
         "sites.asleep",
+        "sites.away",
         "sites.keep",
         "sites.let_go",
+        "sites.return",
+        "sites.return_site",
         "sites.site",
         "sites.sleep",
         "space.automatic_colour",

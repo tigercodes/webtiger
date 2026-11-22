@@ -16,10 +16,10 @@ use wt_proto::v1::{
     Ack, ActivateTab, AddressSuggestion, AddressSuggestions, CloseTab, CloseWindow, EngineEvent,
     EngineKind, FindInPage, ForgetHistory, HistoryEntry, HistoryPage, KeepTab, LetGoSite,
     LinkOpenRequested, LoginSet, NavigationCommand, OpenAddress, OpenOutside, OpenTab, OpenWindow,
-    OutsideLinkRequested, QueryHistory, SearchRequested, SearchWords, StepTab, SubmitAddress,
-    SuggestAddresses, TabCommand, TabOpened, Undo, WebViewCommand, WebViewCreate, WebViewDestroy,
-    WebViewFind, WebViewLoad, WebViewSetZoom, WindowOpened, WindowSnapshot, ZoomChange, ZoomPage,
-    engine_event, forget_history, host_request, request, response, step_tab,
+    OutsideLinkRequested, QueryHistory, SearchRequested, SearchWords, SendSiteHome, StepTab,
+    SubmitAddress, SuggestAddresses, TabCommand, TabOpened, Undo, WebViewCommand, WebViewCreate,
+    WebViewDestroy, WebViewFind, WebViewLoad, WebViewSetZoom, WindowOpened, WindowSnapshot,
+    ZoomChange, ZoomPage, engine_event, forget_history, host_request, request, response, step_tab,
 };
 use wt_store::{ClosedTab, MAX_SUGGESTIONS, SavedTab, Space, Store};
 
@@ -212,6 +212,7 @@ impl App {
             request::Kind::StepTab(step) => self.step_tab(&step),
             request::Kind::KeepTab(keep) => answer(self.keep_tab(&keep)),
             request::Kind::LetGoSite(let_go) => answer(self.let_go_site(&let_go)),
+            request::Kind::SendSiteHome(send) => self.send_site_home(&send),
             request::Kind::OpenDownload(open) => self.open_download(&open),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
@@ -962,6 +963,26 @@ impl App {
             return Err(AppError::new("tab.unknown").field("tab_id"));
         }
         Ok(response::Kind::Ack(Ack {}))
+    }
+
+    /// Sends a Site back to its home (039): the home is loaded in it, as an
+    /// address the person asked for. Nothing to do for a tab that is no
+    /// Site, or is not away.
+    fn send_site_home(&self, send: &SendSiteHome) -> AppFuture {
+        let tab = TabId(send.tab_id);
+        let unknown = || AppError::new("tab.unknown").field("tab_id");
+        let home = match self.state.borrow().home_to_go_to(tab) {
+            Err(_) => return refuse(unknown()),
+            Ok(None) => return answer(Ok(response::Kind::Ack(Ack {}))),
+            Ok(Some(home)) => home,
+        };
+        let Some(loading) = self.begin_load(tab, home) else {
+            return refuse(unknown());
+        };
+        Box::pin(async move {
+            loading.await?;
+            Ok(response::Kind::Ack(Ack {}))
+        })
     }
 
     /// Another tab of the window comes in front, by where it is in the row

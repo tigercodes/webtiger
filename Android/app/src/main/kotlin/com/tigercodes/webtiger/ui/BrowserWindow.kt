@@ -305,6 +305,7 @@ private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit
                         onActivate = { model.activate(tab.tab_id) },
                         onClose = { model.closeTab(tab.tab_id) },
                         onKeepOrLetGo = { model.keepOrLetGo(tab.tab_id) },
+                        onSendHome = { model.sendHome(tab.tab_id) },
                     )
                 }
             }
@@ -343,7 +344,7 @@ private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit
 
 /** One tab in the strip: its name, which brings it in front, and a button that closes it. */
 @Composable
-private fun TabChip(tab: TabSummary, inFront: Boolean, onActivate: () -> Unit, onClose: () -> Unit, onKeepOrLetGo: () -> Unit) {
+private fun TabChip(tab: TabSummary, inFront: Boolean, onActivate: () -> Unit, onClose: () -> Unit, onKeepOrLetGo: () -> Unit, onSendHome: () -> Unit) {
     // The tab that comes in front is brought into view.
     val place = remember { BringIntoViewRequester() }
     LaunchedEffect(inFront) { if (inFront) place.bringIntoView() }
@@ -352,11 +353,15 @@ private fun TabChip(tab: TabSummary, inFront: Boolean, onActivate: () -> Unit, o
     var offering by remember { mutableStateOf(false) }
     val keepOrLetGo = stringResource(if (tab.kept) R.string.sites_let_go else R.string.sites_keep)
     val hasMenu = tab.kept || tab.host.isNotEmpty()
-    // What is said of the tab beside its name: that it is a Site, that it is asleep.
+    // What is said of the tab beside its name: that it is a Site, that it is away from its
+    // home, that it is asleep.
     val said = listOfNotNull(
         if (tab.kept) stringResource(R.string.sites_site) else null,
+        if (tab.away) stringResource(R.string.sites_away) else null,
         if (tab.asleep) stringResource(R.string.sites_asleep) else null,
     ).joinToString(", ")
+    // "Return to Mail": for a Site that is away, by the name it was kept with.
+    val sendHome = if (tab.site_name.isEmpty()) stringResource(R.string.sites_return_site) else stringResource(R.string.sites_return, tab.site_name)
     Row(
         modifier =
             Modifier
@@ -388,8 +393,13 @@ private fun TabChip(tab: TabSummary, inFront: Boolean, onActivate: () -> Unit, o
                     Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Tokens.Palette.accent.current))
                 }
                 if (tab.kept) {
-                    // A Site (039): a mark before its name; said in words above.
-                    Icon(painter = painterResource(R.drawable.ic_site), contentDescription = null, modifier = Modifier.size(14.dp).testTag("site-mark"))
+                    // A Site (039): a mark before its name, filled at its home and an outline
+                    // when it has wandered from it; said in words above.
+                    Icon(
+                        painter = painterResource(if (tab.away) R.drawable.ic_site_away else R.drawable.ic_site),
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp).testTag(if (tab.away) "site-mark-away" else "site-mark"),
+                    )
                 }
                 Text(
                     // A tab's name: its page's title, or its site, or the words for a tab with no page.
@@ -403,6 +413,16 @@ private fun TabChip(tab: TabSummary, inFront: Boolean, onActivate: () -> Unit, o
                 )
             }
             DropdownMenu(expanded = offering && hasMenu, onDismissRequest = { offering = false }) {
+                if (tab.away) {
+                    DropdownMenuItem(
+                        text = { Text(sendHome) },
+                        onClick = {
+                            offering = false
+                            onSendHome()
+                        },
+                        modifier = Modifier.testTag("site-home"),
+                    )
+                }
                 DropdownMenuItem(
                     text = { Text(keepOrLetGo) },
                     onClick = {

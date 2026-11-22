@@ -45,7 +45,7 @@ public extension FocusedValues {
 
 /// One command: its words, its key, whether it can be chosen now, and what it asks.
 private struct Command: View {
-    let words: Word
+    let label: Text
     let key: KeyEquivalent
     var modifiers: EventModifiers = .command
     let enabled: Bool
@@ -58,7 +58,23 @@ private struct Command: View {
         enabled: Bool,
         action: @escaping () -> Void
     ) {
-        self.words = words
+        label = Text(words)
+        self.key = key
+        self.modifiers = modifiers
+        self.enabled = enabled
+        self.action = action
+    }
+
+    /// A command whose words have a name in them, made where it is asked for ("Return to
+    /// Mail", 039): the words as they are to be shown.
+    init(
+        saying words: String,
+        _ key: KeyEquivalent,
+        _ modifiers: EventModifiers = .command,
+        enabled: Bool,
+        action: @escaping () -> Void
+    ) {
+        label = Text(verbatim: words)
         self.key = key
         self.modifiers = modifiers
         self.enabled = enabled
@@ -66,7 +82,7 @@ private struct Command: View {
     }
 
     var body: some View {
-        Button(action: action) { Text(words) }
+        Button(action: action) { label }
             .keyboardShortcut(key, modifiers: modifiers)
             .disabled(!enabled)
     }
@@ -195,6 +211,16 @@ private struct Command: View {
             let model = window?.model
             Command(Words.toolbarBack, "[", enabled: model?.tab.canGoBack == true) { model?.perform(.back) }
             Command(Words.toolbarForward, "]", enabled: model?.tab.canGoForward == true) { model?.perform(.forward) }
+            // A Site that has wandered is sent back to its home (039), by its name; grey, and
+            // with no name to say, when the tab in front is not one.
+            Command(
+                saying: model?.returnWords ?? Words.sitesReturnSite.string(),
+                "h",
+                [.command, .shift],
+                enabled: model?.tab.away == true
+            ) {
+                model?.sendHomeTheTabInFront()
+            }
             Divider()
             Command(Words.historyOpen, "y", enabled: window != nil) { window?.showHistory() }
         }
@@ -231,6 +257,10 @@ struct KeysNobodySees: View {
                 Command(Words.tabsClose, "w", enabled: true) { window.closeTab() }
                 // ⌘D keeps the tab in front as a Site, or lets a Site go (039).
                 Command(Words.sitesKeep, "d", enabled: window.model.canKeepOrLetGo) { window.model.keepOrLetGoTheTabInFront() }
+                // ⇧⌘H sends a Site that has wandered back to its home (039).
+                Command(Words.sitesReturnSite, "h", [.command, .shift], enabled: window.model.tab.away) {
+                    window.model.sendHomeTheTabInFront()
+                }
                 Command(Words.historyOpen, "y", enabled: true) { window.showHistory() }
                 Command(Words.findOpen, "f", enabled: true) { window.find() }
                 Command(Words.findNext, "g", enabled: true) { window.model.findNext() }

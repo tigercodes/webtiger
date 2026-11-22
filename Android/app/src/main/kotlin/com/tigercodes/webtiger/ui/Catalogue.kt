@@ -297,7 +297,8 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                 if (this == SITES) {
                     listOf(
                         front,
-                        TabSummary(tab_id = 21, title = "Board", host = "board.example.com", kept = true, asleep = true),
+                        TabSummary(tab_id = 20, title = "A page", host = "wiki.example.com", kept = true, away = true, site_name = "Wiki"),
+                        TabSummary(tab_id = 21, title = "Board", host = "board.example.com", kept = true, asleep = true, site_name = "Board"),
                         TabSummary(tab_id = 22, title = "News", host = "news.example.com"),
                     )
                 } else if (this == TABS) {

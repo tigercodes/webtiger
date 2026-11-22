@@ -56,6 +56,11 @@ class KeysTest {
         assertEquals(KeyCommand.CloseTab, withCtrl(Key.W))
         assertEquals(KeyCommand.ReopenClosedTab, withCtrl(Key.T, shift = true))
         assertEquals(KeyCommand.KeepOrLetGo, withCtrl(Key.D))
+        // Alt+Home: the Site in front goes back to its home (039).
+        assertEquals(KeyCommand.SiteHome, keyCommand(Key.MoveHome, ctrl = false, shift = false, alt = true, meta = false))
+        assertNull(keyCommand(Key.MoveHome, ctrl = false, shift = false, alt = false, meta = false))
+        assertNull(keyCommand(Key.MoveHome, ctrl = true, shift = false, alt = false, meta = false))
+        assertNull(keyCommand(Key.MoveHome, ctrl = false, shift = true, alt = true, meta = false))
         assertEquals(KeyCommand.NextTab, withCtrl(Key.Tab))
         assertEquals(KeyCommand.PreviousTab, withCtrl(Key.Tab, shift = true))
         assertEquals(KeyCommand.OpenLocation, withCtrl(Key.L))

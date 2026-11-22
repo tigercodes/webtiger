@@ -139,7 +139,8 @@ struct TabStrip: View {
                     }
                     if tab.kept {
                         // A Site (039): a mark before its name; said in words below.
-                        Image(systemName: "bookmark.fill")
+                        // Filled at its home; an outline when it has wandered from it.
+                        Image(systemName: tab.away ? "bookmark" : "bookmark.fill")
                             .font(.caption2)
                             .accessibilityHidden(true)
                     }
@@ -165,6 +166,13 @@ struct TabStrip: View {
                 // itself and no menu comes of it, 033: the menu bar and ⌘D are the ways there.)
                 .contextMenu {
                     if tab.kept || !tab.host.isEmpty {
+                        if tab.away {
+                            Button {
+                                model.sendHome(tab.tabID)
+                            } label: {
+                                Text(verbatim: BrowserModel.returnWords(to: tab.siteName, locale: locale))
+                            }
+                        }
                         Button {
                             model.keepOrLetGo(tab.tabID)
                         } label: {
@@ -212,6 +220,9 @@ struct TabStrip: View {
         var said: [String] = []
         if tab.kept {
             said.append(Words.sitesSite.string(locale))
+        }
+        if tab.away {
+            said.append(Words.sitesAway.string(locale))
         }
         if tab.asleep {
             said.append(Words.sitesAsleep.string(locale))
