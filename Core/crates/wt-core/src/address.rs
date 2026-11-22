@@ -699,4 +699,23 @@ mod tests {
         assert_eq!(search_address("javascript:{query}", "alert(1)"), None);
         assert_eq!(search_address("{query}", "file:///etc/passwd"), None);
     }
+
+    /// RUSTSEC-2026-0592. A page can name a `blob:` of a `blob:` of a `blob:`, as deep
+    /// as it likes. Before `url` 2.5.9 the library asked for the origin of such an
+    /// address once for every `blob:`, each inside the one before, and the process
+    /// ended when the stack did. The core asks it only of `http` and `https`; the last
+    /// lines ask the library itself, as nothing in the core does.
+    #[test]
+    fn a_blob_nested_ten_thousand_deep_is_an_address_like_any_other() {
+        let text = format!("{}https://example.com/", "blob:".repeat(10_000));
+        let address = Address::parse(&text).unwrap();
+        assert_eq!(address.origin(), None, "a blob is no origin of the web's");
+        assert_eq!(address.site(), None);
+        assert_eq!(address.security(), Security::Local);
+        let asked_directly = url::Url::parse(&text).unwrap().origin();
+        assert!(
+            !asked_directly.is_tuple(),
+            "an origin of its own, and no site's"
+        );
+    }
 }

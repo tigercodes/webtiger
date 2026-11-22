@@ -27,7 +27,7 @@ prost = "=0.14.4"
 # wt-core: addresses by the WHATWG URL Standard (and, through it, IDNA), and
 # the registrable domain from the Public Suffix List compiled into code, so
 # start-up reads no list.
-url = "2.5.8"
+url = "2.5.9"
 psl = "2.1"
 # wt-core: random bytes for version 4 UUIDs (login sets).
 getrandom = "0.4"
