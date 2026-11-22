@@ -79,8 +79,20 @@ struct TabStrip: View {
         ScrollViewReader { row in
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Tokens.Space.xs) {
-                    ForEach(model.tabs, id: \.tabID) { tab in
-                        chip(tab).id(tab.tabID)
+                    // The Sites that are in no Group, each Group with its Sites after it, and
+                    // the other tabs (041): the core's two lists, in its order.
+                    ForEach(StripItem.row(tabs: model.tabs, groups: model.groups)) { item in
+                        switch item {
+                        case let .tab(tab):
+                            chip(tab).id(tab.tabID)
+                        case let .group(group):
+                            GroupChip(
+                                group: group,
+                                toggle: { model.shutOrOpen(group) },
+                                edit: { model.askToEdit(group) },
+                                remove: { model.removeGroup(group.groupID) }
+                            )
+                        }
                     }
                     Button {
                         model.openTab()
@@ -164,27 +176,45 @@ struct TabStrip: View {
             #if !os(macOS)
                 // A tab's own menu, by a long press. (On a Mac a button takes a right-click for
                 // itself and no menu comes of it, 033: the menu bar and ⌘D are the ways there.)
-                .contextMenu {
-                    if tab.kept || !tab.host.isEmpty {
-                        if tab.away {
-                            Button {
-                                model.sendHome(tab.tabID)
-                            } label: {
-                                Text(verbatim: BrowserModel.returnWords(to: tab.siteName, locale: locale))
-                            }
-                        }
-                        Button {
-                            model.keepOrLetGo(tab.tabID)
-                        } label: {
-                            Text(tab.kept ? Words.sitesLetGo : Words.sitesKeep)
-                        }
-                    }
-                }
+                .contextMenu { menu(of: tab) }
             #endif
             closer(of: tab)
         }
         .background(isFront ? Tokens.Palette.fieldFill : .clear, in: RoundedRectangle(cornerRadius: Tokens.Radius.field))
     }
+
+    #if !os(macOS)
+        /// A tab's own menu: for a tab with something to keep, or a Site. Home, for a Site that
+        /// is away (039); kept or let go; and into a Group or out of one (041).
+        @ViewBuilder
+        private func menu(of tab: WTTabSummary) -> some View {
+            if tab.kept || !tab.host.isEmpty {
+                if tab.away {
+                    Button {
+                        model.sendHome(tab.tabID)
+                    } label: {
+                        Text(verbatim: BrowserModel.returnWords(to: tab.siteName, locale: locale))
+                    }
+                }
+                Button {
+                    model.keepOrLetGo(tab.tabID)
+                } label: {
+                    Text(tab.kept ? Words.sitesLetGo : Words.sitesKeep)
+                }
+                if model.canBeGrouped(tab) {
+                    Menu {
+                        MoveToGroupItems(
+                            groups: model.groups, current: tab.groupID,
+                            move: { model.move(tab.tabID, toGroup: $0) },
+                            new: { model.askForANewGroup(for: tab.tabID) }
+                        )
+                    } label: {
+                        Text(Words.groupsMove)
+                    }
+                }
+            }
+        }
+    #endif
 
     /// The button at a tab's end: it closes the tab; for a Site it puts it to sleep (039), and
     /// says so; and a sleeping Site has none, there being no page to close.

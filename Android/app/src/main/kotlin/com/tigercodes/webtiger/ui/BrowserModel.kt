@@ -15,8 +15,15 @@ import com.tigercodes.webtiger.core.v1.ColourSpace
 import com.tigercodes.webtiger.core.v1.CreateSpace
 import com.tigercodes.webtiger.core.v1.DialogKind
 import com.tigercodes.webtiger.core.v1.FindInPage
+import com.tigercodes.webtiger.core.v1.ColourGroup
+import com.tigercodes.webtiger.core.v1.GroupSummary
 import com.tigercodes.webtiger.core.v1.KeepTab
 import com.tigercodes.webtiger.core.v1.LetGoSite
+import com.tigercodes.webtiger.core.v1.MakeGroup
+import com.tigercodes.webtiger.core.v1.MoveToGroup
+import com.tigercodes.webtiger.core.v1.RemoveGroup
+import com.tigercodes.webtiger.core.v1.RenameGroup
+import com.tigercodes.webtiger.core.v1.ShutGroup
 import com.tigercodes.webtiger.core.v1.LoadState
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.core.v1.OpenAddress
@@ -80,6 +87,10 @@ class BrowserModel(
 
     /** Every tab of the window, in the order they are shown. */
     var tabs by mutableStateOf<List<TabSummary>>(emptyList())
+        private set
+
+    /** The Groups of the row the window shows (041), in their order. */
+    var groups by mutableStateOf<List<GroupSummary>>(emptyList())
         private set
 
     /** How many downloads of the window's Space are coming (013): the core's count. */
@@ -298,6 +309,102 @@ class BrowserModel(
     fun sendHomeTheTabInFront() {
         val front = frontTabId ?: return
         if (tab.away) sendHome(front)
+    }
+
+    // Groups (041)
+
+    /** What the Group page is open for: a new Group for a tab, or a Group there is. Null while it is not open. */
+    var groupAsked by mutableStateOf<GroupAsk?>(null)
+        private set
+
+    /** Why the core would not make a Group, or change one, by its code: said on that page. */
+    var groupRefusal by mutableStateOf<String?>(null)
+        private set
+
+    /**
+     * A tab can be put in a Group: it has something to keep, or is kept already, and the window
+     * is not a private one, which has no Groups (037).
+     */
+    fun canBeGrouped(tab: TabSummary): Boolean = !isPrivate && (tab.kept || tab.host.isNotEmpty())
+
+    /** Shuts a Group, or opens it: the other of what the core last said of it. */
+    fun shutOrOpen(group: GroupSummary) {
+        session.send(Request(shut_group = ShutGroup(group_id = group.group_id, shut = !group.shut)))
+    }
+
+    /**
+     * Puts a tab in a Group; with no Group (0), takes a Site out of the one it is in. A tab that
+     * is no Site is kept by it: the core's rule.
+     */
+    fun moveToGroup(tab: Long, group: Long) {
+        session.send(Request(move_to_group = MoveToGroup(tab_id = tab, group_id = group)))
+    }
+
+    /** Takes a Group away. Its Sites stay: where is the core's to say. */
+    fun removeGroup(id: Long) {
+        session.send(Request(remove_group = RemoveGroup(group_id = id)))
+    }
+
+    /** Opens the page that makes a Group, for a tab to be put in it. */
+    fun askForANewGroup(tab: Long) {
+        openGroupPage(GroupAsk.New(tab))
+    }
+
+    /** Opens the page that edits a Group. */
+    fun askToEdit(group: GroupSummary) {
+        openGroupPage(GroupAsk.Edit(group))
+    }
+
+    /** The page is closed with nothing made or changed. */
+    fun closeGroupPage() {
+        groupAsked = null
+    }
+
+    private fun openGroupPage(ask: GroupAsk) {
+        groupRefusal = null
+        groupAsked = ask
+        // The colours to choose among are the core's, which lists them with the Spaces (025).
+        if (spaceColours.isEmpty()) askForSpaces()
+    }
+
+    /**
+     * What the Group page asked for, when its button was pressed: a new Group with that name
+     * and colour, and the tab in it; or the name and the colour of the Group it edits, each
+     * when it is another, the name first. The name goes as it was typed: tidying it is the
+     * core's. The page closes when the core has done it, and stays, with the core's code in
+     * [groupRefusal], when it would not.
+     */
+    fun finishGroupPage(name: String, colour: String) {
+        val asked = groupAsked ?: return
+        groupRefusal = null
+        session.scope.launch {
+            try {
+                when (asked) {
+                    is GroupAsk.New -> {
+                        val window = windowId ?: return@launch
+                        val made = session.core.request(Request(make_group = MakeGroup(window_id = window, name = name))).group_made
+                        if (made == null) {
+                            groupRefusal = "group.failed"
+                            return@launch
+                        }
+                        if (colour.isNotEmpty()) session.send(Request(colour_group = ColourGroup(group_id = made.group_id, colour = colour)))
+                        moveToGroup(asked.tab, made.group_id)
+                    }
+                    is GroupAsk.Edit -> {
+                        val id = asked.group.group_id
+                        if (name != asked.group.name) session.core.request(Request(rename_group = RenameGroup(group_id = id, name = name)))
+                        if (colour != asked.group.colour) session.core.request(Request(colour_group = ColourGroup(group_id = id, colour = colour)))
+                    }
+                }
+            } catch (refused: CoreError.Refused) {
+                groupRefusal = refused.code
+                return@launch
+            } catch (_: CoreError) {
+                groupRefusal = if (asked is GroupAsk.New) "group.failed" else "group.change_failed"
+                return@launch
+            }
+            if (groupAsked == asked) groupAsked = null
+        }
     }
 
     // Places offered as the address field is typed in (011)
@@ -587,6 +694,11 @@ class BrowserModel(
     fun openSpaces() {
         spaceRefusal = null
         showingSpaces = true
+        askForSpaces()
+    }
+
+    /** Asks the core for the Spaces, and the colours one can have: its answer is what is then shown. */
+    private fun askForSpaces() {
         session.scope.launch {
             val answer =
                 try {
@@ -812,6 +924,7 @@ class BrowserModel(
         if (!sameFailure) isWarnedOfCertificate = false
         tab = front
         tabs = snapshot.tabs
+        groups = snapshot.groups
         downloadsActive = snapshot.downloads_active
         spaceId = snapshot.space_id
         spaceName = snapshot.space_name

@@ -71,6 +71,7 @@ import com.tigercodes.webtiger.core.v1.PromptView
 import com.tigercodes.webtiger.core.v1.SearchEngine
 import com.tigercodes.webtiger.core.v1.SearchSettings
 import com.tigercodes.webtiger.core.v1.SignInPrompt
+import com.tigercodes.webtiger.core.v1.GroupSummary
 import com.tigercodes.webtiger.core.v1.SpaceSummary
 import com.tigercodes.webtiger.core.v1.Response
 import com.tigercodes.webtiger.core.v1.SitePermissions
@@ -100,6 +101,7 @@ internal enum class CatalogueState(@StringRes val title: Int) {
     HISTORY(R.string.catalogue_state_history),
     TABS(R.string.catalogue_state_tabs),
     SITES(R.string.catalogue_state_sites),
+    GROUPS(R.string.catalogue_state_groups),
     FIND(R.string.catalogue_state_find),
     FIND_NONE(R.string.catalogue_state_find_none),
     SUGGESTIONS(R.string.catalogue_state_suggestions),
@@ -245,6 +247,9 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                     // Sites (039): the tab in front is one, awake; beside it one that is
                     // asleep, and a tab that is none.
                     SITES -> page("https://mail.example.com/", "mail.example.com").copy(title = "Mail", kept = true)
+                    // Groups (041): the tab in front is the Site of an open Group that has a
+                    // colour; after it a Group that is shut, and a tab.
+                    GROUPS -> page("https://wiki.example.com/", "wiki.example.com").copy(title = "Wiki", kept = true)
                     // An engine that counts: the third of twelve.
                     FIND ->
                         page("https://example.com/", "example.com")
@@ -301,6 +306,10 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                         TabSummary(tab_id = 21, title = "Board", host = "board.example.com", kept = true, asleep = true, site_name = "Board"),
                         TabSummary(tab_id = 22, title = "News", host = "news.example.com"),
                     )
+                } else if (this == GROUPS) {
+                    // As a core would list it: the open Group's Site, which is in front;
+                    // none of the shut Group's; and a tab.
+                    listOf(front.copy(group_id = 30), TabSummary(tab_id = 22, title = "News", host = "news.example.com"))
                 } else if (this == TABS) {
                     listOf(
                         TabSummary(tab_id = 11, title = "A page whose title is longer than a tab is wide"),
@@ -315,6 +324,8 @@ internal enum class CatalogueState(@StringRes val title: Int) {
             // other state is the Space the app made, which has neither.
             return if (this == TABS) {
                 WindowSnapshot(window_id = 1, tab = tab, tabs = tabs, space_id = 2, space_name = "Work", space_colour = "blue")
+            } else if (this == GROUPS) {
+                WindowSnapshot(window_id = 1, tab = tab, tabs = tabs, groups = CatalogueGroups.groups)
             } else {
                 WindowSnapshot(window_id = 1, tab = tab, tabs = tabs)
             }
@@ -541,6 +552,12 @@ fun CatalogueScreen() {
                     CatalogueSpacesList(state, Modifier.fillMaxWidth().height(CatalogueWindowHeight).framed())
                 }
             }
+            for (state in CatalogueGroups.entries) {
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.Space.s)) {
+                    Text(text = stringResource(state.title), style = MaterialTheme.typography.titleMedium)
+                    CatalogueGroupPage(state, Modifier.fillMaxWidth().height(CatalogueWindowHeight).framed())
+                }
+            }
             CatalogueHeading(R.string.catalogue_start_failed)
             Box(modifier = Modifier.fillMaxWidth().height(CatalogueWindowHeight).framed()) { StartFailed("store.open") }
         }
@@ -668,6 +685,41 @@ internal fun CatalogueSpacesList(state: CatalogueSpaces, modifier: Modifier = Mo
                 name = "Travel",
                 sharingWith = 2L.takeIf { state == CatalogueSpaces.NEW_SHARED },
                 renaming = state == CatalogueSpaces.RENAME,
+            )
+        }
+    }
+}
+
+/** One state of the page of a Group (041): making one, and editing one that the core would not change. */
+internal enum class CatalogueGroups(@StringRes val title: Int) {
+    NEW(R.string.catalogue_state_group_new),
+    EDIT_REFUSED(R.string.catalogue_state_group_edit),
+    ;
+
+    companion object {
+        /** What a core would list: a Group with a colour, open; and one with none, shut, that holds three Sites. */
+        val groups =
+            listOf(
+                GroupSummary(group_id = 30, name = "Work", colour = "blue", sites = 1),
+                GroupSummary(group_id = 31, name = "House", shut = true, sites = 3),
+            )
+    }
+}
+
+/** The page of a Group in one state. The system's Back is not its to take: it is a picture. */
+@Composable
+internal fun CatalogueGroupPage(state: CatalogueGroups, modifier: Modifier = Modifier) {
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val nobody = remember(lifecycle) { DetachedBack(lifecycle) }
+    Box(modifier = modifier) {
+        CompositionLocalProvider(LocalOnBackPressedDispatcherOwner provides nobody) {
+            GroupPage(
+                asked = if (state == CatalogueGroups.NEW) GroupAsk.New(tab = 2) else GroupAsk.Edit(CatalogueGroups.groups[0]),
+                colours = CatalogueSpaces.colours,
+                refusal = "group.unknown".takeIf { state == CatalogueGroups.EDIT_REFUSED },
+                onDone = { _, _ -> },
+                onCancel = {},
+                startsNamed = if (state == CatalogueGroups.NEW) "Reading" else "Work",
             )
         }
     }

@@ -234,6 +234,21 @@ private fun Window(session: BrowserSession, model: BrowserModel, private: Privat
                 modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing),
             )
         }
+        // The page that makes a Group or edits one (041): over the window, as the list of
+        // Spaces is.
+        model.groupAsked?.let { asked ->
+            // A page for each thing asked: what was typed for one is not there for the next.
+            key(asked) {
+                GroupPage(
+                    asked = asked,
+                    colours = model.spaceColours,
+                    refusal = model.groupRefusal,
+                    onDone = model::finishGroupPage,
+                    onCancel = model::closeGroupPage,
+                    modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing),
+                )
+            }
+        }
         // The page behind a private window's chip (037): over the window, as the list of
         // Spaces is over an ordinary one.
         if (showingPrivate && model.isPrivate && private != null) {
@@ -297,16 +312,36 @@ private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Tokens.Space.xs),
         ) {
-            for (tab in model.tabs) {
-                key(tab.tab_id) {
-                    TabChip(
-                        tab,
-                        inFront = tab.tab_id == model.tab.tab_id,
-                        onActivate = { model.activate(tab.tab_id) },
-                        onClose = { model.closeTab(tab.tab_id) },
-                        onKeepOrLetGo = { model.keepOrLetGo(tab.tab_id) },
-                        onSendHome = { model.sendHome(tab.tab_id) },
-                    )
+            // The Sites that are in no Group, each Group with its Sites after it, and the other
+            // tabs (041): the core's two lists, in its order.
+            for (item in stripRow(model.tabs, model.groups)) {
+                when (item) {
+                    is StripItem.Tab -> {
+                        val tab = item.tab
+                        key(tab.tab_id) {
+                            TabChip(
+                                tab,
+                                inFront = tab.tab_id == model.tab.tab_id,
+                                onActivate = { model.activate(tab.tab_id) },
+                                onClose = { model.closeTab(tab.tab_id) },
+                                onKeepOrLetGo = { model.keepOrLetGo(tab.tab_id) },
+                                onSendHome = { model.sendHome(tab.tab_id) },
+                                // Into a Group, or out of one: for a tab that can be kept.
+                                grouping =
+                                    if (model.canBeGrouped(tab)) {
+                                        Grouping(model.groups, onMove = { model.moveToGroup(tab.tab_id, it) }, onNew = { model.askForANewGroup(tab.tab_id) })
+                                    } else {
+                                        null
+                                    },
+                            )
+                        }
+                    }
+                    is StripItem.Group -> {
+                        val group = item.group
+                        key("group", group.group_id) {
+                            GroupChip(group, onToggle = { model.shutOrOpen(group) }, onEdit = { model.askToEdit(group) }, onRemove = { model.removeGroup(group.group_id) })
+                        }
+                    }
                 }
             }
             NewTabButton(model)
@@ -344,7 +379,15 @@ private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit
 
 /** One tab in the strip: its name, which brings it in front, and a button that closes it. */
 @Composable
-private fun TabChip(tab: TabSummary, inFront: Boolean, onActivate: () -> Unit, onClose: () -> Unit, onKeepOrLetGo: () -> Unit, onSendHome: () -> Unit) {
+private fun TabChip(
+    tab: TabSummary,
+    inFront: Boolean,
+    onActivate: () -> Unit,
+    onClose: () -> Unit,
+    onKeepOrLetGo: () -> Unit,
+    onSendHome: () -> Unit,
+    grouping: Grouping? = null,
+) {
     // The tab that comes in front is brought into view.
     val place = remember { BringIntoViewRequester() }
     LaunchedEffect(inFront) { if (inFront) place.bringIntoView() }
@@ -431,6 +474,10 @@ private fun TabChip(tab: TabSummary, inFront: Boolean, onActivate: () -> Unit, o
                     },
                     modifier = Modifier.testTag("keep-or-let-go"),
                 )
+                // "Move to Group" (041): the Groups of the row, none, and a new one.
+                if (grouping != null) {
+                    MoveToGroupItems(grouping.groups, current = tab.group_id, onMove = grouping.onMove, onNew = grouping.onNew, onChosen = { offering = false })
+                }
             }
         }
         if (tab.kept && tab.asleep) {

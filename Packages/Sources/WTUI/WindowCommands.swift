@@ -145,6 +145,17 @@ private struct Command: View {
             ) {
                 window?.model.keepOrLetGoTheTabInFront()
             }
+            // The tab in front is put in a Group, or taken out of one (041).
+            Menu {
+                MoveToGroupItems(
+                    groups: window?.model.groups ?? [], current: window?.model.groupOfTheTabInFront ?? 0,
+                    move: { window?.model.moveTheTabInFront(toGroup: $0) },
+                    new: { window?.model.askForANewGroupForTheTabInFront() }
+                )
+            } label: {
+                Text(Words.groupsMove)
+            }
+            .disabled(window?.model.canGroupTheTabInFront != true)
         }
     }
 

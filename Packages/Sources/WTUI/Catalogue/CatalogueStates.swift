@@ -19,6 +19,7 @@ enum CatalogueState: String, CaseIterable, Identifiable {
     case history
     case tabs
     case sites
+    case groups
     case find
     case findNone = "find-none"
     case suggestions
@@ -49,6 +50,7 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         case .history: Words.catalogueStateHistory
         case .tabs: Words.catalogueStateTabs
         case .sites: Words.catalogueStateSites
+        case .groups: Words.catalogueStateGroups
         case .find: Words.catalogueStateFind
         case .findNone: Words.catalogueStateFindNone
         case .suggestions: Words.catalogueStateSuggestions
@@ -156,6 +158,12 @@ enum CatalogueState: String, CaseIterable, Identifiable {
             page(&window, url: "https://mail.example.com/", display: "mail.example.com", security: .secure)
             window.tab.title = "Mail"
             window.tab.kept = true
+        case .groups:
+            // Groups (041): the tab in front is the Site of an open Group that has a colour;
+            // after it a Group that is shut, and a tab.
+            page(&window, url: "https://wiki.example.com/", display: "wiki.example.com", security: .secure)
+            window.tab.title = "Wiki"
+            window.tab.kept = true
         case .tabs:
             page(&window, url: "https://example.com/", display: "example.com", security: .secure)
             window.tab.title = "Example Domain"
@@ -235,6 +243,10 @@ enum CatalogueState: String, CaseIterable, Identifiable {
             asleep.asleep = true
             asleep.siteName = "Board"
             window.tabs = [front, away, asleep, Self.neighbour(22, title: "News", host: "news.example.com")]
+        }
+        if self == .groups {
+            window.groups = CatalogueGroups.groups
+            window.tabs = CatalogueGroups.row(front: front)
         }
         if self == .tabs {
             window.tabs = [

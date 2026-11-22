@@ -12,6 +12,12 @@ public final class BrowserModel {
     public private(set) var tab = WTTabView()
     /// Every tab of the window, in the order they are shown.
     public private(set) var tabs: [WTTabSummary] = []
+    /// The Groups of the row the window shows (041), in their order.
+    public private(set) var groups: [WTGroupSummary] = []
+    /// What the Group page is open for; nothing while it is not open.
+    public internal(set) var groupAsked: GroupAsk?
+    /// Why the core would not make a Group, or change one, by its code: said on that page.
+    public internal(set) var groupRefusal: String?
     /// How many downloads of the window's Space are coming (013): the core's count.
     public private(set) var downloadsActive: UInt32 = 0
     /// The Space the window shows (024), by the core's name for it; and its own name, which
@@ -464,6 +470,7 @@ public final class BrowserModel {
         keepWarning(for: snapshot.tab, switched: switched)
         tab = snapshot.tab
         tabs = snapshot.tabs
+        groups = snapshot.groups
         downloadsActive = snapshot.downloadsActive
         spaceID = snapshot.spaceID
         spaceName = snapshot.spaceName

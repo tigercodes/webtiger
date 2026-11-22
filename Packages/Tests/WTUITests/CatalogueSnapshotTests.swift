@@ -87,6 +87,15 @@ final class CatalogueSnapshotTests: XCTestCase {
         }
     }
 
+    func testEveryStateOfTheGroupPage() async throws {
+        try skipWithoutPictures()
+        for state in CatalogueGroups.allCases {
+            // As tall as a page: on a phone the colours take two rows, and the buttons are
+            // under what was refused.
+            await verify(CatalogueGroupPage(state: state), size: Self.pageSize, named: "group-\(state.rawValue)")
+        }
+    }
+
     func testStartFailed() async throws {
         try skipWithoutPictures()
         await verify(StartFailedView(code: "store.open"), size: Self.windowSize, named: "start-failed")

@@ -130,6 +130,8 @@ public struct BrowserWindowView: View {
         }
         .sheet(isPresented: $showingHistory) { history }
         .modifier(SpacesSheet(model: model, isShown: $showingSpaces, door: door))
+        // The page that makes a Group or edits one (041).
+        .modifier(GroupSheet(model: model))
         // On a Mac a private window is a window of its own: closing it is its way out.
         .modifier(PrivateSheet(isShown: $showingPrivate, ways: ways ?? PrivateWays(close: { dismiss() })))
         // Where searches go (020): over the window. At the first run it is there before the

@@ -37,6 +37,12 @@
     <string name="catalogue_state_find">Find on the page, with a count</string>
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_find_none">Find on the page, not found</string>
+    <!-- Design catalogue: a state of the page of a Group. -->
+    <string name="catalogue_state_group_edit">Editing a Group, refused</string>
+    <!-- Design catalogue: a state of the page of a Group. -->
+    <string name="catalogue_state_group_new">Making a Group</string>
+    <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_groups">Groups, open and shut</string>
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_history">Back and forward offered</string>
     <!-- Design catalogue: the History list before anything has been visited. -->
@@ -155,6 +161,18 @@
     <string name="error_engine_no_profiles">The web engine on this device can’t keep each Space’s logins separate. Update Android System WebView and try again.</string>
     <!-- The web engine the tab asked for is not installed. -->
     <string name="error_engine_unavailable">This page’s engine isn’t available.</string>
+    <!-- Said on the page that edits a Group when it could not be changed and no more is known. -->
+    <string name="error_group_change_failed">The Group couldn’t be changed.</string>
+    <!-- Said on the page that makes or edits a Group when the app does not know the colour that was chosen. -->
+    <string name="error_group_colour_unknown">That colour isn’t one a Group can have.</string>
+    <!-- Said on the page that makes a Group when it could not be made and no more is known. -->
+    <string name="error_group_failed">The Group couldn’t be made.</string>
+    <!-- Said on the page that makes or edits a Group when the name is empty. -->
+    <string name="error_group_name_empty">A Group needs a name.</string>
+    <!-- Said on the page that makes a Group when the row has as many as it can. -->
+    <string name="error_group_too_many">There are as many Groups as there can be.</string>
+    <!-- Said on the page that edits a Group when the Group has been removed meanwhile. -->
+    <string name="error_group_unknown">That Group isn’t there any more.</string>
     <!-- A load failed: connection refused or lost. -->
     <string name="error_net_connect">The site couldn’t be reached.</string>
     <!-- A load failed: DNS. -->
@@ -211,6 +229,34 @@
     <string name="find_open">Find on Page</string>
     <!-- Button in the find bar: go to the match before. -->
     <string name="find_previous">Previous Match</string>
+    <!-- Button on the page that makes or edits a Group: back to the window, with nothing made or changed. -->
+    <string name="group_cancel">Cancel</string>
+    <!-- In a Group's own menu (a long press on its chip; a right-click on a Mac): opens the page that gives it another name or colour. -->
+    <string name="group_edit">Edit Group…</string>
+    <!-- Heading of the page that gives a Group another name or colour. -->
+    <string name="group_edit_title">Edit Group</string>
+    <!-- Button that makes the new Group and puts the tab in it. -->
+    <string name="group_make">Make Group</string>
+    <!-- Label of the field for a Group's name. -->
+    <string name="group_name">Name</string>
+    <!-- Heading of the page that makes a Group. -->
+    <string name="group_new_title">New Group</string>
+    <!-- In a Group's own menu: the Group is taken away. Its Sites stay, in no Group. -->
+    <string name="group_remove">Remove Group</string>
+    <!-- Said of a Group's chip to a screen reader, with the Group's name: its Sites are shown after it. Pressing it shuts it. -->
+    <string name="group_said_open">Group, open</string>
+    <!-- Said of a Group's chip to a screen reader, with the Group's name: its Sites are out of the way. %d is how many it holds. Pressing it opens it. -->
+    <string name="group_said_shut">Group, shut, Sites: %d</string>
+    <!-- Button that gives the Group the name in the field and the colour chosen. -->
+    <string name="group_save">Save</string>
+    <!-- A shut Group's chip in the row of tabs: the Group's name, and how many Sites it holds. -->
+    <string name="group_shut_label">%1$s (%2$d)</string>
+    <!-- A menu within a tab's own menu (on a Mac in the File menu, for the tab in front), and on Android the heading over the same choices in the tab's menu: the Groups of the row by name, the one the tab is in marked. Choosing one puts the tab in that Group; a tab that is no Site is kept as one by it. -->
+    <string name="groups_move">Move to Group</string>
+    <!-- In 'Move to Group': opens the page that makes a Group, and puts the tab in it. -->
+    <string name="groups_new">New Group…</string>
+    <!-- In 'Move to Group', after the Groups: the choice for a tab that is in none. Chosen for a Site that is in a Group, it takes it out; it stays a Site. -->
+    <string name="groups_none">No Group</string>
     <!-- Button in the History list that asks which visits to forget. -->
     <string name="history_clear">Clear…</string>
     <!-- Choice: leave history as it is. -->
@@ -377,7 +423,7 @@
     <string name="space_chip">Space: %s</string>
     <!-- The same heading when a colour is chosen: it names the colour in words, so that it is not told by the colour alone. %@ is the colour's name, such as Blue. -->
     <string name="space_chosen_colour">Colour: %s</string>
-    <!-- Heading over the colours to choose among for a Space, where one is made and where one is edited. -->
+    <!-- Heading over the colours to choose among for a Space or a Group, where one is made and where one is edited. -->
     <string name="space_colour">Colour</string>
     <!-- Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen. -->
     <string name="space_colour_blue">Blue</string>
@@ -419,7 +465,7 @@
     <string name="space_new_shared_detail">Signed in wherever %s is. The two share history and downloads.</string>
     <!-- Heading of the page that makes a Space. -->
     <string name="space_new_title">New Space</string>
-    <!-- The choice of no colour for a Space, beside the colours. -->
+    <!-- The choice of no colour for a Space or a Group, beside the colours. -->
     <string name="space_no_colour">None</string>
     <!-- Button that gives the Space the name in the field. -->
     <string name="space_rename_save">Save</string>

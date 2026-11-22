@@ -93,6 +93,21 @@ enum Words {
     /// Design catalogue: a state of the window.
     static let catalogueStateFindNone = Word(key: "catalogue.state.find_none")
 
+    /// Editing a Group, refused
+    ///
+    /// Design catalogue: a state of the page of a Group.
+    static let catalogueStateGroupEdit = Word(key: "catalogue.state.group_edit")
+
+    /// Making a Group
+    ///
+    /// Design catalogue: a state of the page of a Group.
+    static let catalogueStateGroupNew = Word(key: "catalogue.state.group_new")
+
+    /// Groups, open and shut
+    ///
+    /// Design catalogue: a state of the window.
+    static let catalogueStateGroups = Word(key: "catalogue.state.groups")
+
     /// Back and forward offered
     ///
     /// Design catalogue: a state of the window.
@@ -388,6 +403,36 @@ enum Words {
     /// The web engine the tab asked for is not installed.
     static let errorEngineUnavailable = Word(key: "error.engine.unavailable")
 
+    /// The Group couldn’t be changed.
+    ///
+    /// Said on the page that edits a Group when it could not be changed and no more is known.
+    static let errorGroupChangeFailed = Word(key: "error.group.change_failed")
+
+    /// That colour isn’t one a Group can have.
+    ///
+    /// Said on the page that makes or edits a Group when the app does not know the colour that was chosen.
+    static let errorGroupColourUnknown = Word(key: "error.group.colour_unknown")
+
+    /// The Group couldn’t be made.
+    ///
+    /// Said on the page that makes a Group when it could not be made and no more is known.
+    static let errorGroupFailed = Word(key: "error.group.failed")
+
+    /// A Group needs a name.
+    ///
+    /// Said on the page that makes or edits a Group when the name is empty.
+    static let errorGroupNameEmpty = Word(key: "error.group.name_empty")
+
+    /// There are as many Groups as there can be.
+    ///
+    /// Said on the page that makes a Group when the row has as many as it can.
+    static let errorGroupTooMany = Word(key: "error.group.too_many")
+
+    /// That Group isn’t there any more.
+    ///
+    /// Said on the page that edits a Group when the Group has been removed meanwhile.
+    static let errorGroupUnknown = Word(key: "error.group.unknown")
+
     /// The site couldn’t be reached.
     ///
     /// A load failed: connection refused or lost.
@@ -527,6 +572,76 @@ enum Words {
     ///
     /// Button in the find bar: go to the match before.
     static let findPrevious = Word(key: "find.previous")
+
+    /// Cancel
+    ///
+    /// Button on the page that makes or edits a Group: back to the window, with nothing made or changed.
+    static let groupCancel = Word(key: "group.cancel")
+
+    /// Edit Group…
+    ///
+    /// In a Group's own menu (a long press on its chip; a right-click on a Mac): opens the page that gives it another name or colour.
+    static let groupEdit = Word(key: "group.edit")
+
+    /// Edit Group
+    ///
+    /// Heading of the page that gives a Group another name or colour.
+    static let groupEditTitle = Word(key: "group.edit.title")
+
+    /// Make Group
+    ///
+    /// Button that makes the new Group and puts the tab in it.
+    static let groupMake = Word(key: "group.make")
+
+    /// Name
+    ///
+    /// Label of the field for a Group's name.
+    static let groupName = Word(key: "group.name")
+
+    /// New Group
+    ///
+    /// Heading of the page that makes a Group.
+    static let groupNewTitle = Word(key: "group.new.title")
+
+    /// Remove Group
+    ///
+    /// In a Group's own menu: the Group is taken away. Its Sites stay, in no Group.
+    static let groupRemove = Word(key: "group.remove")
+
+    /// Group, open
+    ///
+    /// Said of a Group's chip to a screen reader, with the Group's name: its Sites are shown after it. Pressing it shuts it.
+    static let groupSaidOpen = Word(key: "group.said.open")
+
+    /// Group, shut, Sites: %d
+    ///
+    /// Said of a Group's chip to a screen reader, with the Group's name: its Sites are out of the way. %d is how many it holds. Pressing it opens it.
+    static let groupSaidShut = Word(key: "group.said.shut")
+
+    /// Save
+    ///
+    /// Button that gives the Group the name in the field and the colour chosen.
+    static let groupSave = Word(key: "group.save")
+
+    /// %1$@ (%2$d)
+    ///
+    /// A shut Group's chip in the row of tabs: the Group's name, and how many Sites it holds.
+    static let groupShutLabel = Word(key: "group.shut_label")
+
+    /// Move to Group
+    ///
+    /// A menu within a tab's own menu (on a Mac in the File menu, for the tab in front), and on Android the heading over the same choices in the tab's menu: the Groups of the row by name, the one the tab is in marked. Choosing one puts the tab in that Group; a tab that is no Site is kept as one by it.
+    static let groupsMove = Word(key: "groups.move")
+
+    /// New Group…
+    ///
+    /// In 'Move to Group': opens the page that makes a Group, and puts the tab in it.
+    static let groupsNew = Word(key: "groups.new")
+
+    /// No Group
+    ///
+    /// In 'Move to Group', after the Groups: the choice for a tab that is in none. Chosen for a Site that is in a Group, it takes it out; it stays a Site.
+    static let groupsNone = Word(key: "groups.none")
 
     /// Clear…
     ///
@@ -945,7 +1060,7 @@ enum Words {
 
     /// Colour
     ///
-    /// Heading over the colours to choose among for a Space, where one is made and where one is edited.
+    /// Heading over the colours to choose among for a Space or a Group, where one is made and where one is edited.
     static let spaceColour = Word(key: "space.colour")
 
     /// Blue
@@ -1050,7 +1165,7 @@ enum Words {
 
     /// None
     ///
-    /// The choice of no colour for a Space, beside the colours.
+    /// The choice of no colour for a Space or a Group, beside the colours.
     static let spaceNoColour = Word(key: "space.no_colour")
 
     /// Save
@@ -1230,6 +1345,9 @@ extension Word {
         "catalogue.state.failed_certificate_warning",
         "catalogue.state.find",
         "catalogue.state.find_none",
+        "catalogue.state.group_edit",
+        "catalogue.state.group_new",
+        "catalogue.state.groups",
         "catalogue.state.history",
         "catalogue.state.history_empty",
         "catalogue.state.history_list",
@@ -1289,6 +1407,12 @@ extension Word {
         "error.engine.no_private",
         "error.engine.no_profiles",
         "error.engine.unavailable",
+        "error.group.change_failed",
+        "error.group.colour_unknown",
+        "error.group.failed",
+        "error.group.name_empty",
+        "error.group.too_many",
+        "error.group.unknown",
         "error.net.connect",
         "error.net.dns",
         "error.net.failed",
@@ -1317,6 +1441,20 @@ extension Word {
         "find.none",
         "find.open",
         "find.previous",
+        "group.cancel",
+        "group.edit",
+        "group.edit.title",
+        "group.make",
+        "group.name",
+        "group.new.title",
+        "group.remove",
+        "group.said.open",
+        "group.said.shut",
+        "group.save",
+        "group.shut_label",
+        "groups.move",
+        "groups.new",
+        "groups.none",
         "history.clear",
         "history.clear.cancel",
         "history.clear.detail",

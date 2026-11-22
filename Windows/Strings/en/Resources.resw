@@ -23,6 +23,9 @@
   <data name="catalogue_state_failed_certificate_warning" xml:space="preserve"><value>The warning before going on past a certificate</value><comment>Design catalogue: a state of the window.</comment></data>
   <data name="catalogue_state_find" xml:space="preserve"><value>Find on the page, with a count</value><comment>Design catalogue: a state of the window.</comment></data>
   <data name="catalogue_state_find_none" xml:space="preserve"><value>Find on the page, not found</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_group_edit" xml:space="preserve"><value>Editing a Group, refused</value><comment>Design catalogue: a state of the page of a Group.</comment></data>
+  <data name="catalogue_state_group_new" xml:space="preserve"><value>Making a Group</value><comment>Design catalogue: a state of the page of a Group.</comment></data>
+  <data name="catalogue_state_groups" xml:space="preserve"><value>Groups, open and shut</value><comment>Design catalogue: a state of the window.</comment></data>
   <data name="catalogue_state_history" xml:space="preserve"><value>Back and forward offered</value><comment>Design catalogue: a state of the window.</comment></data>
   <data name="catalogue_state_history_empty" xml:space="preserve"><value>The History list, nothing visited</value><comment>Design catalogue: the History list before anything has been visited.</comment></data>
   <data name="catalogue_state_history_list" xml:space="preserve"><value>The History list</value><comment>Design catalogue: the History list with visits in it.</comment></data>
@@ -82,6 +85,12 @@
   <data name="error_engine_no_private" xml:space="preserve"><value>Private windows aren’t available on this device yet.</value><comment>The engine cannot make a login set that is kept in memory only.</comment></data>
   <data name="error_engine_no_profiles" xml:space="preserve"><value>The web engine on this device can’t keep each Space’s logins separate. Update Android System WebView and try again.</value><comment>Android: the System WebView is too old to give each login set a profile of its own.</comment></data>
   <data name="error_engine_unavailable" xml:space="preserve"><value>This page’s engine isn’t available.</value><comment>The web engine the tab asked for is not installed.</comment></data>
+  <data name="error_group_change_failed" xml:space="preserve"><value>The Group couldn’t be changed.</value><comment>Said on the page that edits a Group when it could not be changed and no more is known.</comment></data>
+  <data name="error_group_colour_unknown" xml:space="preserve"><value>That colour isn’t one a Group can have.</value><comment>Said on the page that makes or edits a Group when the app does not know the colour that was chosen.</comment></data>
+  <data name="error_group_failed" xml:space="preserve"><value>The Group couldn’t be made.</value><comment>Said on the page that makes a Group when it could not be made and no more is known.</comment></data>
+  <data name="error_group_name_empty" xml:space="preserve"><value>A Group needs a name.</value><comment>Said on the page that makes or edits a Group when the name is empty.</comment></data>
+  <data name="error_group_too_many" xml:space="preserve"><value>There are as many Groups as there can be.</value><comment>Said on the page that makes a Group when the row has as many as it can.</comment></data>
+  <data name="error_group_unknown" xml:space="preserve"><value>That Group isn’t there any more.</value><comment>Said on the page that edits a Group when the Group has been removed meanwhile.</comment></data>
   <data name="error_net_connect" xml:space="preserve"><value>The site couldn’t be reached.</value><comment>A load failed: connection refused or lost.</comment></data>
   <data name="error_net_dns" xml:space="preserve"><value>The site’s address couldn’t be found.</value><comment>A load failed: DNS.</comment></data>
   <data name="error_net_failed" xml:space="preserve"><value>Something went wrong while loading the page.</value><comment>A load failed for a reason without words of its own.</comment></data>
@@ -110,6 +119,20 @@
   <data name="find_none" xml:space="preserve"><value>Not found</value><comment>Shown in the find bar when the text is not on the page.</comment></data>
   <data name="find_open" xml:space="preserve"><value>Find on Page</value><comment>Label of the button, beside the tabs, that opens the find bar; and the command (Command-F on a Mac).</comment></data>
   <data name="find_previous" xml:space="preserve"><value>Previous Match</value><comment>Button in the find bar: go to the match before.</comment></data>
+  <data name="group_cancel" xml:space="preserve"><value>Cancel</value><comment>Button on the page that makes or edits a Group: back to the window, with nothing made or changed.</comment></data>
+  <data name="group_edit" xml:space="preserve"><value>Edit Group…</value><comment>In a Group&apos;s own menu (a long press on its chip; a right-click on a Mac): opens the page that gives it another name or colour.</comment></data>
+  <data name="group_edit_title" xml:space="preserve"><value>Edit Group</value><comment>Heading of the page that gives a Group another name or colour.</comment></data>
+  <data name="group_make" xml:space="preserve"><value>Make Group</value><comment>Button that makes the new Group and puts the tab in it.</comment></data>
+  <data name="group_name" xml:space="preserve"><value>Name</value><comment>Label of the field for a Group&apos;s name.</comment></data>
+  <data name="group_new_title" xml:space="preserve"><value>New Group</value><comment>Heading of the page that makes a Group.</comment></data>
+  <data name="group_remove" xml:space="preserve"><value>Remove Group</value><comment>In a Group&apos;s own menu: the Group is taken away. Its Sites stay, in no Group.</comment></data>
+  <data name="group_said_open" xml:space="preserve"><value>Group, open</value><comment>Said of a Group&apos;s chip to a screen reader, with the Group&apos;s name: its Sites are shown after it. Pressing it shuts it.</comment></data>
+  <data name="group_said_shut" xml:space="preserve"><value>Group, shut, Sites: {0}</value><comment>Said of a Group&apos;s chip to a screen reader, with the Group&apos;s name: its Sites are out of the way. %d is how many it holds. Pressing it opens it.</comment></data>
+  <data name="group_save" xml:space="preserve"><value>Save</value><comment>Button that gives the Group the name in the field and the colour chosen.</comment></data>
+  <data name="group_shut_label" xml:space="preserve"><value>{0} ({1})</value><comment>A shut Group&apos;s chip in the row of tabs: the Group&apos;s name, and how many Sites it holds.</comment></data>
+  <data name="groups_move" xml:space="preserve"><value>Move to Group</value><comment>A menu within a tab&apos;s own menu (on a Mac in the File menu, for the tab in front), and on Android the heading over the same choices in the tab&apos;s menu: the Groups of the row by name, the one the tab is in marked. Choosing one puts the tab in that Group; a tab that is no Site is kept as one by it.</comment></data>
+  <data name="groups_new" xml:space="preserve"><value>New Group…</value><comment>In &apos;Move to Group&apos;: opens the page that makes a Group, and puts the tab in it.</comment></data>
+  <data name="groups_none" xml:space="preserve"><value>No Group</value><comment>In &apos;Move to Group&apos;, after the Groups: the choice for a tab that is in none. Chosen for a Site that is in a Group, it takes it out; it stays a Site.</comment></data>
   <data name="history_clear" xml:space="preserve"><value>Clear…</value><comment>Button in the History list that asks which visits to forget.</comment></data>
   <data name="history_clear_cancel" xml:space="preserve"><value>Cancel</value><comment>Choice: leave history as it is.</comment></data>
   <data name="history_clear_detail" xml:space="preserve"><value>Visits that are forgotten can’t be brought back.</value><comment>Under the question of which visits to forget.</comment></data>
@@ -193,7 +216,7 @@
   <data name="space_automatic_colour" xml:space="preserve"><value>If you choose none, it gets one that no other Space has.</value><comment>Under the colours on the page that makes a Space.</comment></data>
   <data name="space_chip" xml:space="preserve"><value>Space: {0}</value><comment>Accessibility name of the button at the start of the strip of tabs that says which Space the window shows, and opens the list of Spaces. %@ is the Space&apos;s name.</comment></data>
   <data name="space_chosen_colour" xml:space="preserve"><value>Colour: {0}</value><comment>The same heading when a colour is chosen: it names the colour in words, so that it is not told by the colour alone. %@ is the colour&apos;s name, such as Blue.</comment></data>
-  <data name="space_colour" xml:space="preserve"><value>Colour</value><comment>Heading over the colours to choose among for a Space, where one is made and where one is edited.</comment></data>
+  <data name="space_colour" xml:space="preserve"><value>Colour</value><comment>Heading over the colours to choose among for a Space or a Group, where one is made and where one is edited.</comment></data>
   <data name="space_colour_blue" xml:space="preserve"><value>Blue</value><comment>Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.</comment></data>
   <data name="space_colour_green" xml:space="preserve"><value>Green</value><comment>Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.</comment></data>
   <data name="space_colour_grey" xml:space="preserve"><value>Grey</value><comment>Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.</comment></data>
@@ -214,7 +237,7 @@
   <data name="space_new_shared" xml:space="preserve"><value>The same as another Space</value><comment>Choice for a new Space: it is signed in to sites as another Space is.</comment></data>
   <data name="space_new_shared_detail" xml:space="preserve"><value>Signed in wherever {0} is. The two share history and downloads.</value><comment>Under the choice &apos;The same as another Space&apos;. %@ is the name of the Space whose logins are shared.</comment></data>
   <data name="space_new_title" xml:space="preserve"><value>New Space</value><comment>Heading of the page that makes a Space.</comment></data>
-  <data name="space_no_colour" xml:space="preserve"><value>None</value><comment>The choice of no colour for a Space, beside the colours.</comment></data>
+  <data name="space_no_colour" xml:space="preserve"><value>None</value><comment>The choice of no colour for a Space or a Group, beside the colours.</comment></data>
   <data name="space_rename_save" xml:space="preserve"><value>Save</value><comment>Button that gives the Space the name in the field.</comment></data>
   <data name="space_rename_title" xml:space="preserve"><value>Edit Space</value><comment>Heading of the page that gives a Space another name or colour.</comment></data>
   <data name="spaces_detail" xml:space="preserve"><value>A Space keeps its tabs apart from the others. Choose one to show it in this window.</value><comment>Under the heading of the list of Spaces.</comment></data>

@@ -74,6 +74,16 @@ public struct CatalogueView: View {
                             .overlay(RoundedRectangle(cornerRadius: Tokens.Radius.tile).strokeBorder(Tokens.Palette.hairline))
                     }
                 }
+                ForEach(CatalogueGroups.allCases) { state in
+                    VStack(alignment: .leading, spacing: Tokens.Space.s) {
+                        Text(state.title)
+                            .font(.headline)
+                        CatalogueGroupPage(state: state)
+                            .frame(height: CatalogueWindow.height)
+                            .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.tile))
+                            .overlay(RoundedRectangle(cornerRadius: Tokens.Radius.tile).strokeBorder(Tokens.Palette.hairline))
+                    }
+                }
                 heading(Words.catalogueStartFailed)
                 StartFailedView(code: "store.open")
                     .frame(height: CatalogueWindow.height)

@@ -137,6 +137,15 @@ class CatalogueSnapshotTest {
         }
     }
 
+    private fun groupPages(theme: String) {
+        var state by mutableStateOf(CatalogueGroups.NEW)
+        show { key(state) { CatalogueGroupPage(state, Modifier.fillMaxSize()) } }
+        for (next in CatalogueGroups.entries) {
+            state = next
+            verify("group-${next.name.lowercase().replace('_', '-')}-$theme")
+        }
+    }
+
     private fun startFailed(theme: String) {
         show { StartFailed("store.open") }
         verify("start-failed-$theme")
@@ -184,10 +193,17 @@ class CatalogueSnapshotTest {
     @Test @Config(qualifiers = DARK)
     fun everyStateOfThePermissionsListInTheDarkTheme() = permissionsLists("dark")
 
-    /** A window as wide as a tablet's: the chip has room for the Space's name (024). */
+    /**
+     * A window as wide as a tablet's: the chip has room for the Space's name (024), and the
+     * strip for a row with Groups (041), of which a phone's shows the beginning.
+     */
     private fun wideWindow(theme: String) {
-        show { CatalogueWindow(CatalogueState.TABS, Modifier.fillMaxSize()) }
-        verify("window-tabs-wide-$theme")
+        var state by mutableStateOf(CatalogueState.TABS)
+        show { key(state) { CatalogueWindow(state, Modifier.fillMaxSize()) } }
+        for (next in listOf(CatalogueState.TABS, CatalogueState.GROUPS)) {
+            state = next
+            verify("window-${next.name.lowercase()}-wide-$theme")
+        }
     }
 
     @Test @Config(qualifiers = "w720dp-h320dp-notnight-xhdpi")
@@ -203,6 +219,14 @@ class CatalogueSnapshotTest {
 
     @Test @Config(qualifiers = "w411dp-h820dp-night-xhdpi")
     fun everyStateOfTheSpacesInTheDarkTheme() = spacesLists("dark")
+
+    // As tall as the Spaces' pages: the colours take two rows, and the buttons are under what
+    // was refused.
+    @Test @Config(qualifiers = "w411dp-h820dp-notnight-xhdpi")
+    fun everyStateOfTheGroupPageInTheLightTheme() = groupPages("light")
+
+    @Test @Config(qualifiers = "w411dp-h820dp-night-xhdpi")
+    fun everyStateOfTheGroupPageInTheDarkTheme() = groupPages("dark")
 
     @Test @Config(qualifiers = LIGHT)
     fun startFailedInTheLightTheme() = startFailed("light")

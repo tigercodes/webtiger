@@ -217,6 +217,42 @@
         }
       }
     },
+    "catalogue.state.group_edit": {
+      "comment": "Design catalogue: a state of the page of a Group.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editing a Group, refused"
+          }
+        }
+      }
+    },
+    "catalogue.state.group_new": {
+      "comment": "Design catalogue: a state of the page of a Group.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Making a Group"
+          }
+        }
+      }
+    },
+    "catalogue.state.groups": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Groups, open and shut"
+          }
+        }
+      }
+    },
     "catalogue.state.history": {
       "comment": "Design catalogue: a state of the window.",
       "extractionState": "manual",
@@ -925,6 +961,78 @@
         }
       }
     },
+    "error.group.change_failed": {
+      "comment": "Said on the page that edits a Group when it could not be changed and no more is known.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Group couldn’t be changed."
+          }
+        }
+      }
+    },
+    "error.group.colour_unknown": {
+      "comment": "Said on the page that makes or edits a Group when the app does not know the colour that was chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That colour isn’t one a Group can have."
+          }
+        }
+      }
+    },
+    "error.group.failed": {
+      "comment": "Said on the page that makes a Group when it could not be made and no more is known.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Group couldn’t be made."
+          }
+        }
+      }
+    },
+    "error.group.name_empty": {
+      "comment": "Said on the page that makes or edits a Group when the name is empty.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A Group needs a name."
+          }
+        }
+      }
+    },
+    "error.group.too_many": {
+      "comment": "Said on the page that makes a Group when the row has as many as it can.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There are as many Groups as there can be."
+          }
+        }
+      }
+    },
+    "error.group.unknown": {
+      "comment": "Said on the page that edits a Group when the Group has been removed meanwhile.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That Group isn’t there any more."
+          }
+        }
+      }
+    },
     "error.net.connect": {
       "comment": "A load failed: connection refused or lost.",
       "extractionState": "manual",
@@ -1257,6 +1365,174 @@
           "stringUnit": {
             "state": "translated",
             "value": "Previous Match"
+          }
+        }
+      }
+    },
+    "group.cancel": {
+      "comment": "Button on the page that makes or edits a Group: back to the window, with nothing made or changed.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        }
+      }
+    },
+    "group.edit": {
+      "comment": "In a Group's own menu (a long press on its chip; a right-click on a Mac): opens the page that gives it another name or colour.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit Group…"
+          }
+        }
+      }
+    },
+    "group.edit.title": {
+      "comment": "Heading of the page that gives a Group another name or colour.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit Group"
+          }
+        }
+      }
+    },
+    "group.make": {
+      "comment": "Button that makes the new Group and puts the tab in it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Make Group"
+          }
+        }
+      }
+    },
+    "group.name": {
+      "comment": "Label of the field for a Group's name.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        }
+      }
+    },
+    "group.new.title": {
+      "comment": "Heading of the page that makes a Group.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Group"
+          }
+        }
+      }
+    },
+    "group.remove": {
+      "comment": "In a Group's own menu: the Group is taken away. Its Sites stay, in no Group.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove Group"
+          }
+        }
+      }
+    },
+    "group.said.open": {
+      "comment": "Said of a Group's chip to a screen reader, with the Group's name: its Sites are shown after it. Pressing it shuts it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Group, open"
+          }
+        }
+      }
+    },
+    "group.said.shut": {
+      "comment": "Said of a Group's chip to a screen reader, with the Group's name: its Sites are out of the way. %d is how many it holds. Pressing it opens it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Group, shut, Sites: %d"
+          }
+        }
+      }
+    },
+    "group.save": {
+      "comment": "Button that gives the Group the name in the field and the colour chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
+          }
+        }
+      }
+    },
+    "group.shut_label": {
+      "comment": "A shut Group's chip in the row of tabs: the Group's name, and how many Sites it holds.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ (%2$d)"
+          }
+        }
+      }
+    },
+    "groups.move": {
+      "comment": "A menu within a tab's own menu (on a Mac in the File menu, for the tab in front), and on Android the heading over the same choices in the tab's menu: the Groups of the row by name, the one the tab is in marked. Choosing one puts the tab in that Group; a tab that is no Site is kept as one by it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move to Group"
+          }
+        }
+      }
+    },
+    "groups.new": {
+      "comment": "In 'Move to Group': opens the page that makes a Group, and puts the tab in it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Group…"
+          }
+        }
+      }
+    },
+    "groups.none": {
+      "comment": "In 'Move to Group', after the Groups: the choice for a tab that is in none. Chosen for a Site that is in a Group, it takes it out; it stays a Site.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Group"
           }
         }
       }
@@ -2258,7 +2534,7 @@
       }
     },
     "space.colour": {
-      "comment": "Heading over the colours to choose among for a Space, where one is made and where one is edited.",
+      "comment": "Heading over the colours to choose among for a Space or a Group, where one is made and where one is edited.",
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -2510,7 +2786,7 @@
       }
     },
     "space.no_colour": {
-      "comment": "The choice of no colour for a Space, beside the colours.",
+      "comment": "The choice of no colour for a Space or a Group, beside the colours.",
       "extractionState": "manual",
       "localizations": {
         "en": {
