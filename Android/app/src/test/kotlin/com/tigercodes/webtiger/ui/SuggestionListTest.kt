@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -98,6 +99,30 @@ class SuggestionListTest {
         assertEquals(2L, submit?.tab_id)
         compose.onAllNodesWithTag("suggestion").assertCountEquals(0)
         // The field shows the page's address again, and its mark, until the core says otherwise.
+        compose.onNodeWithTag("security-secure").assertExists()
+    }
+
+    /** A tab that is open is a row that says so (038), and choosing it brings the tab in front. */
+    @Test
+    fun aTabThatIsOpenIsARowThatSaysSoAndChoosingItBringsItInFront() {
+        showAPage()
+        compose.onNodeWithTag("address-field").performClick()
+        compose.onNodeWithTag("address-field").performTextReplacement("tabs")
+        compose.waitForIdle()
+
+        // Three rows; the first is the tab, and only it says so, with its title and address.
+        compose.onAllNodesWithTag("suggestion").assertCountEquals(3)
+        compose.onAllNodesWithTag("suggestion-switch", useUnmergedTree = true).assertCountEquals(1)
+        compose.onAllNodesWithTag("suggestion")[0].assertTextContains("Switch to Tab")
+        compose.onAllNodesWithTag("suggestion")[0].assertTextContains("tabs 1")
+        compose.onAllNodesWithTag("suggestion")[0].assertTextContains("example.com/tabs/1")
+
+        compose.onAllNodesWithTag("suggestion")[0].performClick()
+        compose.waitForIdle()
+
+        assertEquals(7L, core.requests.last().activate_tab?.tab_id)
+        assertTrue("nothing is loaded", core.requests.none { it.submit_address != null })
+        compose.onAllNodesWithTag("suggestion").assertCountEquals(0)
         compose.onNodeWithTag("security-secure").assertExists()
     }
 }

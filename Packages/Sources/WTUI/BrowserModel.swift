@@ -232,9 +232,15 @@ public final class BrowserModel {
         markedSuggestion = nil
     }
 
-    /// Goes to a place that was offered, in the tab in front.
+    /// Goes to what was offered. A place is loaded in the tab in front. A tab that is open
+    /// (038) is brought in front and nothing is loaded: the tab typed in is left as it was.
     public func choose(_ suggestion: WTAddressSuggestion) {
-        load(suggestion.url)
+        guard suggestion.tabID != 0 else {
+            load(suggestion.url)
+            return
+        }
+        isEditingAddress = false
+        activate(suggestion.tabID)
     }
 
     /// Marks the next place offered: from none to the first, and from the last to none, where

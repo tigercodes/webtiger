@@ -565,6 +565,54 @@ internal class AppWindowTest {
     }
 
     /**
+     * An open tab is offered while typing (038), with the real core: a page that is open in
+     * another tab is offered first, in a row that says it is a tab, and not a second time as
+     * the place it also is; choosing it brings that tab in front, and the site is not asked
+     * for the page again.
+     */
+    @Test
+    fun aTabThatIsOpenIsOfferedAndChoosingItBringsItInFront() {
+        awaitPage("Home")
+        startWithNoHistory()
+        type(site.url("/landed"))
+        awaitPage("Landed")
+        // A second tab, gone somewhere else.
+        compose.onNodeWithTag("new-tab").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("empty-tab").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("address-field").performTextReplacement(site.url("/"))
+        compose.onNodeWithTag("address-field").performImeAction()
+        awaitPage("Home")
+        compose.onAllNodesWithTag("tab").assertCountEquals(2)
+        val asked = site.requests.count { it == "/landed" }
+
+        // Typed there, the start of a word of the first tab's title: one row, the tab.
+        compose.onNodeWithTag("address-field").performClick()
+        compose.onNodeWithTag("address-field").performTextReplacement("lan")
+        awaitOffered(1)
+        compose.onAllNodesWithTag("suggestion")[0].assertTextContains("Landed")
+        compose.onAllNodesWithTag("suggestion")[0].assertTextContains(shown("/landed"))
+        compose.onAllNodesWithTag("suggestion")[0].assertTextContains("Switch to Tab")
+        compose.onRoot().tryPerformAccessibilityChecks()
+
+        // Chosen: the first tab is in front, as it was; no tab was opened, and nothing loaded.
+        compose.onAllNodesWithTag("suggestion")[0].performClick()
+        awaitPage("Landed")
+        awaitAddress(shown("/landed"))
+        awaitOffered(0)
+        compose.onAllNodesWithTag("tab").assertCountEquals(2)
+        assertEquals("the page was open: the site is not asked for it again", asked, site.requests.count { it == "/landed" })
+
+        // From the first tab, the second is the one that is offered: by a word of its title.
+        compose.onNodeWithTag("address-field").performClick()
+        compose.onNodeWithTag("address-field").performTextReplacement("hom")
+        awaitOffered(1)
+        compose.onAllNodesWithTag("suggestion")[0].assertTextContains("Switch to Tab")
+        compose.onAllNodesWithTag("suggestion")[0].performClick()
+        awaitPage("Home")
+        compose.onAllNodesWithTag("tab").assertCountEquals(2)
+    }
+
+    /**
      * A download (013), with the real core, the real WebView and the system's own fetcher: a
      * finger on a link that offers a file; the person is asked whether the site may download
      * (015), and says yes; the page stays as it was; the file is listed beside

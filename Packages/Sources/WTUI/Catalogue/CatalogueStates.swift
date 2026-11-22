@@ -76,22 +76,25 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         self == .suggestions ? "exa" : nil
     }
 
-    /// The places offered for it: one with a title, one whose title is longer than the list
-    /// is wide, one with none.
+    /// What is offered for it: first a tab that is open (038), whose title is longer than
+    /// its row has room for beside the words that say it is a tab; then places: one with a
+    /// title, one whose title is longer than the list is wide, one with none.
     var offered: [WTAddressSuggestion] {
         guard self == .suggestions else { return [] }
-        let places: [(String, String)] = [
-            ("Example Domain", "example.com"),
-            ("A page whose title is longer than the list is wide, and then goes on", "example.org/a/long/path"),
-            ("", "example.net/plain.txt"),
-        ]
-        return places.map { title, display in
+        func offer(_ title: String, _ display: String, tab: UInt64 = 0) -> WTAddressSuggestion {
             var place = WTAddressSuggestion()
             place.title = title
             place.display = display
             place.url = "https://\(display)"
+            place.tabID = tab
             return place
         }
+        return [
+            offer("Examples of every kind, in a tab that is open already and has more to say", "example.com/open", tab: 7),
+            offer("Example Domain", "example.com"),
+            offer("A page whose title is longer than the list is wide, and then goes on", "example.org/a/long/path"),
+            offer("", "example.net/plain.txt"),
+        ]
     }
 
     /// What the window's find bar is open on in this state, when it is.

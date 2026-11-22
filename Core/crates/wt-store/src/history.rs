@@ -2,16 +2,13 @@
 //! forgetting them.
 
 use rusqlite::{OptionalExtension as _, params};
+use wt_core::words::MAX_WORDS;
 use wt_core::{LoginSetId, Timestamp};
 
 use crate::{Store, StoreError};
 
 /// The most visits one page of history holds.
 pub const MAX_VISITS_PER_PAGE: u32 = 500;
-
-/// The most words of a search that are looked for. Nobody types more, and a
-/// query's cost grows with each.
-const MAX_WORDS: usize = 16;
 
 /// A page that was seen.
 #[derive(Clone, Debug, PartialEq, Eq)]

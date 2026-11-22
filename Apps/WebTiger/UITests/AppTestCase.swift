@@ -170,40 +170,7 @@ class AppTestCase: XCTestCase {
                     }
                 #endif
                 #if !os(macOS)
-                    // What is under the keyboard is not drawn, and has no contrast to measure: a
-                    // page that scrolls has its foot there while a field of it has the keyboard.
-                    if issue.auditType == .contrast, let frame = element?.frame, app.keyboards.firstMatch.exists,
-                       app.keyboards.firstMatch.frame.intersects(frame) {
-                        return true
-                    }
-                    // A one-line text field scrolls what does not fit: that is not clipped text.
-                    if issue.auditType == .textClipped, element?.elementType == .textField {
-                        return true
-                    }
-                    // A tab in the strip shows one line of its title, and is read out whole.
-                    if issue.auditType == .textClipped, element?.identifier == "tab" {
-                        return true
-                    }
-                    // What a page draws is the page's own, and the audit is of the app's
-                    // controls: the test site's pages are plain small text, and a real page is
-                    // whatever its author made it. WebKit's elements say what they are.
-                    if issue.detailedDescription.contains("WebAccessibilityObjectWrapper") {
-                        return true
-                    }
-                    // The system's keyboard is the system's: its row of suggested words is on
-                    // the screen whenever a field of the app's has the keyboard.
-                    if issue.detailedDescription.contains("TUIPrediction") || element?.elementType == .key
-                        || element?.elementType == .keyboard {
-                        return true
-                    }
-                    // A visit's address in the History list may be any length: it is cut to
-                    // two lines, in the middle, and is read out whole.
-                    if issue.auditType == .textClipped, element?.identifier == "history-address" {
-                        return true
-                    }
-                    // The same of a place offered under the address field (011): its address
-                    // is cut to one line, in the middle.
-                    if issue.auditType == .textClipped, element?.identifier == "suggestion-address" {
+                    if Self.isNoFaultOnAPhone(issue, in: app) {
                         return true
                     }
                 #endif
@@ -220,6 +187,65 @@ class AppTestCase: XCTestCase {
         }
         XCTAssertTrue(faults.isEmpty, "\(state): \(faults.joined(separator: "; "))", file: file, line: line)
     }
+
+    #if !os(macOS)
+        /// What the audit faults on an iPhone that is no fault: each with its reason.
+        private static func isNoFaultOnAPhone(_ issue: XCUIAccessibilityAuditIssue, in app: XCUIApplication) -> Bool {
+            let element = issue.element
+            // What is under the keyboard is not drawn, and has no contrast to measure: a
+            // page that scrolls has its foot there while a field of it has the keyboard.
+            if issue.auditType == .contrast, let frame = element?.frame, app.keyboards.firstMatch.exists,
+               app.keyboards.firstMatch.frame.intersects(frame) {
+                return true
+            }
+            // A one-line text field scrolls what does not fit: that is not clipped text.
+            if issue.auditType == .textClipped, element?.elementType == .textField {
+                return true
+            }
+            // A tab in the strip shows one line of its title, and is read out whole.
+            if issue.auditType == .textClipped, element?.identifier == "tab" {
+                return true
+            }
+            // A tab scrolled part of the way out of the strip is not drawn whole: what
+            // the strip cuts off has no contrast to measure, and what is measured there
+            // is whatever is beside the strip. (With two tabs an iPhone's strip scrolls.)
+            if issue.auditType == .contrast, element?.identifier == "tab", let frame = element?.frame {
+                let strip = app.descendants(matching: .any).matching(identifier: "tab-strip").firstMatch
+                if strip.exists, !strip.frame.contains(frame) {
+                    return true
+                }
+            }
+            // The title of what is offered under the address field is one line, cut at
+            // its end, and is read out whole: beside the words that say a row is an
+            // open tab (038) it is cut sooner at the largest text sizes.
+            if issue.auditType == .textClipped, element?.identifier == "suggestion-title" {
+                return true
+            }
+            // What a page draws is the page's own, and the audit is of the app's
+            // controls: the test site's pages are plain small text, and a real page is
+            // whatever its author made it. WebKit's elements say what they are.
+            if issue.detailedDescription.contains("WebAccessibilityObjectWrapper") {
+                return true
+            }
+            // The system's keyboard is the system's: its row of suggested words is on
+            // the screen whenever a field of the app's has the keyboard.
+            if issue.detailedDescription.contains("TUIPrediction") || element?.elementType == .key
+                || element?.elementType == .keyboard {
+                return true
+            }
+            // A visit's address in the History list may be any length: it is cut to
+            // two lines, in the middle, and is read out whole.
+            if issue.auditType == .textClipped, element?.identifier == "history-address" {
+                return true
+            }
+            // The same of a place offered under the address field (011): its address
+            // is cut to one line, in the middle.
+            if issue.auditType == .textClipped, element?.identifier == "suggestion-address" {
+                return true
+            }
+            return false
+        }
+    #endif
 
     /// Whether a point of the screen is a single pixel: too coarse for contrast to be measured.
     static var screenIsCoarse: Bool {

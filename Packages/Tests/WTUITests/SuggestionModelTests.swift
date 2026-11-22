@@ -31,8 +31,9 @@ final class SuggestionModelTests: XCTestCase {
         }
     }
 
-    /// A core that opens a window, and offers one place named after what was typed.
-    private func offering() async -> (BrowserModel, ScriptedCore) {
+    /// A core that opens a window, and offers three places named after what was typed; the
+    /// first of them as a tab that is open, when one is named.
+    private func offering(firstIsTab: UInt64 = 0) async -> (BrowserModel, ScriptedCore) {
         let core = ScriptedCore { request in
             switch request {
             case .openWindow:
@@ -51,6 +52,7 @@ final class SuggestionModelTests: XCTestCase {
                     place.title = "\(ask.text) \(number)"
                     place.url = "https://example.com/\(ask.text)/\(number)"
                     place.display = "example.com/\(ask.text)/\(number)"
+                    place.tabID = number == 1 ? firstIsTab : 0
                     return place
                 }
                 return .addressSuggestions(offered)
@@ -124,6 +126,51 @@ final class SuggestionModelTests: XCTestCase {
         XCTAssertEqual(submit.tabID, 2)
         XCTAssertFalse(model.isEditingAddress)
         XCTAssertEqual(model.suggestions, [])
+    }
+
+    /// A tab that is open (038): choosing its row brings it in front, and nothing is loaded.
+    func testChoosingATabThatIsOpenBringsItInFrontAndLoadsNothing() async {
+        let (model, core) = await offering(firstIsTab: 7)
+        func loads() -> Int {
+            core.requests.count(where: {
+                if case .submitAddress = $0 {
+                    true
+                } else {
+                    false
+                }
+            })
+        }
+        model.isEditingAddress = true
+        model.addressText = "rus"
+        await settle { !model.suggestions.isEmpty }
+        XCTAssertEqual(model.suggestions.map(\.tabID), [7, 0, 0])
+
+        model.choose(model.suggestions[0])
+
+        guard case let .activateTab(activate) = core.requests.last else { return XCTFail("expected ActivateTab") }
+        XCTAssertEqual(activate.tabID, 7)
+        XCTAssertEqual(loads(), 0, "the page is open: nothing is loaded")
+        XCTAssertFalse(model.isEditingAddress)
+        XCTAssertEqual(model.suggestions, [])
+        XCTAssertEqual(model.addressText, "", "what was typed is gone from the field of the tab that is left")
+
+        // By the arrow keys and Return, the same.
+        model.isEditingAddress = true
+        model.addressText = "rust"
+        await settle { model.suggestions.first?.title == "rust 1" }
+        model.markNextSuggestion()
+        model.submit()
+        guard case let .activateTab(again) = core.requests.last else { return XCTFail("expected ActivateTab") }
+        XCTAssertEqual(again.tabID, 7)
+        XCTAssertEqual(loads(), 0)
+
+        // And a place beside it is still gone to.
+        model.isEditingAddress = true
+        model.addressText = "rusty"
+        await settle { model.suggestions.first?.title == "rusty 1" }
+        model.choose(model.suggestions[1])
+        guard case let .submitAddress(submit) = core.requests.last else { return XCTFail("expected SubmitAddress") }
+        XCTAssertEqual(submit.text, "https://example.com/rusty/2")
     }
 
     func testTheArrowKeysMarkAPlaceAndReturnGoesThere() async {

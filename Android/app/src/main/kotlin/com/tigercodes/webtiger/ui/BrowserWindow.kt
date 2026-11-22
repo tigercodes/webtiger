@@ -722,7 +722,8 @@ private fun NewTabButton(model: BrowserModel) {
 
 /**
  * The places offered for what is typed in the address field (011 §5): each by its title and its
- * address. Choosing one goes there, and the page takes the keyboard from the field.
+ * address. Choosing one goes there, and the page takes the keyboard from the field. A tab that
+ * is open is a row of the same list, which says so (038).
  */
 @Composable
 private fun SuggestionList(model: BrowserModel, onChosen: () -> Unit) {
@@ -738,7 +739,7 @@ private fun SuggestionList(model: BrowserModel, onChosen: () -> Unit) {
                 .testTag("suggestions"),
     ) {
         model.suggestions.forEach { place ->
-            Column(
+            Row(
                 modifier =
                     Modifier
                         .fillMaxWidth()
@@ -749,14 +750,29 @@ private fun SuggestionList(model: BrowserModel, onChosen: () -> Unit) {
                         .heightIn(min = LocalMinimumInteractiveComponentSize.current)
                         .padding(horizontal = Tokens.Space.m, vertical = Tokens.Space.xs)
                         .testTag("suggestion"),
-                verticalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Tokens.Space.m),
             ) {
-                // A place with no title is named by its address. Each is one line: a long
-                // title is cut at its end, a long address in its middle, where its site and
-                // its end both stay.
-                Text(text = place.title.ifEmpty { place.display }, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (place.title.isNotEmpty()) {
-                    Text(text = place.display, maxLines = 1, overflow = TextOverflow.MiddleEllipsis, style = MaterialTheme.typography.bodySmall)
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+                    // A place with no title is named by its address. Each is one line: a long
+                    // title is cut at its end, a long address in its middle, where its site
+                    // and its end both stay.
+                    Text(text = place.title.ifEmpty { place.display }, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (place.title.isNotEmpty()) {
+                        Text(text = place.display, maxLines = 1, overflow = TextOverflow.MiddleEllipsis, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                if (place.tab_id != 0L) {
+                    // A tab that is open (038): choosing the row brings it in front. Said in
+                    // words, whole, whatever the title has to give up for it.
+                    Text(
+                        text = stringResource(R.string.suggestions_switch_tab),
+                        maxLines = 1,
+                        softWrap = false,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.testTag("suggestion-switch"),
+                    )
                 }
             }
             HorizontalDivider()

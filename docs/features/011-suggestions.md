@@ -19,7 +19,7 @@ I start typing in the address field and WebTiger offers the places I have been t
 **Not in, each with where it goes:**
 
 - **Suggestions from a search provider.** Off by default (000 §5.10, WT-D17): what is typed would leave the device with every letter. They arrive with the first-run flow's choice of a provider, as something a person turns on.
-- **Open tabs, Sites, commands** in the same list: the command bar (W2).
+- **Open tabs, Sites, commands** in the same list: the command bar (W2). (Open tabs are there since [038](038-an-open-tab-is-offered.md).)
 - **Completing the address in the field itself** as it is typed (inline completion). The list comes first.
 - **What Return will do**, shown as a row ("Search for …"): with the provider's choice, when there is a name to show.
 

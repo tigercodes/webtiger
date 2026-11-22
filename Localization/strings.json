@@ -21,6 +21,7 @@
     "tabs.previous": { "en": "Show Previous Tab", "note": "Command in the Mac's Window menu (Control-Shift-Tab): bring the tab before in the row in front; from the first, the last." },
     "tabs.reopen": { "en": "Reopen Closed Tab", "note": "Command (Shift-Command-T on a Mac): bring back the tab that was last closed, where it was." },
     "suggestions.list": { "en": "Suggestions", "note": "Accessibility label of the list of places offered under the address field as it is typed in." },
+    "suggestions.switch_tab": { "en": "Switch to Tab", "note": "At the end of a row of that list which is a tab that is already open: choosing the row brings that tab in front instead of loading the page again." },
     "zoom.open": { "en": "Zoom", "note": "Label of the button, beside the tabs, that opens the zoom bar." },
     "zoom.in": { "en": "Zoom In", "note": "Button in the zoom bar, and the command (Command-plus on a Mac): make the page bigger." },
     "zoom.out": { "en": "Zoom Out", "note": "Button in the zoom bar, and the command (Command-minus on a Mac): make the page smaller." },

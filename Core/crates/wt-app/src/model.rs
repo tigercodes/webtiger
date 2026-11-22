@@ -3,6 +3,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
+use wt_core::words::{all_found, typed_words};
 use wt_core::{
     ACTUAL_SIZE, Address, IdMint, LoginSetId, Security, SpaceId, TabId, WebViewId, WindowId,
     zoom_in, zoom_out,
@@ -1945,6 +1946,40 @@ impl State {
     /// The login set a window's history is: that of the Space it shows.
     pub(crate) fn history_of(&self, window: WindowId) -> Option<LoginSetId> {
         self.login_set_shown(self.windows.get(&window)?)
+    }
+
+    /// The open tabs to offer for what is typed in a window's address field
+    /// (038): those of the row the window shows whose page has every word
+    /// typed in its title or its address, in the row's order, at most
+    /// `limit`. Never the tab in front, which is where the person is; nor a
+    /// tab that shows no page of the web's, which has nothing to find. Each
+    /// with its page's address and title. `None` when there is no such
+    /// window.
+    pub(crate) fn tabs_offered(
+        &self,
+        window: WindowId,
+        text: &str,
+        limit: usize,
+    ) -> Option<Vec<(TabId, Address, String)>> {
+        let window = self.windows.get(&window)?;
+        let typed = typed_words(text);
+        let Some(row) = window.rows.get(&window.space) else {
+            return Some(Vec::new());
+        };
+        let offered = row
+            .tabs
+            .iter()
+            .filter(|id| **id != row.front)
+            .filter_map(|id| {
+                let tab = self.tabs.get(id)?;
+                let address = tab.committed.as_ref()?;
+                (matches!(address.scheme(), "http" | "https")
+                    && all_found(&typed, &[&tab.title, address.as_str()]))
+                .then(|| (*id, address.clone(), tab.title.clone()))
+            })
+            .take(limit)
+            .collect();
+        Some(offered)
     }
 
     /// The visit to write for the page a web view now shows (008): its login

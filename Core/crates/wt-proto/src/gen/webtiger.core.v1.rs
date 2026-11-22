@@ -533,7 +533,8 @@ pub struct FindView {
     #[prost(uint32, tag = "6")]
     pub current: u32,
 }
-/// Asks what to offer for what is typed in a window's address field: places
+/// Asks what to offer for what is typed in a window's address field: since
+/// 1.27 the open tabs of the row the window shows (038), and then places
 /// from its Space's own history, best first. Nothing typed leaves the
 /// device. Answered with AddressSuggestions, or "window.unknown".
 ///
@@ -556,7 +557,7 @@ pub struct AddressSuggestions {
     #[prost(message, repeated, tag = "1")]
     pub suggestions: ::prost::alloc::vec::Vec<AddressSuggestion>,
 }
-/// A place that was visited, offered again.
+/// A place that was visited, offered again; or, since 1.27, a tab that is open.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct AddressSuggestion {
     /// Where choosing it goes.
@@ -568,6 +569,10 @@ pub struct AddressSuggestion {
     /// The address as the address field shows it.
     #[prost(string, tag = "3")]
     pub display: ::prost::alloc::string::String,
+    /// Since 1.27. Not 0: an open tab of the window that shows this page (038).
+    /// Choosing it brings that tab in front (ActivateTab) and loads nothing.
+    #[prost(uint64, tag = "4")]
+    pub tab_id: u64,
 }
 /// Makes the page of a tab bigger or smaller, or puts it back to actual size.
 /// The level is its site's, in the tab's login set: every tab that shows the

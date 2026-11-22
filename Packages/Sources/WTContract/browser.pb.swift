@@ -765,7 +765,8 @@ public nonisolated struct WTFindView: Sendable {
   public init() {}
 }
 
-/// Asks what to offer for what is typed in a window's address field: places
+/// Asks what to offer for what is typed in a window's address field: since
+/// 1.27 the open tabs of the row the window shows (038), and then places
 /// from its Space's own history, best first. Nothing typed leaves the
 /// device. Answered with AddressSuggestions, or "window.unknown".
 ///
@@ -802,7 +803,7 @@ public nonisolated struct WTAddressSuggestions: Sendable {
   public init() {}
 }
 
-/// A place that was visited, offered again.
+/// A place that was visited, offered again; or, since 1.27, a tab that is open.
 public nonisolated struct WTAddressSuggestion: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -816,6 +817,10 @@ public nonisolated struct WTAddressSuggestion: Sendable {
 
   /// The address as the address field shows it.
   public var display: String = String()
+
+  /// Since 1.27. Not 0: an open tab of the window that shows this page (038).
+  /// Choosing it brings that tab in front (ActivateTab) and loads nothing.
+  public var tabID: UInt64 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2695,7 +2700,7 @@ nonisolated extension WTAddressSuggestions: SwiftProtobuf.Message, SwiftProtobuf
 
 nonisolated extension WTAddressSuggestion: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".AddressSuggestion"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}url\0\u{1}title\0\u{1}display\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}url\0\u{1}title\0\u{1}display\0\u{3}tab_id\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2706,6 +2711,7 @@ nonisolated extension WTAddressSuggestion: SwiftProtobuf.Message, SwiftProtobuf.
       case 1: try { try decoder.decodeSingularStringField(value: &self.url) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.title) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.display) }()
+      case 4: try { try decoder.decodeSingularUInt64Field(value: &self.tabID) }()
       default: break
       }
     }
@@ -2721,6 +2727,9 @@ nonisolated extension WTAddressSuggestion: SwiftProtobuf.Message, SwiftProtobuf.
     if !self.display.isEmpty {
       try visitor.visitSingularStringField(value: self.display, fieldNumber: 3)
     }
+    if self.tabID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.tabID, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2728,6 +2737,7 @@ nonisolated extension WTAddressSuggestion: SwiftProtobuf.Message, SwiftProtobuf.
     if lhs.url != rhs.url {return false}
     if lhs.title != rhs.title {return false}
     if lhs.display != rhs.display {return false}
+    if lhs.tabID != rhs.tabID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

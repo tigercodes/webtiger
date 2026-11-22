@@ -423,6 +423,8 @@
     <string name="spaces_title">Spaces</string>
     <!-- Accessibility label of the list of places offered under the address field as it is typed in. -->
     <string name="suggestions_list">Suggestions</string>
+    <!-- At the end of a row of that list which is a tab that is already open: choosing the row brings that tab in front instead of loading the page again. -->
+    <string name="suggestions_switch_tab">Switch to Tab</string>
     <!-- Hint under the heading of an empty tab. -->
     <string name="tab_empty_hint">Type an address or a search above.</string>
     <!-- Heading of a tab that has no page yet. -->

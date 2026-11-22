@@ -161,13 +161,21 @@ internal enum class CatalogueState(@StringRes val title: Int) {
     val typing: String? get() = if (this == SUGGESTIONS) "exa" else null
 
     /**
-     * The places offered for it: one with a title, one whose title is longer than the list is
-     * wide, one with none.
+     * What is offered for it: first a tab that is open; then places: one with a title, one
+     * whose title is longer than the list is wide, one with none.
      */
     val offered: List<AddressSuggestion>
         get() =
             if (this == SUGGESTIONS) {
                 listOf(
+                    // A tab that is open (038), whose title is longer than its row has room
+                    // for beside the words that say it is a tab.
+                    AddressSuggestion(
+                        url = "https://example.com/open",
+                        title = "Examples of every kind, in a tab that is open already and has more to say",
+                        display = "example.com/open",
+                        tab_id = 7,
+                    ),
                     AddressSuggestion(url = "https://example.com/", title = "Example Domain", display = "example.com"),
                     AddressSuggestion(
                         url = "https://example.org/a/long/path",

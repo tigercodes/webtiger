@@ -45,6 +45,61 @@ final class FeatureTests: AppTestCase {
         XCTAssertEqual(offered.count, 0, "and the list is gone")
     }
 
+    /// An open tab is offered while typing (038), with the real core: a page that is open in
+    /// another tab is offered in a row that says it is a tab, and not a second time as the
+    /// place it also is; choosing it brings that tab in front, and the site is not asked for
+    /// the page again.
+    func testAnOpenTabIsOfferedAndChoosingItBringsItInFront() {
+        let app = launch(start: site.url("/landed"))
+        XCTAssertTrue(pageShows("Landed", in: app), "the first tab's page loaded")
+        let field = app.textFields["address-field"]
+        let offered = app.buttons.matching(identifier: "suggestion")
+        let tabs = app.buttons.matching(identifier: "tab")
+        func askedForThePage() -> Int {
+            site.requests.count(where: { $0 == "/landed" })
+        }
+
+        // A second tab, gone somewhere else.
+        press(app.buttons["new-tab"])
+        XCTAssertTrue(app.staticTexts["empty-tab"].waitForExistence(timeout: 30), "a second, empty tab")
+        openLocation(field, in: app)
+        field.typeText("127.0.0.1:\(site.port)/\n")
+        XCTAssertTrue(pageShows("Home", in: app), "the second tab's page loaded")
+        XCTAssertEqual(tabs.count, 2)
+        #if !os(macOS)
+            // A phone's strip scrolls: the tab in front is brought into view, whatever is
+            // then cut off of the other. (The audit below is told that a tab the strip cuts
+            // off has no contrast to measure; a tab in view is measured.)
+            let strip = app.descendants(matching: .any).matching(identifier: "tab-strip").firstMatch
+            XCTAssertTrue(strip.frame.contains(tabs.element(boundBy: 1).frame), "the tab in front is in view in the strip")
+        #endif
+        let asked = askedForThePage()
+
+        // Typed there, the start of a word of the first tab's title: one row, the tab.
+        openLocation(field, in: app)
+        field.typeText("lan")
+        XCTAssertTrue(offered.firstMatch.waitForExistence(timeout: 30), "the open tab is offered")
+        XCTAssertEqual(offered.count, 1, "once: not again as the place it also is")
+        let row = offered.firstMatch.label
+        XCTAssertTrue(row.contains("Landed"), "by its title: \(row)")
+        XCTAssertTrue(row.contains("Switch to Tab"), "and the row says it is a tab: \(row)")
+        audit(app, "an open tab offered")
+
+        #if os(macOS)
+            // The arrow key marks it, and Return goes to it.
+            app.typeKey(.downArrow, modifierFlags: [])
+            app.typeKey(.return, modifierFlags: [])
+        #else
+            press(offered.firstMatch)
+        #endif
+
+        XCTAssertTrue(pageShows("Landed", in: app), "the tab chosen is in front")
+        expect(field, toShow: "http://127.0.0.1:\(site.port)/landed")
+        XCTAssertEqual(offered.count, 0, "and the list is gone")
+        XCTAssertEqual(tabs.count, 2, "no tab was opened, and none closed")
+        XCTAssertEqual(askedForThePage(), asked, "the page was open: the site is not asked for it again")
+    }
+
     /// Zoom (012), with the real core and engine: the bar is shut until asked for; bigger,
     /// smaller and actual size go to the core, and the bar says the level the core says; the
     /// level is the site's, and is there on another page of it.

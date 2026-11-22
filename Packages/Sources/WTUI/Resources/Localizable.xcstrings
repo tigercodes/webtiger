@@ -2533,6 +2533,18 @@
         }
       }
     },
+    "suggestions.switch_tab": {
+      "comment": "At the end of a row of that list which is a tab that is already open: choosing the row brings that tab in front instead of loading the page again.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switch to Tab"
+          }
+        }
+      }
+    },
     "tab.empty.hint": {
       "comment": "Hint under the heading of an empty tab.",
       "extractionState": "manual",

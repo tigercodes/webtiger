@@ -21,7 +21,7 @@ use wt_proto::v1::{
     WebViewLoad, WebViewSetZoom, WindowOpened, WindowSnapshot, ZoomChange, ZoomPage, engine_event,
     forget_history, host_request, request, response, step_tab,
 };
-use wt_store::{ClosedTab, SavedTab, Space, Store};
+use wt_store::{ClosedTab, MAX_SUGGESTIONS, SavedTab, Space, Store};
 
 use crate::downloads::{Downloading, Wanted};
 use crate::error::AppError;
@@ -36,6 +36,9 @@ pub const HISTORY_PAGE: u32 = 100;
 /// How many places are offered for what is typed when the shell does not
 /// say (011).
 pub const SUGGESTIONS: u32 = 6;
+
+/// The most open tabs offered among them (038): history must still be seen.
+const TABS_OFFERED: usize = 3;
 
 /// How long after a web view had an address handed to the system before it
 /// may have another (007). A click's permission lasts a few seconds in an
@@ -375,33 +378,56 @@ impl App {
         }))
     }
 
-    /// What to offer for what is typed in a window's address field (011):
-    /// places from its Space's own history, best first.
+    /// What to offer for what is typed in a window's address field: the open
+    /// tabs of the row it shows (038), then places from its Space's own
+    /// history (011), best first.
     fn suggest_addresses(&self, suggest: &SuggestAddresses) -> Result<response::Kind, AppError> {
-        let login_set = self
-            .state
-            .borrow()
-            .history_of(WindowId(suggest.window_id))
-            .ok_or_else(|| AppError::new("window.unknown").field("window_id"))?;
+        let window = WindowId(suggest.window_id);
+        let unknown = || AppError::new("window.unknown").field("window_id");
+        let login_set = self.state.borrow().history_of(window).ok_or_else(unknown)?;
         let limit = if suggest.limit == 0 {
             SUGGESTIONS
         } else {
             suggest.limit
-        };
+        }
+        .clamp(1, MAX_SUGGESTIONS) as usize;
+        // Open tabs first: a page that is open is brought in front, not
+        // loaded a second time. A few, so that history is still seen.
+        let tabs = self
+            .state
+            .borrow()
+            .tabs_offered(window, &suggest.text, TABS_OFFERED.min(limit))
+            .ok_or_else(unknown)?;
+        // As many places as would fill the list had no tab's page been among
+        // them: a place an offered tab shows is not offered again.
         let places = self
             .store_of(login_set)
             .borrow()
-            .suggestions(login_set, &suggest.text, limit)
+            .suggestions(login_set, &suggest.text, MAX_SUGGESTIONS)
             .map_err(|error| AppError::new(error.code()))?;
-        let suggestions = places
+        let mut suggestions: Vec<AddressSuggestion> = tabs
             .into_iter()
-            .map(|place| AddressSuggestion {
-                display: Address::parse(&place.url)
-                    .map_or_else(|_| place.url.clone(), |address| address.display()),
-                url: place.url,
-                title: place.title,
+            .map(|(tab, address, title)| AddressSuggestion {
+                display: address.display(),
+                url: address.as_str().to_owned(),
+                title,
+                tab_id: tab.0,
             })
             .collect();
+        let open: Vec<String> = suggestions.iter().map(|tab| tab.url.clone()).collect();
+        suggestions.extend(
+            places
+                .into_iter()
+                .filter(|place| !open.contains(&place.url))
+                .map(|place| AddressSuggestion {
+                    display: Address::parse(&place.url)
+                        .map_or_else(|_| place.url.clone(), |address| address.display()),
+                    url: place.url,
+                    title: place.title,
+                    tab_id: 0,
+                }),
+        );
+        suggestions.truncate(limit);
         Ok(response::Kind::AddressSuggestions(AddressSuggestions {
             suggestions,
         }))

@@ -21,11 +21,13 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
  * A core that opens window 1 as [windowScript] does, and offers three places named after what
- * was typed.
+ * was typed. When what was typed begins with "tab", the first of them is a tab that is open,
+ * tab 7 (038).
  */
 internal fun offeringScript(request: Request): Response {
     val ask = request.suggest_addresses ?: return windowScript(request)
@@ -38,6 +40,7 @@ internal fun offeringScript(request: Request): Response {
                             url = "https://example.com/${ask.text}/$number",
                             title = "${ask.text} $number",
                             display = "example.com/${ask.text}/$number",
+                            tab_id = if (number == 1 && ask.text.startsWith("tab")) 7 else 0,
                         )
                     },
             ),
@@ -149,6 +152,31 @@ class SuggestionModelTest {
             assertEquals(2L, submit?.tab_id)
             assertFalse(model.isEditingAddress)
             assertEquals(emptyList<AddressSuggestion>(), model.suggestions)
+        }
+
+    /** A tab that is open (038): choosing its row brings it in front, and nothing is loaded. */
+    @Test
+    fun choosingATabThatIsOpenBringsItInFrontAndLoadsNothing() =
+        runTest {
+            val core = ScriptedCore(::offeringScript)
+            val model = offering(core)
+            model.isEditingAddress = true
+            model.addressText = "tabs"
+            assertEquals(listOf(7L, 0L, 0L), model.suggestions.map { it.tab_id })
+
+            model.choose(model.suggestions[0])
+
+            assertEquals(7L, core.requests.last().activate_tab?.tab_id)
+            assertTrue("the page is open: nothing is loaded", core.requests.none { it.submit_address != null })
+            assertFalse(model.isEditingAddress)
+            assertEquals(emptyList<AddressSuggestion>(), model.suggestions)
+
+            // A place beside it is still gone to.
+            model.isEditingAddress = true
+            model.addressText = "tabby"
+            model.choose(model.suggestions[1])
+            assertEquals("https://example.com/tabby/2", core.requests.last().submit_address?.text)
+            assertEquals(1, core.requests.count { it.activate_tab != null })
         }
 
     @Test

@@ -9,6 +9,7 @@ pub mod policy;
 mod search;
 mod space;
 pub mod uuid;
+pub mod words;
 pub mod zoom;
 
 pub use address::{Address, AddressError, Input, Security, classify, search_address};

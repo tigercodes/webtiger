@@ -299,8 +299,18 @@ class BrowserModel(
         if (suggestions.isNotEmpty()) suggestions = emptyList()
     }
 
-    /** Goes to a place that was offered, in the tab in front. */
-    fun choose(suggestion: AddressSuggestion) = load(suggestion.url)
+    /**
+     * Goes to what was offered. A place is loaded in the tab in front. A tab that is open (038)
+     * is brought in front and nothing is loaded: the tab typed in is left as it was.
+     */
+    fun choose(suggestion: AddressSuggestion) {
+        if (suggestion.tab_id == 0L) {
+            load(suggestion.url)
+            return
+        }
+        isEditingAddress = false
+        activate(suggestion.tab_id)
+    }
 
     // Zoom (012)
 
