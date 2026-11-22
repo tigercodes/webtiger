@@ -314,8 +314,21 @@ impl FakeShell {
 
     /// Brings a tab in front and waits.
     pub async fn activate_tab(&mut self, tab: u64) -> response::Kind {
-        self.request(request::Kind::ActivateTab(ActivateTab { tab_id: tab }))
-            .await
+        self.request(request::Kind::ActivateTab(ActivateTab {
+            tab_id: tab,
+            chosen_while_typing: false,
+        }))
+        .await
+    }
+
+    /// Brings a tab in front as one chosen from what was offered while
+    /// typing in the tab in front (038), and waits.
+    pub async fn choose_tab(&mut self, tab: u64) -> response::Kind {
+        self.request(request::Kind::ActivateTab(ActivateTab {
+            tab_id: tab,
+            chosen_while_typing: true,
+        }))
+        .await
     }
 
     /// Every snapshot a subscription was sent, in order.

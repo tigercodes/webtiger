@@ -186,11 +186,13 @@ public final class BrowserModel {
         send(.closeTab(close))
     }
 
-    /// Brings a tab in front.
-    public func activate(_ id: UInt64) {
+    /// Brings a tab in front. `chosenWhileTyping`: it was chosen from what was offered while
+    /// typing in the tab in front (038); the core then closes that tab when it is an empty one.
+    public func activate(_ id: UInt64, chosenWhileTyping: Bool = false) {
         guard id != tab.tabID else { return }
         var activate = WTActivateTab()
         activate.tabID = id
+        activate.chosenWhileTyping = chosenWhileTyping
         send(.activateTab(activate))
     }
 
@@ -233,14 +235,15 @@ public final class BrowserModel {
     }
 
     /// Goes to what was offered. A place is loaded in the tab in front. A tab that is open
-    /// (038) is brought in front and nothing is loaded: the tab typed in is left as it was.
+    /// (038) is brought in front and nothing is loaded; the core is told it was chosen while
+    /// typing, and closes the tab typed in when that was an empty one.
     public func choose(_ suggestion: WTAddressSuggestion) {
         guard suggestion.tabID != 0 else {
             load(suggestion.url)
             return
         }
         isEditingAddress = false
-        activate(suggestion.tabID)
+        activate(suggestion.tabID, chosenWhileTyping: true)
     }
 
     /// Marks the next place offered: from none to the first, and from the last to none, where

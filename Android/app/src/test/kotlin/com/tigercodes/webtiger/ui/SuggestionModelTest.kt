@@ -167,7 +167,13 @@ class SuggestionModelTest {
             model.choose(model.suggestions[0])
 
             assertEquals(7L, core.requests.last().activate_tab?.tab_id)
+            assertEquals("the core is told how the tab was chosen: an empty tab typed in is its to close", true, core.requests.last().activate_tab?.chosen_while_typing)
             assertTrue("the page is open: nothing is loaded", core.requests.none { it.submit_address != null })
+
+            // A tab brought in front from the strip was not chosen while typing.
+            model.activate(9)
+            assertEquals(9L, core.requests.last().activate_tab?.tab_id)
+            assertEquals(false, core.requests.last().activate_tab?.chosen_while_typing)
             assertFalse(model.isEditingAddress)
             assertEquals(emptyList<AddressSuggestion>(), model.suggestions)
 
@@ -176,7 +182,7 @@ class SuggestionModelTest {
             model.addressText = "tabby"
             model.choose(model.suggestions[1])
             assertEquals("https://example.com/tabby/2", core.requests.last().submit_address?.text)
-            assertEquals(1, core.requests.count { it.activate_tab != null })
+            assertEquals(2, core.requests.count { it.activate_tab != null })
         }
 
     @Test

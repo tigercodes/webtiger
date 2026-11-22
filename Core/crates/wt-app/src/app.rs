@@ -914,8 +914,22 @@ impl App {
     }
 
     fn activate_tab(&self, activate: &ActivateTab) -> AppFuture {
-        if !self.state.borrow_mut().activate_tab(TabId(activate.tab_id)) {
+        let chosen = TabId(activate.tab_id);
+        // Chosen from what was offered while typing (038): an empty tab that
+        // was typed in was opened only to go somewhere. Which tab is left is
+        // looked at before the other comes in front.
+        let left = if activate.chosen_while_typing {
+            self.state.borrow().empty_tab_left_for(chosen)
+        } else {
+            None
+        };
+        if !self.state.borrow_mut().activate_tab(chosen) {
             return refuse(AppError::new("tab.unknown").field("tab_id"));
+        }
+        if let Some(left) = left {
+            // It has no web view to destroy, and nothing to bring back: the
+            // journal keeps no empty tab (033).
+            self.state.borrow_mut().close_tab(left);
         }
         // A tab that came back from the session is loaded now that it is in
         // front (009). The tab is in front whatever becomes of its page.

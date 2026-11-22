@@ -106,7 +106,7 @@ A phone's app has one window on the screen. A private window there is a second w
 - **A link from another app** is shown in the other window, which comes to the front: never in the private one.
 - There is no list of Spaces in a private window: it has none.
 
-> **Provisional (2026-11-21):** where a phone's private window is opened from, and the page behind its chip, were not among the choices put to the owner (§4 said "where on an iPhone is to be settled"). Built first on Android, to be the same on the iPhone. The owner's to change.
+> **The owner's, 2026-11-22 (WT-D27):** where a phone's private window is opened from, and the page behind its chip, were not among the choices first put to the owner (§4 said "where on an iPhone is to be settled"). Built as a suggestion, first on Android and the same on the iPhone, and kept.
 
 ### 5.4 The Apple shell (part 2)
 

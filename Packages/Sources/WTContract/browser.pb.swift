@@ -301,6 +301,11 @@ public nonisolated struct WTActivateTab: Sendable {
 
   public var tabID: UInt64 = 0
 
+  /// Since 1.28. The tab was chosen from what was offered while typing in the
+  /// tab in front (038). When that tab is an empty one, it is closed: it was
+  /// opened to go somewhere, and the person went to a tab that was open.
+  public var chosenWhileTyping: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1953,7 +1958,7 @@ nonisolated extension WTCloseTab: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 nonisolated extension WTActivateTab: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ActivateTab"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}chosen_while_typing\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1962,6 +1967,7 @@ nonisolated extension WTActivateTab: SwiftProtobuf.Message, SwiftProtobuf._Messa
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularUInt64Field(value: &self.tabID) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.chosenWhileTyping) }()
       default: break
       }
     }
@@ -1971,11 +1977,15 @@ nonisolated extension WTActivateTab: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if self.tabID != 0 {
       try visitor.visitSingularUInt64Field(value: self.tabID, fieldNumber: 1)
     }
+    if self.chosenWhileTyping != false {
+      try visitor.visitSingularBoolField(value: self.chosenWhileTyping, fieldNumber: 2)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: WTActivateTab, rhs: WTActivateTab) -> Bool {
     if lhs.tabID != rhs.tabID {return false}
+    if lhs.chosenWhileTyping != rhs.chosenWhileTyping {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

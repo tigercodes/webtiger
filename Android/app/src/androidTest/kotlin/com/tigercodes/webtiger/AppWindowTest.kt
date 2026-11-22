@@ -568,7 +568,7 @@ internal class AppWindowTest {
      * An open tab is offered while typing (038), with the real core: a page that is open in
      * another tab is offered first, in a row that says it is a tab, and not a second time as
      * the place it also is; choosing it brings that tab in front, and the site is not asked
-     * for the page again.
+     * for the page again. A tab with a page that was typed in stays; an empty one is closed.
      */
     @Test
     fun aTabThatIsOpenIsOfferedAndChoosingItBringsItInFront() {
@@ -610,6 +610,23 @@ internal class AppWindowTest {
         compose.onAllNodesWithTag("suggestion")[0].performClick()
         awaitPage("Home")
         compose.onAllNodesWithTag("tab").assertCountEquals(2)
+
+        // From a new tab, which is empty and was opened only to go somewhere: the tab chosen
+        // comes in front, and the empty one is gone with the choice. (With two tabs and the
+        // second in front, a phone's strip has the button for a new tab beyond its edge: it
+        // is scrolled to, as a finger would.)
+        compose.onNodeWithTag("new-tab").performScrollTo().performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("empty-tab").fetchSemanticsNodes().isNotEmpty() }
+        compose.onAllNodesWithTag("tab").assertCountEquals(3)
+        compose.onNodeWithTag("address-field").performClick()
+        compose.onNodeWithTag("address-field").performTextReplacement("lan")
+        awaitOffered(1)
+        compose.onAllNodesWithTag("suggestion")[0].assertTextContains("Switch to Tab")
+        compose.onAllNodesWithTag("suggestion")[0].performClick()
+        awaitPage("Landed")
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("tab").fetchSemanticsNodes().size == 2 }
+        compose.onAllNodesWithTag("empty-tab").assertCountEquals(0)
+        assertEquals("and nothing was loaded", asked, site.requests.count { it == "/landed" })
     }
 
     /**

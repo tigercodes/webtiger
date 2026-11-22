@@ -48,7 +48,7 @@ final class FeatureTests: AppTestCase {
     /// An open tab is offered while typing (038), with the real core: a page that is open in
     /// another tab is offered in a row that says it is a tab, and not a second time as the
     /// place it also is; choosing it brings that tab in front, and the site is not asked for
-    /// the page again.
+    /// the page again. A tab with a page that was typed in stays; an empty one is closed.
     func testAnOpenTabIsOfferedAndChoosingItBringsItInFront() {
         let app = launch(start: site.url("/landed"))
         XCTAssertTrue(pageShows("Landed", in: app), "the first tab's page loaded")
@@ -98,6 +98,30 @@ final class FeatureTests: AppTestCase {
         XCTAssertEqual(offered.count, 0, "and the list is gone")
         XCTAssertEqual(tabs.count, 2, "no tab was opened, and none closed")
         XCTAssertEqual(askedForThePage(), asked, "the page was open: the site is not asked for it again")
+
+        // From a new tab, which is empty and was opened only to go somewhere: the tab chosen
+        // comes in front, and the empty one is gone with the choice.
+        press(app.buttons["new-tab"])
+        XCTAssertTrue(app.staticTexts["empty-tab"].waitForExistence(timeout: 30), "a third tab, empty")
+        XCTAssertEqual(tabs.count, 3)
+        openLocation(field, in: app)
+        field.typeText("hom")
+        XCTAssertTrue(offered.firstMatch.waitForExistence(timeout: 30), "the open tab is offered in the empty one")
+        XCTAssertTrue(offered.firstMatch.label.contains("Switch to Tab"), "as a tab: \(offered.firstMatch.label)")
+        #if os(macOS)
+            app.typeKey(.downArrow, modifierFlags: [])
+            app.typeKey(.return, modifierFlags: [])
+        #else
+            press(offered.firstMatch)
+        #endif
+        XCTAssertTrue(pageShows("Home", in: app), "the tab chosen is in front")
+        let two = NSPredicate(format: "count == 2")
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: two, object: tabs)], timeout: 30), .completed,
+            "the empty tab that was typed in is closed: \(tabs.count) tabs"
+        )
+        XCTAssertFalse(app.staticTexts["empty-tab"].exists)
+        XCTAssertEqual(askedForThePage(), asked, "and nothing was loaded")
     }
 
     /// Zoom (012), with the real core and engine: the bar is shut until asked for; bigger,

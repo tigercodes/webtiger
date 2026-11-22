@@ -121,6 +121,7 @@ class SuggestionListTest {
         compose.waitForIdle()
 
         assertEquals(7L, core.requests.last().activate_tab?.tab_id)
+        assertEquals(true, core.requests.last().activate_tab?.chosen_while_typing)
         assertTrue("nothing is loaded", core.requests.none { it.submit_address != null })
         compose.onAllNodesWithTag("suggestion").assertCountEquals(0)
         compose.onNodeWithTag("security-secure").assertExists()

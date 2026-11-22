@@ -587,6 +587,7 @@ fn changes_that_arrive_together_are_one_snapshot() {
         shell.send(request::Kind::OpenTab(empty));
         shell.send(request::Kind::ActivateTab(wt_proto::v1::ActivateTab {
             tab_id: first,
+            chosen_while_typing: false,
         }));
         shell.settle().await;
 

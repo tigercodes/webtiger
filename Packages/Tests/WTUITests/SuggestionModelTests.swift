@@ -149,6 +149,7 @@ final class SuggestionModelTests: XCTestCase {
 
         guard case let .activateTab(activate) = core.requests.last else { return XCTFail("expected ActivateTab") }
         XCTAssertEqual(activate.tabID, 7)
+        XCTAssertTrue(activate.chosenWhileTyping, "the core is told how the tab was chosen: an empty tab typed in is its to close")
         XCTAssertEqual(loads(), 0, "the page is open: nothing is loaded")
         XCTAssertFalse(model.isEditingAddress)
         XCTAssertEqual(model.suggestions, [])
@@ -162,7 +163,14 @@ final class SuggestionModelTests: XCTestCase {
         model.submit()
         guard case let .activateTab(again) = core.requests.last else { return XCTFail("expected ActivateTab") }
         XCTAssertEqual(again.tabID, 7)
+        XCTAssertTrue(again.chosenWhileTyping)
         XCTAssertEqual(loads(), 0)
+
+        // A tab brought in front from the strip was not chosen while typing.
+        model.activate(9)
+        guard case let .activateTab(pressed) = core.requests.last else { return XCTFail("expected ActivateTab") }
+        XCTAssertEqual(pressed.tabID, 9)
+        XCTAssertFalse(pressed.chosenWhileTyping)
 
         // And a place beside it is still gone to.
         model.isEditingAddress = true

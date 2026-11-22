@@ -241,6 +241,11 @@ pub struct CloseTab {
 pub struct ActivateTab {
     #[prost(uint64, tag = "1")]
     pub tab_id: u64,
+    /// Since 1.28. The tab was chosen from what was offered while typing in the
+    /// tab in front (038). When that tab is an empty one, it is closed: it was
+    /// opened to go somewhere, and the person went to a tab that was open.
+    #[prost(bool, tag = "2")]
+    pub chosen_while_typing: bool,
 }
 /// A window, as its subscription publishes it.
 #[derive(Clone, PartialEq, ::prost::Message)]

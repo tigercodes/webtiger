@@ -248,10 +248,13 @@ class BrowserModel(
         session.send(Request(step_tab = StepTab(window_id = open.windowId, to = to, place = place)))
     }
 
-    /** Brings a tab in front. */
-    fun activate(id: Long) {
+    /**
+     * Brings a tab in front. `chosenWhileTyping`: it was chosen from what was offered while
+     * typing in the tab in front (038); the core then closes that tab when it is an empty one.
+     */
+    fun activate(id: Long, chosenWhileTyping: Boolean = false) {
         if (id == tab.tab_id) return
-        session.send(Request(activate_tab = ActivateTab(tab_id = id)))
+        session.send(Request(activate_tab = ActivateTab(tab_id = id, chosen_while_typing = chosenWhileTyping)))
     }
 
     val isLoading: Boolean get() = tab.load_state == LoadState.LOAD_STATE_LOADING
@@ -301,7 +304,8 @@ class BrowserModel(
 
     /**
      * Goes to what was offered. A place is loaded in the tab in front. A tab that is open (038)
-     * is brought in front and nothing is loaded: the tab typed in is left as it was.
+     * is brought in front and nothing is loaded; the core is told it was chosen while typing,
+     * and closes the tab typed in when that was an empty one.
      */
     fun choose(suggestion: AddressSuggestion) {
         if (suggestion.tab_id == 0L) {
@@ -309,7 +313,7 @@ class BrowserModel(
             return
         }
         isEditingAddress = false
-        activate(suggestion.tab_id)
+        activate(suggestion.tab_id, chosenWhileTyping = true)
     }
 
     // Zoom (012)

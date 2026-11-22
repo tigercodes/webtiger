@@ -390,6 +390,145 @@ fn choosing_it_brings_the_tab_in_front_and_loads_nothing() {
     });
 }
 
+/// How many tabs the window's row has, and which is in front.
+fn row(shell: &FakeShell, subscription: u64) -> (Vec<u64>, u64) {
+    let window = shell.window(subscription);
+    (
+        window.tabs.iter().map(|one| one.tab_id).collect(),
+        window.tab.expect("a tab").tab_id,
+    )
+}
+
+#[test]
+fn an_empty_tab_that_was_typed_in_is_closed_when_a_tab_is_chosen_from_it() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        web(&mut shell);
+        let (window, first, subscription) = shell.open_window().await;
+        shell.submit(first, BOOK).await;
+        // A new tab, empty: opened to go somewhere.
+        let empty = shell.open_tab(window, "").await;
+        assert_eq!(row(&shell, subscription), (vec![first, empty], empty));
+        let before = loads(&shell);
+        let asked = shell.host_requests.len();
+        let undo = shell.window(subscription).undo;
+
+        // Typed there, the open tab is offered; chosen, it comes in front, and the empty
+        // tab, which was only a way there, is gone.
+        assert_eq!(
+            offered(&mut shell, window, "rust").await,
+            [tab(first, BOOK)]
+        );
+        let answer = shell.choose_tab(first).await;
+        assert!(matches!(answer, response::Kind::Ack(_)), "{answer:?}");
+        assert_eq!(row(&shell, subscription), (vec![first], first));
+        // Nothing was loaded; the shell was asked for nothing (an empty tab has no web
+        // view to destroy); and there is nothing more to bring back than there was.
+        assert_eq!(loads(&shell), before);
+        assert_eq!(shell.host_requests.len(), asked);
+        assert_eq!(shell.window(subscription).undo, undo);
+        // The tab that is gone is gone: it cannot be brought in front.
+        let answer = shell.activate_tab(empty).await;
+        match answer {
+            response::Kind::Error(error) => assert_eq!(error.code, "tab.unknown"),
+            other => panic!("expected an error, got {other:?}"),
+        }
+    });
+}
+
+#[test]
+fn only_an_empty_tab_and_only_when_chosen_while_typing() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        web(&mut shell);
+        shell
+            .engine
+            .fail("https://rust.example.com/", "net.unreachable");
+        let (window, first, subscription) = shell.open_window().await;
+        shell.submit(first, BOOK).await;
+
+        // Brought in front any other way (a press on the tab, a key), an empty tab that
+        // was in front stays: nobody typed in it to get there.
+        let empty = shell.open_tab(window, "").await;
+        shell.activate_tab(first).await;
+        assert_eq!(row(&shell, subscription), (vec![first, empty], first));
+
+        // A tab with a page that was typed in stays, as it was.
+        let page = shell.open_tab(window, HOME).await;
+        shell.choose_tab(first).await;
+        assert_eq!(row(&shell, subscription), (vec![first, empty, page], first));
+
+        // So does a tab whose page never arrived: it says so, and is not empty.
+        let failed = shell.open_tab(window, "https://rust.example.com/").await;
+        shell.choose_tab(first).await;
+        assert_eq!(
+            row(&shell, subscription),
+            (vec![first, empty, page, failed], first)
+        );
+
+        // Chosen while it is in front already: nothing is left, and nothing closed.
+        shell.choose_tab(first).await;
+        assert_eq!(
+            row(&shell, subscription),
+            (vec![first, empty, page, failed], first)
+        );
+
+        // An empty tab chosen while it is itself in front is not what it was chosen from.
+        shell.activate_tab(empty).await;
+        shell.choose_tab(empty).await;
+        assert_eq!(
+            row(&shell, subscription),
+            (vec![first, empty, page, failed], empty)
+        );
+
+        // A tab there is not: refused, and the empty tab in front stays.
+        let answer = shell.choose_tab(failed + 100).await;
+        match answer {
+            response::Kind::Error(error) => assert_eq!(error.code, "tab.unknown"),
+            other => panic!("expected an error, got {other:?}"),
+        }
+        assert_eq!(
+            row(&shell, subscription),
+            (vec![first, empty, page, failed], empty)
+        );
+
+        // And from the empty tab, chosen: it is the one that goes, wherever it is in the row.
+        shell.choose_tab(page).await;
+        assert_eq!(row(&shell, subscription), (vec![first, page, failed], page));
+    });
+}
+
+#[test]
+fn an_empty_tab_of_another_row_or_window_is_not_the_one_left() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        web(&mut shell);
+        let (window, first, subscription) = shell.open_window().await;
+        shell.submit(first, BOOK).await;
+        shell.open_tab(window, HOME).await;
+        // Another window, whose tab in front is empty.
+        let (_, theirs, their_subscription) = shell.open_window().await;
+        // A private window with a page, and an empty tab in front of it.
+        let (private, page, private_subscription) = shell.open_private_window().await;
+        shell.submit(page, RUST).await;
+        let empty = shell.open_tab(private, "").await;
+
+        // A tab of the first window is chosen: the other windows' empty tabs are not
+        // what it was chosen from.
+        shell.choose_tab(first).await;
+        assert_eq!(row(&shell, subscription).0.len(), 2);
+        assert_eq!(row(&shell, their_subscription), (vec![theirs], theirs));
+        assert_eq!(
+            row(&shell, private_subscription),
+            (vec![page, empty], empty)
+        );
+
+        // In the private window the rule is the same.
+        shell.choose_tab(page).await;
+        assert_eq!(row(&shell, private_subscription), (vec![page], page));
+    });
+}
+
 #[test]
 fn a_window_there_is_not_is_offered_nothing_but_a_code() {
     run(async {

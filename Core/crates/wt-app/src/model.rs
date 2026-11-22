@@ -1172,6 +1172,19 @@ impl State {
         true
     }
 
+    /// The tab a choice made while typing leaves behind, when it is to go
+    /// (038): the tab in front of the row of `chosen`, when that is another
+    /// tab and an empty one. Empty as a row's stand-in is (033): it shows no
+    /// address and has no web view. It was opened to go somewhere, and the
+    /// person has gone to a tab that was open. `None` otherwise.
+    pub(crate) fn empty_tab_left_for(&self, chosen: TabId) -> Option<TabId> {
+        let tab = self.tabs.get(&chosen)?;
+        let row = self.windows.get(&tab.window)?.rows.get(&tab.space)?;
+        let front = self.tabs.get(&row.front)?;
+        (row.front != chosen && front.shown().is_none() && front.web_view.is_none())
+            .then_some(row.front)
+    }
+
     /// The tab a step along the row leads to (035), in the row the window
     /// shows: the tab in front itself when the step leads nowhere (one tab,
     /// a place the row does not reach). `None` when there is no such
