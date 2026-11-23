@@ -302,6 +302,11 @@ pub(crate) struct Tab {
     /// (046): the page it named, and the picture. It waits for that page to
     /// arrive, and goes when another does, or when the load fails.
     icon_waiting: Option<(String, Vec<u8>)>,
+    /// When the tab was last known to be in front of its row (049): what its
+    /// Space's tidying counts from. `None` until tidying has looked at it.
+    shown_at: Option<Timestamp>,
+    /// The tab was in front of its row when tidying last looked.
+    fronted: bool,
 }
 
 /// What makes a tab a Site (039): where its home is, and what it is called
@@ -368,6 +373,8 @@ impl Tab {
             homing: false,
             icon_heard: None,
             icon_waiting: None,
+            shown_at: None,
+            fronted: false,
         }
     }
 
@@ -382,6 +389,9 @@ impl Tab {
         saved: &SavedTab,
     ) -> Tab {
         let mut tab = Tab::new(window, space, engine, login_set);
+        // When it was last in front, as the session kept it (049): a quit
+        // does not start a tab's time again.
+        tab.shown_at = (saved.shown_at != 0).then_some(Timestamp(saved.shown_at));
         let web = |text: &str| {
             Address::parse(text)
                 .ok()
@@ -468,6 +478,7 @@ impl Tab {
     /// The tab as the session keeps it (009): its address when that is the
     /// web's, and the first title its page said.
     fn saved(&mut self, front: bool) -> SavedTab {
+        let shown_at = self.shown_at.map_or(0, |at| at.0);
         let (home, name) = self.site.as_ref().map_or_else(Default::default, |site| {
             (site.home.as_str().to_owned(), site.name.clone())
         });
@@ -482,6 +493,7 @@ impl Tab {
                 name,
                 group: 0,
                 favourite: false,
+                shown_at,
             };
         }
         let url = self
@@ -499,6 +511,7 @@ impl Tab {
                 name,
                 group: 0,
                 favourite: false,
+                shown_at,
             };
         }
         let kept = self
@@ -524,6 +537,7 @@ impl Tab {
             name,
             group: 0,
             favourite: false,
+            shown_at,
         }
     }
 
@@ -1008,6 +1022,16 @@ pub(crate) struct Session {
     pub(crate) groups: BTreeMap<SpaceId, Vec<SavedGroup>>,
 }
 
+/// A tab to be tidied (049): which it is, and what its Space's Archive lists
+/// of it.
+#[derive(Debug)]
+pub(crate) struct Tidied {
+    pub(crate) tab: TabId,
+    pub(crate) space: SpaceId,
+    pub(crate) url: String,
+    pub(crate) title: String,
+}
+
 /// Everything the app knows.
 #[derive(Debug)]
 pub(crate) struct State {
@@ -1059,6 +1083,10 @@ pub(crate) struct State {
     /// How many private windows have been opened: each one's row is numbered
     /// from [`PRIVATE_SPACES_FROM`], far above any Space a store has.
     private_made: u64,
+    /// Each Space's time (049), in seconds: after how long out of sight a
+    /// tab of its that is no Site is tidied. A Space that is not here is
+    /// never tidied.
+    tidy_after: BTreeMap<SpaceId, u32>,
 }
 
 /// The number of the first private window's row, where a Space's number is
@@ -1087,6 +1115,7 @@ impl State {
             closed_tabs: BTreeMap::new(),
             private: Vec::new(),
             private_made: 0,
+            tidy_after: BTreeMap::new(),
             spaces,
             start: (start.id, start.login_set),
             engine,
@@ -3149,6 +3178,103 @@ impl State {
             .take(limit)
             .collect();
         Some(offered)
+    }
+
+    /// A Space's time (049), in seconds; nought for never.
+    pub(crate) fn tidy_time(&self, space: SpaceId) -> u32 {
+        self.tidy_after.get(&space).copied().unwrap_or(0)
+    }
+
+    /// Gives a Space its time, in seconds; nought for never.
+    pub(crate) fn set_tidy_time(&mut self, space: SpaceId, seconds: u32) {
+        if seconds == 0 {
+            self.tidy_after.remove(&space);
+        } else {
+            self.tidy_after.insert(space, seconds);
+        }
+    }
+
+    /// Some Space is tidied: there is something to look for.
+    pub(crate) fn tidies(&self) -> bool {
+        !self.tidy_after.is_empty()
+    }
+
+    /// Looks for tabs to tidy (049): each a tab that is no Site, shows a page
+    /// of the web's, is not in front of its row, and was last in front its
+    /// Space's time ago or longer. What the Archive is to list of each. None
+    /// is taken out of its row here: a tab goes once the Archive has it.
+    ///
+    /// A tab's time is counted from when it was last seen in front: a tab
+    /// that has left the front since the last look, and one that has not
+    /// been looked at before, start theirs now. Nothing in a Space with no
+    /// time, and nothing of a private window (037), is looked at.
+    pub(crate) fn tidy(&mut self, now: Timestamp) -> Vec<Tidied> {
+        let mut in_front = Vec::new();
+        let mut starting = Vec::new();
+        let mut due = Vec::new();
+        for window in self.windows.values() {
+            for (space, row) in &window.rows {
+                let Some(after) = self.tidy_after.get(space) else {
+                    continue;
+                };
+                if self.is_private_space(*space) {
+                    continue;
+                }
+                let limit = i64::from(*after).saturating_mul(1_000);
+                for id in &row.tabs {
+                    let Some(tab) = self.tabs.get(id) else {
+                        continue;
+                    };
+                    if *id == row.front {
+                        in_front.push(*id);
+                        continue;
+                    }
+                    match tab.shown_at {
+                        Some(at) if !tab.fronted => {
+                            let web = tab.shown().is_some_and(|address| {
+                                matches!(address.scheme(), "http" | "https")
+                            });
+                            if tab.site.is_none() && web && now.0.saturating_sub(at.0) >= limit {
+                                due.push(*id);
+                            }
+                        }
+                        _ => starting.push(*id),
+                    }
+                }
+            }
+        }
+        for id in in_front {
+            if let Some(tab) = self.tabs.get_mut(&id) {
+                tab.fronted = true;
+            }
+        }
+        for id in starting {
+            if let Some(tab) = self.tabs.get_mut(&id) {
+                tab.fronted = false;
+                tab.shown_at = Some(now);
+            }
+        }
+        due.into_iter()
+            .filter_map(|id| {
+                let tab = self.tabs.get_mut(&id)?;
+                let space = tab.space;
+                let saved = tab.saved(false);
+                Some(Tidied {
+                    tab: id,
+                    space,
+                    url: saved.url,
+                    title: saved.title,
+                })
+            })
+            .collect()
+    }
+
+    /// The Space a window shows, when it is one whose Archive is kept: not
+    /// a private window's (037). `None` when there is no such window; `Some(None)`
+    /// for a private one.
+    pub(crate) fn archive_of(&self, window: WindowId) -> Option<Option<SpaceId>> {
+        let space = self.windows.get(&window)?.space;
+        Some((!self.is_private_space(space)).then_some(space))
     }
 
     /// The Spaces to offer for what is typed in a window's address field

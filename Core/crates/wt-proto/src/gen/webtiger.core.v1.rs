@@ -1280,6 +1280,10 @@ pub struct SpacesPage {
     /// it has neither for is shown as no colour.
     #[prost(string, repeated, tag = "2")]
     pub colours: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// Since 1.41. The times a Space's tidying can have (049), in seconds, in
+    /// their order: nought, which is never, first.
+    #[prost(uint32, repeated, tag = "3")]
+    pub tidy_times: ::prost::alloc::vec::Vec<u32>,
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SpaceSummary {
@@ -1295,6 +1299,10 @@ pub struct SpaceSummary {
     /// Since 1.19. Its colour: one of SpacesPage.colours, or empty for none.
     #[prost(string, tag = "4")]
     pub colour: ::prost::alloc::string::String,
+    /// Since 1.41. Its time (049): after how many seconds out of sight a tab
+    /// of its that is no Site is tidied. Nought: never.
+    #[prost(uint32, tag = "5")]
+    pub tidy_after_seconds: u32,
 }
 /// Since 1.18. Makes a Space (024), after the others. Its name is what was
 /// typed without the white space at its ends, cut at 60 characters. Answered
@@ -1467,6 +1475,84 @@ pub mod step_tab {
                 _ => None,
             }
         }
+    }
+}
+/// Gives a Space its time: one of SpacesPage.tidy_times. Answered with Ack;
+/// "space.unknown"; "tidy.time_unknown" for a time that is not one of them.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SetSpaceTidying {
+    #[prost(uint64, tag = "1")]
+    pub space_id: u64,
+    #[prost(uint32, tag = "2")]
+    pub after_seconds: u32,
+}
+/// Asks for the Archive of the Space a window shows, newest first, a page at
+/// a time. Answered with ArchivePage; "window.unknown". A private window has
+/// none: its page is empty.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct QueryArchive {
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
+    /// The id of the last entry of the page before; nought for the newest.
+    #[prost(int64, tag = "2")]
+    pub before: i64,
+    /// At most this many. 0 asks for the core's own number (100); more than
+    /// that is that.
+    #[prost(uint32, tag = "3")]
+    pub limit: u32,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ArchivePage {
+    #[prost(message, repeated, tag = "1")]
+    pub entries: ::prost::alloc::vec::Vec<ArchiveEntry>,
+    /// There are older ones.
+    #[prost(bool, tag = "2")]
+    pub more: bool,
+}
+/// A tab that was tidied.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ArchiveEntry {
+    /// Never used twice: a newer one's is larger.
+    #[prost(int64, tag = "1")]
+    pub id: i64,
+    #[prost(string, tag = "2")]
+    pub url: ::prost::alloc::string::String,
+    /// The name its page had. Empty when it had none.
+    #[prost(string, tag = "3")]
+    pub title: ::prost::alloc::string::String,
+    /// When it was tidied, in milliseconds since 1970.
+    #[prost(int64, tag = "4")]
+    pub tidied_at: i64,
+}
+/// Brings a tidied tab back, in the window whose Space's Archive lists it:
+/// a tab again, the last of the row's tabs that are no Sites, in front,
+/// loading its address; and listed no longer. Answered with TabOpened;
+/// "window.unknown"; "archive.unknown" for an entry that Archive has not.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct RestoreArchived {
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
+    #[prost(int64, tag = "2")]
+    pub entry_id: i64,
+}
+/// Forgets a tidied tab of the Archive of the Space a window shows, or all of
+/// them. Answered with Ack, also when there was nothing to forget;
+/// "window.unknown".
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ForgetArchived {
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
+    #[prost(oneof = "forget_archived::Which", tags = "2, 3")]
+    pub which: ::core::option::Option<forget_archived::Which>,
+}
+/// Nested message and enum types in `ForgetArchived`.
+pub mod forget_archived {
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Which {
+        #[prost(int64, tag = "2")]
+        EntryId(i64),
+        #[prost(bool, tag = "3")]
+        All(bool),
     }
 }
 /// The layout of a window (043). Since 1.33.
@@ -2560,7 +2646,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -2694,6 +2780,15 @@ pub mod request {
         /// Since 1.37
         #[prost(message, tag = "50")]
         QueryIcons(super::QueryIcons),
+        /// Since 1.41
+        #[prost(message, tag = "51")]
+        SetSpaceTidying(super::SetSpaceTidying),
+        #[prost(message, tag = "52")]
+        QueryArchive(super::QueryArchive),
+        #[prost(message, tag = "53")]
+        RestoreArchived(super::RestoreArchived),
+        #[prost(message, tag = "54")]
+        ForgetArchived(super::ForgetArchived),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.
@@ -2701,7 +2796,7 @@ pub mod request {
 pub struct Response {
     #[prost(
         oneof = "response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16"
     )]
     pub kind: ::core::option::Option<response::Kind>,
 }
@@ -2748,6 +2843,9 @@ pub mod response {
         /// Since 1.37
         #[prost(message, tag = "15")]
         IconsPage(super::IconsPage),
+        /// Since 1.41
+        #[prost(message, tag = "16")]
+        ArchivePage(super::ArchivePage),
     }
 }
 /// Core → shell, unasked.

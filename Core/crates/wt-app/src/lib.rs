@@ -28,6 +28,7 @@ mod permissions;
 mod search;
 mod signin;
 mod spaces;
+mod tidying;
 
 pub use app::{App, AppFuture, AppOptions, HISTORY_PAGE, OUTSIDE_LINK_INTERVAL, SUGGESTIONS};
 pub use dialogs::DIALOG_WORDS;
@@ -36,3 +37,4 @@ pub use downloads::{DOWNLOAD_INTERVAL, DOWNLOADS_PAGE};
 pub use error::{AppError, HostError, is_code};
 pub use host::{HOST_TIMEOUT, Host, HostBridge, HostFuture};
 pub use permissions::PROMPT_DELAY;
+pub use tidying::TIDY_LOOK_EVERY;

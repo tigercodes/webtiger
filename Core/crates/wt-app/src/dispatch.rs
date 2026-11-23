@@ -26,6 +26,7 @@ use crate::app::{App, AppFuture, AppOptions};
 use crate::error::AppError;
 use crate::fence::CatchUnwind;
 use crate::host::{HOST_TIMEOUT, Host as _, HostBridge};
+use crate::tidying::TIDY_LOOK_EVERY;
 
 /// Where the dispatcher puts every envelope it sends, in order.
 pub type Outbox = Rc<dyn Fn(Envelope)>;
@@ -92,6 +93,9 @@ pub struct Dispatcher {
     subscriptions: RefCell<BTreeMap<u64, Subscription>>,
     next_subscription: std::cell::Cell<u64>,
     fake: bool,
+    /// The look for tabs to tidy (049) is going round: once a minute while
+    /// some Space is tidied.
+    tidying: std::cell::Cell<bool>,
 }
 
 impl Dispatcher {
@@ -114,6 +118,20 @@ impl Dispatcher {
         config: &CoreConfig,
         outbox: Outbox,
         host_timeout: Duration,
+    ) -> Result<Rc<Dispatcher>, StartError> {
+        Dispatcher::start_at(config, outbox, host_timeout, None)
+    }
+
+    /// [`Dispatcher::start_with`] with the clock chosen, for a test that
+    /// moves it: `None` is the clock the configuration has.
+    ///
+    /// # Errors
+    /// As [`Dispatcher::start`].
+    pub fn start_at(
+        config: &CoreConfig,
+        outbox: Outbox,
+        host_timeout: Duration,
+        clock: Option<Rc<dyn Clock>>,
     ) -> Result<Rc<Dispatcher>, StartError> {
         if config.contract_major != CONTRACT_MAJOR {
             return Err(StartError::new("start.contract_major"));
@@ -142,10 +160,10 @@ impl Dispatcher {
         let space = store
             .default_space(new_login_set, now)
             .map_err(|e| StartError::new(e.code()))?;
-        let clock: Rc<dyn Clock> = if fake {
-            Rc::new(FakeClock(ManualClock::new(FAKE_NOW)))
-        } else {
-            Rc::new(SystemClock)
+        let clock: Rc<dyn Clock> = match clock {
+            Some(chosen) => chosen,
+            None if fake => Rc::new(FakeClock(ManualClock::new(FAKE_NOW))),
+            None => Rc::new(SystemClock),
         };
 
         let bridge = Rc::new(HostBridge::new(Rc::clone(&outbox), host_timeout));
@@ -193,6 +211,7 @@ impl Dispatcher {
             subscriptions: RefCell::new(BTreeMap::new()),
             next_subscription: std::cell::Cell::new(1),
             fake,
+            tidying: std::cell::Cell::new(false),
         });
         dispatcher.send_event(event::Kind::Status(CoreStatus {
             state: core_status::State::Ready as i32,
@@ -274,6 +293,36 @@ impl Dispatcher {
                 .unwrap_or_else(|_| Err(AppError::new("core.panic")));
             this.respond(id, result);
             this.flush();
+            // A Space may have been given a time, or the store have had one
+            // from the start (049): a shell's first request sets the look
+            // going.
+            this.watch_for_tidying();
+        });
+    }
+
+    /// Sets the look for tabs to tidy going (049), when some Space is tidied
+    /// and it is not going already: once every [`TIDY_LOOK_EVERY`], by the
+    /// core's own clock, and what it tidies is published as any change is.
+    /// It stops when no Space is tidied any longer, and with the core.
+    fn watch_for_tidying(self: &Rc<Self>) {
+        if self.tidying.get() || !self.app.tidies() {
+            return;
+        }
+        self.tidying.set(true);
+        let core = Rc::downgrade(self);
+        tokio::task::spawn_local(async move {
+            loop {
+                tokio::time::sleep(TIDY_LOOK_EVERY).await;
+                let Some(core) = core.upgrade() else {
+                    break;
+                };
+                if !core.app.tidies() {
+                    core.tidying.set(false);
+                    break;
+                }
+                core.app.tidy();
+                core.flush();
+            }
         });
     }
 

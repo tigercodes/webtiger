@@ -26,6 +26,9 @@ pub struct SavedTab {
     pub group: u32,
     /// The Site is one of its row's Favourites (042).
     pub favourite: bool,
+    /// When the tab was last in front, in milliseconds (049): what a Space's
+    /// tidying counts from. Nought for one that is not known to have been.
+    pub shown_at: i64,
 }
 
 /// A Group as it is kept between runs (041).
@@ -57,8 +60,8 @@ impl Store {
         {
             let mut insert = transaction
                 .prepare_cached(
-                    "INSERT INTO tab (space_id, position, url, title, front, site_home, site_name, site_group, favourite) \
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                    "INSERT INTO tab (space_id, position, url, title, front, site_home, site_name, site_group, favourite, shown_at) \
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
                 )
                 .map_err(|_| StoreError::Query)?;
             for (position, tab) in tabs.iter().enumerate() {
@@ -73,7 +76,8 @@ impl Store {
                         tab.home,
                         tab.name,
                         tab.group,
-                        tab.favourite
+                        tab.favourite,
+                        tab.shown_at
                     ])
                     .map_err(|_| StoreError::Query)?;
             }
@@ -90,7 +94,7 @@ impl Store {
         let mut statement = self
             .connection
             .prepare_cached(
-                "SELECT url, title, front, site_home, site_name, site_group, favourite FROM tab \
+                "SELECT url, title, front, site_home, site_name, site_group, favourite, shown_at FROM tab \
                  WHERE space_id = ?1 ORDER BY position",
             )
             .map_err(|_| StoreError::Query)?;
@@ -104,6 +108,7 @@ impl Store {
                     name: row.get(4)?,
                     group: row.get(5)?,
                     favourite: row.get(6)?,
+                    shown_at: row.get(7)?,
                 })
             })
             .and_then(Iterator::collect)
@@ -192,6 +197,7 @@ mod tests {
             name: String::new(),
             group: 0,
             favourite: false,
+            shown_at: 0,
         }
     }
 
@@ -293,7 +299,7 @@ mod tests {
         drop(store);
         let old = Connection::open(&path).unwrap();
         old.execute_batch(
-            "DROP TABLE icon; ALTER TABLE tab DROP COLUMN favourite; DROP TABLE node; ALTER TABLE tab DROP COLUMN site_group; ALTER TABLE tab DROP COLUMN site_home; ALTER TABLE tab DROP COLUMN site_name; DROP TABLE journal; ALTER TABLE space DROP COLUMN colour; DROP TABLE setting; DROP TABLE site_permission; DROP TABLE download; DROP TABLE site_setting; DROP TABLE tab; PRAGMA user_version = 2;",
+            "DROP INDEX archive_space; DROP TABLE archive; ALTER TABLE tab DROP COLUMN shown_at; ALTER TABLE space DROP COLUMN tidy_after; DROP TABLE icon; ALTER TABLE tab DROP COLUMN favourite; DROP TABLE node; ALTER TABLE tab DROP COLUMN site_group; ALTER TABLE tab DROP COLUMN site_home; ALTER TABLE tab DROP COLUMN site_name; DROP TABLE journal; ALTER TABLE space DROP COLUMN colour; DROP TABLE setting; DROP TABLE site_permission; DROP TABLE download; DROP TABLE site_setting; DROP TABLE tab; PRAGMA user_version = 2;",
         )
             .unwrap();
         drop(old);
@@ -340,7 +346,7 @@ mod tests {
         store.save_tabs(made.id, &three()).unwrap();
         drop(store);
         let old = Connection::open(&path).unwrap();
-        old.execute_batch("DROP TABLE icon; ALTER TABLE tab DROP COLUMN favourite; DROP TABLE node; ALTER TABLE tab DROP COLUMN site_group; ALTER TABLE tab DROP COLUMN site_home; ALTER TABLE tab DROP COLUMN site_name; PRAGMA user_version = 9;")
+        old.execute_batch("DROP INDEX archive_space; DROP TABLE archive; ALTER TABLE tab DROP COLUMN shown_at; ALTER TABLE space DROP COLUMN tidy_after; DROP TABLE icon; ALTER TABLE tab DROP COLUMN favourite; DROP TABLE node; ALTER TABLE tab DROP COLUMN site_group; ALTER TABLE tab DROP COLUMN site_home; ALTER TABLE tab DROP COLUMN site_name; PRAGMA user_version = 9;")
             .unwrap();
         drop(old);
 
@@ -420,7 +426,7 @@ mod tests {
         drop(store);
         let old = Connection::open(&path).unwrap();
         old.execute_batch(
-            "DROP TABLE icon; ALTER TABLE tab DROP COLUMN favourite; DROP TABLE node; \
+            "DROP INDEX archive_space; DROP TABLE archive; ALTER TABLE tab DROP COLUMN shown_at; ALTER TABLE space DROP COLUMN tidy_after; DROP TABLE icon; ALTER TABLE tab DROP COLUMN favourite; DROP TABLE node; \
              ALTER TABLE tab DROP COLUMN site_group; PRAGMA user_version = 10;",
         )
         .unwrap();
@@ -476,7 +482,7 @@ mod tests {
         // as they were, and none is a Favourite.
         let old = Connection::open(&path).unwrap();
         old.execute_batch(
-            "DROP TABLE icon; ALTER TABLE tab DROP COLUMN favourite; PRAGMA user_version = 11;",
+            "DROP INDEX archive_space; DROP TABLE archive; ALTER TABLE tab DROP COLUMN shown_at; ALTER TABLE space DROP COLUMN tidy_after; DROP TABLE icon; ALTER TABLE tab DROP COLUMN favourite; PRAGMA user_version = 11;",
         )
         .unwrap();
         drop(old);

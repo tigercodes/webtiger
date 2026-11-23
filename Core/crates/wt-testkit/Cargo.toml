@@ -12,6 +12,8 @@ publish.workspace = true
 # nothing else to do.
 tokio = { workspace = true, features = ["rt", "time", "test-util"] }
 wt-app.workspace = true
+# The clock a test hands the core, to move it (049).
+wt-core.workspace = true
 wt-proto.workspace = true
 
 [lints]

@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use crate::StoreError;
 
 /// The version this build's store is at.
-pub const SCHEMA_VERSION: u32 = 13;
+pub const SCHEMA_VERSION: u32 = 14;
 
 /// The migrations, in order: `MIGRATIONS[n]` takes version `n` to `n + 1`.
 const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
@@ -168,6 +168,22 @@ const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
          UNIQUE (login_set_id, host)
      ) STRICT;
      CREATE INDEX icon_used ON icon (used_at);",
+    // 14 (W2, 049): tidying. Each Space's time, in seconds, after which a
+    // tab that is no Site and has not been in front is tidied (0: never);
+    // when each saved tab was last in front, so that a quit does not start
+    // every tab's time again; and the Archive, where a tidied tab is listed
+    // by its Space until it is brought back or forgotten. Ids are never used
+    // twice: newest first is by id.
+    "ALTER TABLE space ADD COLUMN tidy_after INTEGER NOT NULL DEFAULT 0 CHECK (tidy_after >= 0);
+     ALTER TABLE tab ADD COLUMN shown_at INTEGER NOT NULL DEFAULT 0;
+     CREATE TABLE archive (
+         id INTEGER PRIMARY KEY AUTOINCREMENT,
+         space_id INTEGER NOT NULL REFERENCES space (id),
+         url TEXT NOT NULL CHECK (url <> ''),
+         title TEXT NOT NULL,
+         tidied_at INTEGER NOT NULL
+     ) STRICT;
+     CREATE INDEX archive_space ON archive (space_id, id);",
 ];
 
 pub(crate) fn version(connection: &Connection) -> Result<u32, StoreError> {

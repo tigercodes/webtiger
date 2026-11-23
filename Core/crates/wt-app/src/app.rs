@@ -154,7 +154,7 @@ impl App {
         for (space, count) in closed {
             state.set_closed_tabs(space, count);
         }
-        App {
+        let app = App {
             written: Rc::new(RefCell::new(kept.written)),
             state: Rc::new(RefCell::new(state)),
             new_login_set: options.new_login_set,
@@ -171,7 +171,10 @@ impl App {
             downloaded: Rc::new(RefCell::new(BTreeMap::new())),
             waiting: Rc::new(RefCell::new(BTreeMap::new())),
             prompts_shown: Rc::new(RefCell::new(BTreeMap::new())),
-        }
+        };
+        // Each Space's time (049), as the store has it.
+        app.learn_tidy_times();
+        app
     }
 
     /// Handles one of the app's requests: a window's (`OpenWindow`,
@@ -244,6 +247,10 @@ impl App {
             request::Kind::MoveTab(moved) => answer(self.move_tab(&moved)),
             request::Kind::MoveGroup(moved) => answer(self.move_group(&moved)),
             request::Kind::QueryIcons(query) => answer(Ok(self.query_icons(&query))),
+            request::Kind::SetSpaceTidying(set) => answer(self.set_space_tidying(&set)),
+            request::Kind::QueryArchive(query) => answer(self.query_archive(&query)),
+            request::Kind::RestoreArchived(restore) => self.restore_archived(&restore),
+            request::Kind::ForgetArchived(forget) => answer(self.forget_archived(&forget)),
             request::Kind::OpenDownload(open) => self.open_download(&open),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
@@ -713,6 +720,7 @@ impl App {
             name: String::new(),
             group: 0,
             favourite: false,
+            shown_at: 0,
         };
         let reopened = self
             .state
@@ -872,6 +880,9 @@ impl App {
             None
         };
         let (window, tab, restored) = self.state.borrow_mut().open_window(private);
+        // The tabs that came back past their Space's time are tidied before
+        // the window is told of its row (049): none shows and then goes.
+        self.tidy();
         let opened = response::Kind::WindowOpened(WindowOpened {
             window_id: window.get(),
             tab_id: tab.get(),
@@ -932,7 +943,7 @@ impl App {
         })
     }
 
-    fn open_tab(&self, open: &OpenTab) -> AppFuture {
+    pub(crate) fn open_tab(&self, open: &OpenTab) -> AppFuture {
         let after = (open.after_tab_id != 0).then_some(TabId(open.after_tab_id));
         let opened =
             self.state

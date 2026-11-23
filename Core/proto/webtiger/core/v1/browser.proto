@@ -929,6 +929,9 @@ message SpacesPage {
   // them, in their order. A shell has the paint and the word for each; one
   // it has neither for is shown as no colour.
   repeated string colours = 2;
+  // Since 1.41. The times a Space's tidying can have (049), in seconds, in
+  // their order: nought, which is never, first.
+  repeated uint32 tidy_times = 3;
 }
 
 message SpaceSummary {
@@ -940,6 +943,9 @@ message SpaceSummary {
   uint32 logins = 3;
   // Since 1.19. Its colour: one of SpacesPage.colours, or empty for none.
   string colour = 4;
+  // Since 1.41. Its time (049): after how many seconds out of sight a tab
+  // of its that is no Site is tidied. Nought: never.
+  uint32 tidy_after_seconds = 5;
 }
 
 // Since 1.18. Makes a Space (024), after the others. Its name is what was
@@ -1053,4 +1059,71 @@ message StepTab {
   // For TO_PLACE: the place in the row, counted from one. Beyond the row,
   // nothing happens.
   uint32 place = 3;
+}
+
+// Tidying (049). Since 1.41.
+//
+// A tab that is no Site, and has not been in front for its Space's time, is
+// tidied: it leaves its row, its page is let go, and it is listed in its
+// Space's Archive, from which it is brought back or forgotten. Never the tab
+// in front of its row; never a tab with no page of the web's; never a tab of
+// a private window; and nothing in a Space whose time is never, which is
+// every Space until it is given one. The core looks by its own clock: a
+// shell does not time tabs. A window is told by its snapshot that a tab has
+// gone, as when one is closed.
+
+// Gives a Space its time: one of SpacesPage.tidy_times. Answered with Ack;
+// "space.unknown"; "tidy.time_unknown" for a time that is not one of them.
+message SetSpaceTidying {
+  uint64 space_id = 1;
+  uint32 after_seconds = 2;
+}
+
+// Asks for the Archive of the Space a window shows, newest first, a page at
+// a time. Answered with ArchivePage; "window.unknown". A private window has
+// none: its page is empty.
+message QueryArchive {
+  uint64 window_id = 1;
+  // The id of the last entry of the page before; nought for the newest.
+  int64 before = 2;
+  // At most this many. 0 asks for the core's own number (100); more than
+  // that is that.
+  uint32 limit = 3;
+}
+
+message ArchivePage {
+  repeated ArchiveEntry entries = 1;
+  // There are older ones.
+  bool more = 2;
+}
+
+// A tab that was tidied.
+message ArchiveEntry {
+  // Never used twice: a newer one's is larger.
+  int64 id = 1;
+  string url = 2 [(wt.redact) = true];
+  // The name its page had. Empty when it had none.
+  string title = 3 [(wt.redact) = true];
+  // When it was tidied, in milliseconds since 1970.
+  int64 tidied_at = 4;
+}
+
+// Brings a tidied tab back, in the window whose Space's Archive lists it:
+// a tab again, the last of the row's tabs that are no Sites, in front,
+// loading its address; and listed no longer. Answered with TabOpened;
+// "window.unknown"; "archive.unknown" for an entry that Archive has not.
+message RestoreArchived {
+  uint64 window_id = 1;
+  int64 entry_id = 2;
+}
+
+// Forgets a tidied tab of the Archive of the Space a window shows, or all of
+// them. Answered with Ack, also when there was nothing to forget;
+// "window.unknown".
+message ForgetArchived {
+  uint64 window_id = 1;
+  oneof which {
+    int64 entry_id = 2;
+    bool all = 3;
+  }
 }

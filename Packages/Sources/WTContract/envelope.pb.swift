@@ -10,7 +10,7 @@
 
 /// WebTiger Core ↔ shell contract (docs/features/000-master-plan.md §5.5,
 /// docs/features/001-foundations.md §4).
-/// Contract version: 1.40 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
+/// Contract version: 1.41 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
 ///   1.1  Tabs: OpenTab, CloseTab, ActivateTab, TabOpened; WindowSnapshot.tabs.
 ///   1.2  A page that asks for a new window: NewWindowRequested, CloseRequested;
 ///        web view ids with their top bit set are the shell's.
@@ -575,6 +575,39 @@ public nonisolated struct WTRequest: Sendable {
     set {kind = .queryIcons(newValue)}
   }
 
+  /// Since 1.41
+  public var setSpaceTidying: WTSetSpaceTidying {
+    get {
+      if case .setSpaceTidying(let v)? = kind {return v}
+      return WTSetSpaceTidying()
+    }
+    set {kind = .setSpaceTidying(newValue)}
+  }
+
+  public var queryArchive: WTQueryArchive {
+    get {
+      if case .queryArchive(let v)? = kind {return v}
+      return WTQueryArchive()
+    }
+    set {kind = .queryArchive(newValue)}
+  }
+
+  public var restoreArchived: WTRestoreArchived {
+    get {
+      if case .restoreArchived(let v)? = kind {return v}
+      return WTRestoreArchived()
+    }
+    set {kind = .restoreArchived(newValue)}
+  }
+
+  public var forgetArchived: WTForgetArchived {
+    get {
+      if case .forgetArchived(let v)? = kind {return v}
+      return WTForgetArchived()
+    }
+    set {kind = .forgetArchived(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -654,6 +687,11 @@ public nonisolated struct WTRequest: Sendable {
     case moveGroup(WTMoveGroup)
     /// Since 1.37
     case queryIcons(WTQueryIcons)
+    /// Since 1.41
+    case setSpaceTidying(WTSetSpaceTidying)
+    case queryArchive(WTQueryArchive)
+    case restoreArchived(WTRestoreArchived)
+    case forgetArchived(WTForgetArchived)
 
   }
 
@@ -797,6 +835,15 @@ public nonisolated struct WTResponse: Sendable {
     set {kind = .iconsPage(newValue)}
   }
 
+  /// Since 1.41
+  public var archivePage: WTArchivePage {
+    get {
+      if case .archivePage(let v)? = kind {return v}
+      return WTArchivePage()
+    }
+    set {kind = .archivePage(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -824,6 +871,8 @@ public nonisolated struct WTResponse: Sendable {
     case groupMade(WTGroupMade)
     /// Since 1.37
     case iconsPage(WTIconsPage)
+    /// Since 1.41
+    case archivePage(WTArchivePage)
 
   }
 
@@ -1184,7 +1233,7 @@ nonisolated extension WTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Request"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0\u{3}open_tab\0\u{3}close_tab\0\u{3}activate_tab\0\u{3}query_history\0\u{3}forget_history\0\u{3}find_in_page\0\u{3}suggest_addresses\0\u{3}zoom_page\0\u{3}query_downloads\0\u{3}cancel_download\0\u{3}forget_downloads\0\u{3}answer_prompt\0\u{3}query_permissions\0\u{3}forget_permissions\0\u{3}query_search\0\u{3}choose_search_engine\0\u{3}query_spaces\0\u{3}create_space\0\u{3}rename_space\0\u{3}switch_space\0\u{3}colour_space\0\u{3}proceed_past_certificate\0\u{3}search_words\0\u{3}open_download\0\u{3}open_address\0\u{1}undo\0\u{3}step_tab\0\u{3}keep_tab\0\u{3}let_go_site\0\u{3}send_site_home\0\u{3}make_group\0\u{3}rename_group\0\u{3}colour_group\0\u{3}shut_group\0\u{3}remove_group\0\u{3}move_to_group\0\u{3}set_favourite\0\u{3}set_layout\0\u{3}undo_arrangement\0\u{3}move_tab\0\u{3}move_group\0\u{3}query_icons\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0\u{3}open_tab\0\u{3}close_tab\0\u{3}activate_tab\0\u{3}query_history\0\u{3}forget_history\0\u{3}find_in_page\0\u{3}suggest_addresses\0\u{3}zoom_page\0\u{3}query_downloads\0\u{3}cancel_download\0\u{3}forget_downloads\0\u{3}answer_prompt\0\u{3}query_permissions\0\u{3}forget_permissions\0\u{3}query_search\0\u{3}choose_search_engine\0\u{3}query_spaces\0\u{3}create_space\0\u{3}rename_space\0\u{3}switch_space\0\u{3}colour_space\0\u{3}proceed_past_certificate\0\u{3}search_words\0\u{3}open_download\0\u{3}open_address\0\u{1}undo\0\u{3}step_tab\0\u{3}keep_tab\0\u{3}let_go_site\0\u{3}send_site_home\0\u{3}make_group\0\u{3}rename_group\0\u{3}colour_group\0\u{3}shut_group\0\u{3}remove_group\0\u{3}move_to_group\0\u{3}set_favourite\0\u{3}set_layout\0\u{3}undo_arrangement\0\u{3}move_tab\0\u{3}move_group\0\u{3}query_icons\0\u{3}set_space_tidying\0\u{3}query_archive\0\u{3}restore_archived\0\u{3}forget_archived\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1842,6 +1891,58 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
           self.kind = .queryIcons(v)
         }
       }()
+      case 51: try {
+        var v: WTSetSpaceTidying?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .setSpaceTidying(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .setSpaceTidying(v)
+        }
+      }()
+      case 52: try {
+        var v: WTQueryArchive?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .queryArchive(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .queryArchive(v)
+        }
+      }()
+      case 53: try {
+        var v: WTRestoreArchived?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .restoreArchived(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .restoreArchived(v)
+        }
+      }()
+      case 54: try {
+        var v: WTForgetArchived?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .forgetArchived(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .forgetArchived(v)
+        }
+      }()
       default: break
       }
     }
@@ -2053,6 +2154,22 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       guard case .queryIcons(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 50)
     }()
+    case .setSpaceTidying?: try {
+      guard case .setSpaceTidying(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 51)
+    }()
+    case .queryArchive?: try {
+      guard case .queryArchive(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 52)
+    }()
+    case .restoreArchived?: try {
+      guard case .restoreArchived(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 53)
+    }()
+    case .forgetArchived?: try {
+      guard case .forgetArchived(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 54)
+    }()
     case nil: break
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -2067,7 +2184,7 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 nonisolated extension WTResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Response"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}error\0\u{1}ack\0\u{1}pong\0\u{1}subscribed\0\u{3}window_opened\0\u{3}tab_opened\0\u{3}history_page\0\u{3}address_suggestions\0\u{3}downloads_page\0\u{3}permissions_page\0\u{3}search_settings\0\u{3}spaces_page\0\u{3}space_created\0\u{3}group_made\0\u{3}icons_page\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}error\0\u{1}ack\0\u{1}pong\0\u{1}subscribed\0\u{3}window_opened\0\u{3}tab_opened\0\u{3}history_page\0\u{3}address_suggestions\0\u{3}downloads_page\0\u{3}permissions_page\0\u{3}search_settings\0\u{3}spaces_page\0\u{3}space_created\0\u{3}group_made\0\u{3}icons_page\0\u{3}archive_page\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2270,6 +2387,19 @@ nonisolated extension WTResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
           self.kind = .iconsPage(v)
         }
       }()
+      case 16: try {
+        var v: WTArchivePage?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .archivePage(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .archivePage(v)
+        }
+      }()
       default: break
       }
     }
@@ -2340,6 +2470,10 @@ nonisolated extension WTResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     case .iconsPage?: try {
       guard case .iconsPage(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 15)
+    }()
+    case .archivePage?: try {
+      guard case .archivePage(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 16)
     }()
     case nil: break
     }

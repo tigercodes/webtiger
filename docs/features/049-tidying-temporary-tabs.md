@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | **Designed; nothing built.** The choices of §6 are put to the owner |
+| **Status** | **Built and tested in the core and the store, on the recommendations of §6, which are provisional:** they are put to the owner and not yet answered. The core tidies, keeps the Archive, and answers for both; **no shell asks yet**, and a Space has no time until one does: nothing in an app has changed |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "temporary tabs"; and W3's Archive, which tidying cannot be without. 000 §5.6: "Temporary tab. Opened by a link or by typing. It lives below the Sites, and is tidied into the Archive after the chosen time, or never." 000 §3: "Tab tidying is a setting with a **Never**" (WT-D15) |
-| **Contract** | To be 1.41 (§5). The store's schema to be 14: an archive, and each Space's time (§4) |
+| **Contract** | 1.41 (§5). The store's schema is 14: an archive, each Space's time, and when a saved tab was last in front (§4) |
 | **Builds on** | [039](039-sites.md): a tab that is kept is a Site, and is never a temporary one. [041](041-groups.md), [042](042-favourites.md): the row's parts. [024](024-several-spaces.md): a row for each Space. [009](009-session-restore.md): the tabs that come back at a start. [008](008-history.md): a list in the Library, asked for by pages |
 | **Last updated** | 2026-11-23 |
 
@@ -48,7 +48,7 @@ I open links all day. By the evening my row has forty tabs I shall not look at a
 
 In the store (schema 14): `space.tidy_after`, the Space's time in seconds, 0 for never; and a table `archive(id, space_id, url, title, tidied_at)`, a thousand to a Space. A Space that is deleted takes its Archive with it. When each tab was last in front is kept with the session's tabs (009), so that a quit does not start every tab's time again.
 
-## 5. The contract (to be 1.41)
+## 5. The contract (1.41)
 
 Added; nothing is changed or removed.
 
@@ -68,9 +68,22 @@ message ForgetArchived { uint64 window_id = 1; oneof which { int64 entry_id = 2;
 
 A window is told that its row has changed when a tab is tidied, as when one is closed: by its snapshot. Nothing new is told for it.
 
+**As built, where the design did not say:**
+
+- **A tab's time is counted by looks.** The core looks once a minute while some Space is tidied; when a Space is given its time; and when a window opens. A tab that is in front of its row at a look is noted as in front. One that has left the front since the look before, and one that was never looked at, start their time at that look. So a tab's time is counted from the look after it was last in front: a minute late at the most, and the clock is never read because a tab was brought in front.
+- **The tab in front of its row is never tidied, whether or not its Space is the one its window shows.** The design had only the tab in front of a window. A row is then never left with no tab, and nothing has to be opened in a Space nobody is looking at.
+- **Tabs that were open before a Space was given its time count from when it was given.**
+- **While no Space is tidied the clock is not read for it, and the look does not go round.** It is set going by the first request after some Space has a time, and stops when none has.
+- **A tab leaves its row once the Archive has it,** and not before: a store that will not write leaves the tab where it is, to be looked at again.
+- **A tidied tab is not a closed one:** it is not what "Reopen Closed Tab" brings back (033). Its page is let go, and its web view destroyed.
+- **Bringing back takes the entry out first,** and then opens a tab as any is opened. A page that then fails to load is a failed page in a tab; the entry is gone.
+- **A page of the Archive is a hundred at the most,** and a hundred when the shell does not say.
+- **Giving a Space no time again** leaves its Archive as it is.
+- **The numbers:** `SpacesPage.tidy_times = 3`; `SpaceSummary.tidy_after_seconds = 5`; the four requests are 51 to 54; `ArchivePage` is the sixteenth kind of answer.
+
 ## 6. Decisions
 
-**All of these are put to the owner; none is built.** The first column is the recommendation.
+**All of these are put to the owner.** They are built in the core as recommended; D5 is built wider than it was put (the tab in front of its row, shown or not). The first column is the recommendation.
 
 | # | Recommendation | Why | Other ways |
 |---|---|---|---|
@@ -85,20 +98,33 @@ A window is told that its row has changed when a tab is tidied, as when one is c
 
 ## 7. In what order
 
-1. **The core and the store:** the rule against the scripted engine and a clock a test moves; the Archive; the contract.
+1. **The core and the store:** the rule against the scripted engine and a clock a test moves; the Archive; the contract. **Built.**
 2. **The shells:** a Space's time, where a Space is made and edited; the Archive in the Library.
 
 ## 8. Tests
 
-To be filled in as built.
+| Where | What |
+|---|---|
+| The store (`archive.rs`, 6) | A Space has no time until it is given one, and one given none again is not listed; a Space there is not has none to be given. A tidied tab is listed newest first in its own Space's Archive, with its name and when; a tab with no address, and a Space there is not, are not listed. The Archive is read a page at a time, and says whether there are older ones. A tab taken out is what was listed, once, and is listed no longer; another Space's is not this Space's to take or to forget; one is forgotten, and then all of a Space's, and the other Space's stay. A Space keeps its thousand newest, counted apart from another's. A store from before tidying gains it and keeps what it had: its Space has no time, its tab is there and is not known to have been in front |
+| The core, through the contract (`tidying.rs`, 8, against the scripted engine, on a clock the test moves) | **The rule:** a Space given twelve hours; a minute short of it nothing has gone; at twelve hours the two tabs that were not in front are in the Archive, newest first, by name and address and the time, the window is told, and their web views are gone; the tab in front stays, thirty days on. **A tab's time starts again** when it has been in front: the tab that was looked at goes thirteen hours after it left the front, not after it was opened. **Never:** a Site, a Favourite, a Group's Site, an empty tab; nor anything of a private window, which has no Archive and is no Space to be given a time. **A Space's time:** the times there are; none until one is given; a time that is none of them and a Space there is not are refused; a Space with no time keeps its tabs while another's go; a Space out of sight is tidied, but for the tab that was in front of its row; given no time again, what is there stays. **The Archive:** a page at a time; a tab brought back is the last of the row, in front, at its address, and listed no longer, and cannot be brought back twice; one forgotten, then all; a window there is not is refused; a Space's Archive is its own. **A quit** does not start a tab's time again: six hours, a quit, seven more, a quit, and at the third start the window is first told of a row without the two tabs, which are in the Archive. **The clock** is read once a minute while a Space is tidied, once when it is given its time, and not at all for this while none is |
+| The tests there were | The 637 the core had and the 85 of the store pass unchanged, but that every store "from before" is made by undoing one thing more |
+| The rule broken, a part at a time | 46 parts, in the model, the app, the dispatcher, the store and the session. 45 caught: 42 at once; two once the tests said more (a Space with no time was looked at only once, so no tab's time had begun; and the test's minute was the core's own word for how often it looks); one added. One was not: that a private window has an Archive, which nothing can show, since nothing of a private window is ever tidied |
 
 ## 9. What is not verified
 
-To be filled in as built.
+- **No shell asks.** A Space is given its time by nothing in an app, and the Archive is listed nowhere: nobody has seen a tab tidied.
+- **The choices of §6** are the recommendations, not the owner's word.
+- **A real day.** Every time here is a clock a test moved, and every minute the runtime's own, which a test runs through at once. That the look goes round on the core's thread in an app, by the system's clock, for hours, was not run.
+- **A store that will not write the Archive:** by its lines the tab stays in its row; no test made a store refuse.
+- **What a look costs** where there are thousands of tabs: every tab of every tidied Space is looked at once a minute; not measured ([043](043-the-sidebar.md) §8a).
+- **Several windows showing one Space:** each has its own row, and each row its own tab in front; the Archive is the Space's. Tested with one window.
+- **A tab that is doing something out of sight** (playing, downloading, waiting on a question) is tidied like any other: that is the rule (D2), and no test has such a tab.
+- **A Space that is deleted:** Spaces cannot be deleted yet; its Archive is to go with it.
 
 ## 10. Done checklist
 
 - [ ] The owner's word on §6.
-- [ ] The core, the store and the contract.
+- [x] The core, the store and the contract.
 - [ ] The shells.
-- [ ] `Tools/test.sh all` green, and `android-device`.
+- [ ] The core: the gate.
+- [ ] The shells: the gate.

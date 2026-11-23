@@ -141,6 +141,7 @@ impl App {
                     name: space.name.clone(),
                     logins: u32::try_from(first + 1).unwrap_or(u32::MAX),
                     colour: space.colour.clone(),
+                    tidy_after_seconds: state.tidy_time(space.id),
                 }
             })
             .collect();
@@ -151,6 +152,8 @@ impl App {
                 .iter()
                 .map(|colour| (*colour).to_owned())
                 .collect(),
+            // The times a Space's tidying can have (049).
+            tidy_times: crate::tidying::TIDY_TIMES.to_vec(),
         })
     }
 

@@ -7,13 +7,15 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use wt_app::{Dispatcher, HOST_TIMEOUT, Outbox, StartError};
+use wt_core::Clock;
 use wt_proto::v1::{
-    ActivateTab, CloseTab, ColourGroup, CoreConfig, EngineEvent, EngineInfo, EngineKind, Envelope,
-    FakeOptions, HostResponse, Icon, KeepTab, Layout, LetGoSite, MakeGroup, MoveGroup, MoveTab,
-    MoveToGroup, OpenTab, OpenWindow, Platform, QueryIcons, RemoveGroup, RenameGroup, Request,
-    SendSiteHome, SetFavourite, SetLayout, ShutGroup, SubmitAddress, Subscribe, TestMode,
-    UndoArrangement, WindowSnapshot, WindowTopic, envelope, event, host_request, host_response,
-    move_tab, request, response, snapshot, subscribe,
+    ActivateTab, ArchiveEntry, CloseTab, ColourGroup, CoreConfig, EngineEvent, EngineInfo,
+    EngineKind, Envelope, FakeOptions, ForgetArchived, HostResponse, Icon, KeepTab, Layout,
+    LetGoSite, MakeGroup, MoveGroup, MoveTab, MoveToGroup, OpenTab, OpenWindow, Platform,
+    QueryArchive, QueryIcons, RemoveGroup, RenameGroup, Request, RestoreArchived, SendSiteHome,
+    SetFavourite, SetLayout, SetSpaceTidying, ShutGroup, SubmitAddress, Subscribe, TestMode,
+    UndoArrangement, WindowSnapshot, WindowTopic, envelope, event, forget_archived, host_request,
+    host_response, move_tab, request, response, snapshot, subscribe,
 };
 use wt_proto::{CONTRACT_MAJOR, CONTRACT_MINOR};
 
@@ -106,10 +108,34 @@ impl FakeShell {
         config: &CoreConfig,
         host_timeout: Duration,
     ) -> Result<FakeShell, StartError> {
+        FakeShell::begin(config, host_timeout, None)
+    }
+
+    /// [`FakeShell::start`] with the core's clock chosen: for a test that
+    /// moves time (049).
+    ///
+    /// # Errors
+    /// When the core refuses to start.
+    pub fn start_at(config: &CoreConfig, clock: Rc<dyn Clock>) -> Result<FakeShell, StartError> {
+        FakeShell::begin(config, HOST_TIMEOUT, Some(clock))
+    }
+
+    /// A shell in fake mode with a WebKit engine, whose core goes by `clock`.
+    #[must_use]
+    pub fn fake_at(clock: Rc<dyn Clock>) -> FakeShell {
+        FakeShell::start_at(&FakeShell::config(EngineKind::Webkit), clock)
+            .expect("fake mode starts")
+    }
+
+    fn begin(
+        config: &CoreConfig,
+        host_timeout: Duration,
+        clock: Option<Rc<dyn Clock>>,
+    ) -> Result<FakeShell, StartError> {
         let inbox: Rc<RefCell<VecDeque<Envelope>>> = Rc::new(RefCell::new(VecDeque::new()));
         let sink = Rc::clone(&inbox);
         let outbox: Outbox = Rc::new(move |envelope| sink.borrow_mut().push_back(envelope));
-        let dispatcher = Dispatcher::start_with(config, outbox, host_timeout)?;
+        let dispatcher = Dispatcher::start_at(config, outbox, host_timeout, clock)?;
         let engines = config.engines.iter().map(EngineInfo::kind).collect();
         Ok(FakeShell {
             dispatcher,
@@ -404,6 +430,77 @@ impl FakeShell {
         match answer {
             response::Kind::IconsPage(page) => page.icons,
             other => panic!("QueryIcons answers IconsPage, not {other:?}"),
+        }
+    }
+
+    /// Gives a Space its time (049), and waits.
+    pub async fn set_tidying(&mut self, space: u64, seconds: u32) -> response::Kind {
+        self.request(request::Kind::SetSpaceTidying(SetSpaceTidying {
+            space_id: space,
+            after_seconds: seconds,
+        }))
+        .await
+    }
+
+    /// A page of the Archive of the Space a window shows (049): the entries,
+    /// and whether there are older ones.
+    pub async fn archive(
+        &mut self,
+        window: u64,
+        before: i64,
+        limit: u32,
+    ) -> (Vec<ArchiveEntry>, bool) {
+        let answer = self
+            .request(request::Kind::QueryArchive(QueryArchive {
+                window_id: window,
+                before,
+                limit,
+            }))
+            .await;
+        match answer {
+            response::Kind::ArchivePage(page) => (page.entries, page.more),
+            other => panic!("QueryArchive answers ArchivePage, not {other:?}"),
+        }
+    }
+
+    /// Brings a tidied tab back (049), and waits.
+    pub async fn restore_archived(&mut self, window: u64, entry: i64) -> response::Kind {
+        self.request(request::Kind::RestoreArchived(RestoreArchived {
+            window_id: window,
+            entry_id: entry,
+        }))
+        .await
+    }
+
+    /// Forgets a tidied tab (049), or with `None` all of the Archive of the
+    /// Space the window shows, and waits.
+    pub async fn forget_archived(&mut self, window: u64, entry: Option<i64>) -> response::Kind {
+        self.request(request::Kind::ForgetArchived(ForgetArchived {
+            window_id: window,
+            which: Some(entry.map_or(forget_archived::Which::All(true), |id| {
+                forget_archived::Which::EntryId(id)
+            })),
+        }))
+        .await
+    }
+
+    /// Lets the core's next look for tabs to tidy happen (049): a minute of
+    /// the runtime's time, and then whatever the core said by itself is
+    /// taken, and what it asked of the shell answered. Nothing is published
+    /// for it here: what a look changes, the look publishes.
+    pub async fn a_minute_passes(&mut self) {
+        // A minute by the clock on the wall, and not by the core's own word for how often it
+        // looks: a core that looked less often would be found out.
+        tokio::time::sleep(Duration::from_secs(61)).await;
+        let mut idle_rounds = 0;
+        while idle_rounds < 2 {
+            let worked = self.drain();
+            tokio::task::yield_now().await;
+            idle_rounds = if worked || !self.inbox.borrow().is_empty() {
+                0
+            } else {
+                idle_rounds + 1
+            };
         }
     }
 

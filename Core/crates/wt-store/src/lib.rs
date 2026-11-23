@@ -9,6 +9,7 @@
 //!
 //! Private login sets are never written here: they live and die in memory.
 
+mod archive;
 mod download;
 mod history;
 mod icon;
@@ -27,6 +28,7 @@ use std::path::Path;
 use rusqlite::{Connection, OptionalExtension as _, params};
 use wt_core::{LoginSetId, SpaceId, Timestamp, Uuid};
 
+pub use archive::{Archived, MAX_ARCHIVED};
 pub use download::{COMING, Download, DownloadPage, FINISHED, INTERRUPTED};
 pub use history::{MAX_VISITS_PER_PAGE, Visit, VisitPage};
 pub use icon::{MAX_ICON_BYTES, MAX_ICONS};
