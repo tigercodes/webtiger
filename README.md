@@ -2,7 +2,7 @@
 
 An open-source web browser that is light, private and organised, with native apps for macOS, iPadOS, iOS, Windows and Android.
 
-**Status: early development (phase W0).** Nothing here is ready to use as a browser yet. The plan is in [`docs/features/000-master-plan.md`](docs/features/000-master-plan.md); what exists today is described in [`docs/features/001-foundations.md`](docs/features/001-foundations.md).
+**Status: early development (the work is in phase W2 of the plan's ten).** Nothing here is released, or ready to rely on as a browser yet. The plan is in [`docs/features/000-master-plan.md`](docs/features/000-master-plan.md), which says under each phase where it stands; what exists and how it is tested is described in [`docs/features/001-foundations.md`](docs/features/001-foundations.md), and each feature has a document of its own beside them. So far the Mac app is built and tested on a Mac, the iPhone and iPad app on Apple's simulator, and the Android app on an emulator: none on a phone or a tablet. The Windows app is not built yet.
 
 ## What it is meant to be
 
