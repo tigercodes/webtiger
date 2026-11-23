@@ -162,4 +162,4 @@ message TabSummary { … bool steps_back = 11; bool steps_forward = 12; }
 - [x] The commands in the shells.
 - [ ] Dragging.
 - [x] The core: `Tools/test.sh all` green, and `android-device`, in the night of 2026-11-22 to 23: `lint`, `core` (611, and the strings tool's 24), `unit` (293 on the Mac), `build`, the Mac's UI suite (45), `ios` (275 on the iPhone simulator), the iPhone's UI suite (35), `android` (411 and 32 on the JVM) and `android-device` (159 on the emulator). No shell changed but for the contract's number.
-- [ ] The shells: the gate.
+- [x] The commands: `Tools/test.sh all` green, and `android-device`, on 2026-11-23: `lint`, `core` (612, and the strings tool's 24), `unit` (296 on the Mac), `build`, the Mac's UI suite (46), `ios` (278 on the iPhone simulator), the iPhone's UI suite (36), `android` (416 and 32 on the JVM) and `android-device` (160 on the emulator).
