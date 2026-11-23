@@ -11,6 +11,7 @@
 
 mod download;
 mod history;
+mod icon;
 mod journal;
 mod permission;
 mod private;
@@ -28,6 +29,7 @@ use wt_core::{LoginSetId, SpaceId, Timestamp, Uuid};
 
 pub use download::{COMING, Download, DownloadPage, FINISHED, INTERRUPTED};
 pub use history::{MAX_VISITS_PER_PAGE, Visit, VisitPage};
+pub use icon::{MAX_ICON_BYTES, MAX_ICONS};
 pub use journal::{CLOSED_TABS_KEPT, ClosedTab};
 pub use permission::Allowed;
 pub use private::PRIVATE_DOWNLOADS_FROM;

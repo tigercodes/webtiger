@@ -60,7 +60,7 @@ impl Store {
     }
 
     /// Takes a login set out, with everything that names it: its visits,
-    /// its sites' settings and permissions, its downloads. A login set a
+    /// its sites' settings, permissions and icons, its downloads. A login set a
     /// Space has is left alone, and so is one there is not.
     ///
     /// # Errors
@@ -81,7 +81,13 @@ impl Store {
         if spaces > 0 {
             return Ok(false);
         }
-        for table in ["visit", "site_setting", "site_permission", "download"] {
+        for table in [
+            "visit",
+            "site_setting",
+            "site_permission",
+            "icon",
+            "download",
+        ] {
             transaction
                 .execute(
                     &format!("DELETE FROM {table} WHERE login_set_id = ?1"),

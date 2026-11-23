@@ -9,11 +9,11 @@ use std::time::Duration;
 use wt_app::{Dispatcher, HOST_TIMEOUT, Outbox, StartError};
 use wt_proto::v1::{
     ActivateTab, CloseTab, ColourGroup, CoreConfig, EngineEvent, EngineInfo, EngineKind, Envelope,
-    FakeOptions, HostResponse, KeepTab, Layout, LetGoSite, MakeGroup, MoveGroup, MoveTab,
-    MoveToGroup, OpenTab, OpenWindow, Platform, RemoveGroup, RenameGroup, Request, SendSiteHome,
-    SetFavourite, SetLayout, ShutGroup, SubmitAddress, Subscribe, TestMode, UndoArrangement,
-    WindowSnapshot, WindowTopic, envelope, event, host_request, host_response, move_tab, request,
-    response, snapshot, subscribe,
+    FakeOptions, HostResponse, Icon, KeepTab, Layout, LetGoSite, MakeGroup, MoveGroup, MoveTab,
+    MoveToGroup, OpenTab, OpenWindow, Platform, QueryIcons, RemoveGroup, RenameGroup, Request,
+    SendSiteHome, SetFavourite, SetLayout, ShutGroup, SubmitAddress, Subscribe, TestMode,
+    UndoArrangement, WindowSnapshot, WindowTopic, envelope, event, host_request, host_response,
+    move_tab, request, response, snapshot, subscribe,
 };
 use wt_proto::{CONTRACT_MAJOR, CONTRACT_MINOR};
 
@@ -391,6 +391,20 @@ impl FakeShell {
             group_id: group,
         }))
         .await
+    }
+
+    /// Asks for icons by their numbers (046), and waits: the pictures the
+    /// core has, each with its number.
+    pub async fn query_icons(&mut self, numbers: &[u64]) -> Vec<Icon> {
+        let answer = self
+            .request(request::Kind::QueryIcons(QueryIcons {
+                icon_ids: numbers.to_vec(),
+            }))
+            .await;
+        match answer {
+            response::Kind::IconsPage(page) => page.icons,
+            other => panic!("QueryIcons answers IconsPage, not {other:?}"),
+        }
     }
 
     /// Moves a tab to another place in its row (045), and waits.

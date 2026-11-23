@@ -59,6 +59,8 @@ message EngineEvent {
     LinkOpenRequested link_open_requested = 23;
     // Since 1.17
     SearchRequested search_requested = 24;
+    // Since 1.37
+    IconReceived icon_received = 25;
   }
 }
 
@@ -316,4 +318,22 @@ message SearchRequested {
   // The person did it: a choice from a menu. A page that only made it look
   // so is not obeyed.
   bool user_gesture = 2;
+}
+
+// The engine has the icon of the page the web view shows (046): it fetched
+// the picture itself, as part of loading the page and in the web view's own
+// login set, and the adapter hands it over. (The System WebView does; an
+// engine that hands an app no icon says nothing.) The core keeps it for the
+// page's host in that login set, and tells the windows that show a tab of
+// that host there. Since 1.37.
+//
+// What is not a PNG of at most 256 pixels each way and 64 KB is ignored;
+// so is the icon of a page the tab does not show, of a page that did not
+// come over `https` (or from this device), and of one that failed. A page
+// that changes its icon while it is shown is heard at most once a minute.
+message IconReceived {
+  // The picture, as a PNG.
+  bytes png = 1 [(wt.redact) = true];
+  // The page the engine says it is the icon of.
+  string page_url = 2 [(wt.redact) = true];
 }

@@ -452,6 +452,27 @@ pub struct MoveGroup {
     #[prost(uint64, tag = "2")]
     pub before_group_id: u64,
 }
+/// Since 1.37. Asks for icons by their numbers (046). Answered with IconsPage:
+/// the pictures of the numbers the core has, in the order asked; a number it
+/// has not is left out.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct QueryIcons {
+    #[prost(uint64, repeated, tag = "1")]
+    pub icon_ids: ::prost::alloc::vec::Vec<u64>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IconsPage {
+    #[prost(message, repeated, tag = "1")]
+    pub icons: ::prost::alloc::vec::Vec<Icon>,
+}
+/// A site's icon: a PNG of at most 256 pixels each way.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct Icon {
+    #[prost(uint64, tag = "1")]
+    pub icon_id: u64,
+    #[prost(bytes = "vec", tag = "2")]
+    pub png: ::prost::alloc::vec::Vec<u8>,
+}
 /// A window, as its subscription publishes it.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WindowSnapshot {
@@ -563,6 +584,13 @@ pub struct TabSummary {
     pub steps_back: bool,
     #[prost(bool, tag = "12")]
     pub steps_forward: bool,
+    /// Since 1.37. The number of the tab's icon (046); 0 for a tab that has
+    /// none. A tab has the icon of the host of the page it shows, in its login
+    /// set; a Site, of its home's host, wherever it has wandered. A number is
+    /// one picture for as long as the core runs: a shell asks for the pictures
+    /// it has not got (QueryIcons), once, and keeps them.
+    #[prost(uint64, tag = "13")]
+    pub icon_id: u64,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TabView {
@@ -1727,7 +1755,7 @@ pub struct EngineEvent {
     pub web_view_id: u64,
     #[prost(
         oneof = "engine_event::Kind",
-        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24"
+        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25"
     )]
     pub kind: ::core::option::Option<engine_event::Kind>,
 }
@@ -1790,6 +1818,9 @@ pub mod engine_event {
         /// Since 1.17
         #[prost(message, tag = "24")]
         SearchRequested(super::SearchRequested),
+        /// Since 1.37
+        #[prost(message, tag = "25")]
+        IconReceived(super::IconReceived),
     }
 }
 /// A load began. The page it asks for does not own the web view yet.
@@ -2099,6 +2130,26 @@ pub struct SearchRequested {
     #[prost(bool, tag = "2")]
     pub user_gesture: bool,
 }
+/// The engine has the icon of the page the web view shows (046): it fetched
+/// the picture itself, as part of loading the page and in the web view's own
+/// login set, and the adapter hands it over. (The System WebView does; an
+/// engine that hands an app no icon says nothing.) The core keeps it for the
+/// page's host in that login set, and tells the windows that show a tab of
+/// that host there. Since 1.37.
+///
+/// What is not a PNG of at most 256 pixels each way and 64 KB is ignored;
+/// so is the icon of a page the tab does not show, of a page that did not
+/// come over `https` (or from this device), and of one that failed. A page
+/// that changes its icon while it is shown is heard at most once a minute.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct IconReceived {
+    /// The picture, as a PNG.
+    #[prost(bytes = "vec", tag = "1")]
+    pub png: ::prost::alloc::vec::Vec<u8>,
+    /// The page the engine says it is the icon of.
+    #[prost(string, tag = "2")]
+    pub page_url: ::prost::alloc::string::String,
+}
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct HostRequest {
     #[prost(
@@ -2401,7 +2452,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -2532,6 +2583,9 @@ pub mod request {
         MoveTab(super::MoveTab),
         #[prost(message, tag = "49")]
         MoveGroup(super::MoveGroup),
+        /// Since 1.37
+        #[prost(message, tag = "50")]
+        QueryIcons(super::QueryIcons),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.
@@ -2539,7 +2593,7 @@ pub mod request {
 pub struct Response {
     #[prost(
         oneof = "response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15"
     )]
     pub kind: ::core::option::Option<response::Kind>,
 }
@@ -2583,6 +2637,9 @@ pub mod response {
         /// Since 1.31
         #[prost(message, tag = "14")]
         GroupMade(super::GroupMade),
+        /// Since 1.37
+        #[prost(message, tag = "15")]
+        IconsPage(super::IconsPage),
     }
 }
 /// Core → shell, unasked.

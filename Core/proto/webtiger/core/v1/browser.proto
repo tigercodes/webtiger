@@ -289,6 +289,23 @@ message MoveGroup {
   uint64 before_group_id = 2;
 }
 
+// Since 1.37. Asks for icons by their numbers (046). Answered with IconsPage:
+// the pictures of the numbers the core has, in the order asked; a number it
+// has not is left out.
+message QueryIcons {
+  repeated uint64 icon_ids = 1;
+}
+
+message IconsPage {
+  repeated Icon icons = 1;
+}
+
+// A site's icon: a PNG of at most 256 pixels each way.
+message Icon {
+  uint64 icon_id = 1;
+  bytes png = 2 [(wt.redact) = true];
+}
+
 // A window, as its subscription publishes it.
 message WindowSnapshot {
   uint64 window_id = 1;
@@ -374,6 +391,12 @@ message TabSummary {
   // its part beside it may be one that is out of the way, in a shut Group.)
   bool steps_back = 11;
   bool steps_forward = 12;
+  // Since 1.37. The number of the tab's icon (046); 0 for a tab that has
+  // none. A tab has the icon of the host of the page it shows, in its login
+  // set; a Site, of its home's host, wherever it has wandered. A number is
+  // one picture for as long as the core runs: a shell asks for the pictures
+  // it has not got (QueryIcons), once, and keeps them.
+  uint64 icon_id = 13;
 }
 
 message TabView {

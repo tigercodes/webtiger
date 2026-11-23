@@ -24,6 +24,11 @@
 ///     shell itself when its engine then reports nothing, so a tab the user
 ///     sent there does not wait for ever.
 
+#if canImport(FoundationEssentials)
+public import FoundationEssentials
+#else
+public import Foundation
+#endif
 public import SwiftProtobuf
 
 // If the compiler emits an error on this type, it is because this file
@@ -238,6 +243,15 @@ public nonisolated struct WTEngineEvent: Sendable {
     set {kind = .searchRequested(newValue)}
   }
 
+  /// Since 1.37
+  public var iconReceived: WTIconReceived {
+    get {
+      if case .iconReceived(let v)? = kind {return v}
+      return WTIconReceived()
+    }
+    set {kind = .iconReceived(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -273,6 +287,8 @@ public nonisolated struct WTEngineEvent: Sendable {
     case linkOpenRequested(WTLinkOpenRequested)
     /// Since 1.17
     case searchRequested(WTSearchRequested)
+    /// Since 1.37
+    case iconReceived(WTIconReceived)
 
   }
 
@@ -750,13 +766,40 @@ public nonisolated struct WTSearchRequested: Sendable {
   public init() {}
 }
 
+/// The engine has the icon of the page the web view shows (046): it fetched
+/// the picture itself, as part of loading the page and in the web view's own
+/// login set, and the adapter hands it over. (The System WebView does; an
+/// engine that hands an app no icon says nothing.) The core keeps it for the
+/// page's host in that login set, and tells the windows that show a tab of
+/// that host there. Since 1.37.
+///
+/// What is not a PNG of at most 256 pixels each way and 64 KB is ignored;
+/// so is the icon of a page the tab does not show, of a page that did not
+/// come over `https` (or from this device), and of one that failed. A page
+/// that changes its icon while it is shown is heard at most once a minute.
+public nonisolated struct WTIconReceived: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// The picture, as a PNG.
+  public var png: Data = Data()
+
+  /// The page the engine says it is the icon of.
+  public var pageURL: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
 
 nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EngineEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{3}navigation_started\0\u{3}navigation_committed\0\u{3}navigation_finished\0\u{3}navigation_failed\0\u{3}address_changed\0\u{3}title_changed\0\u{3}progress_changed\0\u{3}history_changed\0\u{3}renderer_gone\0\u{3}new_window_requested\0\u{3}close_requested\0\u{3}outside_link_requested\0\u{3}find_result\0\u{3}download_requested\0\u{3}download_progress\0\u{3}download_finished\0\u{3}download_failed\0\u{3}permission_requested\0\u{3}permission_withdrawn\0\u{3}dialog_requested\0\u{3}sign_in_requested\0\u{3}link_open_requested\0\u{3}search_requested\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{3}navigation_started\0\u{3}navigation_committed\0\u{3}navigation_finished\0\u{3}navigation_failed\0\u{3}address_changed\0\u{3}title_changed\0\u{3}progress_changed\0\u{3}history_changed\0\u{3}renderer_gone\0\u{3}new_window_requested\0\u{3}close_requested\0\u{3}outside_link_requested\0\u{3}find_result\0\u{3}download_requested\0\u{3}download_progress\0\u{3}download_finished\0\u{3}download_failed\0\u{3}permission_requested\0\u{3}permission_withdrawn\0\u{3}dialog_requested\0\u{3}sign_in_requested\0\u{3}link_open_requested\0\u{3}search_requested\0\u{3}icon_received\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1064,6 +1107,19 @@ nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
           self.kind = .searchRequested(v)
         }
       }()
+      case 25: try {
+        var v: WTIconReceived?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .iconReceived(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .iconReceived(v)
+        }
+      }()
       default: break
       }
     }
@@ -1169,6 +1225,10 @@ nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
     case .searchRequested?: try {
       guard case .searchRequested(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 24)
+    }()
+    case .iconReceived?: try {
+      guard case .iconReceived(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 25)
     }()
     case nil: break
     }
@@ -2000,6 +2060,41 @@ nonisolated extension WTSearchRequested: SwiftProtobuf.Message, SwiftProtobuf._M
   public static func ==(lhs: WTSearchRequested, rhs: WTSearchRequested) -> Bool {
     if lhs.text != rhs.text {return false}
     if lhs.userGesture != rhs.userGesture {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTIconReceived: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".IconReceived"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}png\0\u{3}page_url\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBytesField(value: &self.png) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.pageURL) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.png.isEmpty {
+      try visitor.visitSingularBytesField(value: self.png, fieldNumber: 1)
+    }
+    if !self.pageURL.isEmpty {
+      try visitor.visitSingularStringField(value: self.pageURL, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTIconReceived, rhs: WTIconReceived) -> Bool {
+    if lhs.png != rhs.png {return false}
+    if lhs.pageURL != rhs.pageURL {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

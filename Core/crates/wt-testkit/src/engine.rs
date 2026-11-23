@@ -7,7 +7,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use wt_proto::v1::{
     Ack, AddressChanged, CloseRequested, DialogKind, DialogRequested, DownloadFailed,
     DownloadFinished, DownloadProgress, DownloadRequested, EngineEvent, EngineKind, Error,
-    FindResult, HistoryChanged, HostPong, LinkOpenRequested, NavigationCommand,
+    FindResult, HistoryChanged, HostPong, IconReceived, LinkOpenRequested, NavigationCommand,
     NavigationCommitted, NavigationFailed, NavigationFinished, NavigationStarted,
     NewWindowRequested, OutsideLinkRequested, PermissionKind, PermissionRequested,
     PermissionWithdrawn, ProgressChanged, RendererGone, SearchRequested, SignInRequested,
@@ -212,6 +212,19 @@ impl FakeEngine {
     #[must_use]
     pub fn close_requested(id: u64) -> EngineEvent {
         event(id, engine_event::Kind::CloseRequested(CloseRequested {}))
+    }
+
+    /// The report that the engine has a page's icon (046): the picture, and
+    /// the page the engine says it is the icon of.
+    #[must_use]
+    pub fn icon_received(id: u64, png: &[u8], page_url: &str) -> EngineEvent {
+        event(
+            id,
+            engine_event::Kind::IconReceived(IconReceived {
+                png: png.to_vec(),
+                page_url: page_url.to_owned(),
+            }),
+        )
     }
 
     /// The report of a page's title.

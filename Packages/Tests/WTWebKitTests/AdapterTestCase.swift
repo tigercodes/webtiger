@@ -212,6 +212,8 @@ class AdapterTestCase: XCTestCase {
             case let .signInRequested(asked): asked.again ? "sign-in(again)" : "sign-in"
             case let .linkOpenRequested(asked): asked.background ? "link(behind)" : "link(in front)"
             case .searchRequested: "search"
+            // An engine that hands over a page's icon (046). WebKit hands none.
+            case .iconReceived: "icon"
             // At the engine's own pace, like a page's progress.
             case .progressChanged, .downloadProgress: nil
             }

@@ -14,6 +14,11 @@
 /// builds the sidebar tree and the tab strip over them; the requests here
 /// stay.
 
+#if canImport(FoundationEssentials)
+public import FoundationEssentials
+#else
+public import Foundation
+#endif
 public import SwiftProtobuf
 
 // If the compiler emits an error on this type, it is because this file
@@ -798,6 +803,48 @@ public nonisolated struct WTMoveGroup: Sendable {
   public init() {}
 }
 
+/// Since 1.37. Asks for icons by their numbers (046). Answered with IconsPage:
+/// the pictures of the numbers the core has, in the order asked; a number it
+/// has not is left out.
+public nonisolated struct WTQueryIcons: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var iconIds: [UInt64] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct WTIconsPage: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var icons: [WTIcon] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// A site's icon: a PNG of at most 256 pixels each way.
+public nonisolated struct WTIcon: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var iconID: UInt64 = 0
+
+  public var png: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 /// A window, as its subscription publishes it.
 public nonisolated struct WTWindowSnapshot: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
@@ -927,6 +974,13 @@ public nonisolated struct WTTabSummary: Sendable {
   public var stepsBack: Bool = false
 
   public var stepsForward: Bool = false
+
+  /// Since 1.37. The number of the tab's icon (046); 0 for a tab that has
+  /// none. A tab has the icon of the host of the page it shows, in its login
+  /// set; a Site, of its home's host, wherever it has wandered. A number is
+  /// one picture for as long as the core runs: a shell asks for the pictures
+  /// it has not got (QueryIcons), once, and keeps them.
+  public var iconID: UInt64 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3169,6 +3223,101 @@ nonisolated extension WTMoveGroup: SwiftProtobuf.Message, SwiftProtobuf._Message
   }
 }
 
+nonisolated extension WTQueryIcons: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".QueryIcons"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}icon_ids\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedUInt64Field(value: &self.iconIds) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.iconIds.isEmpty {
+      try visitor.visitPackedUInt64Field(value: self.iconIds, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTQueryIcons, rhs: WTQueryIcons) -> Bool {
+    if lhs.iconIds != rhs.iconIds {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTIconsPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".IconsPage"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}icons\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.icons) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.icons.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.icons, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTIconsPage, rhs: WTIconsPage) -> Bool {
+    if lhs.icons != rhs.icons {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTIcon: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".Icon"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}icon_id\0\u{1}png\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.iconID) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.png) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.iconID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.iconID, fieldNumber: 1)
+    }
+    if !self.png.isEmpty {
+      try visitor.visitSingularBytesField(value: self.png, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTIcon, rhs: WTIcon) -> Bool {
+    if lhs.iconID != rhs.iconID {return false}
+    if lhs.png != rhs.png {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".WindowSnapshot"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0\u{3}downloads_active\0\u{3}space_id\0\u{3}space_name\0\u{3}space_colour\0\u{1}undo\0\u{3}private_window\0\u{1}groups\0\u{3}favourites_full\0\u{1}layout\0\u{3}undo_arrangement\0")
@@ -3265,7 +3414,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TabSummary"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{1}title\0\u{1}host\0\u{1}loading\0\u{1}kept\0\u{1}asleep\0\u{1}away\0\u{3}site_name\0\u{3}group_id\0\u{1}favourite\0\u{3}steps_back\0\u{3}steps_forward\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{1}title\0\u{1}host\0\u{1}loading\0\u{1}kept\0\u{1}asleep\0\u{1}away\0\u{3}site_name\0\u{3}group_id\0\u{1}favourite\0\u{3}steps_back\0\u{3}steps_forward\0\u{3}icon_id\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3285,6 +3434,7 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
       case 10: try { try decoder.decodeSingularBoolField(value: &self.favourite) }()
       case 11: try { try decoder.decodeSingularBoolField(value: &self.stepsBack) }()
       case 12: try { try decoder.decodeSingularBoolField(value: &self.stepsForward) }()
+      case 13: try { try decoder.decodeSingularUInt64Field(value: &self.iconID) }()
       default: break
       }
     }
@@ -3327,6 +3477,9 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if self.stepsForward != false {
       try visitor.visitSingularBoolField(value: self.stepsForward, fieldNumber: 12)
     }
+    if self.iconID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.iconID, fieldNumber: 13)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3343,6 +3496,7 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs.favourite != rhs.favourite {return false}
     if lhs.stepsBack != rhs.stepsBack {return false}
     if lhs.stepsForward != rhs.stepsForward {return false}
+    if lhs.iconID != rhs.iconID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

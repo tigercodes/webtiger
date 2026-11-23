@@ -234,6 +234,7 @@ impl App {
             request::Kind::UndoArrangement(undo) => answer(self.undo_arrangement(&undo)),
             request::Kind::MoveTab(moved) => answer(self.move_tab(&moved)),
             request::Kind::MoveGroup(moved) => answer(self.move_group(&moved)),
+            request::Kind::QueryIcons(query) => answer(Ok(self.query_icons(&query))),
             request::Kind::OpenDownload(open) => self.open_download(&open),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
@@ -305,6 +306,10 @@ impl App {
         }
         if arrives {
             self.write_title(web_view, true);
+        }
+        // An engine that has the page's icon hands it over (046).
+        if let engine_event::Kind::IconReceived(received) = &kind {
+            self.icon_received(web_view, received);
         }
         let unwanted = self.state.borrow_mut().apply(web_view, kind);
         if arrives {
@@ -764,7 +769,13 @@ impl App {
     /// A window as its subscribers see it, or `None` when there is none.
     #[must_use]
     pub fn window_snapshot(&self, window: WindowId) -> Option<WindowSnapshot> {
-        let snapshot = self.state.borrow().window_snapshot(window);
+        let mut snapshot = self.state.borrow().window_snapshot(window);
+        // A tab whose host the store was not yet asked about was told as
+        // having no icon (046): the store is asked, and when it has one the
+        // window is told with it.
+        if self.learn_asked_icons() {
+            snapshot = self.state.borrow().window_snapshot(window);
+        }
         // What the tab in front asks the person is before them from the
         // snapshot that first has it (014).
         let prompt = snapshot

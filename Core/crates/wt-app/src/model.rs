@@ -5,8 +5,8 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use wt_core::words::{all_found, typed_words};
 use wt_core::{
-    ACTUAL_SIZE, Address, GroupId, IdMint, LoginSetId, Security, SpaceId, TabId, WebViewId,
-    WindowId, space_colour, space_name, zoom_in, zoom_out,
+    ACTUAL_SIZE, Address, GroupId, IdMint, LoginSetId, Security, SpaceId, TabId, Timestamp,
+    WebViewId, WindowId, space_colour, space_name, zoom_in, zoom_out,
 };
 use wt_proto::v1::{
     AddressView, DialogKind, DialogPrompt, DownloadPrompt, EngineKind, FindView, GroupSummary,
@@ -17,6 +17,7 @@ use wt_proto::v1::{
 use wt_store::{SavedGroup, SavedTab, Space};
 
 use crate::error::is_code;
+use crate::icons::{ICON_EVERY_MILLIS, Icons};
 
 /// Whether a tab is loading.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -294,6 +295,9 @@ pub(crate) struct Tab {
     /// home from then on (WT-D31): a home that sends the browser on to
     /// another address is at that address.
     homing: bool,
+    /// When the tab's page was last heard about its icon (046): it is not
+    /// heard again for a minute. `None` once another page has committed.
+    icon_heard: Option<Timestamp>,
 }
 
 /// What makes a tab a Site (039): where its home is, and what it is called
@@ -358,6 +362,7 @@ impl Tab {
             group: None,
             favourite: false,
             homing: false,
+            icon_heard: None,
         }
     }
 
@@ -436,6 +441,22 @@ impl Tab {
             self.pending.as_ref()
         } else {
             self.committed.as_ref()
+        }
+    }
+
+    /// The host whose icon the tab shows (046): of a Site's home, wherever
+    /// it has wandered; of the page any other tab is at. `None` for a tab
+    /// with no page of the web's.
+    fn icon_host(&self) -> Option<&str> {
+        let at = self
+            .site
+            .as_ref()
+            .map(|site| &site.home)
+            .or_else(|| self.page())?;
+        if matches!(at.scheme(), "http" | "https") {
+            at.host()
+        } else {
+            None
         }
     }
 
@@ -575,6 +596,8 @@ impl Tab {
                 self.had_page = true;
                 self.pending = None;
                 self.passable = None;
+                // And is heard about its icon.
+                self.icon_heard = None;
                 self.title.clear();
             }
             Kind::NavigationFinished(_) => {
@@ -637,7 +660,9 @@ impl Tab {
             | Kind::DialogRequested(_)
             | Kind::SignInRequested(_)
             | Kind::LinkOpenRequested(_)
-            | Kind::SearchRequested(_) => {}
+            | Kind::SearchRequested(_)
+            // An icon is the app's to keep, and the store's (046).
+            | Kind::IconReceived(_) => {}
             // What the engine found is for the text now looked for (010).
             // With no find, it is a late word about one that has stopped.
             Kind::FindResult(result) => {
@@ -679,9 +704,11 @@ impl Tab {
             site_name: self.site_name(),
             group_id: self.group.map_or(0, GroupId::get),
             favourite: self.favourite,
-            // Which way a step would move it is the row's to say (045).
+            // Which way a step would move it is the row's to say (045),
+            // and which icon it has is the icons' (046).
             steps_back: false,
             steps_forward: false,
+            icon_id: 0,
         }
     }
 
@@ -1010,6 +1037,8 @@ pub(crate) struct State {
     /// the origin whose certificate it was. Until the app quits, and kept
     /// nowhere else. A page of one is never shown as secure.
     exceptions: BTreeSet<(LoginSetId, String)>,
+    /// The numbers of the icons known this run (046).
+    pub(crate) icons: Icons,
     /// How many closed tabs of each Space the journal has (033), for the
     /// snapshots of the windows that show it: whether there is something
     /// to undo. A Space that is not here has none.
@@ -1045,6 +1074,7 @@ impl State {
             session_window: None,
             downloads_active: BTreeMap::new(),
             exceptions: BTreeSet::new(),
+            icons: Icons::default(),
             closed_tabs: BTreeMap::new(),
             private: Vec::new(),
             private_made: 0,
@@ -1418,6 +1448,7 @@ impl State {
         {
             let login_set = self.private.remove(at).login_set;
             self.exceptions.retain(|(of, _)| *of != login_set);
+            self.icons.forget(login_set);
             self.downloads_active.remove(&login_set);
         }
         Some(web_views)
@@ -1956,6 +1987,61 @@ impl State {
             row.tabs.push(tab_id);
         }
         self.arrange_row(window, space);
+    }
+
+    /// An engine has the icon of a web view's page (046): whose it is to be
+    /// kept as, the login set and the host. `None` when it is not to be
+    /// kept: the web view is no tab's; no page has arrived in the tab (one
+    /// that failed never did); the page is not one whose icon is taken (it
+    /// did not come over `https` or from this device, or its certificate
+    /// was gone on past, 026); the page the engine names is of another
+    /// host; or the page was heard about its icon less than a minute ago.
+    pub(crate) fn icon_taker(
+        &mut self,
+        web_view: WebViewId,
+        page_url: &str,
+        now: Timestamp,
+    ) -> Option<(LoginSetId, String)> {
+        let tab = self.tab_of(web_view)?;
+        let page = tab
+            .committed
+            .as_ref()
+            .filter(|page| page.is_trustworthy())?;
+        let host = page.host()?.to_owned();
+        let named = Address::parse(page_url).ok()?;
+        if named.host() != Some(host.as_str()) {
+            return None;
+        }
+        let login_set = tab.login_set;
+        let excepted = page
+            .origin()
+            .is_some_and(|origin| self.exceptions.contains(&(login_set, origin)));
+        let lately = tab
+            .icon_heard
+            .is_some_and(|heard| now.0.saturating_sub(heard.0) < ICON_EVERY_MILLIS);
+        if excepted || lately {
+            return None;
+        }
+        self.tab_of_mut(web_view)?.icon_heard = Some(now);
+        Some((login_set, host))
+    }
+
+    /// A host has an icon in a login set (046): the one the store had, or
+    /// with `changed` another picture. When that is news it has a number of
+    /// its own from now on, and the windows that have a tab of that host
+    /// there are told.
+    pub(crate) fn icon_kept(&mut self, login_set: LoginSetId, host: &str, changed: bool) {
+        if !changed && self.icons.has(login_set, host) {
+            return;
+        }
+        self.icons.give(login_set, host);
+        let windows: Vec<WindowId> = self
+            .tabs
+            .values()
+            .filter(|tab| tab.login_set == login_set && tab.icon_host() == Some(host))
+            .map(|tab| tab.window)
+            .collect();
+        self.dirty.extend(windows);
     }
 
     /// Moves a tab to another place in its row (045). Moved to another part
@@ -3177,7 +3263,13 @@ impl State {
                 .enumerate()
                 .filter(|(_, id)| !is_hidden(&self.tabs, row, **id))
                 .filter_map(|(place, id)| {
-                    let mut summary = self.tabs.get(id)?.summary(*id);
+                    let tab = self.tabs.get(id)?;
+                    let mut summary = tab.summary(*id);
+                    // The number of its icon (046): of its host, in its
+                    // login set.
+                    summary.icon_id = tab
+                        .icon_host()
+                        .map_or(0, |host| self.icons.number(tab.login_set, host));
                     // A step moves a tab among those of its part (045): it
                     // has somewhere to go when the tab beside it is of it.
                     let part = parts.get(place);

@@ -21,6 +21,7 @@ mod downloads;
 mod error;
 mod fence;
 mod host;
+mod icons;
 mod layout;
 mod model;
 mod permissions;

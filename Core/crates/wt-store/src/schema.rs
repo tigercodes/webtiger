@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use crate::StoreError;
 
 /// The version this build's store is at.
-pub const SCHEMA_VERSION: u32 = 12;
+pub const SCHEMA_VERSION: u32 = 13;
 
 /// The migrations, in order: `MIGRATIONS[n]` takes version `n` to `n + 1`.
 const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
@@ -155,6 +155,19 @@ const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
      ALTER TABLE tab ADD COLUMN site_group INTEGER NOT NULL DEFAULT 0;",
     // 12 (W2, 042): Favourites. A Site says whether it is one of its row's.
     "ALTER TABLE tab ADD COLUMN favourite INTEGER NOT NULL DEFAULT 0;",
+    // 13 (W2, 046): a site's icon. One picture for a host in a login set,
+    // as the bytes it came as, and when a tab last showed it: the ones used
+    // most lately are kept. (A table with a row number: its rows are larger
+    // than a table without one is good for.)
+    "CREATE TABLE icon (
+         id INTEGER PRIMARY KEY,
+         login_set_id BLOB NOT NULL REFERENCES login_set (id),
+         host TEXT NOT NULL CHECK (host <> ''),
+         png BLOB NOT NULL CHECK (length(png) BETWEEN 1 AND 65536),
+         used_at INTEGER NOT NULL,
+         UNIQUE (login_set_id, host)
+     ) STRICT;
+     CREATE INDEX icon_used ON icon (used_at);",
 ];
 
 pub(crate) fn version(connection: &Connection) -> Result<u32, StoreError> {
