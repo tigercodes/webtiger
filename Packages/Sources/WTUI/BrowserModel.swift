@@ -19,6 +19,10 @@ public final class BrowserModel {
     public private(set) var favouritesFull = false
     /// How the window lays out its tabs (043): the core's word.
     public private(set) var layout: WTLayout = .strip
+    /// The window is wide enough for a sidebar beside a page (043): a Mac's always; an
+    /// iPad's when its window is, which the window says by its size class, never by the
+    /// device. A phone's is not.
+    public var hasRoomForSidebar = BrowserModel.startsWithRoomForSidebar
     /// What the Group page is open for; nothing while it is not open.
     public internal(set) var groupAsked: GroupAsk?
     /// Why the core would not make a Group, or change one, by its code: said on that page.

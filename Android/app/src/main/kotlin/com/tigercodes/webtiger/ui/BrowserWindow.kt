@@ -96,6 +96,8 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.VerticalDivider
+import com.tigercodes.webtiger.core.v1.Layout
 import com.tigercodes.webtiger.R
 import com.tigercodes.webtiger.core.v1.AddressView
 import com.tigercodes.webtiger.core.v1.NavigationCommand
@@ -159,16 +161,31 @@ private fun Window(session: BrowserSession, model: BrowserModel, private: Privat
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         // The window draws edge to edge; its content keeps clear of the system's bars, the
         // cutout and the keyboard.
-        Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-            // A private window has no Space (037): its chip opens the page that says what it is.
-            TabStrip(
-                model,
-                onFind = model::openFind,
-                onZoom = model::openZoom,
-                onHistory = { showingHistory = true },
-                onSpaces = { if (model.isPrivate) showingPrivate = true else model.openSpaces() },
-            )
-            Toolbar(model, addressField, onSubmitted = { page.requestFocus() })
+        // A window wide enough for a sidebar beside a page says so (043): by its width, never
+        // by the device. Made narrow, it has the strip; made wide again, what the core says.
+        val wide = LocalConfiguration.current.screenWidthDp >= COMPACT_WIDTH_DP
+        SideEffect { model.hasRoomForSidebar = wide }
+        // A private window has no Space (037): its chip opens the page that says what it is.
+        val onSpaces = { if (model.isPrivate) showingPrivate = true else model.openSpaces() }
+        Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+          // The tabs down the side (043): the same tabs, and the same page beside them.
+          if (model.showsSidebar) {
+              Sidebar(
+                  model,
+                  addressField,
+                  onSubmitted = { page.requestFocus() },
+                  onFind = model::openFind,
+                  onZoom = model::openZoom,
+                  onHistory = { showingHistory = true },
+                  onSpaces = onSpaces,
+              )
+              VerticalDivider()
+          }
+          Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            if (!model.showsSidebar) {
+                TabStrip(model, onFind = model::openFind, onZoom = model::openZoom, onHistory = { showingHistory = true }, onSpaces = onSpaces)
+                Toolbar(model, addressField, onSubmitted = { page.requestFocus() })
+            }
             // What the tab asks the person (014): in the tab, under the toolbar, and not over
             // the window. It takes the keyboard from nothing by appearing.
             model.prompt?.let { asked -> PromptBar(asked, onAnswer = model::answerPrompt) }
@@ -202,6 +219,7 @@ private fun Window(session: BrowserSession, model: BrowserModel, private: Privat
                 // page it is of.
                 model.pressedLink?.let { link -> LinkMenu(link, model.linkChoices) }
             }
+          }
         }
         // Where searches go (020): over the window. At the first run it is there before the
         // window is used, and stays until an engine is chosen.
@@ -354,32 +372,51 @@ private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit
             }
             NewTabButton(model)
         }
-        // The find bar's button (010), the zoom bar's (012) and the History list's (008):
-        // beside the tabs and not among them, where they stay when the tabs scroll. There is
-        // nothing to find in a tab with no page, and nothing to zoom without one that can be.
-        IconButton(onClick = onFind, enabled = model.hasPage, modifier = Modifier.testTag("find")) {
-            Icon(painter = painterResource(R.drawable.ic_search), contentDescription = stringResource(R.string.find_open))
+        WindowButtons(model, onFind, onZoom, onHistory)
+    }
+}
+
+/**
+ * The window's buttons: the find bar's (010), the zoom bar's (012) and the History list's (008);
+ * and, in a window wide enough for a sidebar, the one that puts the tabs down the side or back
+ * along the top (043). Beside the tabs and not among them, where they stay when the tabs scroll.
+ */
+@Composable
+internal fun WindowButtons(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit, onHistory: () -> Unit) {
+    if (model.hasRoomForSidebar) {
+        val atTheSide = model.layout == Layout.LAYOUT_SIDEBAR
+        IconButton(onClick = model::switchLayout, modifier = Modifier.testTag("layout")) {
+            Icon(
+                painter = painterResource(if (atTheSide) R.drawable.ic_layout_top else R.drawable.ic_layout_side),
+                contentDescription = stringResource(if (atTheSide) R.string.layout_top else R.string.layout_side),
+            )
         }
-        IconButton(onClick = onZoom, enabled = model.zoom != null, modifier = Modifier.testTag("zoom")) {
-            Icon(painter = painterResource(R.drawable.ic_zoom), contentDescription = stringResource(R.string.zoom_open))
-        }
-        // A download is coming (013): a dot says so, where the list of them opens, and a
-        // screen reader is told.
-        val downloading = if (model.downloadsActive > 0) stringResource(R.string.downloads_active) else ""
-        IconButton(onClick = onHistory, modifier = Modifier.semantics { stateDescription = downloading }.testTag("history")) {
-            Box {
-                Icon(painter = painterResource(R.drawable.ic_history), contentDescription = stringResource(R.string.history_open))
-                if (model.downloadsActive > 0) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .align(Alignment.TopEnd)
-                                .size(Tokens.Space.s)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary)
-                                .testTag("downloading"),
-                    )
-                }
+    }
+    // The find bar's button (010), the zoom bar's (012) and the History list's (008):
+    // beside the tabs and not among them, where they stay when the tabs scroll. There is
+    // nothing to find in a tab with no page, and nothing to zoom without one that can be.
+    IconButton(onClick = onFind, enabled = model.hasPage, modifier = Modifier.testTag("find")) {
+        Icon(painter = painterResource(R.drawable.ic_search), contentDescription = stringResource(R.string.find_open))
+    }
+    IconButton(onClick = onZoom, enabled = model.zoom != null, modifier = Modifier.testTag("zoom")) {
+        Icon(painter = painterResource(R.drawable.ic_zoom), contentDescription = stringResource(R.string.zoom_open))
+    }
+    // A download is coming (013): a dot says so, where the list of them opens, and a
+    // screen reader is told.
+    val downloading = if (model.downloadsActive > 0) stringResource(R.string.downloads_active) else ""
+    IconButton(onClick = onHistory, modifier = Modifier.semantics { stateDescription = downloading }.testTag("history")) {
+        Box {
+            Icon(painter = painterResource(R.drawable.ic_history), contentDescription = stringResource(R.string.history_open))
+            if (model.downloadsActive > 0) {
+                Box(
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopEnd)
+                            .size(Tokens.Space.s)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                            .testTag("downloading"),
+                )
             }
         }
     }
@@ -391,7 +428,7 @@ private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit
  * screen reader, and no button at its end.
  */
 @Composable
-private fun TabChip(
+internal fun TabChip(
     tab: TabSummary,
     inFront: Boolean,
     onActivate: () -> Unit,
@@ -399,6 +436,9 @@ private fun TabChip(
     onKeepOrLetGo: () -> Unit,
     onSendHome: () -> Unit,
     grouping: Grouping? = null,
+    modifier: Modifier = Modifier,
+    /** A row of the sidebar (043): as wide as it is given, with room for the whole name. */
+    fills: Boolean = false,
 ) {
     // The tab that comes in front is brought into view.
     val place = remember { BringIntoViewRequester() }
@@ -422,7 +462,8 @@ private fun TabChip(
     val shape = RoundedCornerShape(Tokens.Radius.field)
     Row(
         modifier =
-            Modifier
+            modifier
+                .then(if (fills) Modifier.fillMaxWidth() else Modifier)
                 .bringIntoViewRequester(place)
                 .clip(shape)
                 .background(if (inFront) Tokens.Palette.fieldFill.current else Color.Transparent)
@@ -430,10 +471,11 @@ private fun TabChip(
                 .then(if (tab.favourite) Modifier.border(1.dp, Tokens.Palette.hairline.current, shape) else Modifier),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box {
+        Box(modifier = if (fills) Modifier.weight(1f) else Modifier) {
             Row(
                 modifier =
                     Modifier
+                        .then(if (fills) Modifier.fillMaxWidth() else Modifier)
                         .heightIn(min = LocalMinimumInteractiveComponentSize.current)
                         .combinedClickable(
                             role = Role.Tab,
@@ -481,7 +523,9 @@ private fun TabChip(
                     fontWeight = if (inFront) FontWeight.SemiBold else FontWeight.Normal,
                     // Asleep, it has no page: its name is fainter, and it is said so.
                     color = if (tab.asleep) MaterialTheme.colorScheme.onSurfaceVariant else Color.Unspecified,
-                    modifier = Modifier.widthIn(max = 180.dp),
+                    // In the strip a name is as wide as a tab may be; in a row of the sidebar
+                    // it has the row.
+                    modifier = if (fills) Modifier else Modifier.widthIn(max = 180.dp),
                 )
                 }
             }
@@ -557,22 +601,28 @@ private fun Toolbar(model: BrowserModel, addressField: FocusRequester, onSubmitt
         modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.Size.toolbarHeight).padding(horizontal = Tokens.Space.xs, vertical = Tokens.Space.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ToolbarButton(R.string.toolbar_back, R.drawable.ic_back, "back", enabled = model.tab.can_go_back) {
-            model.perform(NavigationCommand.NAVIGATION_COMMAND_BACK)
-        }
-        ToolbarButton(R.string.toolbar_forward, R.drawable.ic_forward, "forward", enabled = model.tab.can_go_forward) {
-            model.perform(NavigationCommand.NAVIGATION_COMMAND_FORWARD)
-        }
-        if (model.isLoading) {
-            ToolbarButton(R.string.toolbar_stop, R.drawable.ic_stop, "stop", enabled = true) {
-                model.perform(NavigationCommand.NAVIGATION_COMMAND_STOP)
-            }
-        } else {
-            ToolbarButton(R.string.toolbar_reload, R.drawable.ic_reload, "reload", enabled = model.hasPage) {
-                model.perform(NavigationCommand.NAVIGATION_COMMAND_RELOAD)
-            }
-        }
+        NavigationButtons(model)
         AddressField(model, addressField, onSubmitted, Modifier.weight(1f).padding(start = Tokens.Space.xs))
+    }
+}
+
+/** Back, forward, and reload or stop. */
+@Composable
+internal fun NavigationButtons(model: BrowserModel) {
+    ToolbarButton(R.string.toolbar_back, R.drawable.ic_back, "back", enabled = model.tab.can_go_back) {
+        model.perform(NavigationCommand.NAVIGATION_COMMAND_BACK)
+    }
+    ToolbarButton(R.string.toolbar_forward, R.drawable.ic_forward, "forward", enabled = model.tab.can_go_forward) {
+        model.perform(NavigationCommand.NAVIGATION_COMMAND_FORWARD)
+    }
+    if (model.isLoading) {
+        ToolbarButton(R.string.toolbar_stop, R.drawable.ic_stop, "stop", enabled = true) {
+            model.perform(NavigationCommand.NAVIGATION_COMMAND_STOP)
+        }
+    } else {
+        ToolbarButton(R.string.toolbar_reload, R.drawable.ic_reload, "reload", enabled = model.hasPage) {
+            model.perform(NavigationCommand.NAVIGATION_COMMAND_RELOAD)
+        }
     }
 }
 
@@ -750,7 +800,7 @@ private fun ToolbarButton(@StringRes title: Int, @DrawableRes icon: Int, tag: St
  * with the keyboard it holds the whole address, selected, so typing replaces it.
  */
 @Composable
-private fun AddressField(model: BrowserModel, focus: FocusRequester, onSubmitted: () -> Unit, modifier: Modifier = Modifier) {
+internal fun AddressField(model: BrowserModel, focus: FocusRequester, onSubmitted: () -> Unit, modifier: Modifier = Modifier) {
     val label = stringResource(R.string.address_label)
     // The text is the model's; the selection and what the keyboard is composing are the field's.
     var field by remember { mutableStateOf(TextFieldValue(model.addressText)) }
@@ -858,7 +908,7 @@ private fun AddressField(model: BrowserModel, focus: FocusRequester, onSubmitted
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun NewTabButton(model: BrowserModel) {
+internal fun NewTabButton(model: BrowserModel) {
     var offering by remember { mutableStateOf(false) }
     val reopen = stringResource(R.string.tabs_reopen)
     val canReopen = model.canReopenClosedTab

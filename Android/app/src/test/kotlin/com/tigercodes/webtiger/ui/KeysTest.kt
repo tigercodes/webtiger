@@ -56,6 +56,12 @@ class KeysTest {
         assertEquals(KeyCommand.CloseTab, withCtrl(Key.W))
         assertEquals(KeyCommand.ReopenClosedTab, withCtrl(Key.T, shift = true))
         assertEquals(KeyCommand.KeepOrLetGo, withCtrl(Key.D))
+        // Ctrl+Shift+S: the tabs down the side, or back along the top (043). Not with Alt, which
+        // with Ctrl types a third letter on many keyboards; and plain Ctrl+S is nobody's here.
+        assertEquals(KeyCommand.SwitchLayout, withCtrl(Key.S, shift = true))
+        assertNull(withCtrl(Key.S))
+        assertNull(keyCommand(Key.S, ctrl = true, shift = false, alt = true, meta = false))
+        assertNull(keyCommand(Key.S, ctrl = true, shift = true, alt = true, meta = false))
         // Alt+Home: the Site in front goes back to its home (039).
         assertEquals(KeyCommand.SiteHome, keyCommand(Key.MoveHome, ctrl = false, shift = false, alt = true, meta = false))
         assertNull(keyCommand(Key.MoveHome, ctrl = false, shift = false, alt = false, meta = false))

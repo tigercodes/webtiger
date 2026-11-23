@@ -6,9 +6,9 @@ import WTContract
 import Foundation
 
 public extension BrowserModel {
-    /// This system can draw a sidebar: the switch is offered. So far the Mac; the iPad is
-    /// next (043 §7), and a phone has none.
-    static var hasSidebar: Bool {
+    /// Whether a window has room for a sidebar before it has said how wide it is: on a Mac,
+    /// where every window has; not on a touch screen, where the window says.
+    internal static var startsWithRoomForSidebar: Bool {
         #if os(macOS)
             true
         #else
@@ -16,15 +16,16 @@ public extension BrowserModel {
         #endif
     }
 
-    /// The window draws its tabs down the side: the core says the sidebar, and there is one
-    /// here to draw. Where there is none, the strip is drawn whatever the core says.
+    /// The window draws its tabs down the side: the core says the sidebar, and the window
+    /// has room for one. Where it has none, the strip is drawn whatever the core says.
     var showsSidebar: Bool {
-        Self.hasSidebar && layout == .sidebar
+        hasRoomForSidebar && layout == .sidebar
     }
 
-    /// Switches the window's layout: to the other of what the core last said it is.
+    /// Switches the window's layout: to the other of what the core last said it is. Not
+    /// where there is no room for a sidebar: there is nothing to switch to.
     func switchLayout() {
-        guard Self.hasSidebar, let windowID else { return }
+        guard hasRoomForSidebar, let windowID else { return }
         var ask = WTSetLayout()
         ask.windowID = windowID
         ask.layout = layout == .sidebar ? .strip : .sidebar

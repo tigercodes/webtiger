@@ -30,6 +30,11 @@ public struct BrowserWindowView: View {
     /// What the find bar is open on from the start: for a picture of the bar.
     private let finding: String?
     @Environment(\.dismiss) private var dismiss
+    #if !os(macOS)
+        /// How wide the window is, as the system classes it: a sidebar has room in a wide
+        /// one (043).
+        @Environment(\.horizontalSizeClass) private var widthClass
+    #endif
 
     public init(session: BrowserSession) {
         self.init(session: session, finding: nil)
@@ -119,6 +124,13 @@ public struct BrowserWindowView: View {
                     }
             }
         }
+        #if !os(macOS)
+        // A window says whether it is wide enough for a sidebar, and again when it changes:
+        // an iPad's window made narrow has the strip, and made wide again what it had.
+        .onChange(of: widthClass, initial: true) { _, width in
+            model.hasRoomForSidebar = width == .regular
+        }
+        #endif
         .background { KeysNobodySees(window: commands) }
         // The menu bar speaks for the window in front (034).
         .focusedSceneValue(\.windowCommands, commands)

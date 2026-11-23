@@ -287,6 +287,11 @@ struct KeysNobodySees: View {
                     window.model.sendHomeTheTabInFront()
                 }
                 Command(Words.historyOpen, "y", enabled: true) { window.showHistory() }
+                // ⌃⌘S puts the tabs down the side, or back along the top (043), in a window
+                // that has room for a sidebar.
+                Command(Words.layoutSide, "s", [.control, .command], enabled: window.model.hasRoomForSidebar) {
+                    window.model.switchLayout()
+                }
                 Command(Words.findOpen, "f", enabled: true) { window.find() }
                 Command(Words.findNext, "g", enabled: true) { window.model.findNext() }
                 Command(Words.findPrevious, "g", [.command, .shift], enabled: true) { window.model.findPrevious() }

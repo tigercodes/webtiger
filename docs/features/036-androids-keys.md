@@ -34,6 +34,7 @@ As Chrome on Android and every desktop browser on a PC keyboard have them.
 | Ctrl+Shift+T | Reopen the closed tab ([033](033-a-closed-tab-comes-back.md)); nothing when there is none |
 | Ctrl+D | Keep the tab in front as a Site, or let a Site go ([039](039-sites.md)); nothing for a tab with no page |
 | Alt+Home | The Site in front goes back to its home (039); nothing for a tab that is no Site, or is at its home |
+| Ctrl+Shift+S | The tabs down the side, or back along the top ([043](043-the-sidebar.md)); nothing in a window with no room for a sidebar. With Shift and not with Alt: Ctrl and Alt together are, on many keyboards, the key that types a third letter |
 | Ctrl+Tab, Ctrl+Shift+Tab | The next tab, the one before ([035](035-tabs-by-key.md)) |
 | Ctrl+1 to Ctrl+8, Ctrl+9 | The tab at that place; the last |
 | Ctrl+L | The keyboard goes to the address field |

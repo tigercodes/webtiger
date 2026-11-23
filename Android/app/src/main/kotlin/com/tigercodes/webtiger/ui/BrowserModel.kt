@@ -18,6 +18,7 @@ import com.tigercodes.webtiger.core.v1.FindInPage
 import com.tigercodes.webtiger.core.v1.ColourGroup
 import com.tigercodes.webtiger.core.v1.GroupSummary
 import com.tigercodes.webtiger.core.v1.KeepTab
+import com.tigercodes.webtiger.core.v1.Layout
 import com.tigercodes.webtiger.core.v1.LetGoSite
 import com.tigercodes.webtiger.core.v1.MakeGroup
 import com.tigercodes.webtiger.core.v1.MoveToGroup
@@ -38,6 +39,7 @@ import com.tigercodes.webtiger.core.v1.SearchSettings
 import com.tigercodes.webtiger.core.v1.SearchWords
 import com.tigercodes.webtiger.core.v1.SendSiteHome
 import com.tigercodes.webtiger.core.v1.SetFavourite
+import com.tigercodes.webtiger.core.v1.SetLayout
 import com.tigercodes.webtiger.core.v1.SpaceSummary
 import com.tigercodes.webtiger.core.v1.SubmitAddress
 import com.tigercodes.webtiger.core.v1.SuggestAddresses
@@ -314,6 +316,35 @@ class BrowserModel(
     fun sendHomeTheTabInFront() {
         val front = frontTabId ?: return
         if (tab.away) sendHome(front)
+    }
+
+    // The layout (043)
+
+    /** How the window lays out its tabs: the core's word. */
+    var layout by mutableStateOf(Layout.LAYOUT_STRIP)
+        private set
+
+    /**
+     * The window is wide enough for a sidebar beside a page: the window says so, by its width
+     * and never by the device. A phone's is not.
+     */
+    var hasRoomForSidebar by mutableStateOf(false)
+
+    /**
+     * The window draws its tabs down the side: the core says the sidebar, and the window has
+     * room for one. Where it has none, the strip is drawn whatever the core says.
+     */
+    val showsSidebar: Boolean get() = hasRoomForSidebar && layout == Layout.LAYOUT_SIDEBAR
+
+    /**
+     * Switches the window's layout: to the other of what the core last said it is. Not where
+     * there is no room for a sidebar: there is nothing to switch to.
+     */
+    fun switchLayout() {
+        if (!hasRoomForSidebar) return
+        val open = windowId ?: return
+        val other = if (layout == Layout.LAYOUT_SIDEBAR) Layout.LAYOUT_STRIP else Layout.LAYOUT_SIDEBAR
+        session.send(Request(set_layout = SetLayout(window_id = open, layout = other)))
     }
 
     // Favourites (042)
@@ -945,6 +976,7 @@ class BrowserModel(
         tabs = snapshot.tabs
         groups = snapshot.groups
         favouritesFull = snapshot.favourites_full
+        layout = snapshot.layout
         downloadsActive = snapshot.downloads_active
         spaceId = snapshot.space_id
         spaceName = snapshot.space_name

@@ -171,8 +171,10 @@ struct TabCloser: View {
     }
 #endif
 
-/// The window's three buttons: the find bar's (010), the zoom bar's (012) and the History
-/// list's (008). Beside the tabs and not among them.
+/// The window's buttons: the find bar's (010), the zoom bar's (012) and the History list's
+/// (008); and on a touch screen, in a window wide enough, the one that puts the tabs down the
+/// side or back along the top (043): a Mac has that in its menu bar. Beside the tabs and not
+/// among them.
 struct WindowButtons: View {
     let model: BrowserModel
     let onFind: () -> Void
@@ -182,6 +184,24 @@ struct WindowButtons: View {
     var body: some View {
         // One beside the next, as close as they stood in the strip.
         HStack(spacing: 0) {
+            #if !os(macOS)
+                if model.hasRoomForSidebar {
+                    Button {
+                        model.switchLayout()
+                    } label: {
+                        Label {
+                            Text(model.layout == .sidebar ? Words.layoutTop : Words.layoutSide)
+                        } icon: {
+                            Image(systemName: model.layout == .sidebar ? "rectangle.topthird.inset.filled" : "sidebar.leading")
+                        }
+                        .labelStyle(.iconOnly)
+                        .frame(minWidth: BrowserWindowView.hitSize, minHeight: BrowserWindowView.hitSize)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityIdentifier("layout")
+                }
+            #endif
             Button(action: onFind) {
                 Label { Text(Words.findOpen) } icon: { Image(systemName: "magnifyingglass") }
                     .labelStyle(.iconOnly)

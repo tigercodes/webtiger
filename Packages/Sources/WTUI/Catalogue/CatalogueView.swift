@@ -123,8 +123,27 @@ struct CatalogueWindow: View {
             session: session, finding: state.finding, typing: state.typing, offered: state.offered, zooming: state.zooming,
             searching: CatalogueSearch.inUse, warned: state.warned
         )
+        #if !os(macOS)
+        .modifier(AsAWideWindow(isWide: state == .sidebar))
+        #endif
     }
 }
+
+#if !os(macOS)
+    /// The window with its tabs at the side is a wide one (043): on a touch screen a window
+    /// says so by its size class. Every other state has the width it is drawn at.
+    private struct AsAWideWindow: ViewModifier {
+        let isWide: Bool
+
+        func body(content: Content) -> some View {
+            if isWide {
+                content.environment(\.horizontalSizeClass, .regular)
+            } else {
+                content
+            }
+        }
+    }
+#endif
 
 /// The History list in one state: `HistoryView` over a scripted core that answers with it. Its
 /// times are shown as one place and one language would show them, so a picture of it is the

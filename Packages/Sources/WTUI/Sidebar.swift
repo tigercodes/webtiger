@@ -164,18 +164,31 @@ struct Sidebar<Toolbar: View>: View {
     }
 
     /// At the foot: the Space the window shows (a private window says what it is), and the
-    /// window's buttons.
+    /// window's buttons. Side by side where they fit; where they do not (a touch screen's
+    /// buttons are a finger wide), the buttons under the Space. They are never wider than the
+    /// sidebar: what is wider than its place is drawn over the place beside it.
     private var foot: some View {
-        HStack(spacing: 0) {
-            if model.isPrivate {
-                PrivateChip(action: onSpaces)
-            } else {
-                SpaceChip(name: model.spaceName, colour: model.spaceColour, action: onSpaces)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 0) {
+                space
+                Spacer(minLength: Tokens.Space.s)
+                WindowButtons(model: model, onFind: onFind, onZoom: onZoom, onHistory: onHistory)
             }
-            Spacer(minLength: Tokens.Space.s)
-            WindowButtons(model: model, onFind: onFind, onZoom: onZoom, onHistory: onHistory)
+            VStack(alignment: .leading, spacing: 0) {
+                space
+                WindowButtons(model: model, onFind: onFind, onZoom: onZoom, onHistory: onHistory)
+            }
         }
         .padding(.horizontal, Tokens.Space.m)
         .padding(.vertical, Tokens.Space.xs)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder private var space: some View {
+        if model.isPrivate {
+            PrivateChip(action: onSpaces)
+        } else {
+            SpaceChip(name: model.spaceName, colour: model.spaceColour, action: onSpaces)
+        }
     }
 }

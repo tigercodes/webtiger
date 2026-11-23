@@ -57,6 +57,9 @@ internal sealed interface KeyCommand {
     data object ZoomOut : KeyCommand
 
     data object ZoomReset : KeyCommand
+
+    /** The tabs down the side, or back along the top (043). */
+    data object SwitchLayout : KeyCommand
 }
 
 /** The keys that are the tab at a place: Ctrl+1 is the first. */
@@ -82,6 +85,9 @@ internal fun keyCommand(key: Key, ctrl: Boolean, shift: Boolean, alt: Boolean, m
             when (key) {
                 Key.T -> KeyCommand.ReopenClosedTab
                 Key.Tab -> KeyCommand.PreviousTab
+                // The tabs at the side, or at the top (043). With Shift and not with Alt: on
+                // many keyboards Ctrl and Alt together are the key that types a third letter.
+                Key.S -> KeyCommand.SwitchLayout
                 // Plus is Shift and the key beside Backspace, on most keyboards.
                 Key.Equals, Key.Plus -> KeyCommand.ZoomIn
                 else -> null
@@ -157,5 +163,6 @@ internal fun BrowserModel.perform(command: KeyCommand, openLocation: () -> Unit,
         KeyCommand.ZoomIn -> zoom(ZoomChange.ZOOM_CHANGE_IN)
         KeyCommand.ZoomOut -> zoom(ZoomChange.ZOOM_CHANGE_OUT)
         KeyCommand.ZoomReset -> zoom(ZoomChange.ZOOM_CHANGE_RESET)
+        KeyCommand.SwitchLayout -> switchLayout()
     }
 }

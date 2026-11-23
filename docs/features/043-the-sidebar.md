@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Part 1 is built and tested, on the recommendations of §6, which are provisional:** they are put to the owner and not yet answered. The core has a window's layout; the Mac draws the sidebar. The iPad's and Android's, the other side, a width of one's own, collapsing and dragging are not built (§7) |
+| **Status** | **Parts 1 and 2 are built and tested, on the recommendations of §6, which are provisional:** they are put to the owner and not yet answered. The core has a window's layout; the Mac draws the sidebar, and so do a touch screen's wide windows (an iPad's; Android's), with a button to switch. **Run at a tablet's width on the iPad simulator and in Android's JVM tests; on no tablet** (§9). The other side, a width of one's own, collapsing and dragging are not built (§7) |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "both layouts". 000 §6.1: "Two layouts, one model" |
 | **Contract** | 1.33 (§5). No change to the store's schema: the choice is one of the app's settings (020) |
 | **Builds on** | [039](039-sites.md), [041](041-groups.md), [042](042-favourites.md): the row as a tree, which a strip draws along the top and a sidebar draws down the side. [034](034-the-macs-menus.md): the Mac's menus |
@@ -103,12 +103,12 @@ message WindowSnapshot { … Layout layout = 12; }
 3. **The iPad's, and Android's wide windows'.**
 4. **The other side, width, collapsing, dragging.**
 
-### Part 2, as planned
+### Part 2: a touch screen's wide windows
 
-- **Which windows.** A sidebar is drawn where the window is wide enough for one beside a page: by the window's size class, never by the device (000 §6.5). An iPad's window in a narrow split, and a folded phone, have the strip; made wide again, they have what the core says.
-- **The same sidebar.** The iPad draws the one the Mac draws (it is the same view). Android draws its own in Compose, from the same two lists, with the same rows, menus and words.
-- **The switch** (D7), and with a keyboard the Mac's key on an iPad and Ctrl+Alt+S on Android.
-- **Tests:** the models' (a narrow window draws the strip and offers no switch; a wide one both); pictures at a tablet's width on each; the adapter of each app at that width, where the simulator and the emulator have one.
+- **Which windows.** A sidebar is drawn where the window is wide enough for one beside a page: by the window's width, never by the device (000 §6.5). On Apple's systems that is a window the system classes as regular in width; on Android one of 600 dp or more. An iPad's window in a narrow split, a phone's, and a folded phone's, have the strip, and no switch; made wide again, a window has what the core says, without asking.
+- **The same sidebar.** The iPad draws the one the Mac draws (it is the same view), with a tab's own menu by a long press, as in the strip. Android draws its own in Compose, from the same two lists, with the same rows, menus and words, 280 dp wide.
+- **The switch** (D7): a button before Find, Zoom and History, which names what it does ("Tabs at the Side", "Tabs at the Top"). With a keyboard, ⌃⌘S on an iPad and Ctrl+Shift+S on Android (not Ctrl+Alt, which types a third letter on many keyboards).
+- **The foot** of the sidebar is one row where the Space and the buttons fit side by side, and two where they do not: a touch screen's buttons are a finger wide. (As first drawn it was one row everywhere, wider than the sidebar on a touch screen, and pushed everything in the sidebar over its leading edge: seen in the first picture of it.)
 
 ## 8. Tests
 
@@ -123,11 +123,19 @@ The plan's own bar for W2: "switching layout changes nothing in the model".
 | The Apple shell's pictures | The window with its tabs at the side (two Favourites, a Site, an open Group with the tab in front and a Site asleep, a shut Group, a line, two tabs, "New Tab", the Space at the foot), light and dark, on the Mac; and the same state on the iPhone simulator, where it is the strip: 4 pictures, each looked at |
 | The Mac app (`SidebarTests`, 1, with the real core and the real engine) | Of two tabs, "Tabs at the Side" from the View menu: the sidebar is there and the strip is not, the same tabs by the same names, the same one in front, and nothing loaded again; Apple's accessibility audit; a row pressed brings its tab in front; the address field at the side sends the tab somewhere; "New Tab" opens one and the button at its row's end closes it; the command names the way back, and ⌃⌘S takes the tabs to the top, as they are, and to the side again |
 | Android (`GroupsTest`, 1 more) | A window whose core names the sidebar has its strip, its tabs and its Groups all the same, and asks the core nothing about the layout |
+| Part 2, the Apple shell's model (`LayoutModelTests`, now 3) | Whether a window has room for a sidebar is the window's to say: a Mac's has from the start, a touch screen's when it says so. With room, the switch asks and the sidebar is drawn when the core says so; with none, the strip is drawn whatever the core says and nothing is asked; made wide, the window has what the core says without asking |
+| Part 2, the Apple shell's pictures | The sidebar on a wide touch-screen window (the iPhone simulator, told that the window is wide), light and dark: 2 pictures, each looked at, in place of the two of part 1 that showed the strip there. Every other picture is unchanged. (A first attempt cleared the size class of every state, and 42 pictures changed: the Space's chip had its whole name where a phone has its initial.) |
+| Part 2, the apps (`SidebarTests`, on the Mac, the iPhone simulator and the iPad simulator) | On the iPhone: the window has no switch, and the strip. On the iPad simulator (an iPad Pro 11-inch's, run once by hand: it is not the gate's simulator): the window's button says "Tabs at the Side" and takes them there, with the same tabs, the same one in front and nothing loaded again; Apple's accessibility audit; a row, the address field, "New Tab" and the button at a row's end as on the Mac; the button says "Tabs at the Top" and takes them back. (At its first run there the test counted the keyboard's Tab key among the tabs: the test's mistake, and it now counts the tabs of the app's own window.) |
+| Part 2, Android on the JVM (`SidebarTest`, 6; `KeysTest`) | The switch against a scripted core, and that a window with no room asks for none; the key (Ctrl+Shift+S, and not with Alt) and what its command does; the sidebar's three parts. Drawn by Compose at a tablet's width: the sidebar when the core says so, with every tab, the Groups' chips, the tiles and the address field, the Favourites above the tree above the other tabs and a Group's Site set in; a row's press and its button; the switch by its name; and the strip when the core says that, with the switch. At a phone's width: the strip whatever the core says, and no switch |
+| Part 2, Android's pictures | The sidebar at a tablet's width, light and dark; the same state at a phone's width, where it is the strip; and the two older pictures of a wide window, which now have the switch among their buttons: 8 pictures, each looked at |
+| Part 2 broken, a part at a time | Android, 16 parts (where a sidebar is drawn, the width a window says, the switch and its name, the parts, the setting in, the key): all caught, one once the key's command had a test of its own |
 | The Mac's part broken, a part at a time | 9 parts of the switch, of where a sidebar is drawn and of the sidebar's three parts: all caught by `LayoutModelTests` (one once it was written so that it compiled). That a phone draws no sidebar is the same test's other half, run on the iPhone simulator |
 
 ## 9. What is not verified
 
-- **The iPad, Android's wide windows, a phone's switcher:** not built. They are told the layout (1.33) and draw the strip.
+- **A tablet.** The iPad's sidebar ran on the iPad simulator; Android's in JVM tests at a tablet's width, and never on a device or an emulator at that width (the emulator here is a phone's). No app was run on a tablet.
+- **A window made narrow and wide again** (an iPad's in a split; a phone unfolded): the model's test; no app test changes a window's width.
+- **A phone's switcher** (000 §6.4): not built. A phone has the strip.
 - **The choice across a quit, in an app.** The app's tests run in fake mode, where the store is in memory: that the choice is the first window's after a quit is the core's test, over a store on disk.
 - **A second window** with the layout last chosen is the core's test too: no app test opens one at the side.
 - **By the keyboard alone, in the sidebar:** as in the strip. Rows are buttons; a Group's chip is not a stop for the Tab key (041 §9).
@@ -141,3 +149,4 @@ The plan's own bar for W2: "switching layout changes nothing in the model".
 - [x] The core and the contract.
 - [x] The Mac's sidebar.
 - [x] Part 1: `Tools/test.sh all` green, and `android-device`, on 2026-11-22, over the core and the Mac's sidebar together: `lint`, `core` (596, and the strings tool's 24), `unit` (291 on the Mac), `build`, the Mac's UI suite (44), `ios` (273 on the iPhone simulator, one skipped as before), the iPhone's UI suite (33), `android` (402 and 32 on the JVM) and `android-device` (159 on the emulator).
+- [x] Part 2 (a touch screen's wide windows): the same again, on 2026-11-22: `lint`, `core` (596, and the strings tool's 24), `unit` (292 on the Mac), `build`, the Mac's UI suite (44), `ios` (274 on the iPhone simulator, one skipped as before), the iPhone's UI suite (34), `android` (410 and 32 on the JVM) and `android-device` (159 on the emulator); and the sidebar's app test once on the iPad simulator, which is not part of the gate.

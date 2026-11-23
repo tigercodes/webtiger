@@ -53,8 +53,15 @@ final class LayoutModelTests: XCTestCase {
         }
     }
 
-    func testTheSwitchAsksTheCoreForTheOtherLayoutWhereThereIsASidebarToDraw() async {
+    func testTheSwitchAsksTheCoreForTheOtherLayoutInAWindowWithRoomForASidebar() async {
         let (model, core) = model()
+        // A Mac's window has room from the start; a touch screen's says when it has.
+        #if os(macOS)
+            XCTAssertTrue(model.hasRoomForSidebar)
+        #else
+            XCTAssertFalse(model.hasRoomForSidebar)
+            model.hasRoomForSidebar = true
+        #endif
         // Before the window is open there is nothing to switch.
         model.switchLayout()
         XCTAssertEqual(asked(core), [])
@@ -64,36 +71,42 @@ final class LayoutModelTests: XCTestCase {
         await settle { model.tab.tabID == 2 }
         XCTAssertFalse(model.showsSidebar)
 
+        // The core is asked for the sidebar, and the window draws it when the core says the
+        // window has it, not before.
         model.switchLayout()
-        #if os(macOS)
-            // The Mac has a sidebar: the core is asked for it, and the window draws it when
-            // the core says the window has it, not before.
-            XCTAssertTrue(BrowserModel.hasSidebar)
-            XCTAssertEqual(asked(core), ["sidebar in 1"])
-            XCTAssertFalse(model.showsSidebar, "the core has not said so yet")
-            core.emit(snapshot(.sidebar), subscription: 3)
-            await settle { model.layout == .sidebar }
-            XCTAssertTrue(model.showsSidebar)
-            // The same command asks for the strip again.
-            model.switchLayout()
-            XCTAssertEqual(asked(core), ["sidebar in 1", "strip in 1"])
-            // A core from before layouts names none: the strip.
-            core.emit(snapshot(.unspecified), subscription: 3)
-            await settle { model.layout == .unspecified }
-            XCTAssertFalse(model.showsSidebar)
-            model.switchLayout()
-            XCTAssertEqual(asked(core).last, "sidebar in 1")
-        #else
-            // Where there is no sidebar to draw, none is asked for, and the strip is drawn
-            // whatever the core says.
-            XCTAssertFalse(BrowserModel.hasSidebar)
-            XCTAssertEqual(asked(core), [])
-            core.emit(snapshot(.sidebar), subscription: 3)
-            await settle { model.layout == .sidebar }
-            XCTAssertFalse(model.showsSidebar)
-            model.switchLayout()
-            XCTAssertEqual(asked(core), [])
-        #endif
+        XCTAssertEqual(asked(core), ["sidebar in 1"])
+        XCTAssertFalse(model.showsSidebar, "the core has not said so yet")
+        core.emit(snapshot(.sidebar), subscription: 3)
+        await settle { model.layout == .sidebar }
+        XCTAssertTrue(model.showsSidebar)
+        // The same command asks for the strip again.
+        model.switchLayout()
+        XCTAssertEqual(asked(core), ["sidebar in 1", "strip in 1"])
+        // A core from before layouts names none: the strip.
+        core.emit(snapshot(.unspecified), subscription: 3)
+        await settle { model.layout == .unspecified }
+        XCTAssertFalse(model.showsSidebar)
+        model.switchLayout()
+        XCTAssertEqual(asked(core).last, "sidebar in 1")
+    }
+
+    func testAWindowWithNoRoomForASidebarDrawsTheStripAndAsksForNoSwitch() async {
+        let (model, core) = model()
+        await model.open()
+        core.emit(snapshot(.sidebar), subscription: 3)
+        await settle { model.layout == .sidebar }
+        // The core says the sidebar. A narrow window (a phone's; an iPad's in a narrow split)
+        // draws the strip all the same, and has no switch to ask with.
+        model.hasRoomForSidebar = false
+        XCTAssertFalse(model.showsSidebar)
+        model.switchLayout()
+        XCTAssertEqual(asked(core), [])
+        // Made wide, it has what the core says, and nothing was asked to get it.
+        model.hasRoomForSidebar = true
+        XCTAssertTrue(model.showsSidebar)
+        XCTAssertEqual(asked(core), [])
+        model.switchLayout()
+        XCTAssertEqual(asked(core), ["strip in 1"])
     }
 
     private func tab(_ id: UInt64, kept: Bool = false, favourite: Bool = false, group: UInt64 = 0) -> WTTabSummary {

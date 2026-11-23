@@ -212,6 +212,18 @@ class CatalogueSnapshotTest {
     @Test @Config(qualifiers = "w720dp-h320dp-night-xhdpi")
     fun aWideWindowInTheDarkTheme() = wideWindow("dark")
 
+    /** A window wide enough for a sidebar, with its tabs down the side (043): tall enough for every row. */
+    private fun sidebar(theme: String) {
+        show { CatalogueWindow(CatalogueState.SIDEBAR, Modifier.fillMaxSize()) }
+        verify("window-sidebar-wide-$theme")
+    }
+
+    @Test @Config(qualifiers = "w720dp-h560dp-notnight-xhdpi")
+    fun aWindowWithItsTabsAtTheSideInTheLightTheme() = sidebar("light")
+
+    @Test @Config(qualifiers = "w720dp-h560dp-night-xhdpi")
+    fun aWindowWithItsTabsAtTheSideInTheDarkTheme() = sidebar("dark")
+
     // Taller than a list's picture: the page that makes a Space has its name, its logins, the
     // Spaces to share them with, its colour and what was refused.
     @Test @Config(qualifiers = "w411dp-h820dp-notnight-xhdpi")

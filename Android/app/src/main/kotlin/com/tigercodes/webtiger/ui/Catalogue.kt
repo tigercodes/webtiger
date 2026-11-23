@@ -72,6 +72,7 @@ import com.tigercodes.webtiger.core.v1.SearchEngine
 import com.tigercodes.webtiger.core.v1.SearchSettings
 import com.tigercodes.webtiger.core.v1.SignInPrompt
 import com.tigercodes.webtiger.core.v1.GroupSummary
+import com.tigercodes.webtiger.core.v1.Layout
 import com.tigercodes.webtiger.core.v1.SpaceSummary
 import com.tigercodes.webtiger.core.v1.Response
 import com.tigercodes.webtiger.core.v1.SitePermissions
@@ -103,6 +104,7 @@ internal enum class CatalogueState(@StringRes val title: Int) {
     SITES(R.string.catalogue_state_sites),
     FAVOURITES(R.string.catalogue_state_favourites),
     GROUPS(R.string.catalogue_state_groups),
+    SIDEBAR(R.string.catalogue_state_sidebar),
     FIND(R.string.catalogue_state_find),
     FIND_NONE(R.string.catalogue_state_find_none),
     SUGGESTIONS(R.string.catalogue_state_suggestions),
@@ -251,6 +253,10 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                     // Favourites (042): the tab in front is one; beside it one that is asleep,
                     // a Site that is none, and a tab.
                     FAVOURITES -> page("https://mail.example.com/", "mail.example.com").copy(title = "Mail", kept = true, favourite = true, site_name = "Mail")
+                    // The tabs down the side (043): Favourites, a Site, a Group open and one
+                    // shut, and under the line two tabs. In a window with no room for a sidebar,
+                    // the strip.
+                    SIDEBAR -> page("https://wiki.example.com/", "wiki.example.com").copy(title = "Wiki", kept = true)
                     // Groups (041): the tab in front is the Site of an open Group that has a
                     // colour; after it a Group that is shut, and a tab.
                     GROUPS -> page("https://wiki.example.com/", "wiki.example.com").copy(title = "Wiki", kept = true)
@@ -319,6 +325,19 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                         TabSummary(tab_id = 24, title = "Wiki", host = "wiki.example.com", kept = true, site_name = "Wiki"),
                         TabSummary(tab_id = 22, title = "News", host = "news.example.com"),
                     )
+                } else if (this == SIDEBAR) {
+                    // A row of every kind of thing, as a core would list it: two Favourites,
+                    // one asleep; a Site in no Group; the open Group's two, the one in front
+                    // and one asleep; none of the shut Group's; two tabs, one still loading.
+                    listOf(
+                        TabSummary(tab_id = 20, title = "Mail", host = "mail.example.com", kept = true, favourite = true, site_name = "Mail"),
+                        TabSummary(tab_id = 23, title = "Calendar", host = "calendar.example.com", kept = true, favourite = true, asleep = true, site_name = "Calendar"),
+                        TabSummary(tab_id = 25, title = "Docs", host = "docs.example.com", kept = true, site_name = "Docs"),
+                        front.copy(group_id = 30),
+                        TabSummary(tab_id = 21, title = "Board", host = "board.example.com", kept = true, asleep = true, group_id = 30),
+                        TabSummary(tab_id = 22, title = "News", host = "news.example.com"),
+                        TabSummary(tab_id = 26, host = "example.org", loading = true),
+                    )
                 } else if (this == GROUPS) {
                     // As a core would list it: the open Group's Site, which is in front;
                     // none of the shut Group's; and a tab.
@@ -337,6 +356,8 @@ internal enum class CatalogueState(@StringRes val title: Int) {
             // other state is the Space the app made, which has neither.
             return if (this == TABS) {
                 WindowSnapshot(window_id = 1, tab = tab, tabs = tabs, space_id = 2, space_name = "Work", space_colour = "blue")
+            } else if (this == SIDEBAR) {
+                WindowSnapshot(window_id = 1, tab = tab, tabs = tabs, groups = CatalogueGroups.groups, layout = Layout.LAYOUT_SIDEBAR)
             } else if (this == GROUPS) {
                 WindowSnapshot(window_id = 1, tab = tab, tabs = tabs, groups = CatalogueGroups.groups)
             } else {

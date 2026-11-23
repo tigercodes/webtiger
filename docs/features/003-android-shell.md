@@ -305,7 +305,7 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | `cd Core && cargo test --workspace --locked` | 139 passed |
 | `Tools/test.sh android`, from nothing | OK, 48 s |
 | … `:core-engine:testDebugUnitTest` | 32 passed |
-| … `:app:testDebugUnitTest` | 402 passed |
+| … `:app:testDebugUnitTest` | 410 passed |
 | … `:app:assembleDebug` | `app-debug.apk`, with `libwebtiger_core.so` for `arm64-v8a` and `x86_64` |
 | `Tools/strings/generate.sh --check` (as first run, the Python script it replaced), `Tools/design/tokens.py --check` | up to date; the Apple outputs' checksums unchanged |
 | `./gradlew :app:lintDebug` | no errors. Apart from notices that newer versions exist, two warnings are left on purpose: no launcher icon (the brand is not settled, 001 F10), and `toolbar_open_location` unused (it is the Mac's ⌘L) |
@@ -349,7 +349,8 @@ On both Macs, 2026-11-18 (the time is the first Mac's):
 | `SitesTest` | 5 | Sites (039): the one command with two names against a scripted core; the strip's mark, what each tab says of itself, the button at a Site's end; a tab's own menu, held; a Site that is away: sent home only when the core says it is away; the outline for its mark, what it says, and the way home in its menu by its name |
 | `GroupsTest` | 10 | Groups (041): the row made of the core's two lists, the tabs never in another order than the core's; the model against a scripted core (shut and open, move, remove, a new Group made, coloured and given its tab, an edit by what changed, what the core refuses); the strip's chips, what they show and say, and where they stand; a Group's own menu; "Move to Group" in a tab's menu, with the tab's own marked; the page, and what is refused said on it in words; and that the strip is drawn whatever layout the core names (043) |
 | `FavouritesTest` | 4 | Favourites (042): the model against a scripted core, and that no more is offered when the core says the row is full; the tile, its letter, what it says and that it has no button at its end; "Put to Sleep" and the command in a tab's own menu |
-| `CatalogueSnapshotTest` | 25 | The design catalogue as pictures, drawn on the JVM, and the failed page at twice the text size (004) |
+| `SidebarTest` | 6 | The sidebar ([043](043-the-sidebar.md)): the switch against a scripted core, and that a window with no room for a sidebar asks for none; the key's command; the sidebar's three parts; drawn at a tablet's width, the sidebar when the core says so (every tab, the Groups' chips, the tiles, the address field; the Favourites above the tree above the other tabs; a Group's Site set in; a row's press and its button; the switch by its name) and the strip when it says that; at a phone's width the strip whatever the core says, and no switch |
+| `CatalogueSnapshotTest` | 27 | The design catalogue as pictures, drawn on the JVM, and the failed page at twice the text size (004) |
 | `ThroughTheCoreTest` | 11 | The model, the session, the engine and the tracker over the **real core**: a page loads in the Space's login set; a page cannot put an address in the field it has not become; a failure by its code; fake mode, where each mode saves a download (013), and that only the app started for real may have the system ask the person (014); no profiles; a Space's colour ([025](025-space-colours.md)); words another app hands over are searched for in a new tab ([028](028-search-from-other-apps.md)); an address another app hands over opens in a new tab, and what is no address of the web opens nothing ([031](031-links-from-other-apps.md)) |
 
 ## 9. Decisions taken while building
