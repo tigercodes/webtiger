@@ -101,4 +101,4 @@ message WindowSnapshot { … uint32 row_tabs = 14; }   // every tab of the row, 
 - [x] The core's number.
 - [x] The Apple shell.
 - [x] The Android shell.
-- [ ] `Tools/test.sh all` green, and `android-device`.
+- [x] `Tools/test.sh all` green, and `android-device`, on 2026-11-23: `lint`, `core` (629, and the strings tool's 24), `unit` (299 on the Mac), `build`, the Mac's UI suite (47), `ios` (281 on the iPhone simulator), the iPhone's UI suite (37), `android` (432 and 32 on the JVM) and `android-device` (166 on the emulator).
