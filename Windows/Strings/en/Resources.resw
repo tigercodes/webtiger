@@ -49,6 +49,7 @@
   <data name="catalogue_state_search_change" xml:space="preserve"><value>Changing where searches go</value><comment>Design catalogue: a state of the window.</comment></data>
   <data name="catalogue_state_search_question" xml:space="preserve"><value>The first run asks where searches go</value><comment>Design catalogue: a state of the window.</comment></data>
   <data name="catalogue_state_secure" xml:space="preserve"><value>A secure page</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_sidebar" xml:space="preserve"><value>Tabs at the side</value><comment>Design catalogue: a state of the window.</comment></data>
   <data name="catalogue_state_sites" xml:space="preserve"><value>Sites, awake and asleep</value><comment>Design catalogue: a state of the window.</comment></data>
   <data name="catalogue_state_spaces" xml:space="preserve"><value>The list of Spaces</value><comment>Design catalogue: a state of the list of Spaces.</comment></data>
   <data name="catalogue_state_spaces_new" xml:space="preserve"><value>Making a Space</value><comment>Design catalogue: a state of the list of Spaces.</comment></data>
@@ -152,6 +153,8 @@
   <data name="history_open" xml:space="preserve"><value>History and Downloads</value><comment>Label of the button, beside the tabs, that opens the lists of pages visited and of files downloaded.</comment></data>
   <data name="history_search" xml:space="preserve"><value>Search history</value><comment>Placeholder and accessibility label of the field for finding a visit by words of its title or address.</comment></data>
   <data name="history_title" xml:space="preserve"><value>History</value><comment>Title of the list of pages visited.</comment></data>
+  <data name="layout_side" xml:space="preserve"><value>Tabs at the Side</value><comment>Command in the Mac&apos;s View menu (Control-Command-S) while the window&apos;s tabs are along its top: they are drawn down its side instead, in a sidebar. Nothing else changes.</comment></data>
+  <data name="layout_top" xml:space="preserve"><value>Tabs at the Top</value><comment>The same command while the tabs are down the side: they are drawn along the top again.</comment></data>
   <data name="link_cancel" xml:space="preserve"><value>Cancel</value><comment>In a link&apos;s menu: close the menu and do nothing.</comment></data>
   <data name="link_copy" xml:space="preserve"><value>Copy Link</value><comment>In a link&apos;s menu: copy the link&apos;s address.</comment></data>
   <data name="link_download" xml:space="preserve"><value>Download Linked File</value><comment>In a link&apos;s menu: save what the link leads to as a file, with the person&apos;s downloads.</comment></data>

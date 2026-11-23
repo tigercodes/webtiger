@@ -1,6 +1,6 @@
-// A browser window: its tabs in a strip, a toolbar, a progress line, and the page of the tab
-// in front (005). The strip is one plain row on every size of window; the sidebar and the tab
-// strip proper arrive in W2.
+// A browser window: its tabs, a toolbar, a progress line, and the page of the tab in front
+// (005). The tabs are in a strip along the top, or, where the core says so and there is one to
+// draw, in a sidebar down the side (043): the same tabs, and the same page beside them.
 public import SwiftUI
 #if !os(macOS)
     import QuickLook
@@ -76,41 +76,48 @@ public struct BrowserWindowView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 0) {
-            TabStrip(
-                model: model, onFind: { model.openFind() }, onZoom: { model.openZoom() }, onHistory: { showingHistory = true },
-                onSpaces: {
-                    // A private window has no Space: its chip opens the page that says what
-                    // it is (037).
-                    if model.isPrivate {
-                        showingPrivate = true
-                    } else {
-                        showingSpaces = true
-                    }
+        // The page keeps its place in the window whichever way the tabs are laid out: a
+        // switch draws the tabs somewhere else, and nothing of the page again (043).
+        HStack(spacing: 0) {
+            if model.showsSidebar {
+                Sidebar(
+                    model: model, onFind: { model.openFind() }, onZoom: { model.openZoom() },
+                    onHistory: { showingHistory = true }, onSpaces: openSpaces,
+                    toolbar: { sideToolbar }
+                )
+                .frame(width: Sidebar<EmptyView>.width)
+                Divider()
+            }
+            VStack(spacing: 0) {
+                if !model.showsSidebar {
+                    TabStrip(
+                        model: model, onFind: { model.openFind() }, onZoom: { model.openZoom() },
+                        onHistory: { showingHistory = true }, onSpaces: openSpaces
+                    )
+                    toolbar
                 }
-            )
-            toolbar
-            // What the tab asks the person (014): in the tab, under the toolbar, and not
-            // over the window. It takes the keyboard from nothing by appearing.
-            if let asked = model.prompt {
-                PromptBar(prompt: asked) { model.answerPrompt(allow: $0, text: $1, silence: $2, secret: $3) }
-                    // Each prompt is a bar of its own: a field starts from what its page offers.
-                    .id(asked.promptID)
-            }
-            if model.isFinding {
-                findBar
-            }
-            if model.isZooming {
-                ZoomBar(model: model)
-            }
-            progress
-            content
-                // What is offered for what is typed (011): under the toolbar, over the page.
-                .overlay(alignment: .top) {
-                    if !model.suggestions.isEmpty {
-                        SuggestionList(model: model) { addressFocused = false }
-                    }
+                // What the tab asks the person (014): in the tab, under the toolbar, and not
+                // over the window. It takes the keyboard from nothing by appearing.
+                if let asked = model.prompt {
+                    PromptBar(prompt: asked) { model.answerPrompt(allow: $0, text: $1, silence: $2, secret: $3) }
+                        // Each prompt is a bar of its own: a field starts from what its page offers.
+                        .id(asked.promptID)
                 }
+                if model.isFinding {
+                    findBar
+                }
+                if model.isZooming {
+                    ZoomBar(model: model)
+                }
+                progress
+                content
+                    // What is offered for what is typed (011): under the toolbar, over the page.
+                    .overlay(alignment: .top) {
+                        if !model.suggestions.isEmpty {
+                            SuggestionList(model: model) { addressFocused = false }
+                        }
+                    }
+            }
         }
         .background { KeysNobodySees(window: commands) }
         // The menu bar speaks for the window in front (034).
@@ -207,25 +214,53 @@ public struct BrowserWindowView: View {
         return Words.appName.string()
     }
 
+    /// The chip that names the Space was pressed: the list of Spaces opens. A private window
+    /// has no Space: its chip opens the page that says what it is (037).
+    private func openSpaces() {
+        if model.isPrivate {
+            showingPrivate = true
+        } else {
+            showingSpaces = true
+        }
+    }
+
     private var toolbar: some View {
         HStack(spacing: Tokens.Space.s) {
-            toolbarButton(Words.toolbarBack, symbol: "chevron.backward", identifier: "back", enabled: model.tab.canGoBack) {
-                model.perform(.back)
-            }
-            toolbarButton(Words.toolbarForward, symbol: "chevron.forward", identifier: "forward", enabled: model.tab.canGoForward) {
-                model.perform(.forward)
-            }
-            if model.isLoading {
-                toolbarButton(Words.toolbarStop, symbol: "xmark", identifier: "stop", enabled: true) { model.perform(.stop) }
-            } else {
-                toolbarButton(Words.toolbarReload, symbol: "arrow.clockwise", identifier: "reload", enabled: model.hasPage) {
-                    model.perform(.reload)
-                }
-            }
+            navigationButtons
             addressField
         }
         .padding(.horizontal, Tokens.Space.m)
         .frame(minHeight: Tokens.Size.toolbarHeight)
+    }
+
+    /// The toolbar as the sidebar has it (043): the buttons, and under them the address
+    /// field, as wide as the sidebar.
+    private var sideToolbar: some View {
+        VStack(alignment: .leading, spacing: Tokens.Space.xs) {
+            HStack(spacing: Tokens.Space.s) {
+                navigationButtons
+            }
+            addressField
+        }
+        .padding(.horizontal, Tokens.Space.m)
+        .padding(.vertical, Tokens.Space.xs)
+    }
+
+    /// Back, forward, and reload or stop.
+    @ViewBuilder private var navigationButtons: some View {
+        toolbarButton(Words.toolbarBack, symbol: "chevron.backward", identifier: "back", enabled: model.tab.canGoBack) {
+            model.perform(.back)
+        }
+        toolbarButton(Words.toolbarForward, symbol: "chevron.forward", identifier: "forward", enabled: model.tab.canGoForward) {
+            model.perform(.forward)
+        }
+        if model.isLoading {
+            toolbarButton(Words.toolbarStop, symbol: "xmark", identifier: "stop", enabled: true) { model.perform(.stop) }
+        } else {
+            toolbarButton(Words.toolbarReload, symbol: "arrow.clockwise", identifier: "reload", enabled: model.hasPage) {
+                model.perform(.reload)
+            }
+        }
     }
 
     /// The find bar (010): a field, what was found, the match before and the next, and Done.

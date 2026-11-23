@@ -529,6 +529,18 @@
         }
       }
     },
+    "catalogue.state.sidebar": {
+      "comment": "Design catalogue: a state of the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tabs at the side"
+          }
+        }
+      }
+    },
     "catalogue.state.sites": {
       "comment": "Design catalogue: a state of the window.",
       "extractionState": "manual",
@@ -1761,6 +1773,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "History"
+          }
+        }
+      }
+    },
+    "layout.side": {
+      "comment": "Command in the Mac's View menu (Control-Command-S) while the window's tabs are along its top: they are drawn down its side instead, in a sidebar. Nothing else changes.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tabs at the Side"
+          }
+        }
+      }
+    },
+    "layout.top": {
+      "comment": "The same command while the tabs are down the side: they are drawn along the top again.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tabs at the Top"
           }
         }
       }

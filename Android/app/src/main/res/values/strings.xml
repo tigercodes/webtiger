@@ -90,6 +90,8 @@
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_secure">A secure page</string>
     <!-- Design catalogue: a state of the window. -->
+    <string name="catalogue_state_sidebar">Tabs at the side</string>
+    <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_sites">Sites, awake and asleep</string>
     <!-- Design catalogue: a state of the list of Spaces. -->
     <string name="catalogue_state_spaces">The list of Spaces</string>
@@ -295,6 +297,10 @@
     <string name="history_search">Search history</string>
     <!-- Title of the list of pages visited. -->
     <string name="history_title">History</string>
+    <!-- Command in the Mac's View menu (Control-Command-S) while the window's tabs are along its top: they are drawn down its side instead, in a sidebar. Nothing else changes. -->
+    <string name="layout_side">Tabs at the Side</string>
+    <!-- The same command while the tabs are down the side: they are drawn along the top again. -->
+    <string name="layout_top">Tabs at the Top</string>
     <!-- In a link's menu: close the menu and do nothing. -->
     <string name="link_cancel">Cancel</string>
     <!-- In a link's menu: copy the link's address. -->

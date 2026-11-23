@@ -49,6 +49,7 @@ On the Mac I look in the menu bar for what a browser can do, and it is there, ea
 | View | Reload | ⌘R | the tab has no page |
 | View | Stop | ⌘. | no page is loading |
 | View | Zoom In, Zoom Out, Actual Size | ⌘+, ⌘−, ⌘0 | the page cannot be zoomed; there is no level further that way; for Actual Size, the page is at 100% |
+| View | Tabs at the Side, or Tabs at the Top when they are at the side (since [043](043-the-sidebar.md)) | ⌃⌘S | |
 | History | Back | ⌘[ | there is no way back |
 | History | Forward | ⌘] | there is no way forward |
 | History | History and Downloads | ⌘Y | |

@@ -223,6 +223,11 @@ enum Words {
     /// Design catalogue: a state of the window.
     static let catalogueStateSecure = Word(key: "catalogue.state.secure")
 
+    /// Tabs at the side
+    ///
+    /// Design catalogue: a state of the window.
+    static let catalogueStateSidebar = Word(key: "catalogue.state.sidebar")
+
     /// Sites, awake and asleep
     ///
     /// Design catalogue: a state of the window.
@@ -737,6 +742,16 @@ enum Words {
     ///
     /// Title of the list of pages visited.
     static let historyTitle = Word(key: "history.title")
+
+    /// Tabs at the Side
+    ///
+    /// Command in the Mac's View menu (Control-Command-S) while the window's tabs are along its top: they are drawn down its side instead, in a sidebar. Nothing else changes.
+    static let layoutSide = Word(key: "layout.side")
+
+    /// Tabs at the Top
+    ///
+    /// The same command while the tabs are down the side: they are drawn along the top again.
+    static let layoutTop = Word(key: "layout.top")
 
     /// Cancel
     ///
@@ -1391,6 +1406,7 @@ extension Word {
         "catalogue.state.search_change",
         "catalogue.state.search_question",
         "catalogue.state.secure",
+        "catalogue.state.sidebar",
         "catalogue.state.sites",
         "catalogue.state.spaces",
         "catalogue.state.spaces_new",
@@ -1494,6 +1510,8 @@ extension Word {
         "history.open",
         "history.search",
         "history.title",
+        "layout.side",
+        "layout.top",
         "link.cancel",
         "link.copy",
         "link.download",

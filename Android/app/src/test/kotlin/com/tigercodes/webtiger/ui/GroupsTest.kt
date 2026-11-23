@@ -24,6 +24,7 @@ import com.tigercodes.webtiger.core.v1.AddressView
 import com.tigercodes.webtiger.core.v1.Error
 import com.tigercodes.webtiger.core.v1.GroupMade
 import com.tigercodes.webtiger.core.v1.GroupSummary
+import com.tigercodes.webtiger.core.v1.Layout
 import com.tigercodes.webtiger.core.v1.Request
 import com.tigercodes.webtiger.core.v1.Response
 import com.tigercodes.webtiger.core.v1.SpacesPage
@@ -372,6 +373,22 @@ class GroupsTest {
         compose.waitForIdle()
         compose.onAllNodesWithTag("group-page").assertCountEquals(0)
         assertEquals(listOf("make 'Play' in 1", "make 'Play' in 1"), asked())
+    }
+
+    /** A window whose core names the sidebar (043) has its strip all the same: this shell has no sidebar to draw yet. */
+    @Test
+    fun theStripIsDrawnWhateverLayoutTheCoreNames() {
+        compose.setContent { WebTigerTheme { BrowserWindow(session, model) } }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            core.emit(said(listOf(tab(1, kept = true, title = "Mail"), tab(2, title = "News")), listOf(work)).copy(layout = Layout.LAYOUT_SIDEBAR), subscription = 3)
+        }
+        compose.waitForIdle()
+        compose.onAllNodesWithTag("tab-strip").assertCountEquals(1)
+        compose.onAllNodesWithTag("tab").assertCountEquals(2)
+        compose.onAllNodesWithTag("group").assertCountEquals(1)
+        // Nothing is asked of the core about the layout: there is no switch here.
+        assertEquals(0, core.requests.count { it.set_layout != null })
     }
 
     @Test

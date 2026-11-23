@@ -21,6 +21,7 @@ enum CatalogueState: String, CaseIterable, Identifiable {
     case sites
     case favourites
     case groups
+    case sidebar
     case find
     case findNone = "find-none"
     case suggestions
@@ -52,6 +53,7 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         case .tabs: Words.catalogueStateTabs
         case .sites: Words.catalogueStateSites
         case .favourites: Words.catalogueStateFavourites
+        case .sidebar: Words.catalogueStateSidebar
         case .groups: Words.catalogueStateGroups
         case .find: Words.catalogueStateFind
         case .findNone: Words.catalogueStateFindNone
@@ -174,6 +176,13 @@ enum CatalogueState: String, CaseIterable, Identifiable {
             page(&window, url: "https://wiki.example.com/", display: "wiki.example.com", security: .secure)
             window.tab.title = "Wiki"
             window.tab.kept = true
+        case .sidebar:
+            // The tabs down the side (043): Favourites, a Site, a Group open and one shut,
+            // and under the line two tabs. Where there is no sidebar to draw, the strip.
+            page(&window, url: "https://wiki.example.com/", display: "wiki.example.com", security: .secure)
+            window.tab.title = "Wiki"
+            window.tab.kept = true
+            window.layout = .sidebar
         case .tabs:
             page(&window, url: "https://example.com/", display: "example.com", security: .secure)
             window.tab.title = "Example Domain"
@@ -262,6 +271,10 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         if self == .groups {
             window.groups = CatalogueGroups.groups
             window.tabs = CatalogueGroups.row(front: front)
+        }
+        if self == .sidebar {
+            window.groups = CatalogueGroups.groups
+            window.tabs = CatalogueGroups.sidebar(front: front)
         }
         if self == .tabs {
             window.tabs = [

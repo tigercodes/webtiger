@@ -48,6 +48,29 @@ enum CatalogueGroups: String, CaseIterable, Identifiable {
         return [front, calendar, wiki, tab(22, "News", "news.example.com")]
     }
 
+    /// A row of every kind of thing, for the sidebar (043), as a core would list it: two
+    /// Favourites, one asleep; a Site in no Group; the open Group's two, the one in front
+    /// and one asleep; none of the shut Group's; and two tabs, one still loading.
+    static func sidebar(front: WTTabSummary) -> [WTTabSummary] {
+        var docs = tab(25, "Docs", "docs.example.com")
+        docs.kept = true
+        docs.siteName = "Docs"
+        var first = front
+        first.groupID = 30
+        var board = tab(21, "Board", "board.example.com")
+        board.kept = true
+        board.asleep = true
+        board.groupID = 30
+        var loading = tab(26, "", "example.org")
+        loading.loading = true
+        var mail = tab(20, "Mail", "mail.example.com")
+        mail.kept = true
+        mail.favourite = true
+        mail.siteName = "Mail"
+        let calendar = favourites(front: mail)[1]
+        return [mail, calendar, docs, first, board, tab(22, "News", "news.example.com"), loading]
+    }
+
     private static func group(_ id: UInt64, _ name: String, colour: String = "", shut: Bool = false, sites: UInt32 = 0) -> WTGroupSummary {
         var group = WTGroupSummary()
         group.groupID = id

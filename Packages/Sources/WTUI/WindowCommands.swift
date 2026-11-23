@@ -220,6 +220,12 @@ private struct Command: View {
             Command(Words.zoomOut, "-", enabled: zoom?.canZoomOut == true) { model?.zoom(.out) }
             Command(Words.zoomReset, "0", enabled: zoom != nil && zoom?.percent != 100) { model?.zoom(.reset) }
             Divider()
+            // The tabs down the side, or along the top again (043): ⌃⌘S, as a sidebar is
+            // shown and hidden in the Mac's own apps.
+            Command(model?.layout == .sidebar ? Words.layoutTop : Words.layoutSide, "s", [.control, .command], enabled: model != nil) {
+                model?.switchLayout()
+            }
+            Divider()
         }
     }
 
