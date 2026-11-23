@@ -122,4 +122,4 @@ message WindowSnapshot { … string undo_arrangement = 13; }   // the kind of th
 - [x] The core and the contract.
 - [x] The shells.
 - [x] The core: `Tools/test.sh all` green, and `android-device`, on 2026-11-22: `lint`, `core` (602, and the strings tool's 24), `unit` (293 on the Mac), `build`, the Mac's UI suite (44), `ios` (275 on the iPhone simulator), the iPhone's UI suite (34), `android` (411 and 32 on the JVM) and `android-device` (159 on the emulator). No shell changed but for the contract's number.
-- [ ] The shells: the gate.
+- [x] The shells: `Tools/test.sh all` green, and `android-device`, on 2026-11-23: `lint`, `core` (629, and the strings tool's 24), `unit` (301 on the Mac), `build`, the Mac's UI suite (48), `ios` (283 on the iPhone simulator), the iPhone's UI suite (38), `android` (437 and 32 on the JVM) and `android-device` (167 on the emulator).
