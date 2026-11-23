@@ -87,6 +87,26 @@ message IconsPage { repeated Icon icons = 1; }   // icon_id, png
 
 A window's snapshot carries numbers, not pictures: a row of 5,000 tabs is no heavier for having icons ([043](043-the-sidebar.md) §8a).
 
+## 5a. Apple's part (to be 1.39; designed, not built)
+
+WebKit hands an app no icon, and the app fetches the one the page names itself (WT-D33). Added to the contract; nothing is changed or removed.
+
+```proto
+// An engine event (WebKit): the page names these icons. As the page wrote them, each
+// address made whole against the page's own.
+message IconNamed { repeated NamedIcon icons = 1; string page_url = 2; }
+message NamedIcon { string url = 1; string rel = 2; string sizes = 3; string type = 4; }
+
+// A host request (WebKit): fetch this one for that page. Answered with Ack, at once.
+message WebViewFetchIcon { uint64 web_view_id = 1; string url = 2; string page_url = 3; }
+```
+
+**The picture comes back as `IconReceived`,** as Android's does: there is one way in for a picture, and one set of rules about whose it is (§5). A fetch that fails says nothing.
+
+**The core chooses** (D4), the same on every system that has to fetch: of the icons named, one whose address came over `https` (or never leaves this device), that does not say it is SVG; the one nearest 64 pixels across by what the page says of its size, a touch icon taken as 180 and an icon that says nothing as 32; with none that will do, `/favicon.ico` at the page's own origin. Only for a page whose icon would be kept (§5). **Once in a run for a host in a login set,** and again only when its page names another address: a page that is loaded twenty times is asked for its icon once.
+
+**The adapter fetches** as WT-D33 says: a session of its own that keeps nothing (no cookie sent or taken, no login, no cache); no referrer; the page's own user agent, so that the request tells the site nothing the page's requests did not; redirects followed only to `https` (or within this device); nothing over 200 KB. **It decodes with the system's decoder** only what is, by its own bytes, a PNG, an ICO, a JPEG or a GIF; makes it at most 128 pixels a side; and hands over a PNG.
+
 ## 6. Decisions
 
 **All of these are put to the owner.** D2, D3 and D5 are built in the core as recommended, and D6 in Android's window; D1 and D4 are Apple's part, and not built. The first column is the recommendation.
