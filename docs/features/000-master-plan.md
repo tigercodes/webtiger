@@ -711,7 +711,7 @@ Spaces with their login sets, colours and icons; shared logins; the tree with dr
 
 **Exit:** the isolation tests pass; switching layout changes nothing in the model; 5,000 rows scroll within budget.
 
-**Where W2 stands (2026-11-23).** Built: Spaces with their login sets and colours, and shared logins (024, 025); several windows and private windows (037); undo for a closed tab (033); the keys of each system (034 to 036); Sites (039), Groups (041) and Favourites (042); both layouts, on the Mac and on a touch screen's wide windows (043); a tab moved a place by a command (045); a site's icon on Android (046); the phone's switcher (047). Not built: a Space's icon; dragging in the tree (a tab is moved a place by a command, [045](045-moving-in-the-row.md); the core has the rest); the tidying of temporary tabs; the phone's switcher as cards (it has the sidebar's tree, [047](047-the-phones-switcher.md); cards wait for pictures of pages); the command bar; undo for the organising actions that have come since 033, in any app (the core has it, [044](044-undo-for-the-tree.md), and no shell offers it until the owner has said where); a site's icon on Apple's systems (on Android a tab and a Favourite's tile have theirs, [046](046-a-sites-icon.md); where WebKit hands none over, how one is fetched is the owner's to say first). Of the exit: the isolation tests pass; that switching the layout changes nothing in the model is tested in the core (043 §8); **the 5,000 rows are measured in part** ([043](043-the-sidebar.md) §8a): the standard session is well inside the contract's budget; at 5,000 rows a change costs the core about 4 ms and tells the window the whole row again, which telling only what changed (W3) is to mend; the sidebars make their rows as they come into view; no frame was counted.
+**Where W2 stands (2026-11-23).** Built: Spaces with their login sets and colours, and shared logins (024, 025); several windows and private windows (037); undo for a closed tab (033); the keys of each system (034 to 036); Sites (039), Groups (041) and Favourites (042); both layouts, on the Mac and on a touch screen's wide windows (043); a tab moved a place by a command (045); a site's icon on Android (046); the phone's switcher (047). Not built: a Space's icon; dragging in the tree (a tab is moved a place by a command, [045](045-moving-in-the-row.md); the core has the rest); the tidying of temporary tabs; the phone's switcher as cards (it has the sidebar's tree, [047](047-the-phones-switcher.md); cards wait for pictures of pages); the command bar's Spaces and commands (designed, [048](048-the-command-bar.md); tabs and history are in the address field's list already); undo for the organising actions that have come since 033, in any app (the core has it, [044](044-undo-for-the-tree.md), and no shell offers it until the owner has said where); a site's icon on Apple's systems (on Android a tab and a Favourite's tile have theirs, [046](046-a-sites-icon.md); where WebKit hands none over, how one is fetched is the owner's to say first). Of the exit: the isolation tests pass; that switching the layout changes nothing in the model is tested in the core (043 §8); **the 5,000 rows are measured in part** ([043](043-the-sidebar.md) §8a): the standard session is well inside the contract's budget; at 5,000 rows a change costs the core about 4 ms and tells the window the whole row again, which telling only what changed (W3) is to mend; the sidebars make their rows as they come into view; no frame was counted.
 
 ### W3 — Sleeping tabs and the budgets (medium)
 
@@ -880,6 +880,15 @@ Four features of W2 are built on the recommendations of their own documents, the
 3. The strip stays on a phone.
 4. The number is of all the row's tabs, those of shut Groups among them.
 5. The sheet covers the page, with the Space's name at its head.
+
+**The command bar** ([048](048-the-command-bar.md) §6, put on 2026-11-23; designed, not built):
+
+1. The address field is the command bar: one field, and no second one over the page.
+2. A command's words are the shell's and its matching the core's: the shell sends the commands with the question.
+3. A command is offered among the other rows whenever its words match; no mark is typed first.
+4. Only what can be done now is offered.
+5. The order: tabs, Spaces, commands, places.
+6. Which commands: those that need nothing more than to be chosen.
 
 Also the owner's to say, from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
 
