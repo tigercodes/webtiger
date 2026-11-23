@@ -711,6 +711,8 @@ Spaces with their login sets, colours and icons; shared logins; the tree with dr
 
 **Exit:** the isolation tests pass; switching layout changes nothing in the model; 5,000 rows scroll within budget.
 
+**Where W2 stands (2026-11-22).** Built: Spaces with their login sets and colours, and shared logins (024, 025); several windows and private windows (037); undo for a closed tab (033); the keys of each system (034 to 036); Sites (039), Groups (041) and Favourites (042); both layouts, on the Mac and on a touch screen's wide windows (043). Not built: a Space's icon; dragging in the tree; the tidying of temporary tabs; the phone's switcher; the command bar; undo for the organising actions that have come since 033; a site's icon, which the Favourites' tiles wait for. Of the exit: the isolation tests pass; that switching the layout changes nothing in the model is tested in the core (043 §8); **the 5,000 rows are not measured**.
+
 ### W3 — Sleeping tabs and the budgets (medium)
 
 The lifecycle of §5.7; snapshots; keep-awake reasons; live-tab limits; pressure handling; tidying and the Archive; the Memory view; every §7 budget as a failing test; the published run.
@@ -810,6 +812,42 @@ W1 to W4 are the critical path. W5 to W9 can be reordered by what is wanted firs
 | WT-D29 | What a Site is | A tab that is kept: first in its row; closed, it sleeps at its home and stays; brought in front, it wakes there; closing one never wakes another; it is of the row it was kept in; none in a private window. The words are "Site", "Keep as Site", "Stop Keeping"; the key is ⌘D on a Mac and Ctrl+D on Android; in the strip a Site has a mark, and is drawn fainter asleep ([039](039-sites.md) §6). The owner's, 2026-11-22, on the seven choices as recommended | A closed Site sleeping where it was, or Arc's two closes; "Pin Tab"; no key yet |
 | WT-D30 | One catalogue of words, at build time | Every user-visible string is in one file; one Rust tool in `Core/` writes every platform's file from it, and `lint` fails on either machine when one is stale; Swift asks by generated name, so a deleted string stops the build; a string must take the same arguments in every language and on every platform. No shell asks the core for a word while it runs, and no word is fetched from anywhere ([040](040-one-catalogue-of-words.md)). The owner's, 2026-11-22: no cost in speed or in safety | Words asked of the core at run time; words fetched from a server |
 | WT-D31 | A Site's home that moves | Where a load of a Site's home lands is its home: an address that sends the browser on to another is at that other ([039](039-sites.md) §7b). The owner's, 2026-11-22: "the site that is redirected to should be the decided home page for that site" | The Site is away at once, and its home is the address it was kept at for ever |
+
+### 11.1 Built on a recommendation, waiting for the owner
+
+Three features of W2 are built on the recommendations of their own documents, the owner not yet having answered. Each choice is one line here; its reasons and the other ways are in the feature's §6. An answer to any of them changes that feature, and nothing else.
+
+**Groups** ([041](041-groups.md) §6, put on 2026-11-22):
+
+1. One level of Groups first; Groups in Groups later.
+2. A Group holds Sites only: putting a tab in one keeps it.
+3. Shutting a Group hides its Sites and changes none of them: none is put to sleep.
+4. Removing a Group leaves its Sites, in no Group.
+5. A Group's colours are a Space's, or none.
+6. In the strip a Group is a chip before its Sites; a press shuts or opens it; shut, it says how many it holds.
+7. The commands: "Move to Group" (the Groups by name, "No Group", "New Group…") for a tab; "Edit Group…" and "Remove Group" for a Group. No command makes an empty Group.
+
+**Favourites** ([042](042-favourites.md) §6, put on 2026-11-22):
+
+1. A Favourite is a Site with a mark, not a bookmark that opens a new tab at each press.
+2. A Favourite is in no Group.
+3. Favourites are a Space's, not the same in every Space.
+4. Until sites have icons, a tile shows the first letter of the Site's name. (On a phone the Space's chip is a letter in a square too: they look alike until there are icons.)
+5. At most twelve in a row.
+6. The command: "Add to Favourites" and "Remove from Favourites", where "Keep as Site" is.
+
+**The sidebar** ([043](043-the-sidebar.md) §6, put on 2026-11-22):
+
+1. The layout is each window's, and a new window has the one last chosen.
+2. A new installation has the strip, not the sidebar.
+3. The Mac first, then the iPad and Android's wide windows; a phone has no sidebar.
+4. The sidebar on the leading side, at one width; the other side, resizing and collapsing later.
+5. The toolbar and the address field at the top of the sidebar.
+6. The command: "Tabs at the Side" and "Tabs at the Top"; on the Mac in the View menu, ⌃⌘S.
+7. On a touch screen the switch is a button beside Find, Zoom and History; with a keyboard ⌃⌘S on an iPad and Ctrl+Shift+S on Android.
+
+Also the owner's to say, from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
+
 
 ---
 
