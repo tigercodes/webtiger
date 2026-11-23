@@ -30,7 +30,7 @@ SOURCE = ROOT / "Fixtures" / "testsite" / "site.json"
 SWIFT = ROOT / "Packages" / "Tests" / "WTWebKitTests" / "TestSitePages.generated.swift"
 KOTLIN = ROOT / "Android" / "app" / "src" / "androidTest" / "kotlin" / "com" / "tigercodes" / "webtiger" / "TestSitePages.kt"
 
-KEYS = {"path", "title", "body", "content", "type", "status", "headers", "delay_ms", "note", "only_for"}
+KEYS = {"path", "title", "body", "content", "base64", "type", "status", "headers", "delay_ms", "note", "only_for"}
 PLACEHOLDER = re.compile(r"\{(query|cookie):([A-Za-z_]+)\|([^}]*)\}")
 
 
@@ -56,9 +56,20 @@ def page(entry: dict) -> dict:
     unknown = set(entry) - KEYS
     if unknown:
         raise SystemExit(f"{entry.get('path', 'not_found')}: unknown keys {sorted(unknown)}")
-    if ("title" in entry) == ("content" in entry):
-        raise SystemExit(f"{entry.get('path', 'not_found')}: a page has a title or content, and not both")
-    if "title" in entry:
+    if sum(key in entry for key in ("title", "content", "base64")) != 1:
+        raise SystemExit(f"{entry.get('path', 'not_found')}: a page has a title, or content, or base64, and one of them only")
+    data = ""
+    if "base64" in entry:
+        # Bytes that are not words: a picture. Sent as they are, as the kind the page says.
+        if "type" not in entry or "body" in entry:
+            raise SystemExit(f"{entry.get('path', 'not_found')}: bytes have a type, and no body")
+        try:
+            data = base64.b64encode(base64.b64decode(entry["base64"], validate=True)).decode("ascii")
+        except ValueError as problem:
+            raise SystemExit(f"{entry.get('path', 'not_found')}: its base64 is none: {problem}") from problem
+        body = ""
+        kind = entry["type"]
+    elif "title" in entry:
         if "type" in entry:
             raise SystemExit(f"{entry['path']}: a page with a title is text/html")
         title = entry["title"]
@@ -79,6 +90,7 @@ def page(entry: dict) -> dict:
         "type": kind,
         "headers": [pieces(header) for header in headers],
         "body": pieces(body),
+        "bytes": data,
         "delay_ms": int(entry.get("delay_ms", 0)),
         "authorization": authorization(entry.get("only_for", "")),
     }
@@ -137,6 +149,7 @@ def swift_page(entry: dict, indent: str) -> list:
         f"{indent}    type: {quoted(entry['type'], False)},",
         f"{indent}    headers: [{headers}],",
         f"{indent}    body: {swift_pieces(entry['body'])},",
+        f"{indent}    bytes: {quoted(entry['bytes'], False)},",
         f"{indent}    delayMilliseconds: {entry['delay_ms']},",
         f"{indent}    authorization: {quoted(entry['authorization'], False)}",
         f"{indent})",
@@ -185,6 +198,7 @@ def kotlin_page(entry: dict, indent: str) -> list:
         f"{indent}    type = {quoted(entry['type'], True)},",
         f"{indent}    headers = listOf({headers}),",
         f"{indent}    body = {kotlin_pieces(entry['body'])},",
+        f"{indent}    bytes = {quoted(entry['bytes'], True)},",
         f"{indent}    delayMilliseconds = {entry['delay_ms']},",
         f"{indent}    authorization = {quoted(entry['authorization'], True)},",
         f"{indent})",
@@ -270,10 +284,11 @@ def respond(site: dict, head: str) -> tuple:
     said = next((line for line in lines[1:] if line.lower().startswith("authorization:")), "")
     if entry["authorization"] and said[len("authorization:") :].strip() != entry["authorization"]:
         entry = site["refused"]
-    body = filled(entry["body"], query, cookies).encode("utf-8")
+    # Bytes are sent as they are, and are of no alphabet; words are sent as UTF-8, and say so.
+    body = base64.b64decode(entry["bytes"]) if entry["bytes"] else filled(entry["body"], query, cookies).encode("utf-8")
     headers = [
         f"HTTP/1.1 {entry['status']}",
-        f"Content-Type: {entry['type']}; charset=utf-8",
+        f"Content-Type: {entry['type']}" + ("" if entry["bytes"] else "; charset=utf-8"),
         f"Content-Length: {len(body)}",
         "Connection: close",
     ] + [filled(header, query, cookies) for header in entry["headers"]]
@@ -339,9 +354,10 @@ def self_test() -> int:
             headers["Authorization"] = authorization
         connection.request("GET", target, headers=headers)
         answer = connection.getresponse()
-        body = answer.read().decode("utf-8")
+        raw = answer.read()
         connection.close()
-        return answer, body
+        # A page of bytes is given back as its bytes; any other as its words.
+        return answer, (raw if answer.getheader("Content-Type", "").startswith("image/png") else raw.decode("utf-8"))
 
     def expect(what: str, got, wanted):
         if got != wanted:
@@ -404,6 +420,10 @@ def self_test() -> int:
     hello.close()
     expect("a connection that begins as TLS", told, NOT_TLS)
 
+    answer, body = get("/icon.png")
+    expect("/icon.png type", answer.getheader("Content-Type"), "image/png")
+    expect("/icon.png is a PNG", body[:8], b"\x89PNG\r\n\x1a\n")
+    expect("/icon.png length", answer.getheader("Content-Length"), str(len(body)))
     answer, body = get("/nowhere")
     expect("a path no page has", answer.status, 404)
     expect("its body", body, "<title>Not found</title>")

@@ -21,6 +21,8 @@ struct TestSitePage: Sendable {
     let type: String
     let headers: [[TestSitePiece]]
     let body: [TestSitePiece]
+    /// Bytes that are not words (a picture), in base64; empty for a page of words.
+    let bytes: String
     let delayMilliseconds: Int
     /// The `Authorization` header the page answers to; empty for a page that is anyone's.
     let authorization: String
@@ -136,10 +138,11 @@ final class TestSite: @unchecked Sendable {
         if !page.authorization.isEmpty, said.trimmingCharacters(in: .whitespaces) != page.authorization {
             page = TestSitePages.refused
         }
-        let body = Data(filled(page.body, from: request).utf8)
+        // Bytes are sent as they are, and are of no alphabet; words as UTF-8, and say so.
+        let body = page.bytes.isEmpty ? Data(filled(page.body, from: request).utf8) : Data(base64Encoded: page.bytes) ?? Data()
         let head = [
             "HTTP/1.1 \(page.status)",
-            "Content-Type: \(page.type); charset=utf-8",
+            "Content-Type: \(page.type)" + (page.bytes.isEmpty ? "; charset=utf-8" : ""),
             "Content-Length: \(body.count)",
             "Connection: close",
         ] + page.headers.map { filled($0, from: request) }

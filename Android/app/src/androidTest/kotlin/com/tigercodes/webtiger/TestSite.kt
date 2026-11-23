@@ -34,6 +34,8 @@ internal data class TestSitePage(
     val type: String,
     val headers: List<List<TestSitePiece>>,
     val body: List<TestSitePiece>,
+    /** Bytes that are not words (a picture), in base64; empty for a page of words. */
+    val bytes: String,
     val delayMilliseconds: Int,
     /** The `Authorization` header the page answers to; empty for a page that is anyone's. */
     val authorization: String,
@@ -131,11 +133,12 @@ internal class TestSite : Closeable {
         val said = lines.drop(1).firstOrNull { it.lowercase().startsWith("authorization:") }?.substring("authorization:".length).orEmpty().trim()
         val page = if (found.authorization.isNotEmpty() && said != found.authorization) TestSitePages.refused else found
         if (page.delayMilliseconds > 0) Thread.sleep(page.delayMilliseconds.toLong())
-        val body = filled(page.body, query, cookies).toByteArray(Charsets.UTF_8)
+        // Bytes are sent as they are, and are of no alphabet; words as UTF-8, and say so.
+        val body = if (page.bytes.isEmpty()) filled(page.body, query, cookies).toByteArray(Charsets.UTF_8) else java.util.Base64.getDecoder().decode(page.bytes)
         val answer =
             listOf(
                 "HTTP/1.1 ${page.status}",
-                "Content-Type: ${page.type}; charset=utf-8",
+                "Content-Type: ${page.type}" + if (page.bytes.isEmpty()) "; charset=utf-8" else "",
                 "Content-Length: ${body.size}",
                 "Connection: close",
             ) + page.headers.map { filled(it, query, cookies) }

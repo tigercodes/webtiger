@@ -1,5 +1,5 @@
 {
-  "comment": "The test site: the pages every shell's adapter suite and UI tests load, defined once. Tools/testsite/site.py writes them into each suite's own loopback server (Swift, Kotlin) and can serve them itself. A page with a 'title' is an HTML page with that title, a heading saying the same, and 'body' after it; a page with 'content' is that text, as 'type'. 'status' is '200 OK' unless given. 'body' and 'content' may be a list of lines. In a title, a header or a body, {query:NAME|DEFAULT} is the request's query value NAME and {cookie:NAME|DEFAULT} its cookie NAME, or DEFAULT when the request has none. Every answer closes the connection and says Cache-Control: no-store, unless the page gives a Cache-Control header of its own. A page with 'only_for' (name:password) answers only to a request that says so (HTTP Basic); every other request for it is answered with 'refused', which asks who is there. A connection that begins as TLS (the site asked for over https) is answered in plain words, 400, and closed: to a browser that is a secure connection that could not be made.",
+  "comment": "The test site: the pages every shell's adapter suite and UI tests load, defined once. Tools/testsite/site.py writes them into each suite's own loopback server (Swift, Kotlin) and can serve them itself. A page with a 'title' is an HTML page with that title, a heading saying the same, and 'body' after it; a page with 'content' is that text, as 'type'. A page with 'base64' is those bytes, as 'type', sent as they are: a picture. 'status' is '200 OK' unless given. 'body' and 'content' may be a list of lines. In a title, a header or a body, {query:NAME|DEFAULT} is the request's query value NAME and {cookie:NAME|DEFAULT} its cookie NAME, or DEFAULT when the request has none. Every answer closes the connection and says Cache-Control: no-store, unless the page gives a Cache-Control header of its own. A page with 'only_for' (name:password) answers only to a request that says so (HTTP Basic); every other request for it is answered with 'refused', which asks who is there. A connection that begins as TLS (the site asked for over https) is answered in plain words, 400, and closed: to a browser that is a secure connection that could not be made.",
   "pages": [
     {
       "path": "/",
@@ -504,6 +504,39 @@
         "<h1>With icon</h1>"
       ],
       "note": "A page that names its icon (046): an orange square of 32 pixels, a PNG given in the page itself, so that no server is asked for a picture."
+    },
+    {
+      "path": "/icon.png",
+      "type": "image/png",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAKklEQVR42mMQiHpAU8QwasGoBaMWjFowasGoBaMWjFowasGoBaMWDBULACDvKExemPMuAAAAAElFTkSuQmCC",
+      "note": "A picture, as a server sends one: a blue square of 32 pixels, a PNG. What /with-served-icon names as its icon."
+    },
+    {
+      "path": "/with-served-icon",
+      "content": [
+        "<!doctype html><title>With served icon</title>",
+        "<link rel=\"icon\" type=\"image/png\" href=\"/icon.png\">",
+        "<h1>With served icon</h1>"
+      ],
+      "note": "A page whose icon is at an address of the site (046): a browser that wants it asks the site for /icon.png, with whatever cookies it has for the site."
+    },
+    {
+      "path": "/icon-by-cookie",
+      "status": "302 Found",
+      "headers": [
+        "Location: /icon-of-{cookie:who|none}"
+      ],
+      "content": "",
+      "note": "Sends whoever asks for it on to an address named after who their cookie says is signed in: /icon-of-ada, or /icon-of-none. There is nothing at either: what the site was asked for says with whose cookies it was asked."
+    },
+    {
+      "path": "/with-icon-by-cookie",
+      "content": [
+        "<!doctype html><title>With icon by cookie</title>",
+        "<link rel=\"icon\" href=\"/icon-by-cookie\">",
+        "<h1>With icon by cookie</h1>"
+      ],
+      "note": "A page whose icon is at /icon-by-cookie (046): what the site is then asked for says with whose cookies an engine fetches a page's icon."
     }
   ],
   "not_found": {
