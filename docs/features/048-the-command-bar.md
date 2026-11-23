@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Built and tested in the core, on the recommendations of §6, which are provisional:** they are put to the owner and not yet answered. The core offers Spaces and commands to a shell that asks for them; **no shell asks yet**, so nothing in an app has changed |
+| **Status** | **Built and tested in the core, the Apple shell and the Android shell, on the recommendations of §6, which are provisional:** they are put to the owner and not yet answered. Typed in the address field, a word of a Space's name or of a command's words brings a row for it; chosen, the Space is shown or the command done |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "the command bar". 000 §6.2: "One field for addresses, searches, open tabs, Sites, Spaces, history, settings and plugin commands. Everything in the app is reachable by typing" |
 | **Contract** | 1.40 (§5). Nothing is kept |
 | **Builds on** | [011](011-suggestions.md): what is offered for what is typed, from history. [038](038-an-open-tab-is-offered.md): the open tabs of the row among them, Sites that sleep and Sites of shut Groups too. [024](024-several-spaces.md): Spaces. [034](034-the-macs-menus.md): the window's commands, which a menu and a key reach |
@@ -73,9 +73,19 @@ message AddressSuggestion {
 - **The words are matched as a page's are** (038): every word typed is a word of them or the start of one, whatever its case. Not the middle of a word; and not a command's name, which is no word of its.
 - **The rows** (D5): the open tabs have their part of the list, as they had: three, or as many as the shell asked for when that is fewer. Spaces and commands have what the tabs left, less one row where there is a place to offer: **history is never crowded out whole by them**. Where there is not room for two Spaces and three commands, each kind has a row before either has a second. In the six rows a shell asks for by default, with three tabs open that match: a Space, a command, and a place.
 
+**The shells, as built** (D1, D6):
+
+- **The commands a window sends** are those its menus do in one press, each only while it can be done: a new tab; on a Mac a new private window; the closed tab brought back; the tab in front closed, kept or let go, made a Favourite or stopped being one, sent home; the tabs at the side or along the top, where there is room; find, zoom, and the lists of what was visited; the tab moved a place, each way it can go; the next tab and the one before. By the words their menus have, in the person's language: "Keep as Site" while the tab is none, "Stop Keeping" once it is.
+- **A row says what it is at its end:** "Space", "Command", as an open tab's says "Switch to Tab". It has a name and no address under it.
+- **A command is done as it was when it was offered:** the window keeps what it sent with its last question. A command the window did not send, were the core to offer one, is done by nobody.
+- **Choosing a row gives the field back what it showed:** what was typed to find the row is not kept there.
+- **On a Mac the last tab's "Close Tab" closes the window,** as its menu's does (034).
+- **A window that is not drawn sends no commands** (Android): it has no words to send. **A private window sends its commands and asks for no Spaces.**
+- **Nothing is typed first, and no key opens it:** it is the address field, which has its key already.
+
 ## 6. Decisions
 
-**All of these are put to the owner.** D2 to D5 are built in the core as recommended; D1 and D6 are the shells'. The first column is the recommendation.
+**All of these are put to the owner,** and built as recommended. The first column is the recommendation.
 
 | # | Recommendation | Why | Other ways |
 |---|---|---|---|
@@ -89,7 +99,7 @@ message AddressSuggestion {
 ## 7. In what order
 
 1. **The core:** Spaces and commands matched and ordered, against the scripted engine. **Built.**
-2. **The shells:** the commands sent; a Space's row and a command's row; choosing them.
+2. **The shells:** the commands sent; a Space's row and a command's row; choosing them. **Built.**
 
 ## 8. Tests
 
@@ -98,11 +108,22 @@ message AddressSuggestion {
 | The core, through the contract (`command_bar.rs`, 3, against the scripted engine) | **A Space:** offered by a word of its name or the start of one, every word typed in any order and any case, in the Spaces' order, two at most; with its name and its number and nothing else of a row. Not by the middle of a word, a word it has not, or nothing typed. Not to a shell that does not say it shows Spaces. Never the Space the window shows; choosing one shows it. The Space the app made itself is found by nothing. A private window is offered none; a window there is not is refused as it was. **A command:** offered by the shell's words for it, in the shell's order, three at most, as its name and its words. Not by its name, the middle of a word, or nothing typed; none to a shell that sends none. A name that is no code, and a command with no words, are passed over; the sixty-fifth is not read. **The rows:** tabs, then Spaces, then commands, then places. In six rows: three tabs, a Space, a command, a place. With room for all: three tabs, two Spaces, three commands and the places. A row short: a place keeps its row and each kind has one before either has a second. The tabs keep their part: in four rows the fourth is a place's, in two there are two tabs. Only commands, or only Spaces, have the rows the other would have had. With no place to offer none has a row kept. **A shell that asks for neither** is answered as it was |
 | The tests there were | The 634 the core had pass unchanged but for seven places where a question is written out whole, which now name the two new fields' defaults. One of them, 038's, held the first way of keeping a row for history to account: it took a row from the tabs, in every shell's list |
 | The rule broken, a part at a time | 25 parts, in the model and where the question is answered: 25 caught |
+| The Apple shell's model (`CommandBarModelTests`, 6, against a scripted core) | **What a question carries:** for an empty tab alone, a new tab and closing it, by their menus' words, and that the window shows Spaces; for a page, keeping, a Favourite and zoom too; with what only the window can do, and room for a sidebar, a private window, the layout, find and the lists, each where its menu has it, and nothing is done by being offered; with an empty tab again, nothing to find in, keep or zoom; for a Site that is a Favourite and away, with a closed tab and a tab beside it, each command says what it would do now ("Stop Keeping", "Remove from Favourites", "Return to Site", "Tabs at the Top"), and a tile moves right, or left where the row runs from right to left. A private window asks for no Spaces and offers no Favourite; a window that is not open has no commands. **Choosing:** a Space's row asks the core to show it, ends the typing and puts the list away; a command's row does what its menu's item does (a tab opened, the zoom bar, find with the keyboard asked of the window, the lists); a command the window did not send asks nothing; the command done is the one that was offered. What a row says it is. On a Mac the last tab takes the window with it, a tab with another to show does not, and a sleeping Site is no tab to be left with. Broken in 38 parts, 38 caught: 34 at once, one by an assertion added for it, three once they were written so that they built |
+| The apps (`CommandBarTests`, 2, on the Mac and the iPhone simulator, with the real core and the real engine) | **A command:** "keep" brings "Keep as Site", a row that says it is a command, and Apple's audit faults nothing; chosen, the tab is a Site, the field has the page's address again and the list has gone; the same word then brings "Stop Keeping"; "new t" opens a tab; on the Mac "side" puts the tabs down the side and "tabs to" brings them back. **A Space:** in a Space named Work its own name brings no Space; from the first Space "wor" brings Work, a row that says it is a Space, and chosen it is shown. Nothing was loaded by any of it |
+| Apple's pictures | The state with places offered has a Space's row and a command's row: four pictures recorded again, two on each system, and looked at |
+| The Android shell on the JVM (`CommandBarTest`, 7) | As Apple's model, with the window drawn so that it has its words: what a question carries in each state; a window with room for a sidebar offers the layout by where its tabs are, a row of the sidebar moves down and a tile right; where the row runs from right to left, towards its end is left; a private window asks for no Spaces, and a window that is not drawn sends no commands. Drawn: a Space's row and a command's are a name and what they are, and nothing else; chosen, the Space is asked of the core and the list goes; a command is done; one nobody sent asks nothing; find and zoom open their bars, and the lists open over the window. Broken in 39 parts, 39 caught |
+| Android's pictures | The same state: two pictures taken away, made again and looked at |
+| The Android app on the emulator (`AppCommandBarTest`, 1, the real core and the real WebView) | "keep" brings "Keep as Site, Command"; chosen, the tab is a Site and the list has gone; then "Stop Keeping"; "new t" opens a tab. Nothing was loaded |
 
 ## 9. What is not verified
 
-- **No shell asks.** Nothing in an app sends its commands or says it shows Spaces: a Space's row and a command's row are drawn nowhere, and nobody has chosen one.
 - **The choices of §6** are the recommendations, not the owner's word.
+- **A Space's row on the emulator:** not chosen there. The device suite's tests share one core, and a Space made by one of them is there for all that come after; it is chosen on the JVM, against a scripted core, and in Apple's apps.
+- **A command chosen by the keyboard** (the arrow keys and Return on its row): by the same lines as a place's row, which is tested (011); no test marked a command's row with a key.
+- **Find, chosen from the list:** that the keyboard is then in the find bar is asked of the window, and tested as asked; no test of the app looked at where the keyboard was.
+- **A private window on a Mac, opened from the list;** the commands that move a tab; "Return to Site": each is sent and done by the model's tests, and not chosen in an app.
+- **An iPad, a real phone, a screen reader.** Apple's audit ran over a list with a command's row and with a Space's.
+- **Windows:** the two new strings are in its resources, which were never built on a PC.
 - **Words in another language.** The matching is the one a page's title has (038): by letters and digits, in lower case. A language that does not part its words with spaces is matched by the start of what was typed only.
 - **A long list of commands.** Sixty-four are read at each letter typed: not measured.
 - **Two commands a shell gives one name:** both are offered, as sent.
@@ -111,6 +132,6 @@ message AddressSuggestion {
 
 - [ ] The owner's word on §6.
 - [x] The core and the contract.
-- [ ] The shells.
+- [x] The shells.
 - [x] The core: `Tools/test.sh all` green, and `android-device`, on 2026-11-23: `lint`, `core` (637, and the strings tool's 24), `unit` (325 on the Mac), `build`, the Mac's UI suite (54), `ios` (307 on the iPhone simulator), the iPhone's UI suite (41), `android` (437 and 32 on the JVM) and `android-device` (167 on the emulator).
 - [ ] The shells: the gate.

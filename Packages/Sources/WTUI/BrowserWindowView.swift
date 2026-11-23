@@ -134,8 +134,9 @@ public struct BrowserWindowView: View {
         }
         #endif
         .background { KeysNobodySees(window: commands) }
-        // The menu bar speaks for the window in front (034).
+        // The menu bar speaks for the window in front (034); and the command bar (048).
         .focusedSceneValue(\.windowCommands, commands)
+        .modifier(OffersWindowCommands(model: model, findFocused: $findFocused, showingHistory: $showingHistory))
         .task { await model.open() }
         .onDisappear {
             if closesWithItsView {

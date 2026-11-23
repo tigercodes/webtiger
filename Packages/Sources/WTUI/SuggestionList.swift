@@ -37,6 +37,19 @@ struct SuggestionList: View {
         .accessibilityIdentifier("suggestions")
     }
 
+    /// What a row is, when it is no place: said at its end.
+    static func kind(of suggestion: WTAddressSuggestion) -> Word? {
+        if suggestion.tabID != 0 {
+            Words.suggestionsSwitchTab
+        } else if suggestion.spaceID != 0 {
+            Words.suggestionsSpace
+        } else if !suggestion.command.isEmpty {
+            Words.suggestionsCommand
+        } else {
+            nil
+        }
+    }
+
     private func row(_ suggestion: WTAddressSuggestion) -> some View {
         HStack(spacing: Tokens.Space.m) {
             VStack(alignment: .leading, spacing: Tokens.Space.xs) {
@@ -44,7 +57,8 @@ struct SuggestionList: View {
                 Text(suggestion.title.isEmpty ? suggestion.display : suggestion.title)
                     .lineLimit(1)
                     .accessibilityIdentifier("suggestion-title")
-                if !suggestion.title.isEmpty {
+                // (A Space and a command have a name and no address.)
+                if !suggestion.title.isEmpty, !suggestion.display.isEmpty {
                     Text(suggestion.display)
                         .font(.footnote)
                         .lineLimit(1)
@@ -53,11 +67,13 @@ struct SuggestionList: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            if suggestion.tabID != 0 {
-                // A tab that is open (038): choosing the row brings it in front. Said in
-                // words, whole, whatever the title has to give up for it; and in the text's
-                // own colour: small and grey, the iPhone's audit found it too faint to read.
-                Text(Words.suggestionsSwitchTab)
+            if let kind = Self.kind(of: suggestion) {
+                // A tab that is open (038): choosing the row brings it in front. A Space
+                // and a command (048): choosing the row shows the one and does the other.
+                // Said in words, whole, whatever the title has to give up for it; and in the
+                // text's own colour: small and grey, the iPhone's audit found it too faint
+                // to read.
+                Text(kind)
                     .font(.footnote)
                     .lineLimit(1)
                     .fixedSize()

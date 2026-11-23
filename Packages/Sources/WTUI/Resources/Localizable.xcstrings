@@ -3013,6 +3013,18 @@
         }
       }
     },
+    "suggestions.command": {
+      "comment": "At the end of a row of that list which is a command of the window's, found by its words: choosing the row does it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Command"
+          }
+        }
+      }
+    },
     "suggestions.list": {
       "comment": "Accessibility label of the list of places offered under the address field as it is typed in.",
       "extractionState": "manual",
@@ -3021,6 +3033,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Suggestions"
+          }
+        }
+      }
+    },
+    "suggestions.space": {
+      "comment": "At the end of a row of that list which is a Space, found by its name: choosing the row shows that Space in the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Space"
           }
         }
       }

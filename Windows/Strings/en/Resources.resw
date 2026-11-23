@@ -256,7 +256,9 @@
   <data name="spaces_shares" xml:space="preserve"><value>Shares logins with {0}</value><comment>Under a Space&apos;s name in the list of Spaces, when it is signed in to sites as another Space is. %@ is that other Space&apos;s name.</comment></data>
   <data name="spaces_shown" xml:space="preserve"><value>Shown</value><comment>Said of the Space the window shows now, in the list of Spaces.</comment></data>
   <data name="spaces_title" xml:space="preserve"><value>Spaces</value><comment>Heading of the list of Spaces.</comment></data>
+  <data name="suggestions_command" xml:space="preserve"><value>Command</value><comment>At the end of a row of that list which is a command of the window&apos;s, found by its words: choosing the row does it.</comment></data>
   <data name="suggestions_list" xml:space="preserve"><value>Suggestions</value><comment>Accessibility label of the list of places offered under the address field as it is typed in.</comment></data>
+  <data name="suggestions_space" xml:space="preserve"><value>Space</value><comment>At the end of a row of that list which is a Space, found by its name: choosing the row shows that Space in the window.</comment></data>
   <data name="suggestions_switch_tab" xml:space="preserve"><value>Switch to Tab</value><comment>At the end of a row of that list which is a tab that is already open: choosing the row brings that tab in front instead of loading the page again.</comment></data>
   <data name="switcher_done" xml:space="preserve"><value>Done</value><comment>Button that closes the switcher without changing which tab is in front.</comment></data>
   <data name="switcher_open" xml:space="preserve"><value>Tabs: {0}</value><comment>Accessibility label of a button in the toolbar of a narrow window (a phone&apos;s): it opens the switcher, a sheet with every tab of the row. %d is how many tabs the row has; the button itself shows that number alone.</comment></data>

@@ -233,6 +233,9 @@ public final class BrowserModel {
     public private(set) var markedSuggestion: Int?
     /// Counts what was asked: an answer to anything but the last question is out of date.
     @ObservationIgnored private var suggestionsAsked = 0
+    /// The commands sent with the last question (048), and what only the window can do.
+    @ObservationIgnored var commandsAsked: [BarCommand] = []
+    @ObservationIgnored var windowDoes = WindowDoes()
 
     /// Asks what to offer for what is in the field: only while it is being typed in.
     private func suggest() {
@@ -245,6 +248,7 @@ public final class BrowserModel {
         var ask = WTSuggestAddresses()
         ask.windowID = window.windowID
         ask.text = addressText
+        askOfTheCommandBar(&ask)
         let answer = session.core.send(.suggestAddresses(ask))
         Task { [weak self] in
             guard case let .addressSuggestions(offered) = try? await answer.value, let self, question == suggestionsAsked else { return }
@@ -266,6 +270,10 @@ public final class BrowserModel {
     /// (038) is brought in front and nothing is loaded; the core is told it was chosen while
     /// typing, and closes the tab typed in when that was an empty one.
     public func choose(_ suggestion: WTAddressSuggestion) {
+        // A Space is shown, and a command done (048).
+        if chooseOfTheCommandBar(suggestion) {
+            return
+        }
         guard suggestion.tabID != 0 else {
             load(suggestion.url)
             return

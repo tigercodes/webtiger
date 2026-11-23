@@ -28,10 +28,8 @@ public struct WindowCommands {
     /// the core opens an empty tab when a row's last Site is closed, and closing that tab
     /// would wake the Site again.) The Sites are kept, and are there when a window next opens.
     func closeTab() {
-        let front = model.tab.tabID
-        let somethingElseToShow = model.tabs.contains { $0.tabID != front && !($0.kept && $0.asleep) }
-        if somethingElseToShow {
-            model.closeTab(front)
+        if model.hasAnotherTabToShow {
+            model.closeTab(model.tab.tabID)
         } else {
             closeWindow()
         }

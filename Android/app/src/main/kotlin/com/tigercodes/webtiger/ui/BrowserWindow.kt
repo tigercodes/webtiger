@@ -164,6 +164,15 @@ private fun Window(session: BrowserSession, model: BrowserModel, private: Privat
         }
         onDispose { windowKeys?.answer = null }
     }
+    // The command bar (048): what only the window that is drawn can do for it. A command's
+    // words are said in the person's language, the lists open, and the row runs the way
+    // words do.
+    val resources = LocalContext.current.resources
+    val runsRightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
+    DisposableEffect(model, resources, runsRightToLeft) {
+        model.windowDoes = WindowDoes(words = resources::getString, showHistory = { showingHistory = true }, rightToLeft = runsRightToLeft)
+        onDispose { model.windowDoes = WindowDoes() }
+    }
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         // The window draws edge to edge; its content keeps clear of the system's bars, the
         // cutout and the keyboard.
@@ -1043,15 +1052,17 @@ private fun SuggestionList(model: BrowserModel, onChosen: () -> Unit) {
                     // title is cut at its end, a long address in its middle, where its site
                     // and its end both stay.
                     Text(text = place.title.ifEmpty { place.display }, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (place.title.isNotEmpty()) {
+                    // (A Space and a command have a name and no address.)
+                    if (place.title.isNotEmpty() && place.display.isNotEmpty()) {
                         Text(text = place.display, maxLines = 1, overflow = TextOverflow.MiddleEllipsis, style = MaterialTheme.typography.bodySmall)
                     }
                 }
-                if (place.tab_id != 0L) {
-                    // A tab that is open (038): choosing the row brings it in front. Said in
-                    // words, whole, whatever the title has to give up for it.
+                kindOf(place)?.let { kind ->
+                    // A tab that is open (038): choosing the row brings it in front. A Space
+                    // and a command (048): choosing the row shows the one and does the other.
+                    // Said in words, whole, whatever the title has to give up for it.
                     Text(
-                        text = stringResource(R.string.suggestions_switch_tab),
+                        text = stringResource(kind),
                         maxLines = 1,
                         softWrap = false,
                         style = MaterialTheme.typography.bodySmall,

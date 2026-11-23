@@ -550,6 +550,10 @@ class BrowserModel(
     /** Counts what was asked: an answer to anything but the last question is out of date. */
     private var suggestionsAsked = 0
 
+    /** The commands sent with the last question (048), and what only the window that is drawn can do. */
+    internal var commandsAsked: List<BarCommand> = emptyList()
+    internal var windowDoes = WindowDoes()
+
     /** Asks what to offer for what is in the field: only while it is being typed in. */
     private fun suggest() {
         val open = window
@@ -559,7 +563,9 @@ class BrowserModel(
         }
         suggestionsAsked += 1
         val question = suggestionsAsked
-        val ask = SuggestAddresses(window_id = open.windowId, text = addressText)
+        // The command bar (048): the window shows Spaces (a private one has none, 037), and
+        // the commands it can do now are for the core to match with what is typed.
+        val ask = SuggestAddresses(window_id = open.windowId, text = addressText, commands = commandsToAsk(), spaces = !isPrivate)
         session.scope.launch {
             val answer =
                 try {
@@ -583,6 +589,8 @@ class BrowserModel(
      * and closes the tab typed in when that was an empty one.
      */
     fun choose(suggestion: AddressSuggestion) {
+        // A Space is shown, and a command done (048).
+        if (chooseOfTheCommandBar(suggestion)) return
         if (suggestion.tab_id == 0L) {
             load(suggestion.url)
             return

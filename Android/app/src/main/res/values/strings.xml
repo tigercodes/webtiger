@@ -503,8 +503,12 @@
     <string name="spaces_shown">Shown</string>
     <!-- Heading of the list of Spaces. -->
     <string name="spaces_title">Spaces</string>
+    <!-- At the end of a row of that list which is a command of the window's, found by its words: choosing the row does it. -->
+    <string name="suggestions_command">Command</string>
     <!-- Accessibility label of the list of places offered under the address field as it is typed in. -->
     <string name="suggestions_list">Suggestions</string>
+    <!-- At the end of a row of that list which is a Space, found by its name: choosing the row shows that Space in the window. -->
+    <string name="suggestions_space">Space</string>
     <!-- At the end of a row of that list which is a tab that is already open: choosing the row brings that tab in front instead of loading the page again. -->
     <string name="suggestions_switch_tab">Switch to Tab</string>
     <!-- Button that closes the switcher without changing which tab is in front. -->

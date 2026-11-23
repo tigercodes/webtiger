@@ -1258,10 +1258,20 @@ enum Words {
     /// Heading of the list of Spaces.
     static let spacesTitle = Word(key: "spaces.title")
 
+    /// Command
+    ///
+    /// At the end of a row of that list which is a command of the window's, found by its words: choosing the row does it.
+    static let suggestionsCommand = Word(key: "suggestions.command")
+
     /// Suggestions
     ///
     /// Accessibility label of the list of places offered under the address field as it is typed in.
     static let suggestionsList = Word(key: "suggestions.list")
+
+    /// Space
+    ///
+    /// At the end of a row of that list which is a Space, found by its name: choosing the row shows that Space in the window.
+    static let suggestionsSpace = Word(key: "suggestions.space")
 
     /// Switch to Tab
     ///
@@ -1718,7 +1728,9 @@ extension Word {
         "spaces.shares",
         "spaces.shown",
         "spaces.title",
+        "suggestions.command",
         "suggestions.list",
+        "suggestions.space",
         "suggestions.switch_tab",
         "switcher.done",
         "switcher.open",

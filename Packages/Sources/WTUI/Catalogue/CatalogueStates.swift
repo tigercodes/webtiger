@@ -85,7 +85,8 @@ enum CatalogueState: String, CaseIterable, Identifiable {
     }
 
     /// What is offered for it: first a tab that is open (038), whose title is longer than
-    /// its row has room for beside the words that say it is a tab; then places: one with a
+    /// its row has room for beside the words that say it is a tab; then a Space and a
+    /// command (048), each a name with what it is said at its end; then places: one with a
     /// title, one whose title is longer than the list is wide, one with none.
     var offered: [WTAddressSuggestion] {
         guard self == .suggestions else { return [] }
@@ -97,8 +98,16 @@ enum CatalogueState: String, CaseIterable, Identifiable {
             place.tabID = tab
             return place
         }
+        var space = WTAddressSuggestion()
+        space.title = "Examples"
+        space.spaceID = 3
+        var command = WTAddressSuggestion()
+        command.title = "Example Command"
+        command.command = "example.command"
         return [
             offer("Examples of every kind, in a tab that is open already and has more to say", "example.com/open", tab: 7),
+            space,
+            command,
             offer("Example Domain", "example.com"),
             offer("A page whose title is longer than the list is wide, and then goes on", "example.org/a/long/path"),
             offer("", "example.net/plain.txt"),
