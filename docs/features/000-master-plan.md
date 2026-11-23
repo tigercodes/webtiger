@@ -711,7 +711,7 @@ Spaces with their login sets, colours and icons; shared logins; the tree with dr
 
 **Exit:** the isolation tests pass; switching layout changes nothing in the model; 5,000 rows scroll within budget.
 
-**Where W2 stands (2026-11-23).** Built: Spaces with their login sets and colours, and shared logins (024, 025); several windows and private windows (037); undo for a closed tab (033); the keys of each system (034 to 036); Sites (039), Groups (041) and Favourites (042); both layouts, on the Mac and on a touch screen's wide windows (043); a tab moved a place by a command, and on the Mac by dragging (045); the command bar: Spaces and commands in the address field's list ([048](048-the-command-bar.md)); a site's icon, on every system (046: where WebKit hands none over the app fetches the one a page names, as nobody); the phone's switcher (047); undo for what is done to the tree (044). Not built: a Space's icon; dragging in the tree on a touch screen (on the Mac a tab and a Group are dragged, along the top and down the side, [045](045-moving-in-the-row.md) §5b; elsewhere a tab is moved a place by a command); the tidying of temporary tabs; the phone's switcher as cards (it has the sidebar's tree, [047](047-the-phones-switcher.md); cards wait for pictures of pages). Of the exit: the isolation tests pass; that switching the layout changes nothing in the model is tested in the core (043 §8); **the 5,000 rows are measured in part** ([043](043-the-sidebar.md) §8a): the standard session is well inside the contract's budget; at 5,000 rows a change costs the core about 4 ms and tells the window the whole row again, which telling only what changed (W3) is to mend; the sidebars make their rows as they come into view; no frame was counted.
+**Where W2 stands (2026-11-23).** Built: Spaces with their login sets and colours, and shared logins (024, 025); several windows and private windows (037); undo for a closed tab (033); the keys of each system (034 to 036); Sites (039), Groups (041) and Favourites (042); both layouts, on the Mac and on a touch screen's wide windows (043); a tab moved a place by a command, and on the Mac by dragging (045); the command bar: Spaces and commands in the address field's list ([048](048-the-command-bar.md)); a site's icon, on every system (046: where WebKit hands none over the app fetches the one a page names, as nobody); the phone's switcher (047); undo for what is done to the tree (044). Not built: a Space's icon; dragging in the tree on a touch screen (on the Mac a tab and a Group are dragged, along the top and down the side, [045](045-moving-in-the-row.md) §5b; elsewhere a tab is moved a place by a command); the tidying of temporary tabs (designed, with the Archive they go to, [049](049-tidying-temporary-tabs.md)); the phone's switcher as cards (it has the sidebar's tree, [047](047-the-phones-switcher.md); cards wait for pictures of pages). Of the exit: the isolation tests pass; that switching the layout changes nothing in the model is tested in the core (043 §8); **the 5,000 rows are measured in part** ([043](043-the-sidebar.md) §8a): the standard session is well inside the contract's budget; at 5,000 rows a change costs the core about 4 ms and tells the window the whole row again, which telling only what changed (W3) is to mend; the sidebars make their rows as they come into view; no frame was counted.
 
 ### W3 — Sleeping tabs and the budgets (medium)
 
@@ -893,6 +893,17 @@ Four features of W2 are built on the recommendations of their own documents, the
 4. Only what can be done now is offered.
 5. The order: tabs, Spaces, commands, places.
 6. Which commands: those that need nothing more than to be chosen.
+
+**Tidying temporary tabs** ([049](049-tidying-temporary-tabs.md) §6, put on 2026-11-23; designed, not built):
+
+1. A Space is made with no tidying, until the first run offers its two styles.
+2. A tab's time is counted from when it was last in front.
+3. The times: never, 12 hours, a day, a week, 30 days.
+4. The time is the Space's.
+5. Never the tab in front of a window; nor a tab with no page.
+6. The Archive keeps a Space's thousand newest.
+7. A tab brought back is at the end of the temporary tabs, in front, and loads its address.
+8. Tidying is not undone by ⌘Z: bringing back is its undoing.
 
 Also the owner's to say, from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
 
