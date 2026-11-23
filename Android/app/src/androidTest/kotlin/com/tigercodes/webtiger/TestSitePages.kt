@@ -446,6 +446,15 @@ internal object TestSitePages {
                 delayMilliseconds = 0,
                 authorization = "",
             ),
+            TestSitePage(
+                path = "/with-icon",
+                status = "200 OK",
+                type = "text/html",
+                headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
+                body = listOf(TestSitePiece.Text("<!doctype html><title>With icon</title>\n<link rel=\"icon\" type=\"image/png\" href=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAKklEQVR42mN4kCVAU8QwasGoBaMWjFowasGoBaMWjFowasGoBaMWDBULALgFaEwZ93C7AAAAAElFTkSuQmCC\">\n<h1>With icon</h1>")),
+                delayMilliseconds = 0,
+                authorization = "",
+            ),
         )
 
     /** What every other path is answered with. */

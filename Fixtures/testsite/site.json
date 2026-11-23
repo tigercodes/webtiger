@@ -495,6 +495,15 @@
         "</script>"
       ],
       "note": "A list of choices of the page's own (a select). Says in its title what was chosen. An engine shows such a list in a window of its own over the page, which needs the window the page is in: for the web view's hold on its window (032)."
+    },
+    {
+      "path": "/with-icon",
+      "content": [
+        "<!doctype html><title>With icon</title>",
+        "<link rel=\"icon\" type=\"image/png\" href=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAKklEQVR42mN4kCVAU8QwasGoBaMWjFowasGoBaMWjFowasGoBaMWDBULALgFaEwZ93C7AAAAAElFTkSuQmCC\">",
+        "<h1>With icon</h1>"
+      ],
+      "note": "A page that names its icon (046): an orange square of 32 pixels, a PNG given in the page itself, so that no server is asked for a picture."
     }
   ],
   "not_found": {

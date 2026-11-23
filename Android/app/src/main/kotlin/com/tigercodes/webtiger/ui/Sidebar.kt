@@ -161,6 +161,7 @@ private fun Entry(model: BrowserModel, tab: TabSummary, modifier: Modifier = Mod
         onKeepOrLetGo = { model.keepOrLetGo(tab.tab_id) },
         onSendHome = { model.sendHome(tab.tab_id) },
         onMove = { model.moveTab(tab.tab_id, it) },
+        icon = model.icons[tab.icon_id],
         grouping =
             if (model.canBeGrouped(tab)) {
                 Grouping(

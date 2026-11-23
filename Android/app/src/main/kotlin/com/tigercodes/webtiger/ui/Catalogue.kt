@@ -72,6 +72,8 @@ import com.tigercodes.webtiger.core.v1.SearchEngine
 import com.tigercodes.webtiger.core.v1.SearchSettings
 import com.tigercodes.webtiger.core.v1.SignInPrompt
 import com.tigercodes.webtiger.core.v1.GroupSummary
+import com.tigercodes.webtiger.core.v1.Icon
+import com.tigercodes.webtiger.core.v1.IconsPage
 import com.tigercodes.webtiger.core.v1.Layout
 import com.tigercodes.webtiger.core.v1.SpaceSummary
 import com.tigercodes.webtiger.core.v1.Response
@@ -88,6 +90,7 @@ import com.tigercodes.webtiger.webview.SystemWebViewEngine
 import java.time.ZoneOffset
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
+import okio.ByteString.Companion.toByteString
 
 /** One state of the browser window: the snapshot a core would publish for it. */
 internal enum class CatalogueState(@StringRes val title: Int) {
@@ -319,10 +322,12 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                         TabSummary(tab_id = 22, title = "News", host = "news.example.com"),
                     )
                 } else if (this == FAVOURITES) {
+                    // One tile with its site's icon (046) and one with a letter, for a site
+                    // that has none; a Site with an icon, and a tab without.
                     listOf(
-                        front,
+                        front.copy(icon_id = CatalogueIcons.ORANGE),
                         TabSummary(tab_id = 23, title = "Calendar", host = "calendar.example.com", kept = true, favourite = true, asleep = true, site_name = "Calendar"),
-                        TabSummary(tab_id = 24, title = "Wiki", host = "wiki.example.com", kept = true, site_name = "Wiki"),
+                        TabSummary(tab_id = 24, title = "Wiki", host = "wiki.example.com", kept = true, site_name = "Wiki", icon_id = CatalogueIcons.BLUE),
                         TabSummary(tab_id = 22, title = "News", host = "news.example.com"),
                     )
                 } else if (this == SIDEBAR) {
@@ -330,12 +335,12 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                     // one asleep; a Site in no Group; the open Group's two, the one in front
                     // and one asleep; none of the shut Group's; two tabs, one still loading.
                     listOf(
-                        TabSummary(tab_id = 20, title = "Mail", host = "mail.example.com", kept = true, favourite = true, site_name = "Mail"),
+                        TabSummary(tab_id = 20, title = "Mail", host = "mail.example.com", kept = true, favourite = true, site_name = "Mail", icon_id = CatalogueIcons.ORANGE),
                         TabSummary(tab_id = 23, title = "Calendar", host = "calendar.example.com", kept = true, favourite = true, asleep = true, site_name = "Calendar"),
-                        TabSummary(tab_id = 25, title = "Docs", host = "docs.example.com", kept = true, site_name = "Docs"),
+                        TabSummary(tab_id = 25, title = "Docs", host = "docs.example.com", kept = true, site_name = "Docs", icon_id = CatalogueIcons.BLUE),
                         front.copy(group_id = 30),
-                        TabSummary(tab_id = 21, title = "Board", host = "board.example.com", kept = true, asleep = true, group_id = 30),
-                        TabSummary(tab_id = 22, title = "News", host = "news.example.com"),
+                        TabSummary(tab_id = 21, title = "Board", host = "board.example.com", kept = true, asleep = true, group_id = 30, icon_id = CatalogueIcons.GREEN),
+                        TabSummary(tab_id = 22, title = "News", host = "news.example.com", icon_id = CatalogueIcons.GREEN),
                         TabSummary(tab_id = 26, host = "example.org", loading = true),
                     )
                 } else if (this == GROUPS) {
@@ -391,10 +396,42 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                         core.emit(published, subscription = 3)
                         Response(subscribed = Subscribed(subscription_id = 3))
                     }
+                    // The pictures of the icons a state's tabs have (046).
+                    request.query_icons != null ->
+                        Response(
+                            icons_page =
+                                IconsPage(
+                                    icons = request.query_icons?.icon_ids.orEmpty().mapNotNull { number -> CatalogueIcons.png(number)?.let { Icon(icon_id = number, png = it.toByteString()) } },
+                                ),
+                        )
                     else -> Response(ack = Ack())
                 }
             }
         return BrowserSession(core, SystemWebViewEngine(context), scope)
+    }
+}
+
+/** The icons the catalogue's sites have (046): each a plain shape of one colour, made here, as a core would hand a picture over. */
+internal object CatalogueIcons {
+    const val ORANGE = 1L
+    const val BLUE = 2L
+    const val GREEN = 3L
+
+    /** The picture of a number, as a PNG; null for a number that is none of these. */
+    fun png(number: Long): ByteArray? {
+        val colour =
+            when (number) {
+                ORANGE -> android.graphics.Color.rgb(0xE0, 0x6A, 0x10)
+                BLUE -> android.graphics.Color.rgb(0x10, 0x5A, 0xE0)
+                GREEN -> android.graphics.Color.rgb(0x2E, 0x9E, 0x55)
+                else -> return null
+            }
+        val picture = android.graphics.Bitmap.createBitmap(64, 64, android.graphics.Bitmap.Config.ARGB_8888)
+        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = colour }
+        android.graphics.Canvas(picture).drawRoundRect(4f, 4f, 60f, 60f, 14f, 14f, paint)
+        val out = java.io.ByteArrayOutputStream()
+        picture.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+        return out.toByteArray()
     }
 }
 

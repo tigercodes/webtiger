@@ -9,6 +9,7 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -97,6 +98,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.VerticalDivider
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import com.tigercodes.webtiger.core.v1.Layout
@@ -349,6 +352,7 @@ private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit
                                 onKeepOrLetGo = { model.keepOrLetGo(tab.tab_id) },
                                 onSendHome = { model.sendHome(tab.tab_id) },
                                 onMove = { model.moveTab(tab.tab_id, it) },
+                                icon = model.icons[tab.icon_id],
                                 // Into a Group, or out of one: for a tab that can be kept.
                                 grouping =
                                     if (model.canBeGrouped(tab)) {
@@ -445,6 +449,8 @@ internal fun TabChip(
     fills: Boolean = false,
     /** Moves the tab a place along its row (045); with none, its menu has no such command. */
     onMove: ((RowStep) -> Unit)? = null,
+    /** The picture of the tab's icon (046), when the window has it. */
+    icon: ImageBitmap? = null,
 ) {
     // The tab that comes in front is brought into view.
     val place = remember { BringIntoViewRequester() }
@@ -506,9 +512,13 @@ internal fun TabChip(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = if (tab.favourite) Arrangement.Center else Arrangement.spacedBy(Tokens.Space.xs),
             ) {
-                if (tab.favourite) {
-                    // The first letter of the name it was kept with, which does not change as
-                    // it wanders; of the name it shows, when it was kept with none.
+                if (tab.favourite && icon != null) {
+                    // A tile is its site's icon (046), when it has one. Asleep, it has no
+                    // page: fainter, as a sleeping tab's name is.
+                    Image(bitmap = icon, contentDescription = null, modifier = Modifier.size(24.dp).alpha(if (tab.asleep) 0.5f else 1f).testTag("tab-icon"))
+                } else if (tab.favourite) {
+                    // Until it has: the first letter of the name it was kept with, which does
+                    // not change as it wanders; of the name it shows, when it was kept with none.
                     Text(
                         text = spaceInitial(tab.site_name.ifEmpty { name }),
                         fontWeight = if (inFront) FontWeight.Bold else FontWeight.Medium,
@@ -529,6 +539,10 @@ internal fun TabChip(
                         contentDescription = null,
                         modifier = Modifier.size(14.dp).testTag(if (tab.away) "site-mark-away" else "site-mark"),
                     )
+                }
+                if (icon != null) {
+                    // Its site's icon (046), before its name.
+                    Image(bitmap = icon, contentDescription = null, modifier = Modifier.size(16.dp).alpha(if (tab.asleep) 0.5f else 1f).testTag("tab-icon"))
                 }
                 Text(
                     text = name,

@@ -444,6 +444,15 @@ enum TestSitePages {
             delayMilliseconds: 0,
             authorization: ""
         ),
+        TestSitePage(
+            path: "/with-icon",
+            status: "200 OK",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("<!doctype html><title>With icon</title>\n<link rel=\"icon\" type=\"image/png\" href=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAKklEQVR42mN4kCVAU8QwasGoBaMWjFowasGoBaMWjFowasGoBaMWDBULALgFaEwZ93C7AAAAAElFTkSuQmCC\">\n<h1>With icon</h1>")],
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
     ]
 
     /// What every other path is answered with.

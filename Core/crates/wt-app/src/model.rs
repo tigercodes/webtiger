@@ -298,6 +298,10 @@ pub(crate) struct Tab {
     /// When the tab's page was last heard about its icon (046): it is not
     /// heard again for a minute. `None` once another page has committed.
     icon_heard: Option<Timestamp>,
+    /// An icon the engine handed over for a page that was still on its way
+    /// (046): the page it named, and the picture. It waits for that page to
+    /// arrive, and goes when another does, or when the load fails.
+    icon_waiting: Option<(String, Vec<u8>)>,
 }
 
 /// What makes a tab a Site (039): where its home is, and what it is called
@@ -363,6 +367,7 @@ impl Tab {
             favourite: false,
             homing: false,
             icon_heard: None,
+            icon_waiting: None,
         }
     }
 
@@ -610,6 +615,8 @@ impl Tab {
                 }
             }
             Kind::NavigationFailed(failed) => {
+                // The page an icon was waiting for is not coming (046).
+                self.icon_waiting = None;
                 if failed.code == "net.cancelled" {
                     // The user stopped it, or another load replaced it: the
                     // field goes back to the page that is still on screen.
@@ -1989,17 +1996,48 @@ impl State {
         self.arrange_row(window, space);
     }
 
-    /// An engine has the icon of a web view's page (046): whose it is to be
-    /// kept as, the login set and the host. `None` when it is not to be
-    /// kept: the web view is no tab's; no page has arrived in the tab (one
-    /// that failed never did); the page is not one whose icon is taken (it
-    /// did not come over `https` or from this device, or its certificate
-    /// was gone on past, 026); the page the engine names is of another
-    /// host; or the page was heard about its icon less than a minute ago.
+    /// Whether the page an engine names as an icon's has arrived in a web
+    /// view's tab (046). `Some(true)`: it is the page that owns the web
+    /// view, by its host. `Some(false)`: it is not, and a load is on its
+    /// way that it may be the page of (an engine may have a page's icon a
+    /// moment before it says the page has arrived). `None`: neither, or the
+    /// web view is no tab's, or what is named is no address.
+    pub(crate) fn icon_page_arrived(&self, web_view: WebViewId, page_url: &str) -> Option<bool> {
+        let tab = self.tab_of(web_view)?;
+        let named = Address::parse(page_url).ok()?;
+        let host = named.host()?;
+        if tab.committed.as_ref().and_then(Address::host) == Some(host) {
+            return Some(true);
+        }
+        (tab.load == Load::Loading).then_some(false)
+    }
+
+    /// An icon waits for the page it was handed over for (046), in the
+    /// place of any that was waiting.
+    pub(crate) fn icon_waits(&mut self, web_view: WebViewId, page_url: &str, png: &[u8]) {
+        if let Some(tab) = self.tab_of_mut(web_view) {
+            tab.icon_waiting = Some((page_url.to_owned(), png.to_vec()));
+        }
+    }
+
+    /// The icon that was waiting for a page to arrive in a web view's tab
+    /// (046), now that one has: the page it named, and the picture. It
+    /// waits no longer, whichever page arrived.
+    pub(crate) fn take_waiting_icon(&mut self, web_view: WebViewId) -> Option<(String, Vec<u8>)> {
+        self.tab_of_mut(web_view)?.icon_waiting.take()
+    }
+
+    /// An engine has the icon of the page that owns a web view (046): whose
+    /// it is to be kept as, the login set and the host. `None` when it is
+    /// not to be kept: the web view is no tab's; no page has arrived in the
+    /// tab (one that failed never did); the page is not one whose icon is
+    /// taken (it did not come over `https` or from this device, or its
+    /// certificate was gone on past, 026); or the page was heard about its
+    /// icon less than a minute ago. (That the icon is this page's, and not
+    /// another's, is asked first: `icon_page_arrived`.)
     pub(crate) fn icon_taker(
         &mut self,
         web_view: WebViewId,
-        page_url: &str,
         now: Timestamp,
     ) -> Option<(LoginSetId, String)> {
         let tab = self.tab_of(web_view)?;
@@ -2008,10 +2046,6 @@ impl State {
             .as_ref()
             .filter(|page| page.is_trustworthy())?;
         let host = page.host()?.to_owned();
-        let named = Address::parse(page_url).ok()?;
-        if named.host() != Some(host.as_str()) {
-            return None;
-        }
         let login_set = tab.login_set;
         let excepted = page
             .origin()

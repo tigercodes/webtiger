@@ -4,6 +4,7 @@ package com.tigercodes.webtiger.ui
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.ImageBitmap
 import com.tigercodes.webtiger.core.CoreError
 import com.tigercodes.webtiger.core.v1.ActivateTab
 import com.tigercodes.webtiger.core.v1.AddressSuggestion
@@ -35,6 +36,7 @@ import com.tigercodes.webtiger.core.v1.QuerySearch
 import com.tigercodes.webtiger.core.v1.QuerySpaces
 import com.tigercodes.webtiger.core.v1.RenameSpace
 import com.tigercodes.webtiger.core.v1.MoveTab
+import com.tigercodes.webtiger.core.v1.QueryIcons
 import com.tigercodes.webtiger.core.v1.Request
 import com.tigercodes.webtiger.core.v1.RowStep
 import com.tigercodes.webtiger.core.v1.SearchSettings
@@ -361,6 +363,41 @@ class BrowserModel(
     /** Marks a tab as a Favourite, or unmarks it. A tab that is no Site is kept by it: the core's rule. */
     fun setFavourite(id: Long, favourite: Boolean) {
         session.send(Request(set_favourite = SetFavourite(tab_id = id, favourite = favourite)))
+    }
+
+    // Icons (046)
+
+    /** The pictures of the tabs' icons, by the numbers the core gives them, as far as this window has them. */
+    var icons by mutableStateOf<Map<Long, ImageBitmap>>(emptyMap())
+        private set
+
+    /** The numbers asked for already: each is asked for once, whatever is answered. */
+    private val iconsAsked = HashSet<Long>()
+
+    /**
+     * Asks the core for the pictures of the tabs' icons that this window has not got: once for
+     * each number, and no more to a question than an answer carries. A window that has kept
+     * many keeps only those its tabs show now.
+     */
+    private fun askForIcons(tabs: List<TabSummary>) {
+        val shown = tabs.mapTo(HashSet()) { it.icon_id }
+        if (icons.size > ICONS_KEPT) {
+            icons = icons.filterKeys { it in shown }
+            iconsAsked.retainAll(shown)
+        }
+        val wanted = shown.filter { it != 0L && iconsAsked.add(it) }.sorted()
+        for (numbers in wanted.chunked(ICONS_ASKED)) {
+            session.scope.launch {
+                val answer =
+                    try {
+                        session.core.request(Request(query_icons = QueryIcons(icon_ids = numbers))).icons_page
+                    } catch (_: CoreError) {
+                        null
+                    }
+                val pictures = answer?.icons.orEmpty().mapNotNull { icon -> iconPicture(icon.png.toByteArray())?.let { icon.icon_id to it } }
+                if (pictures.isNotEmpty()) icons = icons + pictures
+            }
+        }
     }
 
     // Moving in the row (045)
@@ -983,6 +1020,7 @@ class BrowserModel(
         if (!sameFailure) isWarnedOfCertificate = false
         tab = front
         tabs = snapshot.tabs
+        askForIcons(snapshot.tabs)
         groups = snapshot.groups
         favouritesFull = snapshot.favourites_full
         layout = snapshot.layout

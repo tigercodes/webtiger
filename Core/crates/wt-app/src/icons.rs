@@ -139,26 +139,47 @@ impl App {
     /// be an icon, of a page whose icon is taken, is kept for the page's
     /// host in the tab's login set: in the store, where a private window's
     /// is the one in memory. The picture the host has already is only said
-    /// to be used now.
+    /// to be used now. One that comes a moment before its page has arrived
+    /// waits for it.
     pub(crate) fn icon_received(&self, web_view: WebViewId, received: &IconReceived) {
-        if !is_icon(&received.png) {
-            return;
+        if is_icon(&received.png) {
+            self.icon_offered(web_view, &received.page_url, &received.png, true);
+        }
+    }
+
+    /// A page has arrived in a web view (046): an icon that was handed over
+    /// for a page on its way, and waited, is that page's now, when it is the
+    /// page that arrived; and is dropped when it is another.
+    pub(crate) fn icon_waited(&self, web_view: WebViewId) {
+        let waited = self.state.borrow_mut().take_waiting_icon(web_view);
+        if let Some((page_url, png)) = waited {
+            self.icon_offered(web_view, &page_url, &png, false);
+        }
+    }
+
+    /// A picture that may be an icon, for the page named. Kept when that
+    /// page is the one the tab shows; with `may_wait`, held for a page that
+    /// is still on its way; otherwise nothing.
+    fn icon_offered(&self, web_view: WebViewId, page_url: &str, png: &[u8], may_wait: bool) {
+        let arrived = self.state.borrow().icon_page_arrived(web_view, page_url);
+        match arrived {
+            Some(true) => {}
+            Some(false) if may_wait => {
+                self.state.borrow_mut().icon_waits(web_view, page_url, png);
+                return;
+            }
+            Some(false) | None => return,
         }
         let now = self.clock.now();
-        let taker = self
-            .state
-            .borrow_mut()
-            .icon_taker(web_view, &received.page_url, now);
+        let taker = self.state.borrow_mut().icon_taker(web_view, now);
         let Some((login_set, host)) = taker else {
             return;
         };
         let store = self.store_of(login_set);
         let had = store.borrow().icon(login_set, &host).ok().flatten();
-        let changed = had.as_deref() != Some(received.png.as_slice());
+        let changed = had.as_deref() != Some(png);
         let kept = if changed {
-            store
-                .borrow_mut()
-                .set_icon(login_set, &host, &received.png, now)
+            store.borrow_mut().set_icon(login_set, &host, png, now)
         } else {
             store.borrow_mut().use_icons(login_set, &[&host], now)
         };

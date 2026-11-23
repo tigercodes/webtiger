@@ -2141,6 +2141,9 @@ pub struct SearchRequested {
 /// so is the icon of a page the tab does not show, of a page that did not
 /// come over `https` (or from this device), and of one that failed. A page
 /// that changes its icon while it is shown is heard at most once a minute.
+/// An engine may have a page's icon a moment before it says the page has
+/// arrived: the icon of the page a load is on its way to waits for it, and
+/// is dropped when another page arrives, or none.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct IconReceived {
     /// The picture, as a PNG.

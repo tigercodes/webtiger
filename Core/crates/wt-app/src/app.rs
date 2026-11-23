@@ -319,6 +319,7 @@ impl App {
         }
         if committed {
             self.zoom_arrived(web_view);
+            self.icon_waited(web_view);
         }
         // A page that closed its own tab may have left one that is asleep
         // in front, and a download that waited there for the person (015).

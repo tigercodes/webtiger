@@ -46,9 +46,11 @@ import com.tigercodes.webtiger.core.ResourceType
 import com.tigercodes.webtiger.core.v1.CloseRequested
 import com.tigercodes.webtiger.core.v1.DialogKind
 import com.tigercodes.webtiger.core.v1.EngineEvent
+import com.tigercodes.webtiger.core.v1.IconReceived
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.core.v1.PermissionKind
 import java.io.ByteArrayInputStream
+import okio.ByteString.Companion.toByteString
 
 /** Makes pages over this device's WebView. */
 internal class WebViewPages(private val context: Context) : PageFactory {
@@ -521,6 +523,17 @@ internal class WebViewPage(
 
         override fun onReceivedTitle(view: WebView, title: String?) {
             if (view === webView) tracker.title(title.orEmpty())
+        }
+
+        /**
+         * The WebView has the icon of the page it shows (046): it fetched the picture itself,
+         * as part of loading the page. It is handed to the core as a small PNG, with the page
+         * it is the icon of. Whether it is kept is the core's.
+         */
+        override fun onReceivedIcon(view: WebView, icon: Bitmap?) {
+            if (view !== webView || icon == null) return
+            val png = iconPng(icon) ?: return
+            host.report(EngineEvent(web_view_id = id, icon_received = IconReceived(png = png.toByteString(), page_url = view.url.orEmpty())))
         }
 
         /**

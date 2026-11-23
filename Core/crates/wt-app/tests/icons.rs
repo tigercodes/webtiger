@@ -283,6 +283,78 @@ fn a_site_has_its_homes_icon_wherever_it_has_wandered() {
     });
 }
 
+#[test]
+fn an_icon_that_comes_before_its_page_has_arrived_waits_for_it() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        web(&mut shell);
+        let (window, mail, subscription) = shell.open_window().await;
+        shell.submit(mail, MAIL).await;
+        let view = web_view(&shell, subscription);
+        let board = png(64, 64, 1);
+
+        // The tab goes to another site by itself, and the engine has that page's icon a
+        // moment before it says the page has arrived (as an engine may, for an icon the
+        // page carries in itself). The tab still shows the page it had: it has no icon.
+        let mut on_its_way = shell.engine.goes_to(view, BOARD).into_iter();
+        shell.report(on_its_way.next().expect("the load begins"));
+        shell.report(FakeEngine::icon_received(view, &board, BOARD));
+        shell.settle().await;
+        assert_eq!(row(&shell, subscription), [("Mail".to_owned(), 0)]);
+        // The page arrives: the icon that waited is its icon.
+        for report in on_its_way {
+            shell.report(report);
+        }
+        shell.settle().await;
+        let one = icon_of(&shell, subscription, "Board");
+        assert_ne!(one, 0);
+        assert_eq!(pictures(&mut shell, &[one]).await, [(one, board)]);
+
+        // An icon handed over for a page on its way, when another page arrives: it is
+        // nobody's. Not the page's that arrived, and not, later, its own host's.
+        let mut on_its_way = shell.engine.goes_to(view, MAIL).into_iter();
+        shell.report(on_its_way.next().expect("the load begins"));
+        shell.report(FakeEngine::icon_received(view, &png(64, 64, 2), NEWS));
+        for report in on_its_way {
+            shell.report(report);
+        }
+        shell.settle().await;
+        assert_eq!(row(&shell, subscription), [("Mail".to_owned(), 0)]);
+        // The same tab then goes to the site the icon named: it waits no longer, and the
+        // page that arrives there has none.
+        for report in shell.engine.goes_to(view, NEWS) {
+            shell.report(report);
+        }
+        shell.settle().await;
+        assert_eq!(row(&shell, subscription), [("News".to_owned(), 0)]);
+        shell.open_tab(window, NEWS).await;
+        assert_eq!(icon_of(&shell, subscription, "News"), 0);
+
+        // One handed over for a page that never arrives, because its load fails: nobody's
+        // either, though the tab then goes to that very page.
+        let news = web_view(&shell, subscription);
+        shell.report(FakeEngine::navigation_started(news, BOARD));
+        shell.report(FakeEngine::icon_received(news, &png(64, 64, 3), INBOX));
+        shell.report(FakeEngine::navigation_failed(news, "net.connect", BOARD));
+        shell.settle().await;
+        for report in shell.engine.goes_to(news, INBOX) {
+            shell.report(report);
+        }
+        shell.settle().await;
+        assert_eq!(icon_of(&shell, subscription, "Inbox"), 0);
+        // A page that is not on its way to anywhere is not waited for: its tab is at
+        // rest, and an icon for another site is ignored (and is not there when the tab
+        // does go to that site).
+        shell.report(FakeEngine::icon_received(news, &png(64, 64, 4), NEWS));
+        shell.settle().await;
+        for report in shell.engine.goes_to(news, NEWS) {
+            shell.report(report);
+        }
+        shell.settle().await;
+        assert_eq!(icon_of(&shell, subscription, "News"), 0);
+    });
+}
+
 async fn make_space(shell: &mut FakeShell, name: &str) -> u64 {
     let answer = shell
         .request(request::Kind::CreateSpace(CreateSpace {
