@@ -515,10 +515,11 @@
       "path": "/with-served-icon",
       "content": [
         "<!doctype html><title>With served icon</title>",
-        "<link rel=\"icon\" type=\"image/png\" href=\"/icon.png\">",
+        "<link rel=\"alternate\" href=\"/landed\">",
+        "<link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/icon.png\">",
         "<h1>With served icon</h1>"
       ],
-      "note": "A page whose icon is at an address of the site (046): a browser that wants it asks the site for /icon.png, with whatever cookies it has for the site."
+      "note": "A page whose icon is at an address of the site (046): a browser that wants it asks the site for /icon.png, with whatever cookies it has for the site. It says how large the icon is, and links to something that is no icon."
     },
     {
       "path": "/icon-by-cookie",
@@ -537,6 +538,24 @@
         "<h1>With icon by cookie</h1>"
       ],
       "note": "A page whose icon is at /icon-by-cookie (046): what the site is then asked for says with whose cookies an engine fetches a page's icon."
+    },
+    {
+      "path": "/icon-moved",
+      "status": "302 Found",
+      "headers": [
+        "Location: /icon.png"
+      ],
+      "content": "",
+      "note": "A picture that has moved (046): sends whoever asks for it on to /icon.png at the same site. A fetch that follows a server within the site ends in the picture."
+    },
+    {
+      "path": "/icon-as-somebody",
+      "status": "302 Found",
+      "headers": [
+        "Location: http://ada:secret@127.0.0.1:{query:port|80}/icon.png"
+      ],
+      "content": "",
+      "note": "Sends whoever asks for it on to /icon.png at an address that names somebody and a password, on the port ?port= says (046): a fetch that is made as nobody does not follow it."
     }
   ],
   "not_found": {

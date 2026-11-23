@@ -40,13 +40,22 @@ final class TestSite: @unchecked Sendable {
     private final class Asked: @unchecked Sendable {
         private let lock = NSLock()
         private var paths: [String] = []
+        private var heads: [[String]] = []
 
-        func add(_ path: String) {
-            lock.withLock { paths.append(path) }
+        func add(_ path: String, head: [String]) {
+            lock.withLock {
+                paths.append(path)
+                heads.append(head)
+            }
         }
 
         var all: [String] {
             lock.withLock { paths }
+        }
+
+        /// The header lines of each request for a path, in order.
+        func heads(of path: String) -> [[String]] {
+            lock.withLock { zip(paths, heads).filter { $0.0 == path }.map(\.1) }
         }
     }
 
@@ -90,6 +99,22 @@ final class TestSite: @unchecked Sendable {
         asked.all
     }
 
+    /// What each request for a path said of itself, in order: its headers, by their names
+    /// in small letters. For what a request carries that a path does not show: a cookie,
+    /// where it says it came from, who it says it is.
+    func headers(of path: String) -> [[String: String]] {
+        asked.heads(of: path).map { lines in
+            var said: [String: String] = [:]
+            for line in lines {
+                let parts = line.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
+                if parts.count == 2 {
+                    said[parts[0].lowercased()] = parts[1].trimmingCharacters(in: .whitespaces)
+                }
+            }
+            return said
+        }
+    }
+
     /// What a connection that begins as TLS is told.
     private static let notTLS = Data("HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n".utf8)
 
@@ -129,7 +154,7 @@ final class TestSite: @unchecked Sendable {
         let path = target.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? "/"
         let query = target.split(separator: "?", maxSplits: 1).dropFirst().first.map(String.init) ?? ""
         let cookies = lines.dropFirst().first { $0.lowercased().hasPrefix("cookie:") }?.dropFirst("cookie:".count) ?? ""
-        asked.add(path)
+        asked.add(path, head: Array(lines.dropFirst()))
 
         let request = (query: pairs(query, separator: "&"), cookies: pairs(String(cookies), separator: ";"))
         var page = TestSitePages.all.first { $0.path == path } ?? TestSitePages.notFound

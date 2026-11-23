@@ -214,8 +214,9 @@ class AdapterTestCase: XCTestCase {
             case .searchRequested: "search"
             // An engine that hands over a page's icon (046). WebKit hands none.
             case .iconReceived: "icon"
-            // At the engine's own pace, like a page's progress.
-            case .progressChanged, .downloadProgress: nil
+            // At the engine's own pace, like a page's progress; and which icons a page
+            // names (046 §5a), which the page is asked once it has loaded.
+            case .progressChanged, .downloadProgress, .iconNamed: nil
             }
         }
     }

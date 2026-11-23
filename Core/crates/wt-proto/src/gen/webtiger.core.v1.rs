@@ -1760,7 +1760,7 @@ pub struct EngineEvent {
     pub web_view_id: u64,
     #[prost(
         oneof = "engine_event::Kind",
-        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25"
+        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26"
     )]
     pub kind: ::core::option::Option<engine_event::Kind>,
 }
@@ -1826,6 +1826,9 @@ pub mod engine_event {
         /// Since 1.37
         #[prost(message, tag = "25")]
         IconReceived(super::IconReceived),
+        /// Since 1.39
+        #[prost(message, tag = "26")]
+        IconNamed(super::IconNamed),
     }
 }
 /// A load began. The page it asks for does not own the web view yet.
@@ -2158,11 +2161,44 @@ pub struct IconReceived {
     #[prost(string, tag = "2")]
     pub page_url: ::prost::alloc::string::String,
 }
+/// The page a web view shows names its icons (046): an engine that hands an
+/// app no icon says which the page names, as the page wrote them, each
+/// address made whole against the page's own. The core chooses one to be
+/// fetched (WebViewFetchIcon), or none; a page that names none is asked for
+/// the icon every site may have, at its own origin. Since 1.39.
+///
+/// Nothing is asked for a page whose icon would not be kept (IconReceived),
+/// nor twice in a run for a host in a login set, unless its page names
+/// another address.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IconNamed {
+    #[prost(message, repeated, tag = "1")]
+    pub icons: ::prost::alloc::vec::Vec<NamedIcon>,
+    /// The page that names them.
+    #[prost(string, tag = "2")]
+    pub page_url: ::prost::alloc::string::String,
+}
+/// An icon a page names (`<link rel="icon">`).
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct NamedIcon {
+    #[prost(string, tag = "1")]
+    pub url: ::prost::alloc::string::String,
+    /// What the page calls it: "icon", "shortcut icon", "apple-touch-icon".
+    #[prost(string, tag = "2")]
+    pub rel: ::prost::alloc::string::String,
+    /// How large the page says it is: "32x32", "16x16 32x32", "any"; or
+    /// nothing.
+    #[prost(string, tag = "3")]
+    pub sizes: ::prost::alloc::string::String,
+    /// The kind of picture the page says it is: "image/png"; or nothing.
+    #[prost(string, tag = "4")]
+    pub r#type: ::prost::alloc::string::String,
+}
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct HostRequest {
     #[prost(
         oneof = "host_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16"
     )]
     pub kind: ::core::option::Option<host_request::Kind>,
 }
@@ -2209,6 +2245,9 @@ pub mod host_request {
         /// Since 1.22
         #[prost(message, tag = "15")]
         OpenFile(super::OpenFile),
+        /// Since 1.39
+        #[prost(message, tag = "16")]
+        WebViewFetchIcon(super::WebViewFetchIcon),
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -2426,6 +2465,25 @@ pub struct OpenFile {
     /// then goes by the file's name.
     #[prost(string, tag = "2")]
     pub mime_type: ::prost::alloc::string::String,
+}
+/// Since 1.39. Fetch a page's icon (046): asked of an engine that hands an
+/// app none, for the one of the icons the page named (IconNamed) that the
+/// core chose. The shell fetches it by itself, and as nobody: with no cookie
+/// sent or kept, no login, nothing kept of what comes back but the picture;
+/// following only what stays on `https`, or on this device; and no more than
+/// 200 KB. Answered with Ack at once. The picture, when there is one, comes
+/// as IconReceived naming `page_url`, as a PNG of at most 128 pixels a side;
+/// a fetch that fails, and what is no picture, say nothing.
+/// "webview.unknown".
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct WebViewFetchIcon {
+    #[prost(uint64, tag = "1")]
+    pub web_view_id: u64,
+    #[prost(string, tag = "2")]
+    pub url: ::prost::alloc::string::String,
+    /// The page it is the icon of.
+    #[prost(string, tag = "3")]
+    pub page_url: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Envelope {

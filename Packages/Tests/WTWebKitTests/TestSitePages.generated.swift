@@ -518,7 +518,7 @@ enum TestSitePages {
             status: "200 OK",
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
-            body: [.text("<!doctype html><title>With served icon</title>\n<link rel=\"icon\" type=\"image/png\" href=\"/icon.png\">\n<h1>With served icon</h1>")],
+            body: [.text("<!doctype html><title>With served icon</title>\n<link rel=\"alternate\" href=\"/landed\">\n<link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/icon.png\">\n<h1>With served icon</h1>")],
             bytes: "",
             delayMilliseconds: 0,
             authorization: ""
@@ -539,6 +539,26 @@ enum TestSitePages {
             type: "text/html",
             headers: [[.text("Cache-Control: no-store")]],
             body: [.text("<!doctype html><title>With icon by cookie</title>\n<link rel=\"icon\" href=\"/icon-by-cookie\">\n<h1>With icon by cookie</h1>")],
+            bytes: "",
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
+        TestSitePage(
+            path: "/icon-moved",
+            status: "302 Found",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")], [.text("Location: /icon.png")]],
+            body: [],
+            bytes: "",
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
+        TestSitePage(
+            path: "/icon-as-somebody",
+            status: "302 Found",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")], [.text("Location: http://ada:secret@127.0.0.1:"), .query("port", or: "80"), .text("/icon.png")]],
+            body: [],
             bytes: "",
             delayMilliseconds: 0,
             authorization: ""

@@ -252,6 +252,15 @@ public nonisolated struct WTEngineEvent: Sendable {
     set {kind = .iconReceived(newValue)}
   }
 
+  /// Since 1.39
+  public var iconNamed: WTIconNamed {
+    get {
+      if case .iconNamed(let v)? = kind {return v}
+      return WTIconNamed()
+    }
+    set {kind = .iconNamed(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -289,6 +298,8 @@ public nonisolated struct WTEngineEvent: Sendable {
     case searchRequested(WTSearchRequested)
     /// Since 1.37
     case iconReceived(WTIconReceived)
+    /// Since 1.39
+    case iconNamed(WTIconNamed)
 
   }
 
@@ -796,13 +807,60 @@ public nonisolated struct WTIconReceived: Sendable {
   public init() {}
 }
 
+/// The page a web view shows names its icons (046): an engine that hands an
+/// app no icon says which the page names, as the page wrote them, each
+/// address made whole against the page's own. The core chooses one to be
+/// fetched (WebViewFetchIcon), or none; a page that names none is asked for
+/// the icon every site may have, at its own origin. Since 1.39.
+///
+/// Nothing is asked for a page whose icon would not be kept (IconReceived),
+/// nor twice in a run for a host in a login set, unless its page names
+/// another address.
+public nonisolated struct WTIconNamed: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var icons: [WTNamedIcon] = []
+
+  /// The page that names them.
+  public var pageURL: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// An icon a page names (`<link rel="icon">`).
+public nonisolated struct WTNamedIcon: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var url: String = String()
+
+  /// What the page calls it: "icon", "shortcut icon", "apple-touch-icon".
+  public var rel: String = String()
+
+  /// How large the page says it is: "32x32", "16x16 32x32", "any"; or
+  /// nothing.
+  public var sizes: String = String()
+
+  /// The kind of picture the page says it is: "image/png"; or nothing.
+  public var type: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
 
 nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EngineEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{3}navigation_started\0\u{3}navigation_committed\0\u{3}navigation_finished\0\u{3}navigation_failed\0\u{3}address_changed\0\u{3}title_changed\0\u{3}progress_changed\0\u{3}history_changed\0\u{3}renderer_gone\0\u{3}new_window_requested\0\u{3}close_requested\0\u{3}outside_link_requested\0\u{3}find_result\0\u{3}download_requested\0\u{3}download_progress\0\u{3}download_finished\0\u{3}download_failed\0\u{3}permission_requested\0\u{3}permission_withdrawn\0\u{3}dialog_requested\0\u{3}sign_in_requested\0\u{3}link_open_requested\0\u{3}search_requested\0\u{3}icon_received\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{3}navigation_started\0\u{3}navigation_committed\0\u{3}navigation_finished\0\u{3}navigation_failed\0\u{3}address_changed\0\u{3}title_changed\0\u{3}progress_changed\0\u{3}history_changed\0\u{3}renderer_gone\0\u{3}new_window_requested\0\u{3}close_requested\0\u{3}outside_link_requested\0\u{3}find_result\0\u{3}download_requested\0\u{3}download_progress\0\u{3}download_finished\0\u{3}download_failed\0\u{3}permission_requested\0\u{3}permission_withdrawn\0\u{3}dialog_requested\0\u{3}sign_in_requested\0\u{3}link_open_requested\0\u{3}search_requested\0\u{3}icon_received\0\u{3}icon_named\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1123,6 +1181,19 @@ nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
           self.kind = .iconReceived(v)
         }
       }()
+      case 26: try {
+        var v: WTIconNamed?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .iconNamed(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .iconNamed(v)
+        }
+      }()
       default: break
       }
     }
@@ -1232,6 +1303,10 @@ nonisolated extension WTEngineEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
     case .iconReceived?: try {
       guard case .iconReceived(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 25)
+    }()
+    case .iconNamed?: try {
+      guard case .iconNamed(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 26)
     }()
     case nil: break
     }
@@ -2098,6 +2173,86 @@ nonisolated extension WTIconReceived: SwiftProtobuf.Message, SwiftProtobuf._Mess
   public static func ==(lhs: WTIconReceived, rhs: WTIconReceived) -> Bool {
     if lhs.png != rhs.png {return false}
     if lhs.pageURL != rhs.pageURL {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTIconNamed: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".IconNamed"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}icons\0\u{3}page_url\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.icons) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.pageURL) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.icons.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.icons, fieldNumber: 1)
+    }
+    if !self.pageURL.isEmpty {
+      try visitor.visitSingularStringField(value: self.pageURL, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTIconNamed, rhs: WTIconNamed) -> Bool {
+    if lhs.icons != rhs.icons {return false}
+    if lhs.pageURL != rhs.pageURL {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTNamedIcon: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".NamedIcon"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}url\0\u{1}rel\0\u{1}sizes\0\u{1}type\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.rel) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.sizes) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.type) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.url.isEmpty {
+      try visitor.visitSingularStringField(value: self.url, fieldNumber: 1)
+    }
+    if !self.rel.isEmpty {
+      try visitor.visitSingularStringField(value: self.rel, fieldNumber: 2)
+    }
+    if !self.sizes.isEmpty {
+      try visitor.visitSingularStringField(value: self.sizes, fieldNumber: 3)
+    }
+    if !self.type.isEmpty {
+      try visitor.visitSingularStringField(value: self.type, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTNamedIcon, rhs: WTNamedIcon) -> Bool {
+    if lhs.url != rhs.url {return false}
+    if lhs.rel != rhs.rel {return false}
+    if lhs.sizes != rhs.sizes {return false}
+    if lhs.type != rhs.type {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

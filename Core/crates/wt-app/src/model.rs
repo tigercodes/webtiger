@@ -10,14 +10,14 @@ use wt_core::{
 };
 use wt_proto::v1::{
     AddressView, DialogKind, DialogPrompt, DownloadPrompt, EngineKind, FindView, GroupSummary,
-    Layout, LoadState, NavigationFailed, PermissionKind, PermissionPrompt, PromptView,
+    IconNamed, Layout, LoadState, NavigationFailed, PermissionKind, PermissionPrompt, PromptView,
     SignInPrompt, TabSummary, TabView, WindowSnapshot, ZoomView, address_view, engine_event,
     prompt_view,
 };
 use wt_store::{SavedGroup, SavedTab, Space};
 
 use crate::error::is_code;
-use crate::icons::{ICON_EVERY_MILLIS, Icons};
+use crate::icons::{ICON_EVERY_MILLIS, Icons, chosen_icon};
 
 /// Whether a tab is loading.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -668,8 +668,10 @@ impl Tab {
             | Kind::SignInRequested(_)
             | Kind::LinkOpenRequested(_)
             | Kind::SearchRequested(_)
-            // An icon is the app's to keep, and the store's (046).
-            | Kind::IconReceived(_) => {}
+            // An icon is the app's to keep, and the store's (046); and one
+            // a page names is the app's to ask for.
+            | Kind::IconReceived(_)
+            | Kind::IconNamed(_) => {}
             // What the engine found is for the text now looked for (010).
             // With no find, it is a late word about one that has stopped.
             Kind::FindResult(result) => {
@@ -2040,24 +2042,53 @@ impl State {
         web_view: WebViewId,
         now: Timestamp,
     ) -> Option<(LoginSetId, String)> {
+        let (login_set, host, _) = self.icon_page(web_view)?;
+        let lately = self
+            .tab_of(web_view)?
+            .icon_heard
+            .is_some_and(|heard| now.0.saturating_sub(heard.0) < ICON_EVERY_MILLIS);
+        if lately {
+            return None;
+        }
+        self.tab_of_mut(web_view)?.icon_heard = Some(now);
+        Some((login_set, host))
+    }
+
+    /// The page that owns a web view, when it is one whose icon is taken
+    /// (046): its login set, its host, and its address. `None` when the web
+    /// view is no tab's, no page has arrived, the page did not come over
+    /// `https` or from this device, or its certificate was gone on past.
+    fn icon_page(&self, web_view: WebViewId) -> Option<(LoginSetId, String, Address)> {
         let tab = self.tab_of(web_view)?;
         let page = tab
             .committed
             .as_ref()
             .filter(|page| page.is_trustworthy())?;
         let host = page.host()?.to_owned();
-        let login_set = tab.login_set;
         let excepted = page
             .origin()
-            .is_some_and(|origin| self.exceptions.contains(&(login_set, origin)));
-        let lately = tab
-            .icon_heard
-            .is_some_and(|heard| now.0.saturating_sub(heard.0) < ICON_EVERY_MILLIS);
-        if excepted || lately {
+            .is_some_and(|origin| self.exceptions.contains(&(tab.login_set, origin)));
+        (!excepted).then(|| (tab.login_set, host, page.clone()))
+    }
+
+    /// A page names its icons (046 §5a): the address of the one to fetch for
+    /// it. `None` when none is to be fetched: the page that names them is
+    /// not the one the tab shows, or is one whose icon is not taken; it has
+    /// no icon that will do and no origin to ask; or the same address was
+    /// asked for already in this run, for this host in this login set.
+    pub(crate) fn icon_to_fetch(
+        &mut self,
+        web_view: WebViewId,
+        named: &IconNamed,
+    ) -> Option<Address> {
+        if self.icon_page_arrived(web_view, &named.page_url) != Some(true) {
             return None;
         }
-        self.tab_of_mut(web_view)?.icon_heard = Some(now);
-        Some((login_set, host))
+        let (login_set, host, page) = self.icon_page(web_view)?;
+        let chosen = chosen_icon(&page, &named.icons)?;
+        self.icons
+            .fetch_is_new(login_set, &host, chosen.as_str())
+            .then_some(chosen)
     }
 
     /// A host has an icon in a login set (046): the one the store had, or

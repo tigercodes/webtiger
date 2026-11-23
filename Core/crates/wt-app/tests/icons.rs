@@ -355,6 +355,142 @@ fn an_icon_that_comes_before_its_page_has_arrived_waits_for_it() {
     });
 }
 
+const MAIL_ICON: &str = "https://mail.example.com/icon-64.png";
+const MAIL_SMALL: &str = "https://mail.example.com/icon-16.png";
+const MAIL_OTHER: &str = "https://mail.example.com/unread.png";
+
+/// The addresses the shell was asked to fetch as icons, in order.
+fn fetched(shell: &FakeShell) -> Vec<String> {
+    shell
+        .engine
+        .icon_fetches
+        .iter()
+        .map(|(_, address)| address.clone())
+        .collect()
+}
+
+#[test]
+fn a_page_that_names_its_icons_has_one_fetched_once_in_a_run_and_kept() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        web(&mut shell);
+        // An engine that hands an app no icon: its pages say which icons they name.
+        let icons = [
+            (MAIL_SMALL, "icon", "16x16", "image/png"),
+            (MAIL_ICON, "icon", "64x64", "image/png"),
+        ];
+        shell.engine.names_icons(MAIL, &icons);
+        shell.engine.names_icons(INBOX, &icons);
+        let picture = png(64, 64, 1);
+        shell.engine.picture(MAIL_ICON, &picture);
+        shell.engine.picture(MAIL_SMALL, &png(16, 16, 9));
+        let (window, mail, subscription) = shell.open_window().await;
+
+        // The page arrives and names its icons: the shell is asked for the one the core
+        // chose, and what it hands over is the tab's icon.
+        shell.submit(mail, MAIL).await;
+        assert_eq!(fetched(&shell), [MAIL_ICON]);
+        let one = icon_of(&shell, subscription, "Mail");
+        assert_ne!(one, 0);
+        assert_eq!(pictures(&mut shell, &[one]).await, [(one, picture.clone())]);
+
+        // The page again, another page of the host, and another tab at it: none is asked
+        // for the same address a second time in the run.
+        shell.submit(mail, MAIL).await;
+        shell.submit(mail, INBOX).await;
+        shell.open_tab(window, MAIL).await;
+        assert_eq!(fetched(&shell), [MAIL_ICON]);
+        assert_eq!(icon_of(&shell, subscription, "Inbox"), one);
+
+        // The host's page names another address: that one is asked for, and is the host's
+        // icon from then.
+        let other = png(64, 64, 2);
+        shell.engine.picture(MAIL_OTHER, &other);
+        shell
+            .engine
+            .names_icons(MAIL, &[(MAIL_OTHER, "icon", "64x64", "image/png")]);
+        let front = shell.window(subscription).tab.unwrap().tab_id;
+        shell.submit(front, MAIL).await;
+        assert_eq!(fetched(&shell), [MAIL_ICON, MAIL_OTHER]);
+        let two = icon_of(&shell, subscription, "Mail");
+        assert!(two != 0 && two != one);
+        assert_eq!(pictures(&mut shell, &[two]).await, [(two, other)]);
+
+        // Another login set asks for its own: a private window, at the same page.
+        let (_, tab, private_subscription) = shell.open_private_window().await;
+        shell.submit(tab, MAIL).await;
+        assert_eq!(fetched(&shell), [MAIL_ICON, MAIL_OTHER, MAIL_OTHER]);
+        assert_ne!(icon_of(&shell, private_subscription, "Mail"), 0);
+    });
+}
+
+#[test]
+fn nothing_is_asked_for_a_page_whose_icon_would_not_be_kept() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        web(&mut shell);
+        shell
+            .engine
+            .page("http://plain.example.com/", "A plain page");
+        shell.engine.names_icons(
+            "http://plain.example.com/",
+            &[("https://plain.example.com/icon.png", "icon", "64x64", "")],
+        );
+        shell
+            .engine
+            .untrusted("https://router.example.com/", "Router", "net.tls.untrusted");
+        shell.engine.names_icons(
+            "https://router.example.com/",
+            &[("https://router.example.com/icon.png", "icon", "64x64", "")],
+        );
+        // A page that names no icon at all: the one every site may have is asked for.
+        shell.engine.names_icons(BOARD, &[]);
+        let (window, mail, subscription) = shell.open_window().await;
+        shell.submit(mail, BOARD).await;
+        assert_eq!(fetched(&shell), ["https://board.example.com/favicon.ico"]);
+        // There is nothing there: the tab has no icon, and the site is not asked again.
+        assert_eq!(icon_of(&shell, subscription, "Board"), 0);
+        shell.submit(mail, BOARD).await;
+        assert_eq!(fetched(&shell).len(), 1);
+
+        // Icons named for a page the tab does not show: of another host, of no address;
+        // and for a web view that is nobody's.
+        let view = web_view(&shell, subscription);
+        let named = [("https://news.example.com/icon.png", "icon", "64x64", "")];
+        shell.report(FakeEngine::icon_named(view, NEWS, &named));
+        shell.report(FakeEngine::icon_named(view, "", &named));
+        shell.report(FakeEngine::icon_named(view + 100, BOARD, &named));
+        shell.settle().await;
+        assert_eq!(fetched(&shell).len(), 1);
+        // Named for the page it shows, they are asked for.
+        shell.report(FakeEngine::icon_named(view, BOARD, &named));
+        shell.settle().await;
+        assert_eq!(
+            fetched(&shell),
+            [
+                "https://board.example.com/favicon.ico",
+                "https://news.example.com/icon.png"
+            ]
+        );
+
+        // A page that did not come over https; a page whose certificate was gone on past.
+        shell.open_tab(window, "http://plain.example.com/").await;
+        let router = shell.open_tab(window, "https://router.example.com/").await;
+        let answer = shell
+            .request(request::Kind::ProceedPastCertificate(
+                ProceedPastCertificate { tab_id: router },
+            ))
+            .await;
+        acked(&answer);
+        assert_eq!(shell.window(subscription).tab.unwrap().title, "Router");
+        assert_eq!(fetched(&shell).len(), 2);
+
+        // An engine that says nothing of icons is asked for nothing.
+        shell.open_tab(window, NEWS).await;
+        assert_eq!(fetched(&shell).len(), 2);
+    });
+}
+
 async fn make_space(shell: &mut FakeShell, name: &str) -> u64 {
     let answer = shell
         .request(request::Kind::CreateSpace(CreateSpace {

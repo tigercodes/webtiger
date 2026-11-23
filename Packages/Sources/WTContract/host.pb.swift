@@ -172,6 +172,15 @@ public nonisolated struct WTHostRequest: Sendable {
     set {kind = .openFile(newValue)}
   }
 
+  /// Since 1.39
+  public var webViewFetchIcon: WTWebViewFetchIcon {
+    get {
+      if case .webViewFetchIcon(let v)? = kind {return v}
+      return WTWebViewFetchIcon()
+    }
+    set {kind = .webViewFetchIcon(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -199,6 +208,8 @@ public nonisolated struct WTHostRequest: Sendable {
     case webViewTrustCertificate(WTWebViewTrustCertificate)
     /// Since 1.22
     case openFile(WTOpenFile)
+    /// Since 1.39
+    case webViewFetchIcon(WTWebViewFetchIcon)
 
   }
 
@@ -575,13 +586,39 @@ public nonisolated struct WTOpenFile: Sendable {
   public init() {}
 }
 
+/// Since 1.39. Fetch a page's icon (046): asked of an engine that hands an
+/// app none, for the one of the icons the page named (IconNamed) that the
+/// core chose. The shell fetches it by itself, and as nobody: with no cookie
+/// sent or kept, no login, nothing kept of what comes back but the picture;
+/// following only what stays on `https`, or on this device; and no more than
+/// 200 KB. Answered with Ack at once. The picture, when there is one, comes
+/// as IconReceived naming `page_url`, as a PNG of at most 128 pixels a side;
+/// a fetch that fails, and what is no picture, say nothing.
+/// "webview.unknown".
+public nonisolated struct WTWebViewFetchIcon: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var webViewID: UInt64 = 0
+
+  public var url: String = String()
+
+  /// The page it is the icon of.
+  public var pageURL: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
 
 nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".HostRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{3}web_view_create\0\u{3}web_view_load\0\u{3}web_view_command\0\u{3}web_view_destroy\0\u{3}open_outside\0\u{3}web_view_find\0\u{3}web_view_set_zoom\0\u{3}download_start\0\u{3}download_cancel\0\u{3}permission_answer\0\u{3}dialog_answer\0\u{3}sign_in_answer\0\u{3}web_view_trust_certificate\0\u{3}open_file\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{3}web_view_create\0\u{3}web_view_load\0\u{3}web_view_command\0\u{3}web_view_destroy\0\u{3}open_outside\0\u{3}web_view_find\0\u{3}web_view_set_zoom\0\u{3}download_start\0\u{3}download_cancel\0\u{3}permission_answer\0\u{3}dialog_answer\0\u{3}sign_in_answer\0\u{3}web_view_trust_certificate\0\u{3}open_file\0\u{3}web_view_fetch_icon\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -784,6 +821,19 @@ nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
           self.kind = .openFile(v)
         }
       }()
+      case 16: try {
+        var v: WTWebViewFetchIcon?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .webViewFetchIcon(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .webViewFetchIcon(v)
+        }
+      }()
       default: break
       }
     }
@@ -854,6 +904,10 @@ nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
     case .openFile?: try {
       guard case .openFile(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 15)
+    }()
+    case .webViewFetchIcon?: try {
+      guard case .webViewFetchIcon(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 16)
     }()
     case nil: break
     }
@@ -1540,6 +1594,46 @@ nonisolated extension WTOpenFile: SwiftProtobuf.Message, SwiftProtobuf._MessageI
   public static func ==(lhs: WTOpenFile, rhs: WTOpenFile) -> Bool {
     if lhs.fileName != rhs.fileName {return false}
     if lhs.mimeType != rhs.mimeType {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTWebViewFetchIcon: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WebViewFetchIcon"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{1}url\0\u{3}page_url\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.webViewID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.pageURL) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.webViewID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.webViewID, fieldNumber: 1)
+    }
+    if !self.url.isEmpty {
+      try visitor.visitSingularStringField(value: self.url, fieldNumber: 2)
+    }
+    if !self.pageURL.isEmpty {
+      try visitor.visitSingularStringField(value: self.pageURL, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTWebViewFetchIcon, rhs: WTWebViewFetchIcon) -> Bool {
+    if lhs.webViewID != rhs.webViewID {return false}
+    if lhs.url != rhs.url {return false}
+    if lhs.pageURL != rhs.pageURL {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

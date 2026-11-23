@@ -311,6 +311,10 @@ impl App {
         if let engine_event::Kind::IconReceived(received) = &kind {
             self.icon_received(web_view, received);
         }
+        // And one that hands none over says which its page names (046 §5a).
+        if let engine_event::Kind::IconNamed(named) = &kind {
+            self.icon_named(web_view, named);
+        }
         let unwanted = self.state.borrow_mut().apply(web_view, kind);
         if arrives {
             self.record_visit(web_view);

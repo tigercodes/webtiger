@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | **Built and tested in the core and on Android, on the recommendations of §6, which are provisional:** the System WebView hands a page's icon over, the core keeps it for its host in its login set, and Android's window draws it before a tab's name and as a Favourite's tile. **Not built yet on Apple's systems,** where the app fetches the picture itself: D1 is the owner's (WT-D33, 2026-11-23: "use suggested choices for the blocked items"), and Apple's part follows |
+| **Status** | **Built and tested in the core and on Android; on Apple's systems the fetch is built and tested, and the windows do not draw the icon yet.** The System WebView hands a page's icon over; where WebKit hands none, the page says which it names, the core chooses one, and the adapter fetches it as nobody (§5a; D1 is the owner's, WT-D33, 2026-11-23: "use suggested choices for the blocked items"). The core keeps an icon for its host in its login set, and Android's window draws it before a tab's name and as a Favourite's tile. D2 to D6 are the recommendations of §6, which are provisional |
 | **Phase** | W2 of [000](000-master-plan.md) §9. 000 §5.6: "Favourites. A row of icon tiles at the top of a Space" |
-| **Contract** | 1.37 for what is built (§5); the rest to come. The store's schema is 13: a table of icons (§4) |
+| **Contract** | 1.37 (§5) and, for an engine that hands no icon over, 1.39 (§5a). The store's schema is 13: a table of icons (§4) |
 | **Builds on** | [042](042-favourites.md) D4: "Until sites have icons, a tile shows the first letter of the Site's name". [039](039-sites.md) D5: a Site's mark before its name, "icons alone need favicons, which are not fetched yet". [024](024-several-spaces.md): a login set is one data store, and nothing of one is seen in another |
 | **Last updated** | 2026-11-23 |
 
@@ -87,7 +87,7 @@ message IconsPage { repeated Icon icons = 1; }   // icon_id, png
 
 A window's snapshot carries numbers, not pictures: a row of 5,000 tabs is no heavier for having icons ([043](043-the-sidebar.md) §8a).
 
-## 5a. Apple's part (to be 1.39; designed, not built)
+## 5a. Apple's part (1.39)
 
 WebKit hands an app no icon, and the app fetches the one the page names itself (WT-D33). Added to the contract; nothing is changed or removed.
 
@@ -107,9 +107,19 @@ message WebViewFetchIcon { uint64 web_view_id = 1; string url = 2; string page_u
 
 **The adapter fetches** as WT-D33 says: a session of its own that keeps nothing (no cookie sent or taken, no login, no cache); no referrer; the page's own user agent, so that the request tells the site nothing the page's requests did not; redirects followed only to `https` (or within this device); nothing over 200 KB. **It decodes with the system's decoder** only what is, by its own bytes, a PNG, an ICO, a JPEG or a GIF; makes it at most 128 pixels a side; and hands over a PNG.
 
+**As built, where the design did not say:**
+
+- **An engine fetches nothing unless it is made to.** As with the system's file picker and the camera, the adapter's engine is made able by the app, started for real: then it asks the web. In fake mode it reads no page's icons and fetches none, so that a suite's site is asked for what its pages ask for and no more; a suite that wants icons says so (`WEBTIGER_FAKE_ICONS=1`), and its engine then asks this device only, where its site is. A suite cannot fetch from the web by mistake.
+- **A page is asked once it has loaded,** in a world of the adapter's own where no script of the page's runs, and says which page it is: the web view may have gone on by the time it answers. At most 16 icons are taken from a page, and an address longer than 2,048 characters is left out (a picture written out in the page itself, when it is long). **A page that names its icon later,** by script, is not asked again: it has the one it named when it loaded.
+- **Each fetch has a session of its own,** which ends with it: there is nothing for one fetch to leave the next. The request says it handles no cookie, and the session has nowhere to keep one and no leave to take one. It waits 20 seconds.
+- **An address that names somebody** (`https://name:password@…`) is never asked, at first or when a server sends the fetch there: a fetch has no login. **A server that asks who is there** is told nothing, and the fetch ends. A server's certificate is the system's to judge, as for any request; one a person went on past in a web view (026) is not let through here, and the core asks nothing for such a page.
+- **A picture is known by its own first bytes,** and the system's decoder must take it for the same kind. Of an `.ico`'s several pictures the largest is taken. A picture of more than 2,048 pixels a side is not decoded at all. What is handed over is at most 128 pixels a side, in its own shape; and if its PNG is more than the 64 KB the core keeps (noise, as large as is handed over), it is made smaller, to 96 and then 64.
+- **Once in a run is once whether or not there was a picture:** a fetch that fails is not tried again until the app is started again, or the host's page names another address.
+- **The picture comes for the page it was asked for.** A web view that has gone since is told of none; whether the page is still the tab's is the core's (§3), as for an icon Android's engine hands over.
+
 ## 6. Decisions
 
-**All of these are put to the owner.** D2, D3 and D5 are built in the core as recommended, and D6 in Android's window; D1 and D4 are Apple's part, and not built. The first column is the recommendation.
+**D1 is the owner's (WT-D33). The rest are put to the owner,** and built as recommended: D2, D3 and D5 in the core, D4 in the core and the WebKit adapter, D6 in Android's window (Apple's windows draw no icon yet). The first column is the recommendation.
 
 | # | Recommendation | Why | Other ways |
 |---|---|---|---|
@@ -124,7 +134,8 @@ message WebViewFetchIcon { uint64 web_view_id = 1; string url = 2; string page_u
 
 1. **The core, for an icon an engine hands over:** the rule of §3 against the scripted engine, the table, the contract. **Built.**
 2. **Android,** where the engine has the icon: the adapter, the adapter suite, the window. **Built.**
-3. **Apple,** after the owner's word on D1: in the core, which icon of those a page names; the adapter's reading of the page, the fetch, the adapter suite, the window.
+3. **Apple:** in the core, which icon of those a page names; the adapter's reading of the page, the fetch, the adapter suite. **Built.**
+4. **Apple's windows:** the icon drawn, as Android's draw it.
 
 ## 8. Tests
 
@@ -142,12 +153,23 @@ No test fetches from anywhere but the test's own site, in the test's own process
 | Android's window on the JVM (`IconsWindowTest`, 6, against a scripted core, with real pictures) | The model asks for the pictures it has not got, once for each number, in one question; told the same again it asks nothing; a number the core has no picture of, bytes that are no picture and a picture larger than the core keeps are not drawn, and not asked for again; no more than 64 to a question; a window that has more than it keeps lets go of those its tabs do not show, and asks again for one it then shows. Drawn: a tile with an icon is its icon and has no letter, the other has its letter; a Site has its icon and keeps its mark; each icon is in its own tab, and a tile's is the larger; the same down the side. Broken in 13 parts, 13 caught |
 | Android's pictures | The Favourites' and the sidebar's states have icons now: a tile with an icon beside one with a letter, a Site and a tab with theirs, a sleeping Site's fainter. Four pictures recorded again and looked at, light and dark. (The picture test had passed with the old ones: what it lets by is more than an icon. They were taken away to be made again) |
 | The Android app on the emulator (`AppIconsTest`, 1, the real core and the real WebView) | A tab at a page that names its icon shows it, and the other tab's site has none; made a Favourite, its tile is its icon and has no letter; put to sleep it keeps it; a Site again, it has it before its name |
+| The core, which icon is fetched (`icons.rs` in the crate, 3 more: 4) | Of the icons a page names: the one nearest 64 pixels by what the page says, whatever order they come in; with none that size, a larger before a smaller, and of the larger the nearest; of smaller ones the largest; an icon that lists several sizes is as near as its nearest, one that is not square as large as its longer side; a touch icon that says nothing is taken to be 180 and any other 32; of two alike the first named. Passed over: what the page does not call an icon, a drawing in SVG by its kind or by its name, an address that did not come over `https`, what is no address. With nothing left, and for a page that names none: `/favicon.ico` at the page's own origin; an icon at another site is an icon; a page on this device may name one on this device; a page that did not come over `https` is asked for nothing. And the rule of once: an address is asked for once for a host in a login set, another host, login set or address each once more, and a login set that is gone takes what was asked for it |
+| The core, the fetch through the contract (`icons.rs`, 2 more: 11) | A page names its icons: the shell is asked for the one chosen, and the picture it hands over is the tab's icon. The page again, another page of the host and another tab at it ask nothing more. The host's page names another address: that is asked for, and is the host's icon from then. A private window asks for its own. **Nothing is asked** for a page that names none but `/favicon.ico` once, and not again when nothing was there; for icons named for another host's page, for no address, or by a web view that is nobody's; for a page that came by `http`; for one whose certificate was gone on past; nor of an engine that says nothing of icons. Broken in 27 parts, 27 caught |
+| The WebKit adapter's pictures (`WebKitIconPictureTests`, 5, with pictures the test makes; no web view, no site) | A picture is known by its own first bytes: the four kinds, and not words, SVG, WebP, TIFF or nothing. Each kind is handed over as a PNG: a small one at its own size, a large one 128 a side at most in its own shape, of an `.ico`'s several the largest. What begins as a picture and is none, and a picture wider or taller than is decoded, are nothing. Noise whose PNG is more than the core keeps is handed over smaller, at the largest size that is few enough bytes; exactly as many as are kept is few enough; with no size few enough, nothing. **Which addresses may be asked,** one by one and asking none: this device always, anywhere else only over `https` and only by an engine let reach the web, and never an address that names somebody |
+| The adapter suite (`WebKitIconTests`, 6, real WebKit and the test site, on the Mac and the iPhone simulator) | **A page says which icons it names:** whole addresses, with what the page calls each, its size and its kind; a link that is no icon is not named; a page that names none says so; and nothing is fetched unasked, by WebKit or by the adapter. **The icon asked for comes as the page's,** a PNG of the size it was served. **As nobody, tested as a security property:** with somebody signed in, in the page's login set, the fetch carried no cookie, no word of where it came from and no login, and said it is what the page says it is; the site sends whoever asks on to an address named after their cookie, and sent the fetch on as nobody, and the page itself as who was signed in. **What a fetch is given to keep is not kept:** a cookie set on the way to somewhere else is not sent along; a fetch that a server signs in leaves the next fetch nobody, and nothing where the process keeps cookies; a web view of another login set is nobody still. **A server is followed only where the fetch may ask:** to a picture that moved within the site, and not to an address that names somebody; words and a page that is not there are no picture; no more bytes are taken than an icon may have, to the byte; an address that may not be asked is not asked at all. **An engine not let fetch** asks no page about its icons, and asked for one, answers and fetches nothing; a web view there is none of is said to be unknown. **A web view that has gone** while its icon was on its way is told of none. Broken in 42 parts, 42 caught (two of them once they were written so that they built) |
+| The test site, for the fetch | Two pages more: a picture that has moved, and one that sends whoever asks on to an address that names somebody. The page whose icon is served now says the icon's size, and links to something that is no icon. Apple's server keeps what each request said of itself (its headers), so that a test can see a cookie that a path does not show |
 | The rule broken, a part at a time | 40 parts, in the core and the store. 38 caught: 35 at once, one once its text was found, two by tests written for them (that a window is not first told without its icons; a full store). Two were not: that a closed private window's numbers are forgotten (nothing can be asked of them either way: their pictures went with the login set), and that a picture handed over again is said to be used (it matters only in a full store while the app runs; no test fills one then) |
 
 ## 9. What is not verified
 
-- **Apple's systems have no icons:** D1 is the owner's to say, and nothing of Apple's part is built. The Mac, the iPhone and the iPad show letters, and nothing they are told of an icon is used.
-- **The choices of §6** are the recommendations, not the owner's word.
+- **Apple's windows draw no icon yet:** the Mac, the iPhone and the iPad show letters. The app started for real fetches icons and the core keeps them; nothing is drawn from them until the windows' part is built.
+- **D2 to D6** are the recommendations, not the owner's word.
+- **Nothing was fetched from the web.** Every fetch that ran was of the test's own site, on this device, over plain `http`: so a fetch over `https`, a certificate judged, and a server that sends a fetch from `https` on to plain `http` were not run. Which addresses may be asked at all is tested as a rule, address by address, without asking any.
+- **Whether two of the app's fetches share anything the system keeps for itself** (a connection, a session of TLS that is taken up again): each fetch has a session of its own, which is as far as the app can say; what the system does beneath was not looked at.
+- **A server that asks who is there,** or for a certificate of the person's: by its lines the fetch ends; the test site has no such picture, and it was not run. **A picture sent with a status that is no success** is not taken, by its lines; not run either.
+- **A proxy:** the fetch uses the system's, as any request of the app's does. A web view is given none of its own today.
+- **The picture is decoded in the app's own process,** by the system's decoder: only four kinds, each checked by its first bytes, at most 200 KB and 2,048 pixels a side. That the decoder must take a file for the kind it begins as was not broken on purpose: no file was found that begins as one kind and is decoded as another.
+- **A page with more than 16 icons,** and an icon whose address is longer than 2,048 characters: by the page's own script, which no test gave so many.
 - **An icon whose address is at another site** than its page's: the tests' icons are at their page's own site. With whose cookies the WebView asks another site for one was not looked at.
 - **The icon every site may have at `/favicon.ico`,** for a page that names none: the test site has none there (every page of every test would have it), so that the WebView asks for it and hands it over was not seen.
 - **A real phone or tablet;** another version of the System WebView than the emulator's. Down the side, Android's icons are drawn on the JVM only (the emulator is a phone).
@@ -159,11 +181,13 @@ No test fetches from anywhere but the test's own site, in the test's own process
 
 ## 10. Done checklist
 
-- [ ] The owner's word on §6, D1 before any of Apple's part.
+- [ ] The owner's word on §6: D1 is given (WT-D33); D2 to D6 are not.
 - [x] The core and the contract, for an icon an engine hands over.
 - [x] Android.
-- [ ] Apple.
+- [x] Apple: the core's choice, and the adapter's fetch.
+- [ ] Apple's windows.
 - [x] The core: `Tools/test.sh all` green, and `android-device`, on 2026-11-23: `lint`, `core` (627, and the strings tool's 24), `unit` (296 on the Mac), `build`, the Mac's UI suite (46), `ios` (278 on the iPhone simulator), the iPhone's UI suite (36), `android` (416 and 32 on the JVM) and `android-device` (160 on the emulator). No shell changed but for the contract's number.
 - [x] Android: the same again, on 2026-11-23: `lint`, `core` (628, and the strings tool's 24), `unit` (296 on the Mac), `build`, the Mac's UI suite (46), `ios` (278 on the iPhone simulator), the iPhone's UI suite (36), `android` (425 and 32 on the JVM) and `android-device` (163 on the emulator).
 - [x] The test site's pictures, and an icon asked for as its login set: the same again, on 2026-11-23: `lint`, `core` (628, and the strings tool's 24), `unit` (297 on the Mac), `build`, the Mac's UI suite (46), `ios` (279 on the iPhone simulator), the iPhone's UI suite (36), `android` (425 and 32 on the JVM) and `android-device` (165 on the emulator).
-- [ ] Apple: the gate.
+- [ ] Apple's fetch: the gate.
+- [ ] Apple's windows: the gate.

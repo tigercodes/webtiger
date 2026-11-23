@@ -69,6 +69,8 @@ public final class WebKitEngine: HostServices {
     public var filePicker = FilePicker.none
     /// The web views whose pages have a picker open.
     let files = Files()
+    /// Which icons each page names, and the fetch of the one the core asks for (046 §5a).
+    private(set) lazy var icons = Icons(report: reporting)
 
     /// Where each of those sends what it has to say of a web view: to the core.
     private var reporting: @MainActor (UInt64, WTEngineEvent.OneOf_Kind) -> Void {
@@ -142,6 +144,7 @@ public final class WebKitEngine: HostServices {
             dialogs.drop(webViewID: destroy.webViewID)
             signIns.drop(webViewID: destroy.webViewID)
             files.drop(webViewID: destroy.webViewID)
+            icons.drop(webViewID: destroy.webViewID)
             certificates.dropped(destroy.webViewID)
             if let page = pages.removeValue(forKey: destroy.webViewID) {
                 page.close()
@@ -183,7 +186,16 @@ public final class WebKitEngine: HostServices {
             guard let page = pages[trust.webViewID] else { return failure("webview.unknown") }
             let trusted = certificates.trust(heldBy: page.id, loginSet: page.loginSet, isPrivate: page.isPrivate)
             return trusted ? .ack(WTAck()) : failure("certificate.unknown")
+        case let .webViewFetchIcon(fetch):
+            return fetchIcon(fetch)
         }
+    }
+
+    /// The core asked for a page's icon (046 §5a): answered at once, whatever comes of it.
+    private func fetchIcon(_ fetch: WTWebViewFetchIcon) -> WTHostResponse.OneOf_Kind {
+        guard pages[fetch.webViewID] != nil else { return failure("webview.unknown") }
+        icons.fetch(fetch)
+        return .ack(WTAck())
     }
 
     /// Deletes a login set: everything its pages stored, and the store itself. False, and
@@ -528,9 +540,10 @@ final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
         historyChanged()
     }
 
-    func webView(_: WKWebView, didFinish _: WKNavigation?) {
+    func webView(_ webView: WKWebView, didFinish _: WKNavigation?) {
         reconcileAddress()
         engine?.report(id, .navigationFinished(WTNavigationFinished()))
+        engine?.icons.read(webView, id: id)
     }
 
     func webView(_: WKWebView, didFailProvisionalNavigation _: WKNavigation?, withError error: any Error) {

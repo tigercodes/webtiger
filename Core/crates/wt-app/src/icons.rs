@@ -5,8 +5,11 @@
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 
-use wt_core::{LoginSetId, WebViewId};
-use wt_proto::v1::{Icon, IconReceived, IconsPage, QueryIcons, response};
+use wt_core::{Address, LoginSetId, WebViewId};
+use wt_proto::v1::{
+    Icon, IconNamed, IconReceived, IconsPage, NamedIcon, QueryIcons, WebViewFetchIcon,
+    host_request, response,
+};
 use wt_store::MAX_ICON_BYTES;
 
 use crate::app::App;
@@ -20,6 +23,79 @@ pub(crate) const ICON_EVERY_MILLIS: i64 = 60_000;
 
 /// The most pictures one answer carries: a shell asks for more in turn.
 pub(crate) const MOST_ICONS_ASKED: usize = 64;
+
+/// How large an icon is wanted, in pixels across: a tile is drawn from it,
+/// and a tab's small icon (046 D4).
+const WANTED_PIXELS: u32 = 64;
+
+/// How large a touch icon is taken to be when its page does not say; and
+/// any other icon.
+const TOUCH_ICON_PIXELS: u32 = 180;
+const UNSAID_ICON_PIXELS: u32 = 32;
+
+/// The icon to fetch for a page, of those it names (046 D4). One that came
+/// over `https` (or never leaves this device) and does not say it is SVG:
+/// the one nearest [`WANTED_PIXELS`] across by what the page says of its
+/// size, one that is at least that large before one that is smaller, and
+/// of two alike the first named. With none that will do, the icon every
+/// site may have, at the page's own origin; `None` when the page has no
+/// origin to ask.
+pub(crate) fn chosen_icon(page: &Address, named: &[NamedIcon]) -> Option<Address> {
+    let mut best: Option<((bool, u32), Address)> = None;
+    for icon in named {
+        let called: Vec<String> = icon
+            .rel
+            .split_ascii_whitespace()
+            .map(str::to_ascii_lowercase)
+            .collect();
+        let touch = called
+            .iter()
+            .any(|word| word == "apple-touch-icon" || word == "apple-touch-icon-precomposed");
+        if !touch && !called.iter().any(|word| word == "icon") {
+            continue;
+        }
+        let Ok(address) = Address::parse(&icon.url) else {
+            continue;
+        };
+        // A drawing in SVG is no picture every system decodes alike.
+        let svg = icon.r#type.to_ascii_lowercase().contains("svg")
+            || address.path().to_ascii_lowercase().ends_with(".svg");
+        if svg || !address.is_trustworthy() {
+            continue;
+        }
+        let pixels = said_size(&icon.sizes).unwrap_or(if touch {
+            TOUCH_ICON_PIXELS
+        } else {
+            UNSAID_ICON_PIXELS
+        });
+        let rank = (pixels < WANTED_PIXELS, pixels.abs_diff(WANTED_PIXELS));
+        if best.as_ref().is_none_or(|(now, _)| rank < *now) {
+            best = Some((rank, address));
+        }
+    }
+    best.map(|(_, address)| address).or_else(|| {
+        let origin = page.origin()?;
+        Address::parse(&format!("{origin}/favicon.ico"))
+            .ok()
+            .filter(Address::is_trustworthy)
+    })
+}
+
+/// How large a page says an icon is, by its larger side: of the sizes it
+/// lists ("16x16 32x32"), the one nearest what is wanted. `None` when it
+/// says nothing that is a size ("any", or no word at all).
+fn said_size(sizes: &str) -> Option<u32> {
+    sizes
+        .split_ascii_whitespace()
+        .filter_map(|size| {
+            let (wide, tall) = size
+                .to_ascii_lowercase()
+                .split_once('x')
+                .map(|(wide, tall)| (wide.parse::<u32>().ok(), tall.parse::<u32>().ok()))?;
+            Some(wide?.max(tall?)).filter(|pixels| *pixels > 0)
+        })
+        .min_by_key(|pixels| (*pixels < WANTED_PIXELS, pixels.abs_diff(WANTED_PIXELS)))
+}
 
 /// The first bytes of every PNG.
 const PNG: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
@@ -61,6 +137,9 @@ pub(crate) struct Icons {
     /// The hosts a window was told have no icon because the store has not
     /// been asked yet: it is asked before the window is told again.
     asked: RefCell<BTreeSet<(LoginSetId, String)>>,
+    /// The address the shell was last asked to fetch as a host's icon in a
+    /// login set, this run (046 §5a): it is not asked for the same again.
+    fetched: BTreeMap<LoginSetId, BTreeMap<String, String>>,
 }
 
 impl Icons {
@@ -115,6 +194,18 @@ impl Icons {
             .or_insert(0);
     }
 
+    /// Whether the shell is to be asked now to fetch an address as a host's
+    /// icon in a login set: not when it was asked for that address already
+    /// in this run. What is asked for is noted.
+    pub(crate) fn fetch_is_new(&mut self, login_set: LoginSetId, host: &str, url: &str) -> bool {
+        let asked = self.fetched.entry(login_set).or_default();
+        if asked.get(host).is_some_and(|was| was == url) {
+            return false;
+        }
+        asked.insert(host.to_owned(), url.to_owned());
+        true
+    }
+
     /// Whose picture a number is: the login set and the host.
     pub(crate) fn whose(&self, number: u64) -> Option<(LoginSetId, String)> {
         self.whose.get(&number).cloned()
@@ -131,6 +222,7 @@ impl Icons {
         self.asked
             .borrow_mut()
             .retain(|(asked, _)| *asked != login_set);
+        self.fetched.remove(&login_set);
     }
 }
 
@@ -145,6 +237,29 @@ impl App {
         if is_icon(&received.png) {
             self.icon_offered(web_view, &received.page_url, &received.png, true);
         }
+    }
+
+    /// A page names its icons (046 §5a, WT-D33): the shell is asked to fetch
+    /// the one the core chooses, once in a run for the page's host in its
+    /// login set. The picture comes back as `IconReceived`, as an engine's
+    /// own does. The request is on its way when this returns.
+    pub(crate) fn icon_named(&self, web_view: WebViewId, named: &IconNamed) {
+        let chosen = self.state.borrow_mut().icon_to_fetch(web_view, named);
+        let Some(chosen) = chosen else {
+            return;
+        };
+        let asked = self
+            .host
+            .request(host_request::Kind::WebViewFetchIcon(WebViewFetchIcon {
+                web_view_id: web_view.get(),
+                url: chosen.as_str().to_owned(),
+                page_url: named.page_url.clone(),
+            }));
+        // Asked already; this only waits for the answer, so that a shell
+        // that never gives one is given up on like any other.
+        tokio::task::spawn_local(async move {
+            let _ = asked.await;
+        });
     }
 
     /// A page has arrived in a web view (046): an icon that was handed over
@@ -253,6 +368,13 @@ impl App {
 
 #[cfg(test)]
 mod tests {
+    #![allow(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::panic,
+        reason = "a test fails the way its assertions do"
+    )]
+
     use super::*;
 
     /// A PNG's first bytes: of this many pixels each way.
@@ -264,6 +386,160 @@ mod tests {
         bytes.extend_from_slice(&height.to_be_bytes());
         bytes.extend_from_slice(&[8, 6, 0, 0, 0, 1, 2, 3, 4]);
         bytes
+    }
+
+    fn named(url: &str, rel: &str, sizes: &str, kind: &str) -> NamedIcon {
+        NamedIcon {
+            url: url.to_owned(),
+            rel: rel.to_owned(),
+            sizes: sizes.to_owned(),
+            r#type: kind.to_owned(),
+        }
+    }
+
+    /// The address chosen for a page at https://example.com/ that names these.
+    fn chosen(icons: &[NamedIcon]) -> Option<String> {
+        let page = Address::parse("https://example.com/a/page").ok()?;
+        chosen_icon(&page, icons).map(|address| address.as_str().to_owned())
+    }
+
+    #[test]
+    fn the_icon_nearest_the_size_wanted_is_chosen_of_those_that_will_do() {
+        let small = named("https://example.com/16.png", "icon", "16x16", "image/png");
+        let right = named("https://example.com/64.png", "icon", "64x64", "image/png");
+        let large = named(
+            "https://example.com/512.png",
+            "icon",
+            "512x512",
+            "image/png",
+        );
+        let some = |url: &str| Some(url.to_owned());
+        // The one that is the size wanted; whatever order they are named in.
+        assert_eq!(
+            chosen(&[small.clone(), right.clone(), large.clone()]),
+            some("https://example.com/64.png")
+        );
+        assert_eq!(
+            chosen(&[large.clone(), small.clone(), right]),
+            some("https://example.com/64.png")
+        );
+        // With none of that size: one that is larger before one that is smaller, and of
+        // the larger the nearest.
+        let nearer = named("https://example.com/96.png", "icon", "96x96", "");
+        assert_eq!(
+            chosen(&[small.clone(), large.clone(), nearer]),
+            some("https://example.com/96.png")
+        );
+        // Only smaller ones: the largest of them.
+        let smaller = named("https://example.com/32.png", "icon", "32x32", "");
+        assert_eq!(
+            chosen(&[small.clone(), smaller]),
+            some("https://example.com/32.png")
+        );
+        // An icon that lists several sizes is as near as its nearest; one that is not square
+        // is as large as its larger side.
+        let many = named(
+            "https://example.com/many.ico",
+            "shortcut icon",
+            "16x16 64x64 256x256",
+            "",
+        );
+        let wide = named("https://example.com/wide.png", "icon", "128x48", "");
+        assert_eq!(
+            chosen(&[wide.clone(), many]),
+            some("https://example.com/many.ico")
+        );
+        // A touch icon that says nothing of its size is taken to be 180 across; any other,
+        // 32. So a touch icon is chosen before an icon that says nothing, and an icon that
+        // says it is 64 before both. Of two alike, the first named.
+        let touch = named("https://example.com/touch.png", "apple-touch-icon", "", "");
+        let silent = named("https://example.com/favicon.ico", "icon", "", "");
+        let any = named("https://example.com/any.png", "ICON", "any", "");
+        assert_eq!(
+            chosen(&[silent.clone(), touch.clone()]),
+            some("https://example.com/touch.png")
+        );
+        assert_eq!(
+            chosen(&[touch, wide.clone()]),
+            some("https://example.com/wide.png")
+        );
+        assert_eq!(
+            chosen(&[silent, any]),
+            some("https://example.com/favicon.ico")
+        );
+    }
+
+    #[test]
+    fn what_will_not_do_is_passed_over_and_with_nothing_left_the_sites_own_is_asked_for() {
+        let some = |url: &str| Some(url.to_owned());
+        let good = named("https://example.com/icon.png", "icon", "16x16", "image/png");
+        // Not an icon by what the page calls it; a drawing in SVG, by its kind or by its
+        // name; an address that did not come over https; an address that is none.
+        let passed_over = [
+            named("https://example.com/style.css", "stylesheet", "64x64", ""),
+            named("https://example.com/pin.svg", "mask-icon", "64x64", ""),
+            named(
+                "https://example.com/drawing",
+                "icon",
+                "64x64",
+                "image/svg+xml",
+            ),
+            named("https://example.com/drawing.SVG?v=2", "icon", "64x64", ""),
+            named("http://example.com/plain.png", "icon", "64x64", "image/png"),
+            named("not an address", "icon", "64x64", ""),
+            named("data:image/png;base64,AAAA", "icon", "64x64", ""),
+        ];
+        let mut all = passed_over.to_vec();
+        all.push(good);
+        assert_eq!(chosen(&all), some("https://example.com/icon.png"));
+        // With nothing that will do, and for a page that names none: the icon every site
+        // may have, at the page's own origin.
+        assert_eq!(
+            chosen(&passed_over),
+            some("https://example.com/favicon.ico")
+        );
+        assert_eq!(chosen(&[]), some("https://example.com/favicon.ico"));
+        // An icon at another site's address is an icon: many sites keep theirs elsewhere.
+        let elsewhere = named("https://files.example.net/icon.png", "icon", "64x64", "");
+        assert_eq!(
+            chosen(&[elsewhere]),
+            some("https://files.example.net/icon.png")
+        );
+        // A page on this device may name an icon on this device, over http.
+        let page = Address::parse("http://127.0.0.1:8080/page").unwrap();
+        let own = named("http://127.0.0.1:8080/icon.png", "icon", "", "");
+        assert_eq!(
+            chosen_icon(&page, &[own]).map(|address| address.as_str().to_owned()),
+            some("http://127.0.0.1:8080/icon.png")
+        );
+        assert_eq!(
+            chosen_icon(&page, &[]).map(|address| address.as_str().to_owned()),
+            some("http://127.0.0.1:8080/favicon.ico")
+        );
+        // A page that did not come over https is asked for nothing: its icon is not kept.
+        let plain = Address::parse("http://plain.example.com/page").unwrap();
+        assert_eq!(chosen_icon(&plain, &[]), None);
+    }
+
+    #[test]
+    fn an_address_is_asked_for_once_for_a_host_in_a_login_set_until_the_login_set_is_gone() {
+        let mut icons = Icons::default();
+        let (one, two) = (
+            LoginSetId(wt_core::Uuid::from_bytes([1; 16])),
+            LoginSetId(wt_core::Uuid::from_bytes([2; 16])),
+        );
+        assert!(icons.fetch_is_new(one, "example.com", "https://example.com/a.png"));
+        assert!(!icons.fetch_is_new(one, "example.com", "https://example.com/a.png"));
+        // Another host, another login set and another address are each asked for.
+        assert!(icons.fetch_is_new(one, "example.net", "https://example.com/a.png"));
+        assert!(icons.fetch_is_new(two, "example.com", "https://example.com/a.png"));
+        assert!(icons.fetch_is_new(one, "example.com", "https://example.com/b.png"));
+        // And the one before it again, since the host's page names it again.
+        assert!(icons.fetch_is_new(one, "example.com", "https://example.com/a.png"));
+        // A login set that is gone takes what was asked for it along.
+        icons.forget(two);
+        assert!(icons.fetch_is_new(two, "example.com", "https://example.com/a.png"));
+        assert!(!icons.fetch_is_new(one, "example.com", "https://example.com/a.png"));
     }
 
     #[test]

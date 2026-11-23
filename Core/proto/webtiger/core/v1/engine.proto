@@ -61,6 +61,8 @@ message EngineEvent {
     SearchRequested search_requested = 24;
     // Since 1.37
     IconReceived icon_received = 25;
+    // Since 1.39
+    IconNamed icon_named = 26;
   }
 }
 
@@ -339,4 +341,31 @@ message IconReceived {
   bytes png = 1 [(wt.redact) = true];
   // The page the engine says it is the icon of.
   string page_url = 2 [(wt.redact) = true];
+}
+
+// The page a web view shows names its icons (046): an engine that hands an
+// app no icon says which the page names, as the page wrote them, each
+// address made whole against the page's own. The core chooses one to be
+// fetched (WebViewFetchIcon), or none; a page that names none is asked for
+// the icon every site may have, at its own origin. Since 1.39.
+//
+// Nothing is asked for a page whose icon would not be kept (IconReceived),
+// nor twice in a run for a host in a login set, unless its page names
+// another address.
+message IconNamed {
+  repeated NamedIcon icons = 1;
+  // The page that names them.
+  string page_url = 2 [(wt.redact) = true];
+}
+
+// An icon a page names (`<link rel="icon">`).
+message NamedIcon {
+  string url = 1 [(wt.redact) = true];
+  // What the page calls it: "icon", "shortcut icon", "apple-touch-icon".
+  string rel = 2;
+  // How large the page says it is: "32x32", "16x16 32x32", "any"; or
+  // nothing.
+  string sizes = 3;
+  // The kind of picture the page says it is: "image/png"; or nothing.
+  string type = 4;
 }

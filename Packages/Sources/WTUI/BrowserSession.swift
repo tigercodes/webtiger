@@ -82,6 +82,13 @@ public final class BrowserSession {
                 downloads = Self.downloadsFolder(profile: profile, data: folder)
             }
             let engine = WebKitEngine(downloads: downloads, deviceAccess: deviceAccess(fake: config.testMode == .fake))
+            // A page's icon is fetched by the app itself (046 §5a). In fake mode nothing is,
+            // unless a suite asks: and then only from this device, where its site is.
+            if config.testMode != .fake {
+                engine.iconFetching = .web
+            } else if environment["WEBTIGER_FAKE_ICONS"] == "1" {
+                engine.iconFetching = .thisDevice
+            }
             #if os(macOS)
                 // A page's file input opens the system's picker (019). Not in fake mode: its
                 // engine picks nothing, and shows nothing of the system's.

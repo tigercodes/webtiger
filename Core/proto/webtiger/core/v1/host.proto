@@ -45,6 +45,8 @@ message HostRequest {
     WebViewTrustCertificate web_view_trust_certificate = 14;
     // Since 1.22
     OpenFile open_file = 15;
+    // Since 1.39
+    WebViewFetchIcon web_view_fetch_icon = 16;
   }
 }
 
@@ -222,4 +224,20 @@ message OpenFile {
   // What the site said the file is. Empty when it did not say: the shell
   // then goes by the file's name.
   string mime_type = 2;
+}
+
+// Since 1.39. Fetch a page's icon (046): asked of an engine that hands an
+// app none, for the one of the icons the page named (IconNamed) that the
+// core chose. The shell fetches it by itself, and as nobody: with no cookie
+// sent or kept, no login, nothing kept of what comes back but the picture;
+// following only what stays on `https`, or on this device; and no more than
+// 200 KB. Answered with Ack at once. The picture, when there is one, comes
+// as IconReceived naming `page_url`, as a PNG of at most 128 pixels a side;
+// a fetch that fails, and what is no picture, say nothing.
+// "webview.unknown".
+message WebViewFetchIcon {
+  uint64 web_view_id = 1;
+  string url = 2 [(wt.redact) = true];
+  // The page it is the icon of.
+  string page_url = 3 [(wt.redact) = true];
 }

@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | **Designed; nothing built.** The choices of §6 are put to the owner |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "the command bar". 000 §6.2: "One field for addresses, searches, open tabs, Sites, Spaces, history, settings and plugin commands. Everything in the app is reachable by typing" |
-| **Contract** | To be 1.39 (§5). Nothing is kept |
+| **Contract** | To be 1.40 (§5). Nothing is kept |
 | **Builds on** | [011](011-suggestions.md): what is offered for what is typed, from history. [038](038-an-open-tab-is-offered.md): the open tabs of the row among them, Sites that sleep and Sites of shut Groups too. [024](024-several-spaces.md): Spaces. [034](034-the-macs-menus.md): the window's commands, which a menu and a key reach |
 | **Last updated** | 2026-11-23 |
 
@@ -41,7 +41,7 @@ I type in the one field at the top of the window. Part of a page's name brings m
 
 Nowhere.
 
-## 5. The contract (to be 1.39)
+## 5. The contract (to be 1.40)
 
 Added; nothing is changed or removed.
 

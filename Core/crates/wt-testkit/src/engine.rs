@@ -7,11 +7,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use wt_proto::v1::{
     Ack, AddressChanged, CloseRequested, DialogKind, DialogRequested, DownloadFailed,
     DownloadFinished, DownloadProgress, DownloadRequested, EngineEvent, EngineKind, Error,
-    FindResult, HistoryChanged, HostPong, IconReceived, LinkOpenRequested, NavigationCommand,
-    NavigationCommitted, NavigationFailed, NavigationFinished, NavigationStarted,
-    NewWindowRequested, OutsideLinkRequested, PermissionKind, PermissionRequested,
-    PermissionWithdrawn, ProgressChanged, RendererGone, SearchRequested, SignInRequested,
-    TitleChanged, engine_event, host_request, host_response,
+    FindResult, HistoryChanged, HostPong, IconNamed, IconReceived, LinkOpenRequested, NamedIcon,
+    NavigationCommand, NavigationCommitted, NavigationFailed, NavigationFinished,
+    NavigationStarted, NewWindowRequested, OutsideLinkRequested, PermissionKind,
+    PermissionRequested, PermissionWithdrawn, ProgressChanged, RendererGone, SearchRequested,
+    SignInRequested, TitleChanged, engine_event, host_request, host_response,
 };
 
 /// A page of the scripted web.
@@ -26,6 +26,10 @@ pub struct FakePage {
     /// this code, and the engine holds the certificate, until it is told to
     /// let it through for the web view's login set.
     pub certificate: Option<String>,
+    /// The page says which icons it names (046 §5a), as an engine that
+    /// hands an app no icon reports them: `None` for an engine that says
+    /// nothing of icons, `Some` of no icons for a page that names none.
+    pub icons: Option<Vec<NamedIcon>>,
 }
 
 /// A web view the fake shell holds.
@@ -98,6 +102,12 @@ pub struct FakeEngine {
     /// The files this shell was asked to open with the system (030), in
     /// order: the name and the kind. It opens nothing.
     pub opened_files: Vec<(String, String)>,
+    /// What this shell has at an address, when it is asked to fetch it as
+    /// an icon (046 §5a): the picture it then hands over.
+    pictures: BTreeMap<String, Vec<u8>>,
+    /// Every icon this shell was asked to fetch, in order: the web view and
+    /// the address.
+    pub icon_fetches: Vec<(u64, String)>,
     /// Nothing on this device opens a file: `OpenFile` is answered with
     /// "system.no_handler".
     pub nothing_opens_files: bool,
@@ -128,6 +138,8 @@ impl FakeEngine {
             trust_asked: Vec::new(),
             holds_no_certificate: false,
             opened_files: Vec::new(),
+            pictures: BTreeMap::new(),
+            icon_fetches: Vec::new(),
             nothing_opens_files: false,
             missing_files: Vec::new(),
         }
@@ -247,6 +259,50 @@ impl FakeEngine {
                 ..FakePage::default()
             },
         );
+    }
+
+    /// A page says which icons it names (046 §5a), as an engine that hands an
+    /// app none reports them when the page has arrived: each an address and
+    /// what the page says of it (what it calls it, its sizes, its kind).
+    pub fn names_icons(&mut self, url: &str, icons: &[(&str, &str, &str, &str)]) {
+        let named = icons
+            .iter()
+            .map(|(address, rel, sizes, kind)| NamedIcon {
+                url: (*address).to_owned(),
+                rel: (*rel).to_owned(),
+                sizes: (*sizes).to_owned(),
+                r#type: (*kind).to_owned(),
+            })
+            .collect();
+        if let Some(page) = self.pages.get_mut(url) {
+            page.icons = Some(named);
+        }
+    }
+
+    /// Puts a picture at an address: what this shell hands over when it is
+    /// asked to fetch that address as an icon. It has nothing anywhere else.
+    pub fn picture(&mut self, url: &str, png: &[u8]) {
+        self.pictures.insert(url.to_owned(), png.to_vec());
+    }
+
+    /// The report that a page names these icons (046 §5a).
+    #[must_use]
+    pub fn icon_named(id: u64, page_url: &str, icons: &[(&str, &str, &str, &str)]) -> EngineEvent {
+        event(
+            id,
+            engine_event::Kind::IconNamed(IconNamed {
+                icons: icons
+                    .iter()
+                    .map(|(address, rel, sizes, kind)| NamedIcon {
+                        url: (*address).to_owned(),
+                        rel: (*rel).to_owned(),
+                        sizes: (*sizes).to_owned(),
+                        r#type: (*kind).to_owned(),
+                    })
+                    .collect(),
+                page_url: page_url.to_owned(),
+            }),
+        )
     }
 
     /// Makes an address redirect to another.
@@ -422,6 +478,25 @@ impl FakeEngine {
                 self.opened_files.push((open.file_name, open.mime_type));
                 (ack, Vec::new())
             }
+            // The icon is fetched, as nobody; what is at the address, when
+            // there is something, is handed over as the page's (046 §5a).
+            Kind::WebViewFetchIcon(fetch) => {
+                if !self.web_views.contains_key(&fetch.web_view_id) {
+                    return (error("webview.unknown"), Vec::new());
+                }
+                self.icon_fetches
+                    .push((fetch.web_view_id, fetch.url.clone()));
+                let found = self.pictures.get(&fetch.url).map(|png| {
+                    event(
+                        fetch.web_view_id,
+                        engine_event::Kind::IconReceived(IconReceived {
+                            png: png.clone(),
+                            page_url: fetch.page_url.clone(),
+                        }),
+                    )
+                });
+                (ack, found.into_iter().collect())
+            }
         }
     }
 
@@ -495,7 +570,19 @@ impl FakeEngine {
             view.history.push(at.clone());
             view.index = view.history.len() - 1;
         }
+        let icons = page.as_ref().and_then(|page| page.icons.clone());
         events.extend(self.arrive(id, &at, page.map(|page| page.title).unwrap_or_default()));
+        // An engine that hands an app no icon says which the page names,
+        // once the page has arrived (046 §5a).
+        if let Some(icons) = icons {
+            events.push(event(
+                id,
+                engine_event::Kind::IconNamed(IconNamed {
+                    icons,
+                    page_url: at,
+                }),
+            ));
+        }
         events
     }
 
