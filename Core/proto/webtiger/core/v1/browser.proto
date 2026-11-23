@@ -579,6 +579,11 @@ message FindView {
 // from its Space's own history, best first. Nothing typed leaves the
 // device. Answered with AddressSuggestions, or "window.unknown".
 //
+// Since 1.40 the field is the command bar (048): a shell that can show them
+// is offered Spaces and commands too, after the open tabs and before the
+// places. Only a shell that asks is offered either: one that does not is
+// answered as before.
+//
 // Asked for, not subscribed to: each letter typed is a question, and a shell
 // shows only the answer to what is now in its field.
 message SuggestAddresses {
@@ -587,6 +592,28 @@ message SuggestAddresses {
   // At most this many. 0 asks for the core's own number (6); more than 20
   // is 20.
   uint32 limit = 3;
+  // Since 1.40. The commands that can be done now, for the core to match
+  // with what is typed: those whose words have every word typed are offered,
+  // in this order, at most three. The words are the shell's and the matching
+  // is the core's, so that one list has one order on every system. A command
+  // that can do nothing now is not sent. At most 64 are read.
+  repeated OfferedCommand commands = 4;
+  // Since 1.40. The shell shows a Space among what is offered: the Spaces
+  // whose names have every word typed are, at most two; never the one the
+  // window shows, a Space with no name of its own, or any to a private
+  // window.
+  bool spaces = 5;
+}
+
+// A command a shell can do now (048). Since 1.40.
+message OfferedCommand {
+  // The shell's own name for it, of the kind the core's codes are
+  // ("layout.side"): given back when it matches. One that is not of that
+  // kind is passed over.
+  string name = 1;
+  // As its menu's item says it, in the person's language: the app's words,
+  // not the person's.
+  string words = 2;
 }
 
 message AddressSuggestions {
@@ -594,7 +621,8 @@ message AddressSuggestions {
   repeated AddressSuggestion suggestions = 1;
 }
 
-// A place that was visited, offered again; or, since 1.27, a tab that is open.
+// A place that was visited, offered again; or, since 1.27, a tab that is open;
+// or, since 1.40, a Space or a command (048).
 message AddressSuggestion {
   // Where choosing it goes.
   string url = 1 [(wt.redact) = true];
@@ -605,6 +633,14 @@ message AddressSuggestion {
   // Since 1.27. Not 0: an open tab of the window that shows this page (038).
   // Choosing it brings that tab in front (ActivateTab) and loads nothing.
   uint64 tab_id = 4;
+  // Since 1.40. Not 0: a Space (048), by `title` its name; it has no
+  // address. Choosing it shows it in the window (SwitchSpace).
+  uint64 space_id = 5;
+  // Since 1.40. Not empty: a command (048), by the name the shell gave it,
+  // with `title` its words as the shell sent them; it has no address.
+  // Choosing it does it, in the shell. What is typed is never done as a
+  // command: only a row that is chosen is.
+  string command = 6;
 }
 
 // Zoom (012). Since 1.8.

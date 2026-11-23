@@ -1404,6 +1404,11 @@ public nonisolated struct WTFindView: Sendable {
 /// from its Space's own history, best first. Nothing typed leaves the
 /// device. Answered with AddressSuggestions, or "window.unknown".
 ///
+/// Since 1.40 the field is the command bar (048): a shell that can show them
+/// is offered Spaces and commands too, after the open tabs and before the
+/// places. Only a shell that asks is offered either: one that does not is
+/// answered as before.
+///
 /// Asked for, not subscribed to: each letter typed is a question, and a shell
 /// shows only the answer to what is now in its field.
 public nonisolated struct WTSuggestAddresses: Sendable {
@@ -1418,6 +1423,39 @@ public nonisolated struct WTSuggestAddresses: Sendable {
   /// At most this many. 0 asks for the core's own number (6); more than 20
   /// is 20.
   public var limit: UInt32 = 0
+
+  /// Since 1.40. The commands that can be done now, for the core to match
+  /// with what is typed: those whose words have every word typed are offered,
+  /// in this order, at most three. The words are the shell's and the matching
+  /// is the core's, so that one list has one order on every system. A command
+  /// that can do nothing now is not sent. At most 64 are read.
+  public var commands: [WTOfferedCommand] = []
+
+  /// Since 1.40. The shell shows a Space among what is offered: the Spaces
+  /// whose names have every word typed are, at most two; never the one the
+  /// window shows, a Space with no name of its own, or any to a private
+  /// window.
+  public var spaces: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// A command a shell can do now (048). Since 1.40.
+public nonisolated struct WTOfferedCommand: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// The shell's own name for it, of the kind the core's codes are
+  /// ("layout.side"): given back when it matches. One that is not of that
+  /// kind is passed over.
+  public var name: String = String()
+
+  /// As its menu's item says it, in the person's language: the app's words,
+  /// not the person's.
+  public var words: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1437,7 +1475,8 @@ public nonisolated struct WTAddressSuggestions: Sendable {
   public init() {}
 }
 
-/// A place that was visited, offered again; or, since 1.27, a tab that is open.
+/// A place that was visited, offered again; or, since 1.27, a tab that is open;
+/// or, since 1.40, a Space or a command (048).
 public nonisolated struct WTAddressSuggestion: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -1455,6 +1494,16 @@ public nonisolated struct WTAddressSuggestion: Sendable {
   /// Since 1.27. Not 0: an open tab of the window that shows this page (038).
   /// Choosing it brings that tab in front (ActivateTab) and loads nothing.
   public var tabID: UInt64 = 0
+
+  /// Since 1.40. Not 0: a Space (048), by `title` its name; it has no
+  /// address. Choosing it shows it in the window (SwitchSpace).
+  public var spaceID: UInt64 = 0
+
+  /// Since 1.40. Not empty: a command (048), by the name the shell gave it,
+  /// with `title` its words as the shell sent them; it has no address.
+  /// Choosing it does it, in the shell. What is typed is never done as a
+  /// command: only a row that is chosen is.
+  public var command: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -4070,7 +4119,7 @@ nonisolated extension WTFindView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 nonisolated extension WTSuggestAddresses: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SuggestAddresses"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}text\0\u{1}limit\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}text\0\u{1}limit\0\u{1}commands\0\u{1}spaces\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4081,6 +4130,8 @@ nonisolated extension WTSuggestAddresses: SwiftProtobuf.Message, SwiftProtobuf._
       case 1: try { try decoder.decodeSingularUInt64Field(value: &self.windowID) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.text) }()
       case 3: try { try decoder.decodeSingularUInt32Field(value: &self.limit) }()
+      case 4: try { try decoder.decodeRepeatedMessageField(value: &self.commands) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.spaces) }()
       default: break
       }
     }
@@ -4096,6 +4147,12 @@ nonisolated extension WTSuggestAddresses: SwiftProtobuf.Message, SwiftProtobuf._
     if self.limit != 0 {
       try visitor.visitSingularUInt32Field(value: self.limit, fieldNumber: 3)
     }
+    if !self.commands.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.commands, fieldNumber: 4)
+    }
+    if self.spaces != false {
+      try visitor.visitSingularBoolField(value: self.spaces, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -4103,6 +4160,43 @@ nonisolated extension WTSuggestAddresses: SwiftProtobuf.Message, SwiftProtobuf._
     if lhs.windowID != rhs.windowID {return false}
     if lhs.text != rhs.text {return false}
     if lhs.limit != rhs.limit {return false}
+    if lhs.commands != rhs.commands {return false}
+    if lhs.spaces != rhs.spaces {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTOfferedCommand: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".OfferedCommand"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}words\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.words) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 1)
+    }
+    if !self.words.isEmpty {
+      try visitor.visitSingularStringField(value: self.words, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTOfferedCommand, rhs: WTOfferedCommand) -> Bool {
+    if lhs.name != rhs.name {return false}
+    if lhs.words != rhs.words {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -4140,7 +4234,7 @@ nonisolated extension WTAddressSuggestions: SwiftProtobuf.Message, SwiftProtobuf
 
 nonisolated extension WTAddressSuggestion: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".AddressSuggestion"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}url\0\u{1}title\0\u{1}display\0\u{3}tab_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}url\0\u{1}title\0\u{1}display\0\u{3}tab_id\0\u{3}space_id\0\u{1}command\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4152,6 +4246,8 @@ nonisolated extension WTAddressSuggestion: SwiftProtobuf.Message, SwiftProtobuf.
       case 2: try { try decoder.decodeSingularStringField(value: &self.title) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.display) }()
       case 4: try { try decoder.decodeSingularUInt64Field(value: &self.tabID) }()
+      case 5: try { try decoder.decodeSingularUInt64Field(value: &self.spaceID) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.command) }()
       default: break
       }
     }
@@ -4170,6 +4266,12 @@ nonisolated extension WTAddressSuggestion: SwiftProtobuf.Message, SwiftProtobuf.
     if self.tabID != 0 {
       try visitor.visitSingularUInt64Field(value: self.tabID, fieldNumber: 4)
     }
+    if self.spaceID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.spaceID, fieldNumber: 5)
+    }
+    if !self.command.isEmpty {
+      try visitor.visitSingularStringField(value: self.command, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -4178,6 +4280,8 @@ nonisolated extension WTAddressSuggestion: SwiftProtobuf.Message, SwiftProtobuf.
     if lhs.title != rhs.title {return false}
     if lhs.display != rhs.display {return false}
     if lhs.tabID != rhs.tabID {return false}
+    if lhs.spaceID != rhs.spaceID {return false}
+    if lhs.command != rhs.command {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

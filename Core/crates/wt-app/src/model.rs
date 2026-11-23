@@ -3151,6 +3151,33 @@ impl State {
         Some(offered)
     }
 
+    /// The Spaces to offer for what is typed in a window's address field
+    /// (048): those whose names have every word typed, in the Spaces' order,
+    /// at most `limit`. Never the Space the window shows, which is where the
+    /// person is; nor the Space the app made itself, which has no name of
+    /// its own (its word is the shell's); and none to a private window,
+    /// which has no Space (037). Each with its name.
+    pub(crate) fn spaces_offered(
+        &self,
+        window: WindowId,
+        text: &str,
+        limit: usize,
+    ) -> Vec<(SpaceId, String)> {
+        let Some(shown) = self.windows.get(&window).map(|window| window.space) else {
+            return Vec::new();
+        };
+        if self.is_private_space(shown) {
+            return Vec::new();
+        }
+        let typed = typed_words(text);
+        self.spaces
+            .iter()
+            .filter(|space| space.id != shown && all_found(&typed, &[&space.name]))
+            .take(limit)
+            .map(|space| (space.id, space.name.clone()))
+            .collect()
+    }
+
     /// The visit to write for the page a web view now shows (008): its login
     /// set and address. `None` when the page is not a visit: it has no
     /// address of the web's, or it is the visit the tab is already at (the

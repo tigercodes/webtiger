@@ -10,23 +10,25 @@ use std::time::Duration;
 use tokio::time::Instant;
 use wt_core::{
     ACTUAL_SIZE, Address, Clock, GroupId, Input, LoginSetId, SearchEngine, TabId, Timestamp, Uuid,
-    WebViewId, WindowId, classify, opens_outside, searched_words, zoom_in, zoom_out,
+    WebViewId, WindowId, classify, opens_outside, searched_words,
+    words::{all_found, typed_words},
+    zoom_in, zoom_out,
 };
 use wt_proto::v1::{
     Ack, ActivateTab, AddressSuggestion, AddressSuggestions, CloseTab, CloseWindow, EngineEvent,
     EngineKind, FindInPage, ForgetHistory, GroupMade, HistoryEntry, HistoryPage, KeepTab,
     LetGoSite, LinkOpenRequested, LoginSet, MakeGroup, MoveGroup, MoveTab, MoveToGroup,
-    NavigationCommand, OpenAddress, OpenOutside, OpenTab, OpenWindow, OutsideLinkRequested,
-    QueryHistory, RemoveGroup, RowPart, RowStep, SearchRequested, SearchWords, SendSiteHome,
-    SetFavourite, StepTab, SubmitAddress, SuggestAddresses, TabCommand, TabOpened, Undo,
-    UndoArrangement, WebViewCommand, WebViewCreate, WebViewDestroy, WebViewFind, WebViewLoad,
-    WebViewSetZoom, WindowOpened, WindowSnapshot, ZoomChange, ZoomPage, engine_event,
+    NavigationCommand, OfferedCommand, OpenAddress, OpenOutside, OpenTab, OpenWindow,
+    OutsideLinkRequested, QueryHistory, RemoveGroup, RowPart, RowStep, SearchRequested,
+    SearchWords, SendSiteHome, SetFavourite, StepTab, SubmitAddress, SuggestAddresses, TabCommand,
+    TabOpened, Undo, UndoArrangement, WebViewCommand, WebViewCreate, WebViewDestroy, WebViewFind,
+    WebViewLoad, WebViewSetZoom, WindowOpened, WindowSnapshot, ZoomChange, ZoomPage, engine_event,
     forget_history, host_request, move_tab, request, response, step_tab,
 };
 use wt_store::{ClosedTab, MAX_SUGGESTIONS, SavedTab, Space, Store};
 
 use crate::downloads::{Downloading, Wanted};
-use crate::error::AppError;
+use crate::error::{AppError, is_code};
 use crate::host::{Host, HostFuture};
 use crate::model::{LoadTarget, MoveTo, State, Step};
 use crate::spaces::Written;
@@ -41,6 +43,13 @@ pub const SUGGESTIONS: u32 = 6;
 
 /// The most open tabs offered among them (038): history must still be seen.
 const TABS_OFFERED: usize = 3;
+
+/// The most Spaces, and the most commands, offered among them (048 D5).
+const SPACES_OFFERED: usize = 2;
+const COMMANDS_OFFERED: usize = 3;
+
+/// The most commands of a shell's that are read for a question (048).
+const COMMANDS_READ: usize = 64;
 
 /// How long after a web view had an address handed to the system before it
 /// may have another (007). A click's permission lasts a few seconds in an
@@ -413,8 +422,11 @@ impl App {
     }
 
     /// What to offer for what is typed in a window's address field: the open
-    /// tabs of the row it shows (038), then places from its Space's own
-    /// history (011), best first.
+    /// tabs of the row it shows (038); to a shell that shows them, Spaces
+    /// and commands (048); then places from its Space's own history (011),
+    /// best first. No more rows than the shell asked for, and where there is
+    /// a place to offer, one of them is a place: history is never crowded
+    /// out whole.
     fn suggest_addresses(&self, suggest: &SuggestAddresses) -> Result<response::Kind, AppError> {
         let window = WindowId(suggest.window_id);
         let unknown = || AppError::new("window.unknown").field("window_id");
@@ -446,21 +458,53 @@ impl App {
                 url: address.as_str().to_owned(),
                 title,
                 tab_id: tab.0,
+                ..AddressSuggestion::default()
             })
             .collect();
         let open: Vec<String> = suggestions.iter().map(|tab| tab.url.clone()).collect();
-        suggestions.extend(
-            places
+        // Then where a person might go that is no page (048): a Space, by
+        // its name; and what the window can do, by the shell's words for it.
+        let spaces: Vec<AddressSuggestion> = if suggest.spaces {
+            self.state
+                .borrow()
+                .spaces_offered(window, &suggest.text, SPACES_OFFERED)
                 .into_iter()
-                .filter(|place| !open.contains(&place.url))
-                .map(|place| AddressSuggestion {
-                    display: Address::parse(&place.url)
-                        .map_or_else(|_| place.url.clone(), |address| address.display()),
-                    url: place.url,
-                    title: place.title,
-                    tab_id: 0,
-                }),
-        );
+                .map(|(space, name)| AddressSuggestion {
+                    title: name,
+                    space_id: space.0,
+                    ..AddressSuggestion::default()
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+        let commands = commands_offered(&suggest.commands, &suggest.text);
+        let places: Vec<AddressSuggestion> = places
+            .into_iter()
+            .filter(|place| !open.contains(&place.url))
+            .map(|place| AddressSuggestion {
+                display: Address::parse(&place.url)
+                    .map_or_else(|_| place.url.clone(), |address| address.display()),
+                url: place.url,
+                title: place.title,
+                ..AddressSuggestion::default()
+            })
+            .collect();
+        // The tabs have their part of the list, as they had (038). Spaces
+        // and commands have what the tabs left, less a row for a place where
+        // there is a place to offer: history is never crowded out whole by
+        // them. Where there is not room for all of them, each kind has a row
+        // before either has a second.
+        let left = limit.saturating_sub(suggestions.len());
+        let room = if places.is_empty() {
+            left
+        } else {
+            left.saturating_sub(1)
+        };
+        let (spaces, commands) = shared(spaces, commands, room);
+        suggestions.extend(spaces);
+        suggestions.extend(commands);
+        suggestions.extend(places);
         suggestions.truncate(limit);
         Ok(response::Kind::AddressSuggestions(AddressSuggestions {
             suggestions,
@@ -1458,4 +1502,41 @@ pub(crate) fn refuse(error: AppError) -> AppFuture {
 /// The answer to a request that waits for nothing.
 fn answer(result: Result<response::Kind, AppError>) -> AppFuture {
     Box::pin(std::future::ready(result))
+}
+
+/// As many of two lists as there is room for, each in its order: the first
+/// of each before the second of either, so that neither kind is crowded out
+/// by the other while there is room for one of each.
+fn shared<T>(mut first: Vec<T>, mut second: Vec<T>, room: usize) -> (Vec<T>, Vec<T>) {
+    let (mut one, mut other) = (0, 0);
+    while one + other < room && (one < first.len() || other < second.len()) {
+        if one < first.len() && (one <= other || other >= second.len()) {
+            one += 1;
+        } else {
+            other += 1;
+        }
+    }
+    first.truncate(one);
+    second.truncate(other);
+    (first, second)
+}
+
+/// The commands to offer for what is typed (048): of those the shell says
+/// can be done now, the ones whose words have every word typed, in the
+/// shell's order, at most [`COMMANDS_OFFERED`]. A command whose name is not of
+/// the kind the core's codes are, or that has no words, is passed over; and
+/// no more than [`COMMANDS_READ`] are read.
+fn commands_offered(commands: &[OfferedCommand], text: &str) -> Vec<AddressSuggestion> {
+    let typed = typed_words(text);
+    commands
+        .iter()
+        .take(COMMANDS_READ)
+        .filter(|command| is_code(&command.name) && all_found(&typed, &[&command.words]))
+        .take(COMMANDS_OFFERED)
+        .map(|command| AddressSuggestion {
+            title: command.words.clone(),
+            command: command.name.clone(),
+            ..AddressSuggestion::default()
+        })
+        .collect()
 }

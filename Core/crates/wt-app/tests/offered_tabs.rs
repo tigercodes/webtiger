@@ -44,6 +44,7 @@ async fn suggest(
             window_id: window,
             text: text.to_owned(),
             limit,
+            ..SuggestAddresses::default()
         }))
         .await;
     match answer {
@@ -541,6 +542,7 @@ fn a_window_there_is_not_is_offered_nothing_but_a_code() {
                 window_id: window + 100,
                 text: "rust".to_owned(),
                 limit: 0,
+                ..SuggestAddresses::default()
             }))
             .await;
         match answer {

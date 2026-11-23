@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | **Designed; nothing built.** The choices of §6 are put to the owner |
+| **Status** | **Built and tested in the core, on the recommendations of §6, which are provisional:** they are put to the owner and not yet answered. The core offers Spaces and commands to a shell that asks for them; **no shell asks yet**, so nothing in an app has changed |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "the command bar". 000 §6.2: "One field for addresses, searches, open tabs, Sites, Spaces, history, settings and plugin commands. Everything in the app is reachable by typing" |
-| **Contract** | To be 1.40 (§5). Nothing is kept |
+| **Contract** | 1.40 (§5). Nothing is kept |
 | **Builds on** | [011](011-suggestions.md): what is offered for what is typed, from history. [038](038-an-open-tab-is-offered.md): the open tabs of the row among them, Sites that sleep and Sites of shut Groups too. [024](024-several-spaces.md): Spaces. [034](034-the-macs-menus.md): the window's commands, which a menu and a key reach |
 | **Last updated** | 2026-11-23 |
 
@@ -41,7 +41,7 @@ I type in the one field at the top of the window. Part of a page's name brings m
 
 Nowhere.
 
-## 5. The contract (to be 1.40)
+## 5. The contract (1.40)
 
 Added; nothing is changed or removed.
 
@@ -50,6 +50,8 @@ message SuggestAddresses {
   …
   // The commands that can be done now, for the core to match with what is typed.
   repeated OfferedCommand commands = 4;
+  // The shell shows a Space among what is offered.
+  bool spaces = 5;
 }
 message OfferedCommand {
   string name = 1;     // the shell's own name for it, given back when it matches: "layout.side"
@@ -63,9 +65,17 @@ message AddressSuggestion {
 }
 ```
 
+**As built, where the design did not say:**
+
+- **Only a shell that asks is offered either.** A shell that sends no commands is offered none, and one that does not say it shows Spaces is offered none: a shell from before 1.40 is answered as it was, row for row. (The design had Spaces offered to every shell: one that did not know of them would have drawn a Space as a place with no address.)
+- **The Space the app made itself is not offered.** It has no name of its own: its word is the shell's, and the core has none to match. A shell that wants it found sends it as a command.
+- **A command's name is of the kind the core's codes are** (`layout.side`): one that is not, and one with no words, are passed over, so that nothing a shell sends by mistake is handed back as a command. At most 64 are read from a question.
+- **The words are matched as a page's are** (038): every word typed is a word of them or the start of one, whatever its case. Not the middle of a word; and not a command's name, which is no word of its.
+- **The rows** (D5): the open tabs have their part of the list, as they had: three, or as many as the shell asked for when that is fewer. Spaces and commands have what the tabs left, less one row where there is a place to offer: **history is never crowded out whole by them**. Where there is not room for two Spaces and three commands, each kind has a row before either has a second. In the six rows a shell asks for by default, with three tabs open that match: a Space, a command, and a place.
+
 ## 6. Decisions
 
-**All of these are put to the owner; none is built.** The first column is the recommendation.
+**All of these are put to the owner.** D2 to D5 are built in the core as recommended; D1 and D6 are the shells'. The first column is the recommendation.
 
 | # | Recommendation | Why | Other ways |
 |---|---|---|---|
@@ -78,20 +88,29 @@ message AddressSuggestion {
 
 ## 7. In what order
 
-1. **The core:** Spaces and commands matched and ordered, against the scripted engine.
+1. **The core:** Spaces and commands matched and ordered, against the scripted engine. **Built.**
 2. **The shells:** the commands sent; a Space's row and a command's row; choosing them.
 
 ## 8. Tests
 
-To be filled in as built.
+| Where | What |
+|---|---|
+| The core, through the contract (`command_bar.rs`, 3, against the scripted engine) | **A Space:** offered by a word of its name or the start of one, every word typed in any order and any case, in the Spaces' order, two at most; with its name and its number and nothing else of a row. Not by the middle of a word, a word it has not, or nothing typed. Not to a shell that does not say it shows Spaces. Never the Space the window shows; choosing one shows it. The Space the app made itself is found by nothing. A private window is offered none; a window there is not is refused as it was. **A command:** offered by the shell's words for it, in the shell's order, three at most, as its name and its words. Not by its name, the middle of a word, or nothing typed; none to a shell that sends none. A name that is no code, and a command with no words, are passed over; the sixty-fifth is not read. **The rows:** tabs, then Spaces, then commands, then places. In six rows: three tabs, a Space, a command, a place. With room for all: three tabs, two Spaces, three commands and the places. A row short: a place keeps its row and each kind has one before either has a second. The tabs keep their part: in four rows the fourth is a place's, in two there are two tabs. Only commands, or only Spaces, have the rows the other would have had. With no place to offer none has a row kept. **A shell that asks for neither** is answered as it was |
+| The tests there were | The 634 the core had pass unchanged but for seven places where a question is written out whole, which now name the two new fields' defaults. One of them, 038's, held the first way of keeping a row for history to account: it took a row from the tabs, in every shell's list |
+| The rule broken, a part at a time | 25 parts, in the model and where the question is answered: 25 caught |
 
 ## 9. What is not verified
 
-To be filled in as built.
+- **No shell asks.** Nothing in an app sends its commands or says it shows Spaces: a Space's row and a command's row are drawn nowhere, and nobody has chosen one.
+- **The choices of §6** are the recommendations, not the owner's word.
+- **Words in another language.** The matching is the one a page's title has (038): by letters and digits, in lower case. A language that does not part its words with spaces is matched by the start of what was typed only.
+- **A long list of commands.** Sixty-four are read at each letter typed: not measured.
+- **Two commands a shell gives one name:** both are offered, as sent.
 
 ## 10. Done checklist
 
 - [ ] The owner's word on §6.
-- [ ] The core and the contract.
+- [x] The core and the contract.
 - [ ] The shells.
-- [ ] `Tools/test.sh all` green, and `android-device`.
+- [ ] The core: the gate.
+- [ ] The shells: the gate.

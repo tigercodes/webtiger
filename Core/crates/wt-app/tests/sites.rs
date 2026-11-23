@@ -402,6 +402,7 @@ fn a_step_along_the_row_wakes_a_sleeping_site_and_it_is_offered_while_typing() {
                 window_id: window,
                 text: "mail".to_owned(),
                 limit: 0,
+                ..SuggestAddresses::default()
             }))
             .await;
         let response::Kind::AddressSuggestions(offered) = answer else {
@@ -771,6 +772,7 @@ fn a_tab_that_came_back_asleep_is_offered_while_typing() {
                 window_id: window,
                 text: "mail".to_owned(),
                 limit: 0,
+                ..SuggestAddresses::default()
             }))
             .await;
         let response::Kind::AddressSuggestions(offered) = answer else {

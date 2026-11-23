@@ -852,9 +852,14 @@ pub struct FindView {
 /// from its Space's own history, best first. Nothing typed leaves the
 /// device. Answered with AddressSuggestions, or "window.unknown".
 ///
+/// Since 1.40 the field is the command bar (048): a shell that can show them
+/// is offered Spaces and commands too, after the open tabs and before the
+/// places. Only a shell that asks is offered either: one that does not is
+/// answered as before.
+///
 /// Asked for, not subscribed to: each letter typed is a question, and a shell
 /// shows only the answer to what is now in its field.
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SuggestAddresses {
     #[prost(uint64, tag = "1")]
     pub window_id: u64,
@@ -864,6 +869,32 @@ pub struct SuggestAddresses {
     /// is 20.
     #[prost(uint32, tag = "3")]
     pub limit: u32,
+    /// Since 1.40. The commands that can be done now, for the core to match
+    /// with what is typed: those whose words have every word typed are offered,
+    /// in this order, at most three. The words are the shell's and the matching
+    /// is the core's, so that one list has one order on every system. A command
+    /// that can do nothing now is not sent. At most 64 are read.
+    #[prost(message, repeated, tag = "4")]
+    pub commands: ::prost::alloc::vec::Vec<OfferedCommand>,
+    /// Since 1.40. The shell shows a Space among what is offered: the Spaces
+    /// whose names have every word typed are, at most two; never the one the
+    /// window shows, a Space with no name of its own, or any to a private
+    /// window.
+    #[prost(bool, tag = "5")]
+    pub spaces: bool,
+}
+/// A command a shell can do now (048). Since 1.40.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct OfferedCommand {
+    /// The shell's own name for it, of the kind the core's codes are
+    /// ("layout.side"): given back when it matches. One that is not of that
+    /// kind is passed over.
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// As its menu's item says it, in the person's language: the app's words,
+    /// not the person's.
+    #[prost(string, tag = "2")]
+    pub words: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AddressSuggestions {
@@ -871,7 +902,8 @@ pub struct AddressSuggestions {
     #[prost(message, repeated, tag = "1")]
     pub suggestions: ::prost::alloc::vec::Vec<AddressSuggestion>,
 }
-/// A place that was visited, offered again; or, since 1.27, a tab that is open.
+/// A place that was visited, offered again; or, since 1.27, a tab that is open;
+/// or, since 1.40, a Space or a command (048).
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct AddressSuggestion {
     /// Where choosing it goes.
@@ -887,6 +919,16 @@ pub struct AddressSuggestion {
     /// Choosing it brings that tab in front (ActivateTab) and loads nothing.
     #[prost(uint64, tag = "4")]
     pub tab_id: u64,
+    /// Since 1.40. Not 0: a Space (048), by `title` its name; it has no
+    /// address. Choosing it shows it in the window (SwitchSpace).
+    #[prost(uint64, tag = "5")]
+    pub space_id: u64,
+    /// Since 1.40. Not empty: a command (048), by the name the shell gave it,
+    /// with `title` its words as the shell sent them; it has no address.
+    /// Choosing it does it, in the shell. What is typed is never done as a
+    /// command: only a row that is chosen is.
+    #[prost(string, tag = "6")]
+    pub command: ::prost::alloc::string::String,
 }
 /// Makes the page of a tab bigger or smaller, or puts it back to actual size.
 /// The level is its site's, in the tab's login set: every tab that shows the

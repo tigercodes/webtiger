@@ -102,6 +102,7 @@ async fn offered(shell: &mut FakeShell, window: u64, text: &str) -> Vec<String> 
             window_id: window,
             text: text.to_owned(),
             limit: 0,
+            ..SuggestAddresses::default()
         }))
         .await;
     match answer {
