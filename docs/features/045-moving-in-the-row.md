@@ -110,6 +110,32 @@ message TabSummary { … bool steps_back = 11; bool steps_forward = 12; }
 - **An empty tab has a menu on a touch screen now,** when it has somewhere to go: the commands that move it, and no other. (It had none: it has nothing to keep.)
 - **The shells work nothing out about the row:** which way a tab can go is read from what the core says of it; which words a command has is from how the shell itself drew the tab.
 
+## 5b. Dragging (designed, not built)
+
+Nothing is added to the contract: a drop sends what §5 has had since 1.35, and what it means is the core's.
+
+**What is dragged:** a tab, by its row, its chip or its tile; a Group, by its chip. **What a drag carries is the app's own name for the thing, and nothing else:** not the page's address, not its title. It is of a kind only this app knows, and is offered to this app alone: let go over another app, or over a page, nothing is dropped. (A tab dragged out as a link, and a link dragged in to be opened, are the tree's other drops: not this.)
+
+**Where it may be dropped, and what the shell then asks:**
+
+| Dropped on | A tab asks | A Group asks |
+|---|---|---|
+| a tab, or a Favourite's tile | to be put just before it (`before_tab_id`) | nothing |
+| a Group's chip | to be the last of that Group (`end_of_group_id`) | to be put before that Group (`before_group_id`) |
+| the end of the Favourites (the row of tiles, past the last) | the end of that part (`end_of`) | nothing |
+| the end of the Sites in no Group, and the line under the Groups | the end of the Sites in no Group; the line, being under the Groups, is also where a Group is put after the last | after the last Group (`before_group_id` 0) |
+| "New Tab", which ends the row | the end of the tabs that are no Sites | nothing |
+
+A shell works out none of what the tab becomes: it names the thing dropped and the place, and draws what the core then says. **A drop that the core refuses moves nothing,** and the row is as it was; the reason is not said (a row that does not take a drop says so by not taking it), as for a command that is refused.
+
+**While it is dragged** the place it would go is marked: a line before the tab it would be put before, and the chip or the end it would go to drawn as chosen. A thing held over itself marks nothing.
+
+**On the Mac** a thing is dragged with the pointer. **On a touch screen** it is lifted by a long press and then dragged; let go where it was, its menu is shown, as now (D5). The commands (§5a) stay: they are what a keyboard and a screen reader use, and dragging takes nothing from them.
+
+**It is undone as any move is** (044), from where undo is asked.
+
+**In what order:** Apple's windows, which share their views (the Mac first, since a pointer's drag can be driven by a test; then a touch screen); then Android.
+
 ## 6. Decisions
 
 **All of these are put to the owner.** D1 to D4 are built in the core as recommended, and D6 in the shells; D5, dragging, is not built. The first column is the recommendation.
