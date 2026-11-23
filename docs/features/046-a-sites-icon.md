@@ -145,4 +145,5 @@ No test fetches from anywhere but the test's own site, in the test's own process
 - [ ] Apple.
 - [x] The core: `Tools/test.sh all` green, and `android-device`, on 2026-11-23: `lint`, `core` (627, and the strings tool's 24), `unit` (296 on the Mac), `build`, the Mac's UI suite (46), `ios` (278 on the iPhone simulator), the iPhone's UI suite (36), `android` (416 and 32 on the JVM) and `android-device` (160 on the emulator). No shell changed but for the contract's number.
 - [x] Android: the same again, on 2026-11-23: `lint`, `core` (628, and the strings tool's 24), `unit` (296 on the Mac), `build`, the Mac's UI suite (46), `ios` (278 on the iPhone simulator), the iPhone's UI suite (36), `android` (425 and 32 on the JVM) and `android-device` (163 on the emulator).
+- [x] The test site's pictures, and an icon asked for as its login set: the same again, on 2026-11-23: `lint`, `core` (628, and the strings tool's 24), `unit` (297 on the Mac), `build`, the Mac's UI suite (46), `ios` (279 on the iPhone simulator), the iPhone's UI suite (36), `android` (425 and 32 on the JVM) and `android-device` (165 on the emulator).
 - [ ] Apple: the gate.
