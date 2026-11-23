@@ -134,4 +134,4 @@ message AddressSuggestion {
 - [x] The core and the contract.
 - [x] The shells.
 - [x] The core: `Tools/test.sh all` green, and `android-device`, on 2026-11-23: `lint`, `core` (637, and the strings tool's 24), `unit` (325 on the Mac), `build`, the Mac's UI suite (54), `ios` (307 on the iPhone simulator), the iPhone's UI suite (41), `android` (437 and 32 on the JVM) and `android-device` (167 on the emulator).
-- [ ] The shells: the gate.
+- [x] The shells: `Tools/test.sh all` green, and `android-device`, on 2026-11-23: `lint`, `core` (637, and the strings tool's 24), `unit` (331 on the Mac), `build`, the Mac's UI suite (56), `ios` (313 on the iPhone simulator), the iPhone's UI suite (43), `android` (444 and 32 on the JVM) and `android-device` (168 on the emulator).
