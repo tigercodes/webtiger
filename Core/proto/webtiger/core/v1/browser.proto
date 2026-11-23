@@ -355,6 +355,10 @@ message WindowSnapshot {
   // "group.reordered"; empty when there is nothing. A
   // kind a shell does not know is undone all the same: it is named only.
   string undo_arrangement = 13;
+  // Since 1.38. How many tabs the row has (047): every one, those that are
+  // out of the way in a shut Group among them. `tabs` has the ones that are
+  // shown; a shell that says how many there are says this.
+  uint32 row_tabs = 14;
 }
 
 // A tab as a strip of tabs shows it: enough to name it, and no more.

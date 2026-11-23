@@ -173,7 +173,10 @@ private fun Window(session: BrowserSession, model: BrowserModel, private: Privat
         SideEffect { model.hasRoomForSidebar = wide }
         // A private window has no Space (037): its chip opens the page that says what it is.
         val onSpaces = { if (model.isPrivate) showingPrivate = true else model.openSpaces() }
-        Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+        // While the switcher covers the window (047), what is under it is nothing to a screen
+        // reader: the switcher has the same row, and is what is on the screen.
+        val covered = model.showingSwitcher && !model.hasRoomForSidebar
+        Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).then(if (covered) Modifier.clearAndSetSemantics {} else Modifier)) {
           // The tabs down the side (043): the same tabs, and the same page beside them.
           if (model.showsSidebar) {
               Sidebar(
@@ -236,6 +239,12 @@ private fun Window(session: BrowserSession, model: BrowserModel, private: Privat
                 onKeep = model::keepSearch,
                 modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing),
             )
+        }
+        // The switcher (047): over the window, where there is no room for a sidebar, and under
+        // the pages that are opened from it. The system's Back puts it away.
+        if (model.showingSwitcher && !model.hasRoomForSidebar) {
+            BackHandler { model.closeSwitcher() }
+            Switcher(model, onSpaces = onSpaces, modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing))
         }
         // The list of Spaces (024): over the window, which stays as it is underneath.
         if (model.showingSpaces) {
@@ -645,6 +654,8 @@ private fun Toolbar(model: BrowserModel, addressField: FocusRequester, onSubmitt
     ) {
         NavigationButtons(model)
         AddressField(model, addressField, onSubmitted, Modifier.weight(1f).padding(start = Tokens.Space.xs))
+        // Where there is no room for a sidebar, the way to the whole row (047).
+        if (!model.hasRoomForSidebar) SwitcherButton(model.rowTabs, onClick = model::openSwitcher)
     }
 }
 
@@ -950,7 +961,7 @@ internal fun AddressField(model: BrowserModel, focus: FocusRequester, onSubmitte
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun NewTabButton(model: BrowserModel) {
+internal fun NewTabButton(model: BrowserModel, onOpened: () -> Unit = {}) {
     var offering by remember { mutableStateOf(false) }
     val reopen = stringResource(R.string.tabs_reopen)
     val canReopen = model.canReopenClosedTab
@@ -965,7 +976,10 @@ internal fun NewTabButton(model: BrowserModel) {
                     .clip(CircleShape)
                     .combinedClickable(
                         role = Role.Button,
-                        onClick = model::openTab,
+                        onClick = {
+                            model.openTab()
+                            onOpened()
+                        },
                         onLongClick = if (canReopen) ({ offering = true }) else null,
                         onLongClickLabel = if (canReopen) reopen else null,
                     ).testTag("new-tab"),

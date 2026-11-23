@@ -84,6 +84,14 @@ public struct CatalogueView: View {
                             .overlay(RoundedRectangle(cornerRadius: Tokens.Radius.tile).strokeBorder(Tokens.Palette.hairline))
                     }
                 }
+                VStack(alignment: .leading, spacing: Tokens.Space.s) {
+                    Text(Words.catalogueStateSwitcher)
+                        .font(.headline)
+                    CatalogueSwitcher()
+                        .frame(height: CatalogueWindow.height + 320)
+                        .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.tile))
+                        .overlay(RoundedRectangle(cornerRadius: Tokens.Radius.tile).strokeBorder(Tokens.Palette.hairline))
+                }
                 heading(Words.catalogueStartFailed)
                 StartFailedView(code: "store.open")
                     .frame(height: CatalogueWindow.height)

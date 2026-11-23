@@ -365,6 +365,25 @@ class BrowserModel(
         session.send(Request(set_favourite = SetFavourite(tab_id = id, favourite = favourite)))
     }
 
+    // The switcher (047)
+
+    /** How many tabs the row has: every one, those of shut Groups among them. The core's count: `tabs` has the ones that are shown. */
+    var rowTabs by mutableStateOf(0)
+        private set
+
+    /** The switcher is open over the window: the whole row, in a window with no room for a sidebar. */
+    var showingSwitcher by mutableStateOf(false)
+        private set
+
+    fun openSwitcher() {
+        if (!hasRoomForSidebar) showingSwitcher = true
+    }
+
+    /** The switcher is put away: a tab was brought in front from it, or the person is done. */
+    fun closeSwitcher() {
+        showingSwitcher = false
+    }
+
     // Icons (046)
 
     /** The pictures of the tabs' icons, by the numbers the core gives them, as far as this window has them. */
@@ -1023,6 +1042,7 @@ class BrowserModel(
         askForIcons(snapshot.tabs)
         groups = snapshot.groups
         favouritesFull = snapshot.favourites_full
+        rowTabs = snapshot.row_tabs
         layout = snapshot.layout
         downloadsActive = snapshot.downloads_active
         spaceId = snapshot.space_id

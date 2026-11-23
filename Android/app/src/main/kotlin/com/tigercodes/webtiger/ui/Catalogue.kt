@@ -32,6 +32,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -359,14 +360,18 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                 }
             // A Space with a name and a colour (024, 025) in the state with several tabs: every
             // other state is the Space the app made, which has neither.
+            // As a core counts the row (047): the tabs it lists, and the Sites of the Groups that
+            // are shut, which it does not list.
+            val grouped = this == SIDEBAR || this == GROUPS
+            val rowTabs = tabs.size + if (grouped) CatalogueGroups.groups.filter { it.shut }.sumOf { it.sites } else 0
             return if (this == TABS) {
-                WindowSnapshot(window_id = 1, tab = tab, tabs = tabs, space_id = 2, space_name = "Work", space_colour = "blue")
+                WindowSnapshot(window_id = 1, tab = tab, tabs = tabs, space_id = 2, space_name = "Work", space_colour = "blue", row_tabs = rowTabs)
             } else if (this == SIDEBAR) {
-                WindowSnapshot(window_id = 1, tab = tab, tabs = tabs, groups = CatalogueGroups.groups, layout = Layout.LAYOUT_SIDEBAR)
+                WindowSnapshot(window_id = 1, tab = tab, tabs = tabs, groups = CatalogueGroups.groups, layout = Layout.LAYOUT_SIDEBAR, row_tabs = rowTabs)
             } else if (this == GROUPS) {
-                WindowSnapshot(window_id = 1, tab = tab, tabs = tabs, groups = CatalogueGroups.groups)
+                WindowSnapshot(window_id = 1, tab = tab, tabs = tabs, groups = CatalogueGroups.groups, row_tabs = rowTabs)
             } else {
-                WindowSnapshot(window_id = 1, tab = tab, tabs = tabs)
+                WindowSnapshot(window_id = 1, tab = tab, tabs = tabs, row_tabs = rowTabs)
             }
         }
 
@@ -629,6 +634,10 @@ fun CatalogueScreen() {
                     CatalogueGroupPage(state, Modifier.fillMaxWidth().height(CatalogueWindowHeight).framed())
                 }
             }
+            Column(verticalArrangement = Arrangement.spacedBy(Tokens.Space.s)) {
+                Text(text = stringResource(R.string.catalogue_state_switcher), style = MaterialTheme.typography.titleMedium)
+                CatalogueSwitcher(Modifier.fillMaxWidth().height(CatalogueWindowHeight).framed())
+            }
             CatalogueHeading(R.string.catalogue_start_failed)
             Box(modifier = Modifier.fillMaxWidth().height(CatalogueWindowHeight).framed()) { StartFailed("store.open") }
         }
@@ -663,6 +672,25 @@ internal fun CatalogueWindow(state: CatalogueState, modifier: Modifier = Modifie
     // the catalogue, whatever state one of them shows.
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val nobody = remember(lifecycle) { DetachedBack(lifecycle) }
+    Box(modifier = modifier) {
+        CompositionLocalProvider(LocalOnBackPressedDispatcherOwner provides nobody) { BrowserWindow(session, model) }
+    }
+}
+
+/**
+ * The phone's switcher (047) over a window whose row has every kind of thing (the sidebar's
+ * state): where the window has no room for a sidebar. In one that has, it is the window with
+ * its tabs at the side: there is no switcher there.
+ */
+@Composable
+internal fun CatalogueSwitcher(modifier: Modifier = Modifier) {
+    val context = LocalContext.current.applicationContext
+    val scope = rememberCoroutineScope()
+    val session = remember { CatalogueState.SIDEBAR.session(context, scope) }
+    val model = remember(session) { BrowserModel(session) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val nobody = remember(lifecycle) { DetachedBack(lifecycle) }
+    LaunchedEffect(model) { model.openSwitcher() }
     Box(modifier = modifier) {
         CompositionLocalProvider(LocalOnBackPressedDispatcherOwner provides nobody) { BrowserWindow(session, model) }
     }

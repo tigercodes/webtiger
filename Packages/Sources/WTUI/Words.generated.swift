@@ -263,6 +263,11 @@ enum Words {
     /// Design catalogue: a state of the window.
     static let catalogueStateSuggestions = Word(key: "catalogue.state.suggestions")
 
+    /// The phone’s switcher
+    ///
+    /// Design catalogue: the sheet that lists every tab of the row, in a narrow window.
+    static let catalogueStateSwitcher = Word(key: "catalogue.state.switcher")
+
     /// Several tabs
     ///
     /// Design catalogue: a state of the window.
@@ -1258,6 +1263,21 @@ enum Words {
     /// At the end of a row of that list which is a tab that is already open: choosing the row brings that tab in front instead of loading the page again.
     static let suggestionsSwitchTab = Word(key: "suggestions.switch_tab")
 
+    /// Done
+    ///
+    /// Button that closes the switcher without changing which tab is in front.
+    static let switcherDone = Word(key: "switcher.done")
+
+    /// Tabs: %d
+    ///
+    /// Accessibility label of a button in the toolbar of a narrow window (a phone's): it opens the switcher, a sheet with every tab of the row. %d is how many tabs the row has; the button itself shows that number alone.
+    static let switcherOpen = Word(key: "switcher.open")
+
+    /// Tabs
+    ///
+    /// Title at the head of the switcher, the sheet on a phone that lists every tab of the row.
+    static let switcherTitle = Word(key: "switcher.title")
+
     /// Type an address or a search above.
     ///
     /// Hint under the heading of an empty tab.
@@ -1434,6 +1454,7 @@ extension Word {
         "catalogue.state.spaces_refused",
         "catalogue.state.spaces_rename",
         "catalogue.state.suggestions",
+        "catalogue.state.switcher",
         "catalogue.state.tabs",
         "catalogue.state.zoom",
         "catalogue.states",
@@ -1633,6 +1654,9 @@ extension Word {
         "spaces.title",
         "suggestions.list",
         "suggestions.switch_tab",
+        "switcher.done",
+        "switcher.open",
+        "switcher.title",
         "tab.empty.hint",
         "tab.empty.title",
         "tabs.close",

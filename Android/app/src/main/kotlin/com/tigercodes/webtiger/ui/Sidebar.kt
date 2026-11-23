@@ -81,18 +81,42 @@ internal fun Sidebar(
     onHistory: () -> Unit,
     onSpaces: () -> Unit,
 ) {
-    val list = stringResource(R.string.tabs_list)
-    val parts = sidebarParts(model.tabs, model.groups)
     Column(modifier = Modifier.width(SIDEBAR_WIDTH).fillMaxHeight()) {
         Row(modifier = Modifier.padding(horizontal = Tokens.Space.xs), verticalAlignment = Alignment.CenterVertically) { NavigationButtons(model) }
         AddressField(model, addressField, onSubmitted, Modifier.fillMaxWidth().padding(horizontal = Tokens.Space.s))
+        SidebarRows(model, Modifier.weight(1f))
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = Tokens.Space.xs), verticalAlignment = Alignment.CenterVertically) {
+            // The Space the window shows (024), by its name: there is room for it here. A
+            // private window says what it is (037).
+            if (model.isPrivate) {
+                SpaceChip(name = stringResource(R.string.private_chip), compact = false, onClick = onSpaces, saidAs = stringResource(R.string.private_window))
+            } else {
+                SpaceChip(name = model.spaceName, compact = false, onClick = onSpaces, colour = model.spaceColour)
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            WindowButtons(model, onFind, onZoom, onHistory)
+        }
+    }
+}
+
+/**
+ * The row as the sidebar has it, and the switcher (047): the Favourites' tiles; the tree; under
+ * a line the other tabs and the button that opens one. `onChosen` is told when a tab is brought
+ * in front from here, or a new one opened: the switcher puts itself away.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun SidebarRows(model: BrowserModel, modifier: Modifier = Modifier, onChosen: () -> Unit = {}) {
+    val list = stringResource(R.string.tabs_list)
+    val parts = sidebarParts(model.tabs, model.groups)
+    Column(modifier = modifier) {
         if (parts.favourites.isNotEmpty()) {
             FlowRow(
                 modifier = Modifier.padding(horizontal = Tokens.Space.s, vertical = Tokens.Space.xs),
                 horizontalArrangement = Arrangement.spacedBy(Tokens.Space.xs),
                 verticalArrangement = Arrangement.spacedBy(Tokens.Space.xs),
             ) {
-                for (tab in parts.favourites) Entry(model, tab)
+                for (tab in parts.favourites) Entry(model, tab, onChosen = onChosen)
             }
         }
         // The rows are made as they come into view: a row of thousands is not drawn to show the
@@ -124,7 +148,7 @@ internal fun Sidebar(
             ) { item ->
                 when (item) {
                     // A Group's Site is set in under its Group.
-                    is StripItem.Tab -> Entry(model, item.tab, Modifier.padding(start = if (item.tab.group_id == 0L) 0.dp else Tokens.Space.l), fills = true)
+                    is StripItem.Tab -> Entry(model, item.tab, Modifier.padding(start = if (item.tab.group_id == 0L) 0.dp else Tokens.Space.l), fills = true, onChosen = onChosen)
                     is StripItem.Group -> {
                         val group = item.group
                         GroupChip(group, onToggle = { model.shutOrOpen(group) }, onEdit = { model.askToEdit(group) }, onRemove = { model.removeGroup(group.group_id) })
@@ -133,30 +157,22 @@ internal fun Sidebar(
             }
             // Under a line, the tabs that are only passing through.
             if (hasLine) item(key = "line") { HorizontalDivider(modifier = Modifier.padding(vertical = Tokens.Space.xs)) }
-            items(parts.others, key = { tab -> "tab-${tab.tab_id}" }) { tab -> Entry(model, tab, fills = true) }
-            item(key = "new-tab") { NewTabButton(model) }
-        }
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = Tokens.Space.xs), verticalAlignment = Alignment.CenterVertically) {
-            // The Space the window shows (024), by its name: there is room for it here. A
-            // private window says what it is (037).
-            if (model.isPrivate) {
-                SpaceChip(name = stringResource(R.string.private_chip), compact = false, onClick = onSpaces, saidAs = stringResource(R.string.private_window))
-            } else {
-                SpaceChip(name = model.spaceName, compact = false, onClick = onSpaces, colour = model.spaceColour)
-            }
-            Spacer(modifier = Modifier.weight(1f))
-            WindowButtons(model, onFind, onZoom, onHistory)
+            items(parts.others, key = { tab -> "tab-${tab.tab_id}" }) { tab -> Entry(model, tab, fills = true, onChosen = onChosen) }
+            item(key = "new-tab") { NewTabButton(model, onChosen) }
         }
     }
 }
 
 /** A tab of the sidebar: the strip's chip, a tile for a Favourite, and for any other a row as wide as the sidebar. */
 @Composable
-private fun Entry(model: BrowserModel, tab: TabSummary, modifier: Modifier = Modifier, fills: Boolean = false) {
+private fun Entry(model: BrowserModel, tab: TabSummary, modifier: Modifier = Modifier, fills: Boolean = false, onChosen: () -> Unit = {}) {
     TabChip(
         tab,
         inFront = tab.tab_id == model.tab.tab_id,
-        onActivate = { model.activate(tab.tab_id) },
+        onActivate = {
+            model.activate(tab.tab_id)
+            onChosen()
+        },
         onClose = { model.closeTab(tab.tab_id) },
         onKeepOrLetGo = { model.keepOrLetGo(tab.tab_id) },
         onSendHome = { model.sendHome(tab.tab_id) },

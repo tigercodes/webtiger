@@ -54,6 +54,8 @@ struct TabLabel: View {
 struct FavouriteTile: View {
     let tab: WTTabSummary
     let model: BrowserModel
+    /// It was brought in front from the switcher (047), which puts itself away.
+    var onChosen: () -> Void = {}
     @Environment(\.locale) private var locale
 
     var body: some View {
@@ -61,6 +63,7 @@ struct FavouriteTile: View {
         let name = TabStrip.shownName(of: tab, locale: locale)
         Button {
             model.activate(tab.tabID)
+            onChosen()
         } label: {
             Text(verbatim: TabStrip.letter(of: tab, locale: locale))
                 .font(.callout)

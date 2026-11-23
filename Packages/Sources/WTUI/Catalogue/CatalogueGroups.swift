@@ -105,3 +105,14 @@ struct CatalogueGroupPage: View {
         )
     }
 }
+
+/// The phone's switcher (047), over the row the sidebar's state has: every kind of thing a
+/// row holds.
+struct CatalogueSwitcher: View {
+    @State private var model = BrowserModel(session: CatalogueState.sidebar.session())
+
+    var body: some View {
+        Switcher(model: model, onDone: {}, onSpaces: {})
+            .task { await model.open() }
+    }
+}

@@ -39,7 +39,14 @@ struct Sidebar<Toolbar: View>: View {
     var onZoom: () -> Void = {}
     var onHistory: () -> Void = {}
     var onSpaces: () -> Void = {}
+    /// Whether the Space and the window's buttons are at its foot: not in the switcher
+    /// (047), which has the Space at its head and is over the window, not beside it.
+    var showsFoot = true
+    /// A tab was brought in front from here, or a new one opened: the switcher puts itself
+    /// away. The sidebar does nothing.
+    var onChosen: () -> Void = {}
     /// Back, forward and reload, and the address field: the window's own, at this width.
+    /// (In the switcher: its head.)
     @ViewBuilder let toolbar: Toolbar
 
     /// As wide as a name needs.
@@ -55,7 +62,9 @@ struct Sidebar<Toolbar: View>: View {
                 tiles(parts.favourites)
             }
             rows(parts)
-            foot
+            if showsFoot {
+                foot
+            }
         }
         .frame(maxHeight: .infinity, alignment: .top)
     }
@@ -67,7 +76,7 @@ struct Sidebar<Toolbar: View>: View {
             alignment: .leading, spacing: Tokens.Space.xs
         ) {
             ForEach(favourites, id: \.tabID) { tab in
-                FavouriteTile(tab: tab, model: model)
+                FavouriteTile(tab: tab, model: model, onChosen: onChosen)
             }
         }
         .padding(.horizontal, Tokens.Space.m)
@@ -128,6 +137,7 @@ struct Sidebar<Toolbar: View>: View {
         return HStack(spacing: 0) {
             Button {
                 model.activate(tab.tabID)
+                onChosen()
             } label: {
                 TabLabel(tab: tab, isFront: isFront)
                     .padding(.leading, Tokens.Space.s)
@@ -149,6 +159,7 @@ struct Sidebar<Toolbar: View>: View {
     private var newTab: some View {
         Button {
             model.openTab()
+            onChosen()
         } label: {
             Label { Text(Words.tabsNew) } icon: { Image(systemName: "plus") }
                 .padding(.leading, Tokens.Space.s)

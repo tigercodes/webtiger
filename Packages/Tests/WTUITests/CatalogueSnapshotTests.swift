@@ -101,6 +101,12 @@ final class CatalogueSnapshotTests: XCTestCase {
         }
     }
 
+    /// The phone's switcher (047): as tall as a page, with every kind of thing a row has.
+    func testThePhonesSwitcher() async throws {
+        try skipWithoutPictures()
+        await verify(CatalogueSwitcher(), size: Self.pageSize, named: "switcher")
+    }
+
     func testStartFailed() async throws {
         try skipWithoutPictures()
         await verify(StartFailedView(code: "store.open"), size: Self.windowSize, named: "start-failed")

@@ -625,6 +625,18 @@
         }
       }
     },
+    "catalogue.state.switcher": {
+      "comment": "Design catalogue: the sheet that lists every tab of the row, in a narrow window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The phone’s switcher"
+          }
+        }
+      }
+    },
     "catalogue.state.tabs": {
       "comment": "Design catalogue: a state of the window.",
       "extractionState": "manual",
@@ -3009,6 +3021,42 @@
           "stringUnit": {
             "state": "translated",
             "value": "Switch to Tab"
+          }
+        }
+      }
+    },
+    "switcher.done": {
+      "comment": "Button that closes the switcher without changing which tab is in front.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        }
+      }
+    },
+    "switcher.open": {
+      "comment": "Accessibility label of a button in the toolbar of a narrow window (a phone's): it opens the switcher, a sheet with every tab of the row. %d is how many tabs the row has; the button itself shows that number alone.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tabs: %d"
+          }
+        }
+      }
+    },
+    "switcher.title": {
+      "comment": "Title at the head of the switcher, the sheet on a phone that lists every tab of the row.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tabs"
           }
         }
       }

@@ -536,6 +536,11 @@ pub struct WindowSnapshot {
     /// kind a shell does not know is undone all the same: it is named only.
     #[prost(string, tag = "13")]
     pub undo_arrangement: ::prost::alloc::string::String,
+    /// Since 1.38. How many tabs the row has (047): every one, those that are
+    /// out of the way in a shut Group among them. `tabs` has the ones that are
+    /// shown; a shell that says how many there are says this.
+    #[prost(uint32, tag = "14")]
+    pub row_tabs: u32,
 }
 /// A tab as a strip of tabs shows it: enough to name it, and no more.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]

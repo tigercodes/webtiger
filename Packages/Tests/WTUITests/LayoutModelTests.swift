@@ -158,4 +158,27 @@ final class LayoutModelTests: XCTestCase {
         XCTAssertEqual(plain.others.map(\.tabID), [6, 7])
         XCTAssertTrue(plain.tree.isEmpty && plain.favourites.isEmpty)
     }
+
+    /// The switcher's button (047) says how many tabs the row has: the core's count, with
+    /// the tabs of shut Groups among them, and not how many the window was told to show.
+    func testTheSwitchersButtonSaysTheCoresCountOfTheRowsTabs() async {
+        let (model, core) = model()
+        await model.open()
+        var said = snapshot(.strip)
+        said.rowTabs = 7
+        core.emit(said, subscription: 3)
+        await settle { model.rowTabs == 7 }
+        XCTAssertEqual(model.rowTabs, 7)
+        XCTAssertNotEqual(model.tabs.count, 7, "the window was told of fewer tabs than the row has")
+        said.rowTabs = 120
+        core.emit(said, subscription: 3)
+        await settle { model.rowTabs == 120 }
+        XCTAssertEqual(model.rowTabs, 120)
+
+        // The square has the number while it has room for it; a screen reader has it whole.
+        XCTAssertEqual(SwitcherButton.shown(1), "1")
+        XCTAssertEqual(SwitcherButton.shown(99), "99")
+        XCTAssertEqual(SwitcherButton.shown(100), "99+")
+        XCTAssertEqual(Words.switcherOpen.filled(120, locale: Locale(identifier: "en")), "Tabs: 120")
+    }
 }

@@ -17,6 +17,8 @@ public struct BrowserWindowView: View {
     @State private var showingHistory = false
     /// The list of Spaces is open over the window (024).
     @State private var showingSpaces = false
+    /// The switcher is open over the window (047).
+    @State private var showingSwitcher = false
     /// The page behind a private window's chip (037) is open.
     @State private var showingPrivate = false
     /// Where the app shows one window at a time: the way to the private window, for an
@@ -149,6 +151,7 @@ public struct BrowserWindowView: View {
         }
         .sheet(isPresented: $showingHistory) { history }
         .modifier(SpacesSheet(model: model, isShown: $showingSpaces, door: door))
+        .modifier(SwitcherSheet(model: model, isShown: $showingSwitcher, onSpaces: openSpaces))
         // The page that makes a Group or edits one (041).
         .modifier(GroupSheet(model: model))
         // On a Mac a private window is a window of its own: closing it is its way out.
@@ -240,6 +243,10 @@ public struct BrowserWindowView: View {
         HStack(spacing: Tokens.Space.s) {
             navigationButtons
             addressField
+            // Where there is no room for a sidebar, the way to the whole row (047).
+            if !model.hasRoomForSidebar {
+                SwitcherButton(count: model.rowTabs) { showingSwitcher = true }
+            }
         }
         .padding(.horizontal, Tokens.Space.m)
         .frame(minHeight: Tokens.Size.toolbarHeight)

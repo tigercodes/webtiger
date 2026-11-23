@@ -918,6 +918,11 @@ public nonisolated struct WTWindowSnapshot: Sendable {
   /// kind a shell does not know is undone all the same: it is named only.
   public var undoArrangement: String = String()
 
+  /// Since 1.38. How many tabs the row has (047): every one, those that are
+  /// out of the way in a shut Group among them. `tabs` has the ones that are
+  /// shown; a shell that says how many there are says this.
+  public var rowTabs: UInt32 = 0
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3320,7 +3325,7 @@ nonisolated extension WTIcon: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
 
 nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".WindowSnapshot"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0\u{3}downloads_active\0\u{3}space_id\0\u{3}space_name\0\u{3}space_colour\0\u{1}undo\0\u{3}private_window\0\u{1}groups\0\u{3}favourites_full\0\u{1}layout\0\u{3}undo_arrangement\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0\u{3}downloads_active\0\u{3}space_id\0\u{3}space_name\0\u{3}space_colour\0\u{1}undo\0\u{3}private_window\0\u{1}groups\0\u{3}favourites_full\0\u{1}layout\0\u{3}undo_arrangement\0\u{3}row_tabs\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3341,6 +3346,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 11: try { try decoder.decodeSingularBoolField(value: &self.favouritesFull) }()
       case 12: try { try decoder.decodeSingularEnumField(value: &self.layout) }()
       case 13: try { try decoder.decodeSingularStringField(value: &self.undoArrangement) }()
+      case 14: try { try decoder.decodeSingularUInt32Field(value: &self.rowTabs) }()
       default: break
       }
     }
@@ -3390,6 +3396,9 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
     if !self.undoArrangement.isEmpty {
       try visitor.visitSingularStringField(value: self.undoArrangement, fieldNumber: 13)
     }
+    if self.rowTabs != 0 {
+      try visitor.visitSingularUInt32Field(value: self.rowTabs, fieldNumber: 14)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3407,6 +3416,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.favouritesFull != rhs.favouritesFull {return false}
     if lhs.layout != rhs.layout {return false}
     if lhs.undoArrangement != rhs.undoArrangement {return false}
+    if lhs.rowTabs != rhs.rowTabs {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

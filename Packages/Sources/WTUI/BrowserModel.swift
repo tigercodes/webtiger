@@ -17,6 +17,9 @@ public final class BrowserModel {
     /// The row has as many Favourites as it can (042): the core says so, and no more is
     /// offered.
     public private(set) var favouritesFull = false
+    /// How many tabs the row has (047): every one, those of shut Groups among them. The
+    /// core's count: `tabs` has the ones that are shown.
+    public private(set) var rowTabs = 0
     /// How the window lays out its tabs (043): the core's word.
     public private(set) var layout: WTLayout = .strip
     /// The window is wide enough for a sidebar beside a page (043): a Mac's always; an
@@ -481,6 +484,7 @@ public final class BrowserModel {
         tabs = snapshot.tabs
         groups = snapshot.groups
         favouritesFull = snapshot.favouritesFull
+        rowTabs = Int(snapshot.rowTabs)
         layout = snapshot.layout
         downloadsActive = snapshot.downloadsActive
         spaceID = snapshot.spaceID

@@ -998,3 +998,32 @@ fn a_site_whose_group_the_store_has_lost_is_a_site_in_no_group() {
         );
     });
 }
+
+#[test]
+fn a_window_is_told_how_many_tabs_its_row_has_those_out_of_the_way_among_them() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (_, subscription, [mail, board, _, story], [work, _]) = four_tabs(&mut shell).await;
+        let told = |shell: &FakeShell| {
+            let window = shell.window(subscription);
+            (window.tabs.len(), window.row_tabs)
+        };
+        assert_eq!(told(&shell), (4, 4));
+        // Two of them in a Group, and the Group shut: two are shown, and the row has four.
+        acked(&shell.move_to_group(mail, work).await);
+        acked(&shell.move_to_group(board, work).await);
+        acked(&shell.shut_group(work, true).await);
+        assert_eq!(told(&shell), (2, 4));
+        // A Site that is closed sleeps, and is a tab of the row still; a tab that is closed
+        // is one fewer.
+        acked(&shell.shut_group(work, false).await);
+        acked(&shell.activate_tab(mail).await);
+        acked(&shell.close_tab(mail).await);
+        assert_eq!(told(&shell), (4, 4));
+        acked(&shell.close_tab(story).await);
+        assert_eq!(told(&shell), (3, 3));
+        // A window with one tab has one.
+        let (_, _, other) = shell.open_window().await;
+        assert_eq!(shell.window(other).row_tabs, 1);
+    });
+}

@@ -240,6 +240,18 @@ class CatalogueSnapshotTest {
     @Test @Config(qualifiers = "w411dp-h820dp-night-xhdpi")
     fun everyStateOfTheGroupPageInTheDarkTheme() = groupPages("dark")
 
+    /** The phone's switcher (047) over a phone's window: as tall as a page, for every row. */
+    private fun switcher(theme: String) {
+        show { CatalogueSwitcher(Modifier.fillMaxSize()) }
+        verify("switcher-$theme")
+    }
+
+    @Test @Config(qualifiers = "w411dp-h820dp-notnight-xhdpi")
+    fun thePhonesSwitcherInTheLightTheme() = switcher("light")
+
+    @Test @Config(qualifiers = "w411dp-h820dp-night-xhdpi")
+    fun thePhonesSwitcherInTheDarkTheme() = switcher("dark")
+
     @Test @Config(qualifiers = LIGHT)
     fun startFailedInTheLightTheme() = startFailed("light")
 

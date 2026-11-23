@@ -105,6 +105,8 @@
     <string name="catalogue_state_spaces_rename">Editing a Space</string>
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_suggestions">Places offered as an address is typed</string>
+    <!-- Design catalogue: the sheet that lists every tab of the row, in a narrow window. -->
+    <string name="catalogue_state_switcher">The phone’s switcher</string>
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_tabs">Several tabs</string>
     <!-- Design catalogue: a state of the window. -->
@@ -503,6 +505,12 @@
     <string name="suggestions_list">Suggestions</string>
     <!-- At the end of a row of that list which is a tab that is already open: choosing the row brings that tab in front instead of loading the page again. -->
     <string name="suggestions_switch_tab">Switch to Tab</string>
+    <!-- Button that closes the switcher without changing which tab is in front. -->
+    <string name="switcher_done">Done</string>
+    <!-- Accessibility label of a button in the toolbar of a narrow window (a phone's): it opens the switcher, a sheet with every tab of the row. %d is how many tabs the row has; the button itself shows that number alone. -->
+    <string name="switcher_open">Tabs: %d</string>
+    <!-- Title at the head of the switcher, the sheet on a phone that lists every tab of the row. -->
+    <string name="switcher_title">Tabs</string>
     <!-- Hint under the heading of an empty tab. -->
     <string name="tab_empty_hint">Type an address or a search above.</string>
     <!-- Heading of a tab that has no page yet. -->

@@ -57,6 +57,7 @@
   <data name="catalogue_state_spaces_refused" xml:space="preserve"><value>A Space the core would not make</value><comment>Design catalogue: a state of the list of Spaces.</comment></data>
   <data name="catalogue_state_spaces_rename" xml:space="preserve"><value>Editing a Space</value><comment>Design catalogue: a state of the list of Spaces.</comment></data>
   <data name="catalogue_state_suggestions" xml:space="preserve"><value>Places offered as an address is typed</value><comment>Design catalogue: a state of the window.</comment></data>
+  <data name="catalogue_state_switcher" xml:space="preserve"><value>The phone’s switcher</value><comment>Design catalogue: the sheet that lists every tab of the row, in a narrow window.</comment></data>
   <data name="catalogue_state_tabs" xml:space="preserve"><value>Several tabs</value><comment>Design catalogue: a state of the window.</comment></data>
   <data name="catalogue_state_zoom" xml:space="preserve"><value>The zoom bar, on a page made bigger</value><comment>Design catalogue: a state of the window.</comment></data>
   <data name="catalogue_states" xml:space="preserve"><value>The Window</value><comment>Design catalogue: heading of the browser window&apos;s states.</comment></data>
@@ -256,6 +257,9 @@
   <data name="spaces_title" xml:space="preserve"><value>Spaces</value><comment>Heading of the list of Spaces.</comment></data>
   <data name="suggestions_list" xml:space="preserve"><value>Suggestions</value><comment>Accessibility label of the list of places offered under the address field as it is typed in.</comment></data>
   <data name="suggestions_switch_tab" xml:space="preserve"><value>Switch to Tab</value><comment>At the end of a row of that list which is a tab that is already open: choosing the row brings that tab in front instead of loading the page again.</comment></data>
+  <data name="switcher_done" xml:space="preserve"><value>Done</value><comment>Button that closes the switcher without changing which tab is in front.</comment></data>
+  <data name="switcher_open" xml:space="preserve"><value>Tabs: {0}</value><comment>Accessibility label of a button in the toolbar of a narrow window (a phone&apos;s): it opens the switcher, a sheet with every tab of the row. %d is how many tabs the row has; the button itself shows that number alone.</comment></data>
+  <data name="switcher_title" xml:space="preserve"><value>Tabs</value><comment>Title at the head of the switcher, the sheet on a phone that lists every tab of the row.</comment></data>
   <data name="tab_empty_hint" xml:space="preserve"><value>Type an address or a search above.</value><comment>Hint under the heading of an empty tab.</comment></data>
   <data name="tab_empty_title" xml:space="preserve"><value>Where to?</value><comment>Heading of a tab that has no page yet.</comment></data>
   <data name="tabs_close" xml:space="preserve"><value>Close Tab</value><comment>Button on a tab in the strip, and command (Command-W on a Mac): close the tab.</comment></data>

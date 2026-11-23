@@ -3331,6 +3331,7 @@ impl State {
                 .arrangements
                 .last()
                 .map_or_else(String::new, |was| was.kind.to_owned()),
+            row_tabs: u32::try_from(row.tabs.len()).unwrap_or(u32::MAX),
             favourites_full: favourites >= MOST_FAVOURITES,
             downloads_active: self
                 .downloads_active

@@ -284,6 +284,9 @@ enum CatalogueState: String, CaseIterable, Identifiable {
                 Self.neighbour(13),
             ]
         }
+        // As a core counts the row (047): the tabs it lists, and the Sites of the Groups that
+        // are shut, which it does not list.
+        window.rowTabs = UInt32(window.tabs.count) + window.groups.filter(\.shut).map(\.sites).reduce(0, +)
         return window
     }
 
