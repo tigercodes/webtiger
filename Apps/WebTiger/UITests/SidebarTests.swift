@@ -7,29 +7,6 @@ import XCTest
 
 @MainActor
 final class SidebarTests: AppTestCase {
-    /// Waits for there to be this many of something.
-    private func expect(_ elements: XCUIElementQuery, toCount count: Int, _ what: String, line: UInt = #line) {
-        let counted = NSPredicate(format: "count == %d", count)
-        let waited = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: counted, object: elements)], timeout: 30)
-        XCTAssertEqual(waited, .completed, "\(what): there are \(elements.count)", line: line)
-    }
-
-    /// Asks for the tabs at the side, or back along the top, by the command's name: in the
-    /// View menu on a Mac; on the window's button on a touch screen.
-    private func switchLayout(_ words: String, in app: XCUIApplication, line: UInt = #line) {
-        #if os(macOS)
-            let view = app.menuBars.menuBarItems["View"]
-            view.click()
-            let item = view.menuItems[words]
-            XCTAssertTrue(item.waitForExistence(timeout: 30), "the View menu has '\(words)'", line: line)
-            item.click()
-        #else
-            let button = app.buttons["layout"]
-            XCTAssertEqual(button.label, words, "the window's button names what it does", line: line)
-            button.tap()
-        #endif
-    }
-
     /// At the side, a row brings its tab in front; the address field goes where it is sent;
     /// "New Tab" opens a tab, and the button at a row's end closes it.
     private func useTheSidebar(of app: XCUIApplication, tabs: XCUIElementQuery) {

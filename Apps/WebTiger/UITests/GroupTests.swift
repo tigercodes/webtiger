@@ -5,55 +5,6 @@ import XCTest
 
 @MainActor
 final class GroupTests: AppTestCase {
-    /// Waits for an element of the strip to say this of itself beside its name.
-    private func expect(_ element: XCUIElement, toSay said: String, _ what: String, line: UInt = #line) {
-        let says = NSPredicate(format: "value == %@", said)
-        let waited = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: says, object: element)], timeout: 30)
-        XCTAssertEqual(waited, .completed, "\(what): it says '\(element.value as? String ?? "")'", line: line)
-    }
-
-    /// Waits for there to be this many of something.
-    private func expect(_ elements: XCUIElementQuery, toCount count: Int, _ what: String, line: UInt = #line) {
-        let counted = NSPredicate(format: "count == %d", count)
-        let waited = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: counted, object: elements)], timeout: 30)
-        XCTAssertEqual(waited, .completed, "\(what): there are \(elements.count)", line: line)
-    }
-
-    /// The item of a menu that is open now, by its words: the one that can be pressed.
-    private func item(_ words: String, in app: XCUIApplication, line: UInt = #line) -> XCUIElement? {
-        #if os(macOS)
-            let named = app.menuItems.matching(NSPredicate(format: "title == %@", words))
-        #else
-            let named = app.buttons.matching(NSPredicate(format: "label == %@", words))
-        #endif
-        let deadline = Date().addingTimeInterval(30)
-        var found: XCUIElement?
-        repeat {
-            found = (0 ..< named.count).map { named.element(boundBy: $0) }.first { $0.exists && $0.isHittable }
-            if found == nil {
-                usleep(200_000)
-            }
-        } while found == nil && Date() < deadline
-        XCTAssertNotNil(found, "a menu has '\(words)'", line: line)
-        return found
-    }
-
-    /// Chooses from "Move to Group" for a tab: in the File menu on a Mac, for the tab in
-    /// front; in the tab's own menu on a phone.
-    private func moveToGroup(_ choice: String, _ tab: XCUIElement, in app: XCUIApplication, line: UInt = #line) {
-        #if os(macOS)
-            app.menuBars.menuBarItems["File"].click()
-        #else
-            tab.press(forDuration: 1)
-        #endif
-        if let menu = item("Move to Group", in: app, line: line) {
-            press(menu)
-        }
-        if let chosen = item(choice, in: app, line: line) {
-            press(chosen)
-        }
-    }
-
     /// Chooses from a Group's own menu: a right-click on its chip on a Mac, a long press on a
     /// phone.
     private func choose(_ words: String, of chip: XCUIElement, in app: XCUIApplication, line: UInt = #line) {

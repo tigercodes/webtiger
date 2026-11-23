@@ -5,39 +5,6 @@ import XCTest
 
 @MainActor
 final class FavouriteTests: AppTestCase {
-    /// Waits for a tab of the strip to say this of itself beside its name.
-    private func expect(_ tab: XCUIElement, toSay said: String, _ what: String, line: UInt = #line) {
-        let says = NSPredicate(format: "value == %@", said)
-        let waited = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: says, object: tab)], timeout: 30)
-        XCTAssertEqual(waited, .completed, "\(what): the tab says '\(tab.value as? String ?? "")'", line: line)
-    }
-
-    /// Asks for a command by its name: from the File menu on a Mac, for the tab in front;
-    /// from the tab's own menu on a phone.
-    private func choose(_ words: String, for tab: XCUIElement, in app: XCUIApplication, line: UInt = #line) {
-        #if os(macOS)
-            let file = app.menuBars.menuBarItems["File"]
-            file.click()
-            let item = file.menuItems[words]
-            XCTAssertTrue(item.waitForExistence(timeout: 30), "the File menu has \(words)", line: line)
-            XCTAssertTrue(item.isEnabled, "\(words) can be chosen", line: line)
-            item.click()
-        #else
-            tab.press(forDuration: 1)
-            let named = app.buttons.matching(NSPredicate(format: "label == %@", words))
-            let deadline = Date().addingTimeInterval(30)
-            var item: XCUIElement?
-            repeat {
-                item = (0 ..< named.count).map { named.element(boundBy: $0) }.first { $0.exists && $0.isHittable }
-                if item == nil {
-                    usleep(200_000)
-                }
-            } while item == nil && Date() < deadline
-            XCTAssertNotNil(item, "the tab's menu has \(words)", line: line)
-            item?.tap()
-        #endif
-    }
-
     func testATabIsMadeAFavouriteIsATileFirstInTheRowAndStopsBeingOne() {
         let app = launch(start: site.url("/landed"))
         XCTAssertTrue(pageShows("Landed", in: app), "the first tab's page loaded")
