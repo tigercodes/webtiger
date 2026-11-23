@@ -1278,6 +1278,26 @@ enum Words {
     /// Accessibility label of the strip of the window's tabs.
     static let tabsList = Word(key: "tabs.list")
 
+    /// Move Tab Down
+    ///
+    /// The same command with the tabs down the side of the window: the tab changes places with the one below it.
+    static let tabsMoveDown = Word(key: "tabs.move.down")
+
+    /// Move Tab Left
+    ///
+    /// Command for a tab drawn in a row along the top, or a Favourite's tile (in the Mac's Window menu, for the tab in front; in a tab's own menu on a touch screen): the tab changes places with the one on its left. Grey when no tab of its kind is on that side.
+    static let tabsMoveLeft = Word(key: "tabs.move.left")
+
+    /// Move Tab Right
+    ///
+    /// The same command the other way: the tab changes places with the one on its right.
+    static let tabsMoveRight = Word(key: "tabs.move.right")
+
+    /// Move Tab Up
+    ///
+    /// The same command with the tabs down the side of the window: the tab changes places with the one above it.
+    static let tabsMoveUp = Word(key: "tabs.move.up")
+
     /// New Tab
     ///
     /// Button at the end of the strip of tabs, and command (Command-T on a Mac): open an empty tab.
@@ -1617,6 +1637,10 @@ extension Word {
         "tab.empty.title",
         "tabs.close",
         "tabs.list",
+        "tabs.move.down",
+        "tabs.move.left",
+        "tabs.move.right",
+        "tabs.move.up",
         "tabs.new",
         "tabs.next",
         "tabs.previous",

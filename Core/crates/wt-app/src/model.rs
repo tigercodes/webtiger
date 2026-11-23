@@ -679,6 +679,9 @@ impl Tab {
             site_name: self.site_name(),
             group_id: self.group.map_or(0, GroupId::get),
             favourite: self.favourite,
+            // Which way a step would move it is the row's to say (045).
+            steps_back: false,
+            steps_forward: false,
         }
     }
 
@@ -3160,12 +3163,31 @@ impl State {
                 favourites += 1;
             }
         }
+        let parts: Vec<Part> = row
+            .tabs
+            .iter()
+            .map(|id| part_of(&self.tabs, row, *id))
+            .collect();
         Some(WindowSnapshot {
             window_id: window_id.get(),
             tab: Some(view),
-            tabs: shown_tabs(&self.tabs, row)
+            tabs: row
+                .tabs
                 .iter()
-                .filter_map(|id| self.tabs.get(id).map(|tab| tab.summary(*id)))
+                .enumerate()
+                .filter(|(_, id)| !is_hidden(&self.tabs, row, **id))
+                .filter_map(|(place, id)| {
+                    let mut summary = self.tabs.get(id)?.summary(*id);
+                    // A step moves a tab among those of its part (045): it
+                    // has somewhere to go when the tab beside it is of it.
+                    let part = parts.get(place);
+                    let beside = |other: Option<usize>| {
+                        part.is_some() && other.and_then(|other| parts.get(other)) == part
+                    };
+                    summary.steps_back = beside(place.checked_sub(1));
+                    summary.steps_forward = beside(place.checked_add(1));
+                    Some(summary)
+                })
                 .collect(),
             groups: row
                 .groups

@@ -3061,6 +3061,54 @@
         }
       }
     },
+    "tabs.move.down": {
+      "comment": "The same command with the tabs down the side of the window: the tab changes places with the one below it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move Tab Down"
+          }
+        }
+      }
+    },
+    "tabs.move.left": {
+      "comment": "Command for a tab drawn in a row along the top, or a Favourite's tile (in the Mac's Window menu, for the tab in front; in a tab's own menu on a touch screen): the tab changes places with the one on its left. Grey when no tab of its kind is on that side.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move Tab Left"
+          }
+        }
+      }
+    },
+    "tabs.move.right": {
+      "comment": "The same command the other way: the tab changes places with the one on its right.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move Tab Right"
+          }
+        }
+      }
+    },
+    "tabs.move.up": {
+      "comment": "The same command with the tabs down the side of the window: the tab changes places with the one above it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move Tab Up"
+          }
+        }
+      }
+    },
     "tabs.new": {
       "comment": "Button at the end of the strip of tabs, and command (Command-T on a Mac): open an empty tab.",
       "extractionState": "manual",

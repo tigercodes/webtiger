@@ -160,6 +160,7 @@ private fun Entry(model: BrowserModel, tab: TabSummary, modifier: Modifier = Mod
         onClose = { model.closeTab(tab.tab_id) },
         onKeepOrLetGo = { model.keepOrLetGo(tab.tab_id) },
         onSendHome = { model.sendHome(tab.tab_id) },
+        onMove = { model.moveTab(tab.tab_id, it) },
         grouping =
             if (model.canBeGrouped(tab)) {
                 Grouping(

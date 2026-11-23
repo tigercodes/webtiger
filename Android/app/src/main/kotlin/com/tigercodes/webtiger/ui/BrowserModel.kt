@@ -34,7 +34,9 @@ import com.tigercodes.webtiger.core.v1.PromptView
 import com.tigercodes.webtiger.core.v1.QuerySearch
 import com.tigercodes.webtiger.core.v1.QuerySpaces
 import com.tigercodes.webtiger.core.v1.RenameSpace
+import com.tigercodes.webtiger.core.v1.MoveTab
 import com.tigercodes.webtiger.core.v1.Request
+import com.tigercodes.webtiger.core.v1.RowStep
 import com.tigercodes.webtiger.core.v1.SearchSettings
 import com.tigercodes.webtiger.core.v1.SearchWords
 import com.tigercodes.webtiger.core.v1.SendSiteHome
@@ -359,6 +361,13 @@ class BrowserModel(
     /** Marks a tab as a Favourite, or unmarks it. A tab that is no Site is kept by it: the core's rule. */
     fun setFavourite(id: Long, favourite: Boolean) {
         session.send(Request(set_favourite = SetFavourite(tab_id = id, favourite = favourite)))
+    }
+
+    // Moving in the row (045)
+
+    /** Moves a tab one place among the tabs of its part of the row: how far it can go is the core's. */
+    fun moveTab(id: Long, step: RowStep) {
+        session.send(Request(move_tab = MoveTab(tab_id = id, by_ = step)))
     }
 
     // Groups (041)

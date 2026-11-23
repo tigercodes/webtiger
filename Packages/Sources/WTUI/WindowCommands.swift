@@ -114,15 +114,33 @@ private struct Command: View {
         }
     }
 
-    /// From tab to tab (035): the core says which.
+    /// From tab to tab (035): the core says which. And the tab in front, a place along its
+    /// row (045): the core says which way it can go, and the words go by how the row is
+    /// drawn.
     private struct TabItems: View {
         let window: WindowCommands?
+        @Environment(\.layoutDirection) private var direction
 
         var body: some View {
             let several = (window?.model.tabs.count ?? 0) > 1
             Divider()
             Command(Words.tabsNext, .tab, .control, enabled: several) { window?.model.stepTab(.next) }
             Command(Words.tabsPrevious, .tab, [.control, .shift], enabled: several) { window?.model.stepTab(.previous) }
+            let front = window?.model.frontTabInTheRow
+            let rightToLeft = direction == .rightToLeft
+            // With no window in front the two are listed all the same, grey.
+            let moves = window?.model.movesOfTheTabInFront(rightToLeft: rightToLeft) ?? TabMove.both(
+                atTheSide: false,
+                rightToLeft: rightToLeft
+            )
+            ForEach(moves) { move in
+                Button {
+                    window?.model.moveTheTabInFront(move.step)
+                } label: {
+                    Text(move.words)
+                }
+                .disabled(front.map { window?.model.canMove($0, move.step) == true } != true)
+            }
         }
     }
 

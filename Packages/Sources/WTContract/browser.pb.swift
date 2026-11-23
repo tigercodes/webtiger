@@ -920,6 +920,14 @@ public nonisolated struct WTTabSummary: Sendable {
   /// first of the row, in their order, and none is in a Group.
   public var favourite: Bool = false
 
+  /// Since 1.36. Whether MoveTab by a step back, or forward, would move the
+  /// tab (045): there is a tab of its part of the row before it, or after it.
+  /// A command that asks for the step is offered when it is so. (The tab of
+  /// its part beside it may be one that is out of the way, in a shut Group.)
+  public var stepsBack: Bool = false
+
+  public var stepsForward: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3257,7 +3265,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TabSummary"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{1}title\0\u{1}host\0\u{1}loading\0\u{1}kept\0\u{1}asleep\0\u{1}away\0\u{3}site_name\0\u{3}group_id\0\u{1}favourite\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{1}title\0\u{1}host\0\u{1}loading\0\u{1}kept\0\u{1}asleep\0\u{1}away\0\u{3}site_name\0\u{3}group_id\0\u{1}favourite\0\u{3}steps_back\0\u{3}steps_forward\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3275,6 +3283,8 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
       case 8: try { try decoder.decodeSingularStringField(value: &self.siteName) }()
       case 9: try { try decoder.decodeSingularUInt64Field(value: &self.groupID) }()
       case 10: try { try decoder.decodeSingularBoolField(value: &self.favourite) }()
+      case 11: try { try decoder.decodeSingularBoolField(value: &self.stepsBack) }()
+      case 12: try { try decoder.decodeSingularBoolField(value: &self.stepsForward) }()
       default: break
       }
     }
@@ -3311,6 +3321,12 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if self.favourite != false {
       try visitor.visitSingularBoolField(value: self.favourite, fieldNumber: 10)
     }
+    if self.stepsBack != false {
+      try visitor.visitSingularBoolField(value: self.stepsBack, fieldNumber: 11)
+    }
+    if self.stepsForward != false {
+      try visitor.visitSingularBoolField(value: self.stepsForward, fieldNumber: 12)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3325,6 +3341,8 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs.siteName != rhs.siteName {return false}
     if lhs.groupID != rhs.groupID {return false}
     if lhs.favourite != rhs.favourite {return false}
+    if lhs.stepsBack != rhs.stepsBack {return false}
+    if lhs.stepsForward != rhs.stepsForward {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

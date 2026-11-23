@@ -770,6 +770,69 @@ fn a_tab_moved_into_a_shut_group_is_out_of_the_way_unless_it_is_in_front() {
     });
 }
 
+/// Which way a step would move each tab, as a window is told: `<` back, `>`
+/// forward.
+fn steps(shell: &FakeShell, subscription: u64) -> Vec<String> {
+    shell
+        .window(subscription)
+        .tabs
+        .into_iter()
+        .map(|tab| {
+            format!(
+                "{}{}{}",
+                if tab.steps_back { "<" } else { "" },
+                tab.title,
+                if tab.steps_forward { ">" } else { "" }
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn a_window_is_told_which_way_a_step_would_move_each_tab() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (window, subscription, [mail, board, news, story]) = four_tabs(&mut shell).await;
+        // Four tabs of one part: the first has nowhere back to go, the last nowhere forward.
+        assert_eq!(
+            steps(&shell, subscription),
+            ["Mail>", "<Board>", "<News>", "<A story"]
+        );
+        // Two Sites and two tabs: each goes as far as its part.
+        acked(&shell.keep_tab(mail).await);
+        acked(&shell.keep_tab(board).await);
+        assert_eq!(
+            steps(&shell, subscription),
+            ["Mail>", "<Board", "News>", "<A story"]
+        );
+        // What the window is told is what a step does: at its part's end a tab stays.
+        acked(&shell.move_tab(board, by(RowStep::Forward)).await);
+        acked(&shell.move_tab(news, by(RowStep::Back)).await);
+        assert_eq!(
+            steps(&shell, subscription),
+            ["Mail>", "<Board", "News>", "<A story"]
+        );
+        // One of its part alone goes nowhere: a Favourite, a Site, a Group's Site, a tab.
+        let work = group(&mut shell, window, "Work").await;
+        acked(&shell.set_favourite(mail, true).await);
+        acked(&shell.move_to_group(news, work).await);
+        assert_eq!(
+            steps(&shell, subscription),
+            ["Mail", "Board", "News", "A story"]
+        );
+
+        // A Group's Sites go among themselves; and when the Group is shut, the Site that
+        // is in front, and shown, still has the others of its Group to step among.
+        acked(&shell.move_to_group(story, work).await);
+        assert_eq!(
+            steps(&shell, subscription),
+            ["Mail", "Board", "News>", "<A story"]
+        );
+        acked(&shell.shut_group(work, true).await);
+        assert_eq!(steps(&shell, subscription), ["Mail", "Board", "<A story"]);
+    });
+}
+
 fn start(folder: &Path) -> FakeShell {
     let mut shell = FakeShell::live(folder);
     web(&mut shell);

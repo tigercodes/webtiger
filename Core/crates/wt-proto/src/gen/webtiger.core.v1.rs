@@ -555,6 +555,14 @@ pub struct TabSummary {
     /// first of the row, in their order, and none is in a Group.
     #[prost(bool, tag = "10")]
     pub favourite: bool,
+    /// Since 1.36. Whether MoveTab by a step back, or forward, would move the
+    /// tab (045): there is a tab of its part of the row before it, or after it.
+    /// A command that asks for the step is offered when it is so. (The tab of
+    /// its part beside it may be one that is out of the way, in a shut Group.)
+    #[prost(bool, tag = "11")]
+    pub steps_back: bool,
+    #[prost(bool, tag = "12")]
+    pub steps_forward: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TabView {

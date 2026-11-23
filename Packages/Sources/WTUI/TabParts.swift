@@ -117,16 +117,24 @@ struct TabCloser: View {
 }
 
 #if !os(macOS)
-    /// A tab's own menu, by a long press: for a tab with something to keep, or a Site. Home,
+    /// A tab's own menu, by a long press. For a tab with something to keep, or a Site: home,
     /// for a Site that is away (039); kept or let go; among the Favourites or out of them
-    /// (042); and into a Group or out of one (041). (On a Mac a button takes a right-click for
-    /// itself and no menu comes of it, 033: the menu bar and its keys are the ways there.)
+    /// (042); and into a Group or out of one (041). For any tab that has somewhere to go: a
+    /// place along its row (045). (On a Mac a button takes a right-click for itself and no
+    /// menu comes of it, 033: the menu bar and its keys are the ways there.)
     struct TabMenu: View {
         let tab: WTTabSummary
         let model: BrowserModel
+        /// The tab is drawn in a column: a row of the sidebar.
+        var atTheSide = false
         @Environment(\.locale) private var locale
 
         var body: some View {
+            arranging
+            MoveTabItems(tab: tab, model: model, atTheSide: atTheSide)
+        }
+
+        @ViewBuilder private var arranging: some View {
             if tab.kept || !tab.host.isEmpty {
                 if tab.away {
                     Button {

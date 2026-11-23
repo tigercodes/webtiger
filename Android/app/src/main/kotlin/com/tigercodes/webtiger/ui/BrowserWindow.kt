@@ -97,12 +97,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.VerticalDivider
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import com.tigercodes.webtiger.core.v1.Layout
 import com.tigercodes.webtiger.R
 import com.tigercodes.webtiger.core.v1.AddressView
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.core.v1.PermissionKind
 import com.tigercodes.webtiger.core.v1.PromptView
+import com.tigercodes.webtiger.core.v1.RowStep
 import com.tigercodes.webtiger.core.v1.TabSummary
 import com.tigercodes.webtiger.core.v1.ZoomChange
 import com.tigercodes.webtiger.core.v1.ZoomView
@@ -345,6 +348,7 @@ private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit
                                 onClose = { model.closeTab(tab.tab_id) },
                                 onKeepOrLetGo = { model.keepOrLetGo(tab.tab_id) },
                                 onSendHome = { model.sendHome(tab.tab_id) },
+                                onMove = { model.moveTab(tab.tab_id, it) },
                                 // Into a Group, or out of one: for a tab that can be kept.
                                 grouping =
                                     if (model.canBeGrouped(tab)) {
@@ -439,15 +443,25 @@ internal fun TabChip(
     modifier: Modifier = Modifier,
     /** A row of the sidebar (043): as wide as it is given, with room for the whole name. */
     fills: Boolean = false,
+    /** Moves the tab a place along its row (045); with none, its menu has no such command. */
+    onMove: ((RowStep) -> Unit)? = null,
 ) {
     // The tab that comes in front is brought into view.
     val place = remember { BringIntoViewRequester() }
     LaunchedEffect(inFront) { if (inFront) place.bringIntoView() }
     // A tab's own menu, by a long press (039): keep it as a Site, or let a Site go. A tab with
-    // no page has nothing to keep, and no menu.
+    // no page has nothing to keep.
     var offering by remember { mutableStateOf(false) }
     val keepOrLetGo = stringResource(if (tab.kept) R.string.sites_let_go else R.string.sites_keep)
-    val hasMenu = tab.kept || tab.host.isNotEmpty()
+    val keeps = tab.kept || tab.host.isNotEmpty()
+    // And a place along its row (045), for a tab that has somewhere to go: the core says which
+    // way. A row of the sidebar is in a column. (A Favourite's tile is no row of the sidebar:
+    // it is in a row of tiles wherever the tabs are.)
+    val rightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val moves = if (onMove != null && (tab.steps_back || tab.steps_forward)) tabMoves(atTheSide = fills, rightToLeft) else emptyList()
+    // A tab with nothing to keep and nowhere to go has no menu.
+    val hasMenu = keeps || moves.isNotEmpty()
+    val menuSays = if (keeps) keepOrLetGo else moves.firstOrNull()?.let { stringResource(it.words) }
     // What is said of the tab beside its name: that it is a Favourite, or a Site (a Favourite is
     // one, and is not said to be both), that it is away from its home, that it is asleep.
     val said = listOfNotNull(
@@ -481,7 +495,7 @@ internal fun TabChip(
                             role = Role.Tab,
                             onClick = onActivate,
                             onLongClick = if (hasMenu) ({ offering = true }) else null,
-                            onLongClickLabel = if (hasMenu) keepOrLetGo else null,
+                            onLongClickLabel = menuSays,
                         ).semantics {
                             selected = inFront
                             stateDescription = said
@@ -551,14 +565,16 @@ internal fun TabChip(
                         modifier = Modifier.testTag("favourite-sleep"),
                     )
                 }
-                DropdownMenuItem(
-                    text = { Text(keepOrLetGo) },
-                    onClick = {
-                        offering = false
-                        onKeepOrLetGo()
-                    },
-                    modifier = Modifier.testTag("keep-or-let-go"),
-                )
+                if (keeps) {
+                    DropdownMenuItem(
+                        text = { Text(keepOrLetGo) },
+                        onClick = {
+                            offering = false
+                            onKeepOrLetGo()
+                        },
+                        modifier = Modifier.testTag("keep-or-let-go"),
+                    )
+                }
                 // Among the Favourites, or out of them (042): grey when the row is full.
                 if (grouping != null) {
                     DropdownMenuItem(
@@ -574,6 +590,18 @@ internal fun TabChip(
                 // "Move to Group" (041): the Groups of the row, none, and a new one.
                 if (grouping != null) {
                     MoveToGroupItems(grouping.groups, current = tab.group_id, onMove = grouping.onMove, onNew = grouping.onNew, onChosen = { offering = false })
+                }
+                // A place along its row (045): grey the way the core says the tab cannot go.
+                for (move in moves) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(move.words)) },
+                        enabled = canMove(tab, move.step),
+                        onClick = {
+                            offering = false
+                            onMove?.invoke(move.step)
+                        },
+                        modifier = Modifier.testTag(move.tag),
+                    )
                 }
             }
         }

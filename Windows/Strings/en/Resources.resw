@@ -260,6 +260,10 @@
   <data name="tab_empty_title" xml:space="preserve"><value>Where to?</value><comment>Heading of a tab that has no page yet.</comment></data>
   <data name="tabs_close" xml:space="preserve"><value>Close Tab</value><comment>Button on a tab in the strip, and command (Command-W on a Mac): close the tab.</comment></data>
   <data name="tabs_list" xml:space="preserve"><value>Tabs</value><comment>Accessibility label of the strip of the window&apos;s tabs.</comment></data>
+  <data name="tabs_move_down" xml:space="preserve"><value>Move Tab Down</value><comment>The same command with the tabs down the side of the window: the tab changes places with the one below it.</comment></data>
+  <data name="tabs_move_left" xml:space="preserve"><value>Move Tab Left</value><comment>Command for a tab drawn in a row along the top, or a Favourite&apos;s tile (in the Mac&apos;s Window menu, for the tab in front; in a tab&apos;s own menu on a touch screen): the tab changes places with the one on its left. Grey when no tab of its kind is on that side.</comment></data>
+  <data name="tabs_move_right" xml:space="preserve"><value>Move Tab Right</value><comment>The same command the other way: the tab changes places with the one on its right.</comment></data>
+  <data name="tabs_move_up" xml:space="preserve"><value>Move Tab Up</value><comment>The same command with the tabs down the side of the window: the tab changes places with the one above it.</comment></data>
   <data name="tabs_new" xml:space="preserve"><value>New Tab</value><comment>Button at the end of the strip of tabs, and command (Command-T on a Mac): open an empty tab.</comment></data>
   <data name="tabs_next" xml:space="preserve"><value>Show Next Tab</value><comment>Command in the Mac&apos;s Window menu (Control-Tab): bring the next tab in the row in front; from the last, the first.</comment></data>
   <data name="tabs_previous" xml:space="preserve"><value>Show Previous Tab</value><comment>Command in the Mac&apos;s Window menu (Control-Shift-Tab): bring the tab before in the row in front; from the first, the last.</comment></data>

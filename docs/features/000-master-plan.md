@@ -711,7 +711,7 @@ Spaces with their login sets, colours and icons; shared logins; the tree with dr
 
 **Exit:** the isolation tests pass; switching layout changes nothing in the model; 5,000 rows scroll within budget.
 
-**Where W2 stands (2026-11-22).** Built: Spaces with their login sets and colours, and shared logins (024, 025); several windows and private windows (037); undo for a closed tab (033); the keys of each system (034 to 036); Sites (039), Groups (041) and Favourites (042); both layouts, on the Mac and on a touch screen's wide windows (043). Not built: a Space's icon; moving in the tree, in any app (the core has it, [045](045-moving-in-the-row.md)), and dragging; the tidying of temporary tabs; the phone's switcher; the command bar; undo for the organising actions that have come since 033, in any app (the core has it, [044](044-undo-for-the-tree.md), and no shell offers it until the owner has said where); a site's icon, which the Favourites' tiles wait for. Of the exit: the isolation tests pass; that switching the layout changes nothing in the model is tested in the core (043 §8); **the 5,000 rows are measured in part** ([043](043-the-sidebar.md) §8a): the standard session is well inside the contract's budget; at 5,000 rows a change costs the core about 4 ms and tells the window the whole row again, which telling only what changed (W3) is to mend; the sidebars make their rows as they come into view; no frame was counted.
+**Where W2 stands (2026-11-23).** Built: Spaces with their login sets and colours, and shared logins (024, 025); several windows and private windows (037); undo for a closed tab (033); the keys of each system (034 to 036); Sites (039), Groups (041) and Favourites (042); both layouts, on the Mac and on a touch screen's wide windows (043). Not built: a Space's icon; dragging in the tree (a tab is moved a place by a command, [045](045-moving-in-the-row.md); the core has the rest); the tidying of temporary tabs; the phone's switcher; the command bar; undo for the organising actions that have come since 033, in any app (the core has it, [044](044-undo-for-the-tree.md), and no shell offers it until the owner has said where); a site's icon, which the Favourites' tiles wait for. Of the exit: the isolation tests pass; that switching the layout changes nothing in the model is tested in the core (043 §8); **the 5,000 rows are measured in part** ([043](043-the-sidebar.md) §8a): the standard session is well inside the contract's budget; at 5,000 rows a change costs the core about 4 ms and tells the window the whole row again, which telling only what changed (W3) is to mend; the sidebars make their rows as they come into view; no frame was counted.
 
 ### W3 — Sleeping tabs and the budgets (medium)
 
@@ -815,7 +815,7 @@ W1 to W4 are the critical path. W5 to W9 can be reordered by what is wanted firs
 
 ### 11.1 Built on a recommendation, waiting for the owner
 
-Three features of W2 are built on the recommendations of their own documents, the owner not yet having answered; a fourth and a fifth are built in the core only. Each choice is one line here; its reasons and the other ways are in the feature's §6. An answer to any of them changes that feature, and nothing else.
+Four features of W2 are built on the recommendations of their own documents, the owner not yet having answered (the fourth, moving in the row, without dragging); a fifth, undo for the tree, in the core only. Each choice is one line here; its reasons and the other ways are in the feature's §6. An answer to any of them changes that feature, and nothing else.
 
 **Groups** ([041](041-groups.md) §6, put on 2026-11-22):
 
@@ -855,7 +855,7 @@ Three features of W2 are built on the recommendations of their own documents, th
 5. On the Mac in the Edit menu, ⌘Z, when the keyboard is not in a field of words.
 6. On a touch screen in the menu of the thing nearest to what was done.
 
-**Moving in the row** ([045](045-moving-in-the-row.md) §6, put on 2026-11-22; 1 to 4 built in the core, 5 and 6 in no shell yet):
+**Moving in the row** ([045](045-moving-in-the-row.md) §6, put on 2026-11-22; 1 to 4 built in the core and 6 in the shells; 5, dragging, not built):
 
 1. A tab that is moved becomes what its new neighbours are: among Sites a Site, in a Group that Group's, among Favourites a Favourite.
 2. That goes both ways: a Site moved among the tabs that are no Sites is a Site no longer. (Which is why undo for the tree should be in the apps before dragging is.)

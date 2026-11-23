@@ -139,7 +139,7 @@ struct Sidebar<Toolbar: View>: View {
             .accessibilityAddTraits(isFront ? .isSelected : [])
             .accessibilityValue(Text(verbatim: TabStrip.said(of: tab)))
             #if !os(macOS)
-                .contextMenu { TabMenu(tab: tab, model: model) }
+                .contextMenu { TabMenu(tab: tab, model: model, atTheSide: true) }
             #endif
             TabCloser(tab: tab, model: model)
         }

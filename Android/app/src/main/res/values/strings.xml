@@ -511,6 +511,14 @@
     <string name="tabs_close">Close Tab</string>
     <!-- Accessibility label of the strip of the window's tabs. -->
     <string name="tabs_list">Tabs</string>
+    <!-- The same command with the tabs down the side of the window: the tab changes places with the one below it. -->
+    <string name="tabs_move_down">Move Tab Down</string>
+    <!-- Command for a tab drawn in a row along the top, or a Favourite's tile (in the Mac's Window menu, for the tab in front; in a tab's own menu on a touch screen): the tab changes places with the one on its left. Grey when no tab of its kind is on that side. -->
+    <string name="tabs_move_left">Move Tab Left</string>
+    <!-- The same command the other way: the tab changes places with the one on its right. -->
+    <string name="tabs_move_right">Move Tab Right</string>
+    <!-- The same command with the tabs down the side of the window: the tab changes places with the one above it. -->
+    <string name="tabs_move_up">Move Tab Up</string>
     <!-- Button at the end of the strip of tabs, and command (Command-T on a Mac): open an empty tab. -->
     <string name="tabs_new">New Tab</string>
     <!-- Command in the Mac's Window menu (Control-Tab): bring the next tab in the row in front; from the last, the first. -->

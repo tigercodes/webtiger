@@ -368,6 +368,12 @@ message TabSummary {
   // Since 1.32. The Site is one of the row's Favourites (042): they are the
   // first of the row, in their order, and none is in a Group.
   bool favourite = 10;
+  // Since 1.36. Whether MoveTab by a step back, or forward, would move the
+  // tab (045): there is a tab of its part of the row before it, or after it.
+  // A command that asks for the step is offered when it is so. (The tab of
+  // its part beside it may be one that is out of the way, in a shut Group.)
+  bool steps_back = 11;
+  bool steps_forward = 12;
 }
 
 message TabView {
