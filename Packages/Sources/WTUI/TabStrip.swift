@@ -47,11 +47,18 @@ struct TabStrip: View {
                         switch item {
                         case let .tab(tab):
                             // A Favourite is a tile (042); any other tab has its name.
-                            if tab.favourite {
-                                FavouriteTile(tab: tab, model: model).id(tab.tabID)
-                            } else {
-                                chip(tab).id(tab.tabID)
+                            // Each can be dragged, and takes a tab dropped on it, which is
+                            // then put just before it (045 §5b).
+                            Group {
+                                if tab.favourite {
+                                    FavouriteTile(tab: tab, model: model)
+                                } else {
+                                    chip(tab)
+                                }
                             }
+                            .dragged(as: .tab(tab.tabID), in: model)
+                            .takesDrops(at: .tab(tab.tabID), in: model, mark: .before)
+                            .id(tab.tabID)
                         case let .group(group):
                             GroupChip(
                                 group: group,
@@ -60,6 +67,8 @@ struct TabStrip: View {
                                 remove: { model.removeGroup(group.groupID) },
                                 undo: model.treeUndo
                             )
+                            .dragged(as: .group(group.groupID), in: model)
+                            .takesDrops(at: .group(group.groupID), in: model)
                         }
                     }
                     Button {
@@ -82,6 +91,8 @@ struct TabStrip: View {
                             }
                         }
                         .accessibilityIdentifier("new-tab")
+                        // It ends the row: a tab dropped on it is the last of the tabs.
+                        .takesDrops(at: .endOfTabs, in: model)
                 }
                 .padding(.horizontal, Tokens.Space.m)
             }

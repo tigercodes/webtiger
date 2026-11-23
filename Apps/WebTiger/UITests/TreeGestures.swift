@@ -11,6 +11,19 @@ extension AppTestCase {
         XCTAssertEqual(waited, .completed, "\(what): it says '\(element.value as? String ?? "")'", line: line)
     }
 
+    /// Waits for the row's tabs to be these, by their names, in this order.
+    func expect(_ tabs: XCUIElementQuery, toBe names: [String], _ what: String, line: UInt = #line) {
+        let deadline = Date().addingTimeInterval(30)
+        var found: [String] = []
+        repeat {
+            found = (0 ..< tabs.count).map { tabs.element(boundBy: $0).label }
+            if found != names {
+                usleep(200_000)
+            }
+        } while found != names && Date() < deadline
+        XCTAssertEqual(found, names, what, line: line)
+    }
+
     /// Waits for there to be this many of something.
     func expect(_ elements: XCUIElementQuery, toCount count: Int, _ what: String, line: UInt = #line) {
         let counted = NSPredicate(format: "count == %d", count)

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **The core, the contract and the commands are built and tested, on the recommendations of §6, which are provisional:** they are put to the owner and not yet answered. A tab is moved a place by a command in every shell. **Dragging is not built:** it waits for undo for the tree to be in the apps (D2) |
+| **Status** | **The core, the contract and the commands are built and tested in every shell; dragging is built and tested on the Mac.** A tab is moved a place by a command everywhere, and on the Mac a tab or a Group is dragged, along the top and down the side (§5b). **On a touch screen nothing is dragged yet:** on the iPhone a drag did not begin when it was tried, and Android's is not started. The recommendations of §6 are provisional: they are put to the owner and not yet answered |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "the tree with drag and drop". 000 §5.6: "Dragging it into a Group makes it a Site" |
 | **Contract** | 1.35 (§5), and 1.36 for the commands (§5a). Nothing new is kept in the store: a row's order, and its Groups', are written already |
 | **Builds on** | [005](005-tabs.md) ("Moving a tab within a window: with the tree and drag and drop"); [039](039-sites.md), [041](041-groups.md), [042](042-favourites.md): the row's order, which nothing a person does can change yet but by making and unmaking; [044](044-undo-for-the-tree.md): what is moved can be put back |
@@ -110,7 +110,7 @@ message TabSummary { … bool steps_back = 11; bool steps_forward = 12; }
 - **An empty tab has a menu on a touch screen now,** when it has somewhere to go: the commands that move it, and no other. (It had none: it has nothing to keep.)
 - **The shells work nothing out about the row:** which way a tab can go is read from what the core says of it; which words a command has is from how the shell itself drew the tab.
 
-## 5b. Dragging (designed, not built)
+## 5b. Dragging (built on the Mac)
 
 Nothing is added to the contract: a drop sends what §5 has had since 1.35, and what it means is the core's.
 
@@ -136,9 +136,18 @@ A shell works out none of what the tab becomes: it names the thing dropped and t
 
 **In what order:** Apple's windows, which share their views (the Mac first, since a pointer's drag can be driven by a test; then a touch screen); then Android.
 
+**As built on the Mac, where the design did not say:**
+
+- **What the system is handed is a kind and no bytes.** The thing that is held, and the window whose row it is of, stay in the app; a place takes it only in that window's row. The kind is the app's own (`com.tigercodes.webtiger.row-item`), and is offered to this app alone. **It has to be declared in the app's own list of what it is** (its `Info.plist`): until it was, a drag began and no place was offered it.
+- **Along the top** a thing is dropped on a tab or a tile (and is put before it), on a Group's chip, and on the button for a new tab, which ends the row. **The strip has no place for the end of the Favourites, nor for the end of the Sites that are in no Group:** its parts follow one another with nothing between. Down the side there is one for each (past the last tile; the line under the Groups); along the top those are reached by the commands.
+- **Down the side:** a row (the line that marks it is above it), a tile, a Group's chip, the room past the last tile, the line under the Groups, and the row for a new tab. A window with no Favourite has no tiles to drop among: the first is made by its command.
+- **The line under the Groups is nine points high:** a pointer's target. It is a place to drop on and no control: a screen reader is told nothing of it.
+- **A row that can be dragged must still say what it is.** With dragging first put on a tab's own button, a row of the sidebar (whose rows are made as they come into view) went on telling a screen reader what it was when it was made: its old name after its page changed, that it was no Site when it had become one, that it was in front when it no longer was. The strip's tabs did not. What holds: dragging is put on the whole row, not on the button, and at least one of its two parts (what picks up, what takes a drop) is handed to the system as a view of no known kind. Why is not understood; a test of the app holds it in place.
+- **Nothing is dragged on a touch screen.** On the iPhone's simulator a drag did not begin, whether dragging was put on the row or on the same thing as the tab's own menu, which is a long press too. It is not known whether it does not begin, or only does not when a test's hand does it. Until it is, nothing there is changed: a long press is the menu, as before.
+
 ## 6. Decisions
 
-**All of these are put to the owner.** D1 to D4 are built in the core as recommended, and D6 in the shells; D5, dragging, is not built. The first column is the recommendation.
+**All of these are put to the owner.** D1 to D4 are built in the core as recommended, and D6 in the shells; D5, dragging, is built on the Mac. The first column is the recommendation.
 
 | # | Recommendation | Why | Other ways |
 |---|---|---|---|
@@ -153,7 +162,8 @@ A shell works out none of what the tab becomes: it names the thing dropped and t
 
 1. **The core and the contract.**
 2. **The commands** in the shells (D6): they need no dragging, and are what a keyboard and a screen reader use.
-3. **Dragging** on the Mac, then on a touch screen (D5): after undo for the tree is in the apps (D2).
+3. **Dragging** on the Mac (D5): after undo for the tree is in the apps (D2). **Built.**
+4. **Dragging on a touch screen:** Apple's, then Android's.
 
 ## 8. Tests
 
@@ -165,12 +175,19 @@ A shell works out none of what the tab becomes: it names the thing dropped and t
 | The apps (`MovingTests`, 1, on the Mac and the iPhone simulator, with the real core and the real engine) | Of two tabs the last cannot go right (the command is grey) and goes left: it has changed places with the other and is in front still, with its page; then the first cannot go left and goes right; nothing was loaded. By the Window menu on the Mac, by the tab's own menu on the iPhone. On the Mac, with the tabs at the side: "Move Tab Up" and "Move Tab Down" do the same, and the last cannot go down |
 | The Android shell on the JVM (`MovingTest`, 5) | The model asks the core for a step. The words by how the row is drawn, as on Apple's. The strip drawn: a tab's menu has the two commands, grey the way it cannot go, and nothing is asked that way; the tab in front between two goes either way; a Favourite's tile moves as any tab; a tab alone in its part has the rest of its menu and no such command; an empty tab with somewhere to go has the two and no other. Drawn from right to left: "Move Tab Left" is forward. In a wide window with the tabs at the side: a row says up and down, and a Favourite's tile left and right |
 | The Android app on the emulator (`AppMovingTest`, 1) | As `MovingTests`, from the tab's own menu, with the real core and the real WebView; and a tab that is not in front moves, and stays behind |
+| Dragging, the Apple shell's model (`DraggingModelTests`, 2, against a scripted core) | A tab dropped on a tab is asked to be put before it; on a Group's chip, to be the last of the Group; past the tiles, on the line and on the row for a new tab, to be the last of that part. A Group dropped on a Group is asked to be put before it; on the line, after the last. Before the window is open nothing is asked. A thing on itself, and a Group on a tab, past the tiles or on the row for a new tab, are taken nowhere and ask nothing; a tab and a Group of the same number are not the same thing. Broken in 17 parts, 17 caught |
+| Dragging, the Mac app (`DraggingTests`, 3, with the real core and the real engine) | **Along the top:** of two tabs the second, dropped on the first, is before it and in front still; dropped on the button for a new tab it is the last, and no tab was opened; undone from the Edit menu, it is where it was. Dropped on a Group's chip it is a Site, and the Group, shut, has two; undone, it is a tab like any other. **Down the side:** a row dropped on another is above it; a tab dropped on the line under the Group is a Site, and the Group has its one Site still; a second Group, dropped on the first, is before it. Nothing was loaded by any of it. **A row that can be dragged says what it is now:** kept while the sidebar shows it, it says it is a Site; its page changed, it has the new name and says it is away; the other row brought in front is the one chosen; a Group's chip says shut and open; a Favourite's tile says so; and Apple's audit faults nothing in a sidebar with places to drop on |
+| Dragging, the Mac's wiring broken, a part at a time, under the app's tests | 14 parts. 11 caught: each place that takes no drop, each thing that cannot be picked up, what is picked up not noted, and both parts of dragging left the kind of view they are (the rows then say what they were). Three were not: either part alone left the kind of view it is (one hidden is enough, and both are); and the line under the Groups left a control to a screen reader, which the Mac's audit does not fault (the iPhone's did, when there was dropping there) |
+| Found by these tests | That the kind of thing a drag is must be declared by the app. That a row which can be dragged stopped saying what it is (§5b). That on a touch screen the line under the Groups was a control eight points high, by Apple's audit of the switcher: there is no dropping on a touch screen now, and the line is nothing to a screen reader on any |
 | The shells broken, a part at a time | Apple's model in 12 parts, 12 caught. Android's in 17: 16 caught; the one that was not was a condition that could never be otherwise (a tile is no row of the sidebar), taken out. Apple's views (that a menu's item is grey; that the sidebar's rows say up and down) are seen by the apps' tests only, which were not run against a broken shell |
 | The rule broken, a part at a time | 34 parts, in the model and where the requests are answered. 32 caught: 26 at once; one that did not build, once written so that it did; one once the tests read which field a refusal names; four written after those. Two were not, and neither is a fault: each was the model's own telling of the window that its row had changed, and the window is told all the same where the row's arrangement is kept (044). The one for a Group moved was taken out of the code, where the row is now arranged and the window told by one call; the one for a step stays |
 
 ## 9. What is not verified
 
-- **Only a step is asked for by a shell.** The rest of the contract's moves (before a tab, to a part's end, onto a Group; a Group among the Groups) is what dragging will send: nothing in an app sends it yet.
+- **Dragging on a touch screen:** not built (§5b). On the iPhone, the iPad and Android a tab is moved by its commands.
+- **What dragging did not try:** a drop past the last tile, and a tile picked up, in the app (the model's test has the first; the wiring is the same line as a row's); a thing dragged from one window to another, which by its lines is taken nowhere; a thing let go over another app, or over the page; a row that scrolls while something is held over it; a row drawn from right to left; a move of a Group undone.
+- **What is marked while a thing is held** (the line before a tab, the place drawn round): no picture has it, and no test looks; the tests see where a thing is after it is let go.
+- **Why a row that can be dragged stopped saying what it is,** and so whether what holds now holds on another version of the system. The app's test would say.
 - **An iPad.** That the rows of an iPad's sidebar say up and down is one argument where the row's menu is made; the words' choice is tested, and nothing pressed it on an iPad or its simulator.
 - **From right to left.** The words and the steps are tested in the models, and Android's menu drawn from right to left on the JVM; no app was run in a language that runs so. The Mac's menu bar goes by the app's direction.
 - **A screen reader**, and **the keyboard alone**: the commands are in menus, with no key (D6). On the Mac the Window menu is reached by the keyboard; nobody listened to what is said.
@@ -186,6 +203,8 @@ A shell works out none of what the tab becomes: it names the thing dropped and t
 - [ ] The owner's word on §6.
 - [x] The core and the contract.
 - [x] The commands in the shells.
-- [ ] Dragging.
+- [x] Dragging on the Mac.
+- [ ] Dragging on a touch screen.
 - [x] The core: `Tools/test.sh all` green, and `android-device`, in the night of 2026-11-22 to 23: `lint`, `core` (611, and the strings tool's 24), `unit` (293 on the Mac), `build`, the Mac's UI suite (45), `ios` (275 on the iPhone simulator), the iPhone's UI suite (35), `android` (411 and 32 on the JVM) and `android-device` (159 on the emulator). No shell changed but for the contract's number.
 - [x] The commands: `Tools/test.sh all` green, and `android-device`, on 2026-11-23: `lint`, `core` (612, and the strings tool's 24), `unit` (296 on the Mac), `build`, the Mac's UI suite (46), `ios` (278 on the iPhone simulator), the iPhone's UI suite (36), `android` (416 and 32 on the JVM) and `android-device` (160 on the emulator).
+- [ ] Dragging on the Mac: the gate.

@@ -27,19 +27,6 @@ final class MovingTests: AppTestCase {
         #endif
     }
 
-    /// Waits for the row's tabs to be these, by their names, in this order.
-    private func expect(_ tabs: XCUIElementQuery, toBe names: [String], _ what: String, line: UInt = #line) {
-        let deadline = Date().addingTimeInterval(30)
-        var found: [String] = []
-        repeat {
-            found = (0 ..< tabs.count).map { tabs.element(boundBy: $0).label }
-            if found != names {
-                usleep(200_000)
-            }
-        } while found != names && Date() < deadline
-        XCTAssertEqual(found, names, what, line: line)
-    }
-
     func testTheTabInFrontChangesPlacesWithTheOneBesideIt() {
         let app = launch(start: site.url("/landed"))
         XCTAssertTrue(pageShows("Landed", in: app), "the first tab's page loaded")

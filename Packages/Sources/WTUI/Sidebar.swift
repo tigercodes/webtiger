@@ -76,11 +76,18 @@ struct Sidebar<Toolbar: View>: View {
             alignment: .leading, spacing: Tokens.Space.xs
         ) {
             ForEach(favourites, id: \.tabID) { tab in
+                // A tile can be dragged, and a tab dropped on it is put just before it,
+                // a Favourite (045 §5b).
                 FavouriteTile(tab: tab, model: model, onChosen: onChosen)
+                    .dragged(as: .tab(tab.tabID), in: model)
+                    .takesDrops(at: .tab(tab.tabID), in: model, mark: .before)
             }
         }
         .padding(.horizontal, Tokens.Space.m)
         .padding(.vertical, Tokens.Space.xs)
+        // Past the last tile: the end of the Favourites.
+        .contentShape(Rectangle())
+        .takesDrops(at: .endOfFavourites, in: model)
     }
 
     /// The tree, a line, the other tabs, and the row that opens a tab.
@@ -94,8 +101,10 @@ struct Sidebar<Toolbar: View>: View {
                         switch item {
                         case let .tab(tab):
                             // A Group's Site is set in under its Group.
-                            row(tab).padding(.leading, tab.groupID == 0 ? 0 : Tokens.Space.l).id(tab.tabID)
+                            dragged(tab).padding(.leading, tab.groupID == 0 ? 0 : Tokens.Space.l).id(tab.tabID)
                         case let .group(group):
+                            // A Group is dragged among the Groups; a tab dropped on it is
+                            // the last of its Sites (045 §5b).
                             GroupChip(
                                 group: group,
                                 toggle: { model.shutOrOpen(group) },
@@ -103,16 +112,26 @@ struct Sidebar<Toolbar: View>: View {
                                 remove: { model.removeGroup(group.groupID) },
                                 undo: model.treeUndo
                             )
+                            .dragged(as: .group(group.groupID), in: model)
+                            .takesDrops(at: .group(group.groupID), in: model)
                         }
                     }
-                    // Under a line, the tabs that are only passing through.
+                    // Under a line, the tabs that are only passing through. The line ends the
+                    // Sites that are in no Group, and the Groups: what is dropped on it is the
+                    // last of those.
                     if !parts.tree.isEmpty || !parts.favourites.isEmpty {
+                        // (The line is a place to drop on, and no control: a screen reader is
+                        // told nothing of it.)
                         Divider().padding(.vertical, Tokens.Space.xs)
+                            .contentShape(Rectangle())
+                            .takesDrops(at: .endOfSites, in: model)
+                            .accessibilityHidden(true)
                     }
                     ForEach(parts.others, id: \.tabID) { tab in
-                        row(tab).id(tab.tabID)
+                        dragged(tab).id(tab.tabID)
                     }
-                    newTab
+                    // "New Tab" ends the row: a tab dropped on it is the last of the tabs.
+                    newTab.takesDrops(at: .endOfTabs, in: model)
                 }
                 .padding(.horizontal, Tokens.Space.m)
                 .padding(.vertical, Tokens.Space.xs)
@@ -129,6 +148,14 @@ struct Sidebar<Toolbar: View>: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(Words.tabsList))
         .accessibilityIdentifier("sidebar")
+    }
+
+    /// A tab's row as a thing that can be dragged, and that takes a tab dropped on it, which
+    /// is then put just before it (045 §5b).
+    private func dragged(_ tab: WTTabSummary) -> some View {
+        row(tab)
+            .dragged(as: .tab(tab.tabID), in: model)
+            .takesDrops(at: .tab(tab.tabID), in: model, mark: .above)
     }
 
     /// A tab as a row: what the strip's chip shows, with room for its name, and the button at

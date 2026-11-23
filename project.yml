@@ -74,6 +74,14 @@ targets:
         NSCameraUsageDescription: A site you allow can use the camera.
         NSMicrophoneUsageDescription: A site you allow can use the microphone.
         NSLocationWhenInUseUsageDescription: A site you allow can learn where you are.
+        # What is dragged in a window's row (045 §5b): a kind of thing that is this app's own,
+        # which the system must know of to carry a drag from where a tab is picked up to
+        # where it is dropped. It has no bytes, and is nothing another app reads.
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.tigercodes.webtiger.row-item
+            UTTypeDescription: A tab or a Group in WebTiger
+            UTTypeConformsTo:
+              - public.data
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.tigercodes.webtiger

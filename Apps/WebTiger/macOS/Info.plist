@@ -51,5 +51,18 @@
 	<string>A site you allow can learn where you are.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>A site you allow can use the microphone.</string>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>A tab or a Group in WebTiger</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.tigercodes.webtiger.row-item</string>
+		</dict>
+	</array>
 </dict>
 </plist>
