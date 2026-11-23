@@ -711,7 +711,7 @@ Spaces with their login sets, colours and icons; shared logins; the tree with dr
 
 **Exit:** the isolation tests pass; switching layout changes nothing in the model; 5,000 rows scroll within budget.
 
-**Where W2 stands (2026-11-23).** Built: Spaces with their login sets and colours, and shared logins (024, 025); several windows and private windows (037); undo for a closed tab (033); the keys of each system (034 to 036); Sites (039), Groups (041) and Favourites (042); both layouts, on the Mac and on a touch screen's wide windows (043). Not built: a Space's icon; dragging in the tree (a tab is moved a place by a command, [045](045-moving-in-the-row.md); the core has the rest); the tidying of temporary tabs; the phone's switcher; the command bar; undo for the organising actions that have come since 033, in any app (the core has it, [044](044-undo-for-the-tree.md), and no shell offers it until the owner has said where); a site's icon on Apple's systems (on Android a tab and a Favourite's tile have theirs, [046](046-a-sites-icon.md); where WebKit hands none over, how one is fetched is the owner's to say first). Of the exit: the isolation tests pass; that switching the layout changes nothing in the model is tested in the core (043 §8); **the 5,000 rows are measured in part** ([043](043-the-sidebar.md) §8a): the standard session is well inside the contract's budget; at 5,000 rows a change costs the core about 4 ms and tells the window the whole row again, which telling only what changed (W3) is to mend; the sidebars make their rows as they come into view; no frame was counted.
+**Where W2 stands (2026-11-23).** Built: Spaces with their login sets and colours, and shared logins (024, 025); several windows and private windows (037); undo for a closed tab (033); the keys of each system (034 to 036); Sites (039), Groups (041) and Favourites (042); both layouts, on the Mac and on a touch screen's wide windows (043). Not built: a Space's icon; dragging in the tree (a tab is moved a place by a command, [045](045-moving-in-the-row.md); the core has the rest); the tidying of temporary tabs; the phone's switcher (designed, [047](047-the-phones-switcher.md)); the command bar; undo for the organising actions that have come since 033, in any app (the core has it, [044](044-undo-for-the-tree.md), and no shell offers it until the owner has said where); a site's icon on Apple's systems (on Android a tab and a Favourite's tile have theirs, [046](046-a-sites-icon.md); where WebKit hands none over, how one is fetched is the owner's to say first). Of the exit: the isolation tests pass; that switching the layout changes nothing in the model is tested in the core (043 §8); **the 5,000 rows are measured in part** ([043](043-the-sidebar.md) §8a): the standard session is well inside the contract's budget; at 5,000 rows a change costs the core about 4 ms and tells the window the whole row again, which telling only what changed (W3) is to mend; the sidebars make their rows as they come into view; no frame was counted.
 
 ### W3 — Sleeping tabs and the budgets (medium)
 
@@ -872,6 +872,14 @@ Four features of W2 are built on the recommendations of their own documents, the
 4. The page's own icon nearest 64 points; PNG, ICO, JPEG and GIF; no SVG yet.
 5. Kept on disk: every Site's, and the thousand used most lately of the rest.
 6. Drawn before a tab's name; on a tile, the icon alone; a Site keeps its mark.
+
+**The phone's switcher** ([047](047-the-phones-switcher.md) §6, put on 2026-11-23; designed, not built):
+
+1. The sidebar's tree in a sheet first; cards when there are pictures of pages.
+2. Its button at the end of the toolbar, after the address field: a square with the number of tabs in it.
+3. The strip stays on a phone.
+4. The number is of all the row's tabs, those of shut Groups among them.
+5. The sheet covers the page, with the Space's name at its head.
 
 Also the owner's to say, from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
 
