@@ -2074,8 +2074,9 @@ impl State {
     /// A page names its icons (046 §5a): the address of the one to fetch for
     /// it. `None` when none is to be fetched: the page that names them is
     /// not the one the tab shows, or is one whose icon is not taken; it has
-    /// no icon that will do and no origin to ask; or the same address was
-    /// asked for already in this run, for this host in this login set.
+    /// no icon that will do and no origin to ask; the same address was asked
+    /// for already in this run, for this host in this login set; or as many
+    /// were asked for as a host may have.
     pub(crate) fn icon_to_fetch(
         &mut self,
         web_view: WebViewId,

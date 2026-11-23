@@ -2,6 +2,7 @@ public import Observation
 public import WTContract
 
 // A window's model: what the core last said about it, and the user's intents sent back.
+import CoreGraphics
 import Foundation
 import WTCoreClient
 
@@ -49,6 +50,10 @@ public final class BrowserModel {
     /// What undoing the row's arrangement would undo (044), by the core's name for it; empty
     /// when there is nothing.
     public private(set) var undoArrangementKind = ""
+    /// The pictures of the tabs' icons (046), by the numbers the core gives them, as far as
+    /// this window has them; and the numbers whose pictures the core was asked for.
+    var icons: [UInt64: CGImage] = [:]
+    @ObservationIgnored var iconsAsked: Set<UInt64> = []
     /// The window is a private one (037): made to be one, or said to be one by the core.
     public internal(set) var isPrivate = false
     /// The window is to be opened in the core as a private one. Set before it opens.
@@ -485,6 +490,7 @@ public final class BrowserModel {
         keepWarning(for: snapshot.tab, switched: switched)
         tab = snapshot.tab
         tabs = snapshot.tabs
+        askForIcons(snapshot.tabs)
         groups = snapshot.groups
         favouritesFull = snapshot.favouritesFull
         rowTabs = Int(snapshot.rowTabs)

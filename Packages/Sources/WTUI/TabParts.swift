@@ -5,10 +5,12 @@ import SwiftUI
 import WTContract
 import WTDesign
 
-/// What a tab shows of itself: a dot while it loads, a Site's mark, and its name.
+/// What a tab shows of itself: a dot while it loads, a Site's mark, its site's icon when the
+/// window has it (046), and its name.
 struct TabLabel: View {
     let tab: WTTabSummary
     let isFront: Bool
+    var icon: CGImage?
 
     var body: some View {
         HStack(spacing: Tokens.Space.xs) {
@@ -25,6 +27,10 @@ struct TabLabel: View {
                 Image(systemName: tab.away ? "bookmark" : "bookmark.fill")
                     .font(.caption2)
                     .accessibilityHidden(true)
+            }
+            if let icon {
+                // Its site's icon (046), before its name.
+                SiteIcon(picture: icon, side: SiteIcon.inARow, asleep: tab.asleep)
             }
             name
                 .lineLimit(1)
@@ -48,9 +54,10 @@ struct TabLabel: View {
     }
 }
 
-/// A Favourite's tile (042): a letter, until sites have icons; the first of the name it was
-/// kept with. Its whole name is said to a screen reader, and shown where a pointer rests on
-/// it. It has no button at its end: a tile is as small as it can be pressed.
+/// A Favourite's tile (042): its site's icon, when the window has it (046); until then a
+/// letter, the first of the name it was kept with. Its whole name is said to a screen reader,
+/// and shown where a pointer rests on it. It has no button at its end: a tile is as small as
+/// it can be pressed.
 struct FavouriteTile: View {
     let tab: WTTabSummary
     let model: BrowserModel
@@ -65,11 +72,7 @@ struct FavouriteTile: View {
             model.activate(tab.tabID)
             onChosen()
         } label: {
-            Text(verbatim: TabStrip.letter(of: tab, locale: locale))
-                .font(.callout)
-                .fontWeight(isFront ? .bold : .medium)
-                // Asleep, it has no page: fainter, as a sleeping tab's name is.
-                .opacity(tab.asleep ? TabStrip.asleepOpacity : 1)
+            face(isFront: isFront)
                 .frame(minWidth: BrowserWindowView.hitSize, minHeight: BrowserWindowView.hitSize)
                 .contentShape(Rectangle())
         }
@@ -87,6 +90,22 @@ struct FavouriteTile: View {
         #if !os(macOS)
             .contextMenu { TabMenu(tab: tab, model: model) }
         #endif
+    }
+}
+
+private extension FavouriteTile {
+    /// What a tile shows: the icon alone, or the letter.
+    @ViewBuilder
+    func face(isFront: Bool) -> some View {
+        if let icon = model.icon(of: tab) {
+            SiteIcon(picture: icon, side: SiteIcon.onATile, asleep: tab.asleep)
+        } else {
+            Text(verbatim: TabStrip.letter(of: tab, locale: locale))
+                .font(.callout)
+                .fontWeight(isFront ? .bold : .medium)
+                // Asleep, it has no page: fainter, as a sleeping tab's name is.
+                .opacity(tab.asleep ? TabStrip.asleepOpacity : 1)
+        }
     }
 }
 

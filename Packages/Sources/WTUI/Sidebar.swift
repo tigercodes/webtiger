@@ -140,7 +140,7 @@ struct Sidebar<Toolbar: View>: View {
                 model.activate(tab.tabID)
                 onChosen()
             } label: {
-                TabLabel(tab: tab, isFront: isFront)
+                TabLabel(tab: tab, isFront: isFront, icon: model.icon(of: tab))
                     .padding(.leading, Tokens.Space.s)
                     .frame(maxWidth: .infinity, minHeight: BrowserWindowView.hitSize, alignment: .leading)
                     .contentShape(Rectangle())

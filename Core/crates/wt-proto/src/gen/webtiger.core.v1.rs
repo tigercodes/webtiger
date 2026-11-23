@@ -2167,9 +2167,9 @@ pub struct IconReceived {
 /// fetched (WebViewFetchIcon), or none; a page that names none is asked for
 /// the icon every site may have, at its own origin. Since 1.39.
 ///
-/// Nothing is asked for a page whose icon would not be kept (IconReceived),
-/// nor twice in a run for a host in a login set, unless its page names
-/// another address.
+/// Nothing is asked for a page whose icon would not be kept (IconReceived);
+/// no address is asked for twice in a run for a host in a login set, however
+/// often its pages name it; and no more than eight addresses for a host.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct IconNamed {
     #[prost(message, repeated, tag = "1")]

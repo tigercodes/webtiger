@@ -415,6 +415,12 @@ fn a_page_that_names_its_icons_has_one_fetched_once_in_a_run_and_kept() {
         let two = icon_of(&shell, subscription, "Mail");
         assert!(two != 0 && two != one);
         assert_eq!(pictures(&mut shell, &[two]).await, [(two, other)]);
+        // Another page of the host names the first address still: it was asked for once,
+        // and is not asked for again as the tab goes between the two pages.
+        shell.submit(front, INBOX).await;
+        shell.submit(front, MAIL).await;
+        shell.submit(front, INBOX).await;
+        assert_eq!(fetched(&shell), [MAIL_ICON, MAIL_OTHER]);
 
         // Another login set asks for its own: a private window, at the same page.
         let (_, tab, private_subscription) = shell.open_private_window().await;

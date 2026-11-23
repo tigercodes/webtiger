@@ -340,6 +340,9 @@ enum CatalogueState: String, CaseIterable, Identifiable {
                 var subscribed = WTSubscribed()
                 subscribed.subscriptionID = 3
                 return .subscribed(subscribed)
+            case let .queryIcons(query):
+                // The pictures of the catalogue's icons (046), as a core hands them over.
+                return .iconsPage(CatalogueIcons.page(query.iconIds))
             default:
                 return .ack(WTAck())
             }

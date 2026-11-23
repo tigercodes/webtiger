@@ -15,8 +15,20 @@ class AppTestCase: XCTestCase {
         XCTAssertNotEqual(site.port, 0, "the loopback site is listening")
     }
 
-    func launch(start: String?, firstRun: Bool = false) -> XCUIApplication {
+    /// Starts the app in fake mode, at an address or at an empty tab.
+    ///
+    /// What the app's pages keep (a cookie with an expiry, storage) outlives the test: in fake
+    /// mode the window's login set is the same one at every start, and its web data is the
+    /// engine's, on disk. A test that signs in, in a window that is not a private one, does
+    /// it for the session only (the site's `/session`), which the engine keeps in memory:
+    /// a cookie that is kept (`/set`) signs the next test's window in too.
+    func launch(start: String?, firstRun: Bool = false, icons: Bool = false) -> XCUIApplication {
         let app = inFakeMode(start: start, firstRun: firstRun)
+        if icons {
+            // In fake mode the app asks for no page's icon (046 §5a) unless a suite says so;
+            // and then of this device only, where the suite's site is.
+            app.launchEnvironment["WEBTIGER_FAKE_ICONS"] = "1"
+        }
         app.launch()
         return app
     }

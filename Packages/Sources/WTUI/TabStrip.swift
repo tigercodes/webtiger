@@ -109,7 +109,7 @@ struct TabStrip: View {
             Button {
                 model.activate(tab.tabID)
             } label: {
-                TabLabel(tab: tab, isFront: isFront)
+                TabLabel(tab: tab, isFront: isFront, icon: model.icon(of: tab))
                     .padding(.leading, Tokens.Space.s)
                     .frame(maxWidth: widestName, minHeight: BrowserWindowView.hitSize, alignment: .leading)
                     .fixedSize(horizontal: true, vertical: false)

@@ -24,6 +24,11 @@ pub(crate) const ICON_EVERY_MILLIS: i64 = 60_000;
 /// The most pictures one answer carries: a shell asks for more in turn.
 pub(crate) const MOST_ICONS_ASKED: usize = 64;
 
+/// The most addresses the shell is asked to fetch as one host's icon in a
+/// login set, in a run (046 §5a): a site that names another address on
+/// every page is not fetched from for ever.
+const MOST_FETCHED_FOR_A_HOST: usize = 8;
+
 /// How large an icon is wanted, in pixels across: a tile is drawn from it,
 /// and a tab's small icon (046 D4).
 const WANTED_PIXELS: u32 = 64;
@@ -137,9 +142,10 @@ pub(crate) struct Icons {
     /// The hosts a window was told have no icon because the store has not
     /// been asked yet: it is asked before the window is told again.
     asked: RefCell<BTreeSet<(LoginSetId, String)>>,
-    /// The address the shell was last asked to fetch as a host's icon in a
-    /// login set, this run (046 §5a): it is not asked for the same again.
-    fetched: BTreeMap<LoginSetId, BTreeMap<String, String>>,
+    /// The addresses the shell was asked to fetch as a host's icon in a
+    /// login set, this run (046 §5a): none is asked for twice, and no more
+    /// than [`MOST_FETCHED_FOR_A_HOST`] for a host.
+    fetched: BTreeMap<LoginSetId, BTreeMap<String, Vec<String>>>,
 }
 
 impl Icons {
@@ -196,13 +202,20 @@ impl Icons {
 
     /// Whether the shell is to be asked now to fetch an address as a host's
     /// icon in a login set: not when it was asked for that address already
-    /// in this run. What is asked for is noted.
+    /// in this run, whichever page named it and however many others were
+    /// asked for since; nor when it was asked for as many as a host may
+    /// have. What is asked for is noted.
     pub(crate) fn fetch_is_new(&mut self, login_set: LoginSetId, host: &str, url: &str) -> bool {
-        let asked = self.fetched.entry(login_set).or_default();
-        if asked.get(host).is_some_and(|was| was == url) {
+        let asked = self
+            .fetched
+            .entry(login_set)
+            .or_default()
+            .entry(host.to_owned())
+            .or_default();
+        if asked.len() >= MOST_FETCHED_FOR_A_HOST || asked.iter().any(|was| was == url) {
             return false;
         }
-        asked.insert(host.to_owned(), url.to_owned());
+        asked.push(url.to_owned());
         true
     }
 
@@ -241,8 +254,9 @@ impl App {
 
     /// A page names its icons (046 §5a, WT-D33): the shell is asked to fetch
     /// the one the core chooses, once in a run for the page's host in its
-    /// login set. The picture comes back as `IconReceived`, as an engine's
-    /// own does. The request is on its way when this returns.
+    /// login set, however often its pages name it. The picture comes back as
+    /// `IconReceived`, as an engine's own does. The request is on its way
+    /// when this returns.
     pub(crate) fn icon_named(&self, web_view: WebViewId, named: &IconNamed) {
         let chosen = self.state.borrow_mut().icon_to_fetch(web_view, named);
         let Some(chosen) = chosen else {
@@ -534,12 +548,23 @@ mod tests {
         assert!(icons.fetch_is_new(one, "example.net", "https://example.com/a.png"));
         assert!(icons.fetch_is_new(two, "example.com", "https://example.com/a.png"));
         assert!(icons.fetch_is_new(one, "example.com", "https://example.com/b.png"));
-        // And the one before it again, since the host's page names it again.
-        assert!(icons.fetch_is_new(one, "example.com", "https://example.com/a.png"));
+        // The one before it is not asked for again: a site whose pages take turns
+        // naming two icons is asked for each once.
+        assert!(!icons.fetch_is_new(one, "example.com", "https://example.com/a.png"));
+        assert!(!icons.fetch_is_new(one, "example.com", "https://example.com/b.png"));
         // A login set that is gone takes what was asked for it along.
         icons.forget(two);
         assert!(icons.fetch_is_new(two, "example.com", "https://example.com/a.png"));
         assert!(!icons.fetch_is_new(one, "example.com", "https://example.com/a.png"));
+        // A host that names another address every time is asked for eight in all, and
+        // then for none; another host is asked still.
+        for number in 3..=8 {
+            let address = format!("https://example.com/{number}.png");
+            assert!(icons.fetch_is_new(one, "example.com", &address), "{number}");
+        }
+        assert!(!icons.fetch_is_new(one, "example.com", "https://example.com/9.png"));
+        assert!(!icons.fetch_is_new(one, "example.com", "https://example.com/10.png"));
+        assert!(icons.fetch_is_new(one, "example.org", "https://example.com/9.png"));
     }
 
     #[test]
