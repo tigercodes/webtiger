@@ -98,6 +98,8 @@ private struct Command: View {
 
         public var body: some Commands {
             CommandGroup(after: .newItem) { FileItems(window: window) }
+            // In the place of the system's own Undo and Redo, which had ⌘Z (044).
+            CommandGroup(replacing: .undoRedo) { UndoItems(window: window) }
             // In the place of the system's own Close, which had ⌘W.
             CommandGroup(replacing: .saveItem) { CloseItems(window: window) }
             CommandGroup(after: .pasteboard) { FindItems(window: window) }
@@ -111,6 +113,36 @@ private struct Command: View {
         /// the names and the keys of the browser's (035). Called once, as the app starts.
         public static func useTheBrowsersOwnTabs() {
             NSWindow.allowsAutomaticWindowTabbing = false
+        }
+    }
+
+    /// Undo and Redo (044, WT-D32). ⌘Z undoes typing, as it does everywhere, where the
+    /// keyboard is in a field that has typing to undo: one of the window's own, or the
+    /// page's. Otherwise it undoes the newest thing done to the tree, and says what that
+    /// was. Redo is the field's alone: an arrangement undone is not done again.
+    private struct UndoItems: View {
+        let window: WindowCommands?
+        /// The menus are read anew as they open: where the keyboard is, and whether there
+        /// is typing to undo there, are the system's to say and change without a word.
+        private let opened = MenuClock.shared
+
+        var body: some View {
+            let tree = window?.model.treeUndo
+            // (Read, so that this is worked out again when a menu opens.)
+            let typing = opened.times >= 0 && EditUndo.hasTypingToUndo
+            Button {
+                EditUndo.undo(orElse: tree?.action)
+            } label: {
+                Text(typing ? Words.undoArrangement : tree?.words ?? Words.undoArrangement)
+            }
+            .keyboardShortcut("z")
+            .disabled(!typing && tree == nil)
+            Button {
+                EditUndo.redo()
+            } label: {
+                Text(Words.editRedo)
+            }
+            .keyboardShortcut("z", modifiers: [.command, .shift])
         }
     }
 

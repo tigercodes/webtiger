@@ -56,6 +56,8 @@ struct GroupChip: View {
     let toggle: () -> Void
     let edit: () -> Void
     let remove: () -> Void
+    /// What was last done to the row can be undone from its menu (044).
+    var undo: TreeUndo?
     @Environment(\.locale) private var locale
     /// As wide as a tab's name may be (005): a long name is cut to one line.
     @ScaledMetric private var widestName: CGFloat = 180
@@ -109,6 +111,8 @@ struct GroupChip: View {
 
     @ViewBuilder
     private var menu: some View {
+        // What was last done to the row, undone (044): at the top, while there is something.
+        TreeUndoItem(undo: undo)
         Button(action: edit) { Text(Words.groupEdit) }
             .accessibilityIdentifier("group-edit")
         Button(action: remove) { Text(Words.groupRemove) }

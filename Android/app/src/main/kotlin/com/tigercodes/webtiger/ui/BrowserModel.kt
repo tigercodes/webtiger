@@ -53,6 +53,7 @@ import com.tigercodes.webtiger.core.v1.TabSummary
 import com.tigercodes.webtiger.core.v1.StepTab
 import com.tigercodes.webtiger.core.v1.TabView
 import com.tigercodes.webtiger.core.v1.Undo
+import com.tigercodes.webtiger.core.v1.UndoArrangement
 import com.tigercodes.webtiger.core.v1.WindowSnapshot
 import com.tigercodes.webtiger.core.v1.ZoomChange
 import com.tigercodes.webtiger.core.v1.ZoomPage
@@ -363,6 +364,21 @@ class BrowserModel(
     /** Marks a tab as a Favourite, or unmarks it. A tab that is no Site is kept by it: the core's rule. */
     fun setFavourite(id: Long, favourite: Boolean) {
         session.send(Request(set_favourite = SetFavourite(tab_id = id, favourite = favourite)))
+    }
+
+    // Undo for the tree (044)
+
+    /** What undoing the row's arrangement would undo, by the core's name for it; empty when there is nothing. */
+    var undoArrangementKind by mutableStateOf("")
+        private set
+
+    /** There is something done to the row that can be undone: the core says what. */
+    val canUndoArrangement: Boolean get() = undoArrangementKind.isNotEmpty()
+
+    /** Undoes the newest thing done to arrange the row the window shows. The core puts the row back; nothing is asked when it says there is nothing. */
+    fun undoArrangement() {
+        val open = windowId ?: return
+        if (canUndoArrangement) session.send(Request(undo_arrangement = UndoArrangement(window_id = open)))
     }
 
     // The switcher (047)
@@ -1049,6 +1065,7 @@ class BrowserModel(
         spaceName = snapshot.space_name
         spaceColour = snapshot.space_colour
         undoKind = snapshot.undo
+        undoArrangementKind = snapshot.undo_arrangement
         isPrivate = asPrivate || snapshot.private_window
         // The zoom bar is the window's, and says the level of the page in front: with no page
         // there that can be zoomed, it has nothing to say.

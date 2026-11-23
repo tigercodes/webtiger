@@ -151,7 +151,7 @@ internal fun SidebarRows(model: BrowserModel, modifier: Modifier = Modifier, onC
                     is StripItem.Tab -> Entry(model, item.tab, Modifier.padding(start = if (item.tab.group_id == 0L) 0.dp else Tokens.Space.l), fills = true, onChosen = onChosen)
                     is StripItem.Group -> {
                         val group = item.group
-                        GroupChip(group, onToggle = { model.shutOrOpen(group) }, onEdit = { model.askToEdit(group) }, onRemove = { model.removeGroup(group.group_id) })
+                        GroupChip(group, onToggle = { model.shutOrOpen(group) }, onEdit = { model.askToEdit(group) }, onRemove = { model.removeGroup(group.group_id) }, undo = model.treeUndo)
                     }
                 }
             }
@@ -178,6 +178,7 @@ private fun Entry(model: BrowserModel, tab: TabSummary, modifier: Modifier = Mod
         onSendHome = { model.sendHome(tab.tab_id) },
         onMove = { model.moveTab(tab.tab_id, it) },
         icon = model.icons[tab.icon_id],
+        undo = model.treeUndo,
         grouping =
             if (model.canBeGrouped(tab)) {
                 Grouping(

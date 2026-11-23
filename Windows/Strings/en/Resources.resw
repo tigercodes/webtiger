@@ -79,6 +79,7 @@
   <data name="downloads_open_failed" xml:space="preserve"><value>The file couldn’t be opened.</value><comment>Under a download in the list, after a person pressed it to open its file, when it did not open for a reason this build has no words for.</comment></data>
   <data name="downloads_stop" xml:space="preserve"><value>Stop Download</value><comment>Accessibility label of the button beside a download that is still coming, which stops it.</comment></data>
   <data name="downloads_title" xml:space="preserve"><value>Downloads</value><comment>Title of the list of downloads, and the name of its half of the switch beside History.</comment></data>
+  <data name="edit_redo" xml:space="preserve"><value>Redo</value><comment>Command in the Mac&apos;s Edit menu (Shift-Command-Z): do again what was undone in the field that has the keyboard.</comment></data>
   <data name="error_download_cancelled" xml:space="preserve"><value>Stopped</value><comment>Under a download that was stopped.</comment></data>
   <data name="error_download_disk" xml:space="preserve"><value>The file couldn’t be saved.</value><comment>Under a download that failed because its file could not be written.</comment></data>
   <data name="error_download_failed" xml:space="preserve"><value>The download failed.</value><comment>Under a download that failed for a reason this build has no words for.</comment></data>
@@ -278,6 +279,18 @@
   <data name="toolbar_open_location" xml:space="preserve"><value>Open Location</value><comment>Command (Command-L on a Mac): put the keyboard in the address field with the whole address selected.</comment></data>
   <data name="toolbar_reload" xml:space="preserve"><value>Reload</value><comment>Button: reload the page.</comment></data>
   <data name="toolbar_stop" xml:space="preserve"><value>Stop</value><comment>Button: stop loading the page.</comment></data>
+  <data name="undo_arrangement" xml:space="preserve"><value>Undo</value><comment>Command (Command-Z on a Mac, in the Edit menu; at the top of a tab&apos;s or a Group&apos;s own menu on a touch screen): undo the newest thing done to arrange the row of tabs, when the app has no words for what that was; and on a Mac the same item when it undoes typing in a field.</comment></data>
+  <data name="undo_favourite_added" xml:space="preserve"><value>Undo Add to Favourites</value><comment>The same command when what it undoes is a tab having been made a Favourite.</comment></data>
+  <data name="undo_favourite_removed" xml:space="preserve"><value>Undo Remove from Favourites</value><comment>The same command when what it undoes is a Favourite having been made an ordinary Site again.</comment></data>
+  <data name="undo_group_coloured" xml:space="preserve"><value>Undo Group Colour</value><comment>The same command when what it undoes is a Group having been given another colour.</comment></data>
+  <data name="undo_group_made" xml:space="preserve"><value>Undo New Group</value><comment>The same command when what it undoes is a Group having been made.</comment></data>
+  <data name="undo_group_moved" xml:space="preserve"><value>Undo Move to Group</value><comment>The same command when what it undoes is a tab having been put in a Group, or taken out of one.</comment></data>
+  <data name="undo_group_removed" xml:space="preserve"><value>Undo Remove Group</value><comment>The same command when what it undoes is a Group having been removed.</comment></data>
+  <data name="undo_group_renamed" xml:space="preserve"><value>Undo Rename Group</value><comment>The same command when what it undoes is a Group having been given another name.</comment></data>
+  <data name="undo_group_reordered" xml:space="preserve"><value>Undo Move Group</value><comment>The same command when what it undoes is a Group having been moved among the Groups.</comment></data>
+  <data name="undo_site_kept" xml:space="preserve"><value>Undo Keep as Site</value><comment>The same command when what it undoes is a tab having been kept as a Site.</comment></data>
+  <data name="undo_site_let_go" xml:space="preserve"><value>Undo Stop Keeping</value><comment>The same command when what it undoes is a Site having been let go.</comment></data>
+  <data name="undo_tab_moved" xml:space="preserve"><value>Undo Move Tab</value><comment>The same command when what it undoes is a tab having been moved to another place in its row.</comment></data>
   <data name="zoom_done" xml:space="preserve"><value>Done</value><comment>Button that closes the zoom bar.</comment></data>
   <data name="zoom_in" xml:space="preserve"><value>Zoom In</value><comment>Button in the zoom bar, and the command (Command-plus on a Mac): make the page bigger.</comment></data>
   <data name="zoom_level" xml:space="preserve"><value>{0}%</value><comment>The zoom bar&apos;s level, in per cent. %ld is the number; %% is a per cent sign.</comment></data>

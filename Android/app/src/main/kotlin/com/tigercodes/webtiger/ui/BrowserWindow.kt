@@ -362,6 +362,7 @@ private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit
                                 onSendHome = { model.sendHome(tab.tab_id) },
                                 onMove = { model.moveTab(tab.tab_id, it) },
                                 icon = model.icons[tab.icon_id],
+                                undo = model.treeUndo,
                                 // Into a Group, or out of one: for a tab that can be kept.
                                 grouping =
                                     if (model.canBeGrouped(tab)) {
@@ -382,7 +383,7 @@ private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit
                     is StripItem.Group -> {
                         val group = item.group
                         key("group", group.group_id) {
-                            GroupChip(group, onToggle = { model.shutOrOpen(group) }, onEdit = { model.askToEdit(group) }, onRemove = { model.removeGroup(group.group_id) })
+                            GroupChip(group, onToggle = { model.shutOrOpen(group) }, onEdit = { model.askToEdit(group) }, onRemove = { model.removeGroup(group.group_id) }, undo = model.treeUndo)
                         }
                     }
                 }
@@ -460,6 +461,8 @@ internal fun TabChip(
     onMove: ((RowStep) -> Unit)? = null,
     /** The picture of the tab's icon (046), when the window has it. */
     icon: ImageBitmap? = null,
+    /** What was last done to the row can be undone from the tab's menu (044). */
+    undo: TreeUndo? = null,
 ) {
     // The tab that comes in front is brought into view.
     val place = remember { BringIntoViewRequester() }
@@ -474,9 +477,9 @@ internal fun TabChip(
     // it is in a row of tiles wherever the tabs are.)
     val rightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
     val moves = if (onMove != null && (tab.steps_back || tab.steps_forward)) tabMoves(atTheSide = fills, rightToLeft) else emptyList()
-    // A tab with nothing to keep and nowhere to go has no menu.
-    val hasMenu = keeps || moves.isNotEmpty()
-    val menuSays = if (keeps) keepOrLetGo else moves.firstOrNull()?.let { stringResource(it.words) }
+    // A tab with nothing to keep, nowhere to go and nothing to undo has no menu.
+    val hasMenu = keeps || moves.isNotEmpty() || undo != null
+    val menuSays = if (keeps) keepOrLetGo else (moves.firstOrNull()?.words ?: undo?.words)?.let { stringResource(it) }
     // What is said of the tab beside its name: that it is a Favourite, or a Site (a Favourite is
     // one, and is not said to be both), that it is away from its home, that it is asleep.
     val said = listOfNotNull(
@@ -567,6 +570,8 @@ internal fun TabChip(
                 }
             }
             DropdownMenu(expanded = offering && hasMenu, onDismissRequest = { offering = false }) {
+                // What was last done to the row, undone (044): at the top, while there is something.
+                TreeUndoItem(undo, onChosen = { offering = false })
                 if (tab.away) {
                     DropdownMenuItem(
                         text = { Text(sendHome) },

@@ -133,6 +133,8 @@ struct TabCloser: View {
         @Environment(\.locale) private var locale
 
         var body: some View {
+            // What was last done to the row, undone (044): at the top, while there is something.
+            TreeUndoItem(undo: model.treeUndo)
             arranging
             MoveTabItems(tab: tab, model: model, atTheSide: atTheSide)
         }

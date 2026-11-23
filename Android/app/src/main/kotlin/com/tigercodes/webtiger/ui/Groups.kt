@@ -125,7 +125,7 @@ internal fun stripRow(tabs: List<TabSummary>, groups: List<GroupSummary>): List<
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun GroupChip(group: GroupSummary, onToggle: () -> Unit, onEdit: () -> Unit, onRemove: () -> Unit) {
+internal fun GroupChip(group: GroupSummary, onToggle: () -> Unit, onEdit: () -> Unit, onRemove: () -> Unit, undo: TreeUndo? = null) {
     var offering by remember { mutableStateOf(false) }
     // What is said of a Group beside its name: that it is one, and whether it is open or shut;
     // shut, how many Sites it holds.
@@ -165,6 +165,8 @@ internal fun GroupChip(group: GroupSummary, onToggle: () -> Unit, onEdit: () -> 
             )
         }
         DropdownMenu(expanded = offering, onDismissRequest = { offering = false }) {
+            // What was last done to the row, undone (044): at the top, while there is something.
+            TreeUndoItem(undo, onChosen = { offering = false })
             DropdownMenuItem(
                 text = { Text(edit) },
                 onClick = {

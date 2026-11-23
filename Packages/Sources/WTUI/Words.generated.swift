@@ -373,6 +373,11 @@ enum Words {
     /// Title of the list of downloads, and the name of its half of the switch beside History.
     static let downloadsTitle = Word(key: "downloads.title")
 
+    /// Redo
+    ///
+    /// Command in the Mac's Edit menu (Shift-Command-Z): do again what was undone in the field that has the keyboard.
+    static let editRedo = Word(key: "edit.redo")
+
     /// Stopped
     ///
     /// Under a download that was stopped.
@@ -1368,6 +1373,66 @@ enum Words {
     /// Button: stop loading the page.
     static let toolbarStop = Word(key: "toolbar.stop")
 
+    /// Undo
+    ///
+    /// Command (Command-Z on a Mac, in the Edit menu; at the top of a tab's or a Group's own menu on a touch screen): undo the newest thing done to arrange the row of tabs, when the app has no words for what that was; and on a Mac the same item when it undoes typing in a field.
+    static let undoArrangement = Word(key: "undo.arrangement")
+
+    /// Undo Add to Favourites
+    ///
+    /// The same command when what it undoes is a tab having been made a Favourite.
+    static let undoFavouriteAdded = Word(key: "undo.favourite.added")
+
+    /// Undo Remove from Favourites
+    ///
+    /// The same command when what it undoes is a Favourite having been made an ordinary Site again.
+    static let undoFavouriteRemoved = Word(key: "undo.favourite.removed")
+
+    /// Undo Group Colour
+    ///
+    /// The same command when what it undoes is a Group having been given another colour.
+    static let undoGroupColoured = Word(key: "undo.group.coloured")
+
+    /// Undo New Group
+    ///
+    /// The same command when what it undoes is a Group having been made.
+    static let undoGroupMade = Word(key: "undo.group.made")
+
+    /// Undo Move to Group
+    ///
+    /// The same command when what it undoes is a tab having been put in a Group, or taken out of one.
+    static let undoGroupMoved = Word(key: "undo.group.moved")
+
+    /// Undo Remove Group
+    ///
+    /// The same command when what it undoes is a Group having been removed.
+    static let undoGroupRemoved = Word(key: "undo.group.removed")
+
+    /// Undo Rename Group
+    ///
+    /// The same command when what it undoes is a Group having been given another name.
+    static let undoGroupRenamed = Word(key: "undo.group.renamed")
+
+    /// Undo Move Group
+    ///
+    /// The same command when what it undoes is a Group having been moved among the Groups.
+    static let undoGroupReordered = Word(key: "undo.group.reordered")
+
+    /// Undo Keep as Site
+    ///
+    /// The same command when what it undoes is a tab having been kept as a Site.
+    static let undoSiteKept = Word(key: "undo.site.kept")
+
+    /// Undo Stop Keeping
+    ///
+    /// The same command when what it undoes is a Site having been let go.
+    static let undoSiteLetGo = Word(key: "undo.site.let_go")
+
+    /// Undo Move Tab
+    ///
+    /// The same command when what it undoes is a tab having been moved to another place in its row.
+    static let undoTabMoved = Word(key: "undo.tab.moved")
+
     /// Done
     ///
     /// Button that closes the zoom bar.
@@ -1476,6 +1541,7 @@ extension Word {
         "downloads.open_failed",
         "downloads.stop",
         "downloads.title",
+        "edit.redo",
         "error.download.cancelled",
         "error.download.disk",
         "error.download.failed",
@@ -1675,6 +1741,18 @@ extension Word {
         "toolbar.open_location",
         "toolbar.reload",
         "toolbar.stop",
+        "undo.arrangement",
+        "undo.favourite.added",
+        "undo.favourite.removed",
+        "undo.group.coloured",
+        "undo.group.made",
+        "undo.group.moved",
+        "undo.group.removed",
+        "undo.group.renamed",
+        "undo.group.reordered",
+        "undo.site.kept",
+        "undo.site.let_go",
+        "undo.tab.moved",
         "zoom.done",
         "zoom.in",
         "zoom.level",

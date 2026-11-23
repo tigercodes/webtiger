@@ -149,6 +149,8 @@
     <string name="downloads_stop">Stop Download</string>
     <!-- Title of the list of downloads, and the name of its half of the switch beside History. -->
     <string name="downloads_title">Downloads</string>
+    <!-- Command in the Mac's Edit menu (Shift-Command-Z): do again what was undone in the field that has the keyboard. -->
+    <string name="edit_redo">Redo</string>
     <!-- Under a download that was stopped. -->
     <string name="error_download_cancelled">Stopped</string>
     <!-- Under a download that failed because its file could not be written. -->
@@ -547,6 +549,30 @@
     <string name="toolbar_reload">Reload</string>
     <!-- Button: stop loading the page. -->
     <string name="toolbar_stop">Stop</string>
+    <!-- Command (Command-Z on a Mac, in the Edit menu; at the top of a tab's or a Group's own menu on a touch screen): undo the newest thing done to arrange the row of tabs, when the app has no words for what that was; and on a Mac the same item when it undoes typing in a field. -->
+    <string name="undo_arrangement">Undo</string>
+    <!-- The same command when what it undoes is a tab having been made a Favourite. -->
+    <string name="undo_favourite_added">Undo Add to Favourites</string>
+    <!-- The same command when what it undoes is a Favourite having been made an ordinary Site again. -->
+    <string name="undo_favourite_removed">Undo Remove from Favourites</string>
+    <!-- The same command when what it undoes is a Group having been given another colour. -->
+    <string name="undo_group_coloured">Undo Group Colour</string>
+    <!-- The same command when what it undoes is a Group having been made. -->
+    <string name="undo_group_made">Undo New Group</string>
+    <!-- The same command when what it undoes is a tab having been put in a Group, or taken out of one. -->
+    <string name="undo_group_moved">Undo Move to Group</string>
+    <!-- The same command when what it undoes is a Group having been removed. -->
+    <string name="undo_group_removed">Undo Remove Group</string>
+    <!-- The same command when what it undoes is a Group having been given another name. -->
+    <string name="undo_group_renamed">Undo Rename Group</string>
+    <!-- The same command when what it undoes is a Group having been moved among the Groups. -->
+    <string name="undo_group_reordered">Undo Move Group</string>
+    <!-- The same command when what it undoes is a tab having been kept as a Site. -->
+    <string name="undo_site_kept">Undo Keep as Site</string>
+    <!-- The same command when what it undoes is a Site having been let go. -->
+    <string name="undo_site_let_go">Undo Stop Keeping</string>
+    <!-- The same command when what it undoes is a tab having been moved to another place in its row. -->
+    <string name="undo_tab_moved">Undo Move Tab</string>
     <!-- Button that closes the zoom bar. -->
     <string name="zoom_done">Done</string>
     <!-- Button in the zoom bar, and the command (Command-plus on a Mac): make the page bigger. -->

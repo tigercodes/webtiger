@@ -889,6 +889,18 @@
         }
       }
     },
+    "edit.redo": {
+      "comment": "Command in the Mac's Edit menu (Shift-Command-Z): do again what was undone in the field that has the keyboard.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redo"
+          }
+        }
+      }
+    },
     "error.download.cancelled": {
       "comment": "Under a download that was stopped.",
       "extractionState": "manual",
@@ -3273,6 +3285,150 @@
           "stringUnit": {
             "state": "translated",
             "value": "Stop"
+          }
+        }
+      }
+    },
+    "undo.arrangement": {
+      "comment": "Command (Command-Z on a Mac, in the Edit menu; at the top of a tab's or a Group's own menu on a touch screen): undo the newest thing done to arrange the row of tabs, when the app has no words for what that was; and on a Mac the same item when it undoes typing in a field.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo"
+          }
+        }
+      }
+    },
+    "undo.favourite.added": {
+      "comment": "The same command when what it undoes is a tab having been made a Favourite.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo Add to Favourites"
+          }
+        }
+      }
+    },
+    "undo.favourite.removed": {
+      "comment": "The same command when what it undoes is a Favourite having been made an ordinary Site again.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo Remove from Favourites"
+          }
+        }
+      }
+    },
+    "undo.group.coloured": {
+      "comment": "The same command when what it undoes is a Group having been given another colour.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo Group Colour"
+          }
+        }
+      }
+    },
+    "undo.group.made": {
+      "comment": "The same command when what it undoes is a Group having been made.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo New Group"
+          }
+        }
+      }
+    },
+    "undo.group.moved": {
+      "comment": "The same command when what it undoes is a tab having been put in a Group, or taken out of one.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo Move to Group"
+          }
+        }
+      }
+    },
+    "undo.group.removed": {
+      "comment": "The same command when what it undoes is a Group having been removed.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo Remove Group"
+          }
+        }
+      }
+    },
+    "undo.group.renamed": {
+      "comment": "The same command when what it undoes is a Group having been given another name.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo Rename Group"
+          }
+        }
+      }
+    },
+    "undo.group.reordered": {
+      "comment": "The same command when what it undoes is a Group having been moved among the Groups.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo Move Group"
+          }
+        }
+      }
+    },
+    "undo.site.kept": {
+      "comment": "The same command when what it undoes is a tab having been kept as a Site.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo Keep as Site"
+          }
+        }
+      }
+    },
+    "undo.site.let_go": {
+      "comment": "The same command when what it undoes is a Site having been let go.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo Stop Keeping"
+          }
+        }
+      }
+    },
+    "undo.tab.moved": {
+      "comment": "The same command when what it undoes is a tab having been moved to another place in its row.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo Move Tab"
           }
         }
       }

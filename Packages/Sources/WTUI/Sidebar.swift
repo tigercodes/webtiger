@@ -100,7 +100,8 @@ struct Sidebar<Toolbar: View>: View {
                                 group: group,
                                 toggle: { model.shutOrOpen(group) },
                                 edit: { model.askToEdit(group) },
-                                remove: { model.removeGroup(group.groupID) }
+                                remove: { model.removeGroup(group.groupID) },
+                                undo: model.treeUndo
                             )
                         }
                     }

@@ -46,6 +46,9 @@ public final class BrowserModel {
     /// What an undo would undo now in the Space the window shows (033), by the core's word
     /// for it; empty when there is nothing to undo.
     public internal(set) var undoKind = ""
+    /// What undoing the row's arrangement would undo (044), by the core's name for it; empty
+    /// when there is nothing.
+    public private(set) var undoArrangementKind = ""
     /// The window is a private one (037): made to be one, or said to be one by the core.
     public internal(set) var isPrivate = false
     /// The window is to be opened in the core as a private one. Set before it opens.
@@ -491,6 +494,7 @@ public final class BrowserModel {
         spaceName = snapshot.spaceName
         spaceColour = snapshot.spaceColour
         undoKind = snapshot.undo
+        undoArrangementKind = snapshot.undoArrangement
         isPrivate = opensPrivate || snapshot.privateWindow
         // The zoom bar is the window's, and says the level of the page in front: with no page
         // there that can be zoomed, it has nothing to say.
