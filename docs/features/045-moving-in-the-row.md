@@ -94,6 +94,16 @@ message MoveGroup { uint64 group_id = 1; uint64 before_group_id = 2; }
 
 What a drop in a drawn row is, for a shell: on a tab, `before_tab_id`; on a Group's chip, `end_of_group_id`; after the last Favourite, the last Site in no Group, or the last tab, `end_of`. A shell does not work out what the tab becomes.
 
+## 5a. The commands (to be 1.36; designed, not built)
+
+A command that moves a tab by a step is offered when the step would move it, and the core says when: a shell does not work out the row's parts.
+
+```proto
+message TabSummary { … bool steps_back = 11; bool steps_forward = 12; }
+```
+
+**Their words go by how the row is drawn,** which is the shell's: along the top, "Move Tab Left" and "Move Tab Right"; down the side, "Move Tab Up" and "Move Tab Down" (a Favourite's tile is in a row there too: left and right). Where the row runs from right to left, left is towards its end. **Their places:** the tab's own menu on a touch screen; on the Mac the Window menu, for the tab in front, under "Show Previous Tab". No key (D6).
+
 ## 6. Decisions
 
 **All of these are put to the owner.** D1 to D4 are built in the core as recommended; D5 and D6 are the shells', and not built. The first column is the recommendation.
@@ -135,4 +145,5 @@ What a drop in a drawn row is, for a shell: on a tab, `before_tab_id`; on a Grou
 - [x] The core and the contract.
 - [ ] The commands in the shells.
 - [ ] Dragging.
-- [ ] `Tools/test.sh all` green, and `android-device`.
+- [x] The core: `Tools/test.sh all` green, and `android-device`, in the night of 2026-11-22 to 23: `lint`, `core` (611, and the strings tool's 24), `unit` (293 on the Mac), `build`, the Mac's UI suite (45), `ios` (275 on the iPhone simulator), the iPhone's UI suite (35), `android` (411 and 32 on the JVM) and `android-device` (159 on the emulator). No shell changed but for the contract's number.
+- [ ] The shells: the gate.
