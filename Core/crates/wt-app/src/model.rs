@@ -2824,6 +2824,20 @@ impl State {
         if excepted && let Some(address) = &mut view.address {
             address.security = address_view::Security::Insecure as i32;
         }
+        // How many Sites each Group holds, and how many Favourites the row has: counted
+        // in one pass over the row. (Counted Group by Group, a row of thousands was gone
+        // over once for every Group, each time the window was told anything: 043 §8a.)
+        let mut held: BTreeMap<GroupId, u32> = BTreeMap::new();
+        let mut favourites = 0_usize;
+        for tab in row.tabs.iter().filter_map(|id| self.tabs.get(id)) {
+            if let Some(group) = tab.group {
+                let count = held.entry(group).or_default();
+                *count = count.saturating_add(1);
+            }
+            if tab.favourite {
+                favourites += 1;
+            }
+        }
         Some(WindowSnapshot {
             window_id: window_id.get(),
             tab: Some(view),
@@ -2839,26 +2853,11 @@ impl State {
                     name: group.name.clone(),
                     colour: group.colour.clone(),
                     shut: group.shut,
-                    sites: u32::try_from(
-                        row.tabs
-                            .iter()
-                            .filter(|id| {
-                                self.tabs
-                                    .get(*id)
-                                    .is_some_and(|tab| tab.group == Some(group.id))
-                            })
-                            .count(),
-                    )
-                    .unwrap_or(u32::MAX),
+                    sites: held.get(&group.id).copied().unwrap_or(0),
                 })
                 .collect(),
             layout: window.layout as i32,
-            favourites_full: row
-                .tabs
-                .iter()
-                .filter(|id| self.tabs.get(*id).is_some_and(|tab| tab.favourite))
-                .count()
-                >= MOST_FAVOURITES,
+            favourites_full: favourites >= MOST_FAVOURITES,
             downloads_active: self
                 .downloads_active
                 .get(&space.login_set)

@@ -8,16 +8,19 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -92,17 +95,33 @@ internal fun Sidebar(
                 for (tab in parts.favourites) Entry(model, tab)
             }
         }
-        Column(
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = Tokens.Space.s, vertical = Tokens.Space.xs)
-                    .semantics { contentDescription = list }
-                    .testTag("sidebar"),
+        // The rows are made as they come into view: a row of thousands is not drawn to show the
+        // few that fit (043 §8a).
+        val rows = rememberLazyListState()
+        val hasLine = parts.tree.isNotEmpty() || parts.favourites.isNotEmpty()
+        // The tab that comes in front is brought into view, when it is one of the rows and is
+        // not in view already.
+        val front = model.tab.tab_id
+        LaunchedEffect(front) {
+            val inTree = parts.tree.indexOfFirst { it is StripItem.Tab && it.tab.tab_id == front }
+            val among = parts.others.indexOfFirst { it.tab_id == front }
+            val place = if (inTree >= 0) inTree else if (among >= 0) parts.tree.size + (if (hasLine) 1 else 0) + among else -1
+            if (place >= 0 && rows.layoutInfo.visibleItemsInfo.none { it.index == place }) rows.scrollToItem(place)
+        }
+        LazyColumn(
+            state = rows,
+            modifier = Modifier.weight(1f).fillMaxWidth().semantics { contentDescription = list }.testTag("sidebar"),
+            contentPadding = PaddingValues(horizontal = Tokens.Space.s, vertical = Tokens.Space.xs),
         ) {
-            for (item in parts.tree) {
+            items(
+                parts.tree,
+                key = { item ->
+                    when (item) {
+                        is StripItem.Tab -> "tab-${item.tab.tab_id}"
+                        is StripItem.Group -> "group-${item.group.group_id}"
+                    }
+                },
+            ) { item ->
                 when (item) {
                     // A Group's Site is set in under its Group.
                     is StripItem.Tab -> Entry(model, item.tab, Modifier.padding(start = if (item.tab.group_id == 0L) 0.dp else Tokens.Space.l), fills = true)
@@ -113,9 +132,9 @@ internal fun Sidebar(
                 }
             }
             // Under a line, the tabs that are only passing through.
-            if (parts.tree.isNotEmpty() || parts.favourites.isNotEmpty()) HorizontalDivider(modifier = Modifier.padding(vertical = Tokens.Space.xs))
-            for (tab in parts.others) Entry(model, tab, fills = true)
-            NewTabButton(model)
+            if (hasLine) item(key = "line") { HorizontalDivider(modifier = Modifier.padding(vertical = Tokens.Space.xs)) }
+            items(parts.others, key = { tab -> "tab-${tab.tab_id}" }) { tab -> Entry(model, tab, fills = true) }
+            item(key = "new-tab") { NewTabButton(model) }
         }
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = Tokens.Space.xs), verticalAlignment = Alignment.CenterVertically) {
             // The Space the window shows (024), by its name: there is room for it here. A

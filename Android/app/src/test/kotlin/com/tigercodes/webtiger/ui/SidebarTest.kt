@@ -35,8 +35,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** A window as wide as a tablet's: wide enough for a sidebar beside a page. */
-private const val WIDE = "w720dp-h560dp"
+/** A window as wide as a tablet's: wide enough for a sidebar beside a page, and tall enough for every row of these tests to be in view. */
+private const val WIDE = "w720dp-h900dp"
 
 /** A window as narrow as a phone's. */
 private const val NARROW = "w411dp-h820dp"
@@ -212,6 +212,55 @@ class SidebarTest {
         compose.onAllNodesWithTag("sidebar").assertCountEquals(1)
         compose.onAllNodesWithTag("tab-strip").assertCountEquals(0)
         compose.onAllNodesWithTag("tab").assertCountEquals(7)
+    }
+
+    /** A row of thousands (000 §7): the sidebar makes the rows that are in view, and not the row. */
+    @Test
+    @Config(qualifiers = WIDE)
+    fun aSidebarOfFiveThousandRowsMakesOnlyTheRowsInView() {
+        compose.setContent { WebTigerTheme { BrowserWindow(session, model) } }
+        compose.waitForIdle()
+        val many = (1L..5000L).map { id -> tab(id, "Page $id", kept = id % 6 != 5L, group = if (id % 6 != 5L && id % 2 == 0L) 30 else 0) }
+        // As a core lists a row: the Sites in no Group, the Group's, the tabs.
+        val listed = many.filter { it.kept && it.group_id == 0L } + many.filter { it.group_id == 30L } + many.filter { !it.kept }
+        compose.runOnIdle {
+            core.emit(
+                WindowSnapshot(
+                    window_id = 1,
+                    tab = TabView(tab_id = 5000, web_view_id = 4, title = "Page 5000", address = AddressView(url = "https://example.com/", display = "example.com")),
+                    tabs = listed,
+                    groups = listOf(work),
+                    layout = Layout.LAYOUT_SIDEBAR,
+                ),
+                subscription = 3,
+            )
+        }
+        compose.waitForIdle()
+        compose.onAllNodesWithTag("sidebar").assertCountEquals(1)
+        val made = compose.onAllNodesWithTag("tab").fetchSemanticsNodes().size
+        assertTrue("some rows are made: $made", made > 0)
+        assertTrue("and not the five thousand: $made", made < 100)
+        // The tab in front is far down the row, a Site of the Group: it was brought into view,
+        // and is among those made.
+        val inFront = { compose.onAllNodesWithTag("tab").fetchSemanticsNodes().filter { it.config.getOrNull(SemanticsProperties.Selected) == true }.map { node -> node.config.getOrNull(SemanticsProperties.Text).orEmpty().joinToString { it.text } } }
+        assertEquals(listOf("Page 5000"), inFront())
+        // Another comes in front, a tab that is no Site, near the end of those under the line:
+        // it is brought into view too.
+        compose.runOnIdle {
+            core.emit(
+                WindowSnapshot(
+                    window_id = 1,
+                    tab = TabView(tab_id = 4997, web_view_id = 4, title = "Page 4997", address = AddressView(url = "https://example.com/", display = "example.com")),
+                    tabs = listed,
+                    groups = listOf(work),
+                    layout = Layout.LAYOUT_SIDEBAR,
+                ),
+                subscription = 3,
+            )
+        }
+        compose.waitForIdle()
+        assertEquals(listOf("Page 4997"), inFront())
+        assertTrue(compose.onAllNodesWithTag("tab").fetchSemanticsNodes().size < 100)
     }
 
     @Test

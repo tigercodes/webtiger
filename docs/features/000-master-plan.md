@@ -711,7 +711,7 @@ Spaces with their login sets, colours and icons; shared logins; the tree with dr
 
 **Exit:** the isolation tests pass; switching layout changes nothing in the model; 5,000 rows scroll within budget.
 
-**Where W2 stands (2026-11-22).** Built: Spaces with their login sets and colours, and shared logins (024, 025); several windows and private windows (037); undo for a closed tab (033); the keys of each system (034 to 036); Sites (039), Groups (041) and Favourites (042); both layouts, on the Mac and on a touch screen's wide windows (043). Not built: a Space's icon; dragging in the tree; the tidying of temporary tabs; the phone's switcher; the command bar; undo for the organising actions that have come since 033; a site's icon, which the Favourites' tiles wait for. Of the exit: the isolation tests pass; that switching the layout changes nothing in the model is tested in the core (043 §8); **the 5,000 rows are not measured**.
+**Where W2 stands (2026-11-22).** Built: Spaces with their login sets and colours, and shared logins (024, 025); several windows and private windows (037); undo for a closed tab (033); the keys of each system (034 to 036); Sites (039), Groups (041) and Favourites (042); both layouts, on the Mac and on a touch screen's wide windows (043). Not built: a Space's icon; dragging in the tree; the tidying of temporary tabs; the phone's switcher; the command bar; undo for the organising actions that have come since 033; a site's icon, which the Favourites' tiles wait for. Of the exit: the isolation tests pass; that switching the layout changes nothing in the model is tested in the core (043 §8); **the 5,000 rows are measured in part** ([043](043-the-sidebar.md) §8a): the standard session is well inside the contract's budget; at 5,000 rows a change costs the core about 4 ms and tells the window the whole row again, which telling only what changed (W3) is to mend; the sidebars make their rows as they come into view; no frame was counted.
 
 ### W3 — Sleeping tabs and the budgets (medium)
 
@@ -815,7 +815,7 @@ W1 to W4 are the critical path. W5 to W9 can be reordered by what is wanted firs
 
 ### 11.1 Built on a recommendation, waiting for the owner
 
-Three features of W2 are built on the recommendations of their own documents, the owner not yet having answered. Each choice is one line here; its reasons and the other ways are in the feature's §6. An answer to any of them changes that feature, and nothing else.
+Three features of W2 are built on the recommendations of their own documents, the owner not yet having answered, and a fourth is designed and waits. Each choice is one line here; its reasons and the other ways are in the feature's §6. An answer to any of them changes that feature, and nothing else.
 
 **Groups** ([041](041-groups.md) §6, put on 2026-11-22):
 
@@ -845,6 +845,15 @@ Three features of W2 are built on the recommendations of their own documents, th
 5. The toolbar and the address field at the top of the sidebar.
 6. The command: "Tabs at the Side" and "Tabs at the Top"; on the Mac in the View menu, ⌃⌘S.
 7. On a touch screen the switch is a button beside Find, Zoom and History; with a keyboard ⌃⌘S on an iPad and Ctrl+Shift+S on Android.
+
+**Undo for the tree** ([044](044-undo-for-the-tree.md) §6, put on 2026-11-22; designed, not built):
+
+1. Two ways back, apart: "Reopen Closed Tab" as it is, and an undo of its own for what is done to arrange a row.
+2. The whole arrangement is kept and put back, not the one thing that was done.
+3. For the run only: nothing of the arrangement to undo after a quit.
+4. The command says what it undoes ("Undo Remove Group").
+5. On the Mac in the Edit menu, ⌘Z, when the keyboard is not in a field of words.
+6. On a touch screen in the menu of the thing nearest to what was done.
 
 Also the owner's to say, from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
 

@@ -131,6 +131,34 @@ The plan's own bar for W2: "switching layout changes nothing in the model".
 | Part 2 broken, a part at a time | Android, 16 parts (where a sidebar is drawn, the width a window says, the switch and its name, the parts, the setting in, the key): all caught, one once the key's command had a test of its own |
 | The Mac's part broken, a part at a time | 9 parts of the switch, of where a sidebar is drawn and of the sidebar's three parts: all caught by `LayoutModelTests` (one once it was written so that it compiled). That a phone draws no sidebar is the same test's other half, run on the iPhone simulator |
 
+## 8a. Measured: a long row
+
+The plan's budgets (000 §7) name a sidebar of 5,000 rows, "no dropped frame at 120 Hz", and "a contract round trip for a 200-row sidebar page" of 2 ms at p95. Frames cannot be counted on this machine by a test. What can be measured was, on this Mac (Apple M6), on 2026-11-22.
+
+**The core** (`row_cost.rs`, a release build; a store on disk; of every six tabs five are Sites, in ten Groups and none). "A change" is a Group shut or opened: the core changes its model, works out what the window is told and what the session keeps, and writes the Groups.
+
+| Rows | The window opens, with its row | What a window is told, as the contract carries it | A change, and the window told of it (median; p95) | Written; read again (median) |
+|---|---|---|---|---|
+| 240 (the standard session) | 1.5 ms | 22 KB | 0.19 ms; 0.26 ms | 4 µs; 17 µs |
+| 1,000 | 2.7 ms | 93 KB | 0.65 ms; 0.70 ms | 18 µs; 69 µs |
+| 5,000 | 14 ms | 474 KB | 3.7 ms; 4.0 ms | 88 µs; 351 µs |
+
+- **The standard session is well inside the 2 ms.**
+- **At 5,000 rows it is not:** each change costs the core about 4 ms and tells the window all 474 KB again, which is half of a frame at 120 Hz before a shell has drawn anything. The cost is by the row: the window is told the whole row whatever changed, and the session is worked out whole to see whether it changed. Telling a window what changed, and no more, is the way to the budget; it is W3's ("the budgets"), and is not built.
+- **One thing was mended on the way:** each Group's count of its Sites went over the whole row, once for every Group, each time a window was told anything. They are counted in one pass now (4.3 ms to 3.7 ms at 5,000 rows and ten Groups).
+
+**The Mac's sidebar** (`SidebarCostTests`, the package's tests as they are built for testing, not a release build): the time for a window with its tabs at the side to be drawn and to settle. About 2.1 s of each figure is the test's own settling, as the 240 rows show.
+
+| Rows | Every row made | Rows made as they come into view |
+|---|---|---|
+| 240 | 2.3 s | 2.1 s |
+| 1,000 | 2.9 s | 2.3 s |
+| 5,000 | 8.8 s | 4.2 s |
+
+So the rows are now made as they come into view, on the Mac and the iPad (one view) and on Android. On Android that is a test and not a measurement: a row of 5,000 makes fewer than a hundred rows, and the tab that comes in front, wherever it is in the row, is brought into view (`SidebarTest`, with three parts of that broken in turn and caught, two once the test had a plain tab far down the row come in front).
+
+**Not measured:** frames while scrolling, on any system; a release build of an app; a phone or a tablet; the strip, whose tabs are all made still.
+
 ## 9. What is not verified
 
 - **A tablet.** The iPad's sidebar ran on the iPad simulator; Android's in JVM tests at a tablet's width, and never on a device or an emulator at that width (the emulator here is a phone's). No app was run on a tablet.
@@ -139,7 +167,7 @@ The plan's own bar for W2: "switching layout changes nothing in the model".
 - **The choice across a quit, in an app.** The app's tests run in fake mode, where the store is in memory: that the choice is the first window's after a quit is the core's test, over a store on disk.
 - **A second window** with the layout last chosen is the core's test too: no app test opens one at the side.
 - **By the keyboard alone, in the sidebar:** as in the strip. Rows are buttons; a Group's chip is not a stop for the Tab key (041 §9).
-- **Many rows.** The plan's bar for W2, "5,000 rows scroll within budget", is not measured: the rows are in a plain column, drawn all at once.
+- **Many rows.** The plan's bar for W2, "5,000 rows scroll within budget", is measured in part (§8a): the core's cost, which at 5,000 rows is over the budget, and the Mac's time to draw. No frame was counted.
 - **No screen reader was run.**
 - **The choices of §6** are the recommendations, not the owner's word.
 
@@ -150,3 +178,4 @@ The plan's own bar for W2: "switching layout changes nothing in the model".
 - [x] The Mac's sidebar.
 - [x] Part 1: `Tools/test.sh all` green, and `android-device`, on 2026-11-22, over the core and the Mac's sidebar together: `lint`, `core` (596, and the strings tool's 24), `unit` (291 on the Mac), `build`, the Mac's UI suite (44), `ios` (273 on the iPhone simulator, one skipped as before), the iPhone's UI suite (33), `android` (402 and 32 on the JVM) and `android-device` (159 on the emulator).
 - [x] Part 2 (a touch screen's wide windows): the same again, on 2026-11-22: `lint`, `core` (596, and the strings tool's 24), `unit` (292 on the Mac), `build`, the Mac's UI suite (44), `ios` (274 on the iPhone simulator, one skipped as before), the iPhone's UI suite (34), `android` (410 and 32 on the JVM) and `android-device` (159 on the emulator); and the sidebar's app test once on the iPad simulator, which is not part of the gate.
+- [x] A long row measured, and the sidebars' rows made as they come into view (§8a): the same again, on 2026-11-22: `lint`, `core` (596, and the strings tool's 24), `unit` (293 on the Mac, one of them the measurement, which runs only when asked), `build`, the Mac's UI suite (44), `ios` (275 on the iPhone simulator, two skipped: one as before, and the measurement), the iPhone's UI suite (34), `android` (411 and 32 on the JVM) and `android-device` (159 on the emulator).

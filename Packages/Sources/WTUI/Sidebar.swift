@@ -78,7 +78,9 @@ struct Sidebar<Toolbar: View>: View {
     private func rows(_ parts: SidebarParts) -> some View {
         ScrollViewReader { list in
             ScrollView {
-                VStack(alignment: .leading, spacing: 2) {
+                // The rows are made as they come into view: a row of thousands is not drawn
+                // to show the thirty that fit (043 §8a).
+                LazyVStack(alignment: .leading, spacing: 2) {
                     ForEach(parts.tree) { item in
                         switch item {
                         case let .tab(tab):
