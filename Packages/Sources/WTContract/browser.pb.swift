@@ -71,6 +71,99 @@ public nonisolated enum WTLayout: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
+/// Since 1.35. A part of a row that a tab can be moved to the end of (045). A
+/// Group's end is named by the Group.
+public nonisolated enum WTRowPart: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+
+  /// The Favourites.
+  case favourites // = 1
+
+  /// The Sites that are in no Group.
+  case sites // = 2
+
+  /// The tabs that are no Sites.
+  case tabs // = 3
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .favourites
+    case 2: self = .sites
+    case 3: self = .tabs
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .favourites: return 1
+    case .sites: return 2
+    case .tabs: return 3
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [WTRowPart] = [
+    .unspecified,
+    .favourites,
+    .sites,
+    .tabs,
+  ]
+
+}
+
+/// Since 1.35. One place along a row (045).
+public nonisolated enum WTRowStep: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+
+  /// Towards the row's start.
+  case back // = 1
+
+  /// Towards the row's end.
+  case forward // = 2
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .back
+    case 2: self = .forward
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .back: return 1
+    case .forward: return 2
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [WTRowStep] = [
+    .unspecified,
+    .back,
+    .forward,
+  ]
+
+}
+
 public nonisolated enum WTLoadState: SwiftProtobuf.Enum, Swift.CaseIterable {
   public typealias RawValue = Int
   case unspecified // = 0
@@ -604,6 +697,107 @@ public nonisolated struct WTUndoArrangement: Sendable {
   public init() {}
 }
 
+/// Since 1.35. Moves a tab to another place in its row (045). A row has parts,
+/// in an order that does not change: the Favourites; the Sites that are in no
+/// Group; each Group's Sites; the tabs that are no Sites. A tab that is moved
+/// to another part becomes of it, as by the command that makes it so: a
+/// Favourite, a Site, a Site of a Group, or a tab that is no Site. Within its
+/// part it is only put in its place. A shell says what was moved and where it
+/// was dropped, and does not work out what the tab becomes.
+///
+/// Nothing else changes: no page is loaded, closed, put to sleep or woken, and
+/// the tab in front stays in front. A move that is refused moves nothing.
+/// UndoArrangement undoes it ("tab.moved").
+///
+/// Answered with Ack; "tab.unknown"; "move.nowhere" (no place named, or one
+/// this core does not know); "move.other_row" (the tab named as the place is
+/// not in the row); "group.unknown"; and what keeping a tab or making a
+/// Favourite is refused with: "tab.no_page", "window.private",
+/// "favourite.too_many".
+public nonisolated struct WTMoveTab: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var tabID: UInt64 = 0
+
+  public var to: WTMoveTab.OneOf_To? = nil
+
+  /// Just before this tab of the same row, as one of its part. Before
+  /// itself, a tab stays where it is.
+  public var beforeTabID: UInt64 {
+    get {
+      if case .beforeTabID(let v)? = to {return v}
+      return 0
+    }
+    set {to = .beforeTabID(newValue)}
+  }
+
+  /// The end of a part of the row.
+  public var endOf: WTRowPart {
+    get {
+      if case .endOf(let v)? = to {return v}
+      return .unspecified
+    }
+    set {to = .endOf(newValue)}
+  }
+
+  /// The end of a Group of the row.
+  public var endOfGroupID: UInt64 {
+    get {
+      if case .endOfGroupID(let v)? = to {return v}
+      return 0
+    }
+    set {to = .endOfGroupID(newValue)}
+  }
+
+  /// One place, among the tabs of its own part: at the end of its part it
+  /// stays, and is what it was.
+  public var by: WTRowStep {
+    get {
+      if case .by(let v)? = to {return v}
+      return .unspecified
+    }
+    set {to = .by(newValue)}
+  }
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public nonisolated enum OneOf_To: Equatable, Sendable {
+    /// Just before this tab of the same row, as one of its part. Before
+    /// itself, a tab stays where it is.
+    case beforeTabID(UInt64)
+    /// The end of a part of the row.
+    case endOf(WTRowPart)
+    /// The end of a Group of the row.
+    case endOfGroupID(UInt64)
+    /// One place, among the tabs of its own part: at the end of its part it
+    /// stays, and is what it was.
+    case by(WTRowStep)
+
+  }
+
+  public init() {}
+}
+
+/// Since 1.35. Moves a Group among its row's Groups (045): before another, or
+/// after the last. Its Sites go with it. UndoArrangement undoes it
+/// ("group.reordered"). Answered with Ack; or "group.unknown", for either.
+public nonisolated struct WTMoveGroup: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var groupID: UInt64 = 0
+
+  /// The Group it is put before; 0 to put it after the last.
+  public var beforeGroupID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 /// A window, as its subscription publishes it.
 public nonisolated struct WTWindowSnapshot: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
@@ -672,7 +866,8 @@ public nonisolated struct WTWindowSnapshot: Sendable {
   /// Since 1.34. What UndoArrangement would undo in the row the window shows
   /// (044), by its kind: "site.kept", "site.let_go", "group.made",
   /// "group.removed", "group.renamed", "group.coloured", "group.moved",
-  /// "favourite.added", "favourite.removed"; empty when there is nothing. A
+  /// "favourite.added", "favourite.removed", and since 1.35 "tab.moved" and
+  /// "group.reordered"; empty when there is nothing. A
   /// kind a shell does not know is undone all the same: it is named only.
   public var undoArrangement: String = String()
 
@@ -2045,6 +2240,14 @@ nonisolated extension WTLayout: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0LAYOUT_UNSPECIFIED\0\u{1}LAYOUT_STRIP\0\u{1}LAYOUT_SIDEBAR\0")
 }
 
+nonisolated extension WTRowPart: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0ROW_PART_UNSPECIFIED\0\u{1}ROW_PART_FAVOURITES\0\u{1}ROW_PART_SITES\0\u{1}ROW_PART_TABS\0")
+}
+
+nonisolated extension WTRowStep: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0ROW_STEP_UNSPECIFIED\0\u{1}ROW_STEP_BACK\0\u{1}ROW_STEP_FORWARD\0")
+}
+
 nonisolated extension WTLoadState: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0LOAD_STATE_UNSPECIFIED\0\u{1}LOAD_STATE_IDLE\0\u{1}LOAD_STATE_LOADING\0\u{1}LOAD_STATE_FAILED\0")
 }
@@ -2832,6 +3035,127 @@ nonisolated extension WTUndoArrangement: SwiftProtobuf.Message, SwiftProtobuf._M
 
   public static func ==(lhs: WTUndoArrangement, rhs: WTUndoArrangement) -> Bool {
     if lhs.windowID != rhs.windowID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTMoveTab: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MoveTab"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}before_tab_id\0\u{3}end_of\0\u{3}end_of_group_id\0\u{1}by\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.tabID) }()
+      case 2: try {
+        var v: UInt64?
+        try decoder.decodeSingularUInt64Field(value: &v)
+        if let v = v {
+          if self.to != nil {try decoder.handleConflictingOneOf()}
+          self.to = .beforeTabID(v)
+        }
+      }()
+      case 3: try {
+        var v: WTRowPart?
+        try decoder.decodeSingularEnumField(value: &v)
+        if let v = v {
+          if self.to != nil {try decoder.handleConflictingOneOf()}
+          self.to = .endOf(v)
+        }
+      }()
+      case 4: try {
+        var v: UInt64?
+        try decoder.decodeSingularUInt64Field(value: &v)
+        if let v = v {
+          if self.to != nil {try decoder.handleConflictingOneOf()}
+          self.to = .endOfGroupID(v)
+        }
+      }()
+      case 5: try {
+        var v: WTRowStep?
+        try decoder.decodeSingularEnumField(value: &v)
+        if let v = v {
+          if self.to != nil {try decoder.handleConflictingOneOf()}
+          self.to = .by(v)
+        }
+      }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if self.tabID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.tabID, fieldNumber: 1)
+    }
+    switch self.to {
+    case .beforeTabID?: try {
+      guard case .beforeTabID(let v)? = self.to else { preconditionFailure() }
+      try visitor.visitSingularUInt64Field(value: v, fieldNumber: 2)
+    }()
+    case .endOf?: try {
+      guard case .endOf(let v)? = self.to else { preconditionFailure() }
+      try visitor.visitSingularEnumField(value: v, fieldNumber: 3)
+    }()
+    case .endOfGroupID?: try {
+      guard case .endOfGroupID(let v)? = self.to else { preconditionFailure() }
+      try visitor.visitSingularUInt64Field(value: v, fieldNumber: 4)
+    }()
+    case .by?: try {
+      guard case .by(let v)? = self.to else { preconditionFailure() }
+      try visitor.visitSingularEnumField(value: v, fieldNumber: 5)
+    }()
+    case nil: break
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTMoveTab, rhs: WTMoveTab) -> Bool {
+    if lhs.tabID != rhs.tabID {return false}
+    if lhs.to != rhs.to {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTMoveGroup: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MoveGroup"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}group_id\0\u{3}before_group_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.groupID) }()
+      case 2: try { try decoder.decodeSingularUInt64Field(value: &self.beforeGroupID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.groupID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.groupID, fieldNumber: 1)
+    }
+    if self.beforeGroupID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.beforeGroupID, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTMoveGroup, rhs: WTMoveGroup) -> Bool {
+    if lhs.groupID != rhs.groupID {return false}
+    if lhs.beforeGroupID != rhs.beforeGroupID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

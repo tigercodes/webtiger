@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | **Designed; nothing built.** The choices of §6 are put to the owner |
+| **Status** | **The core and the contract are built and tested, on the recommendations of §6, which are provisional:** they are put to the owner and not yet answered. **No shell asks for a move yet:** the commands are next (§7), and dragging waits for undo for the tree to be in the apps (D2) |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "the tree with drag and drop". 000 §5.6: "Dragging it into a Group makes it a Site" |
-| **Contract** | To be 1.35 (§5). Nothing new is kept in the store: a row's order, and its Groups', are written already |
+| **Contract** | 1.35 (§5). Nothing new is kept in the store: a row's order, and its Groups', are written already |
 | **Builds on** | [005](005-tabs.md) ("Moving a tab within a window: with the tree and drag and drop"); [039](039-sites.md), [041](041-groups.md), [042](042-favourites.md): the row's order, which nothing a person does can change yet but by making and unmaking; [044](044-undo-for-the-tree.md): what is moved can be put back |
 | **Last updated** | 2026-11-22 |
 
@@ -54,7 +54,7 @@ and it is refused as those commands are: a tab with no page of the web's cannot 
 
 The order of a row's tabs and of its Groups is the session's, written as it is now.
 
-## 5. The contract (to be 1.35)
+## 5. The contract (1.35)
 
 Added; nothing is changed or removed.
 
@@ -84,11 +84,19 @@ enum RowStep { ROW_STEP_UNSPECIFIED = 0; ROW_STEP_BACK = 1; ROW_STEP_FORWARD = 2
 message MoveGroup { uint64 group_id = 1; uint64 before_group_id = 2; }
 ```
 
+**As built, where the design did not say:**
+
+- **A tab there is not is refused first,** whatever place was named; and every refusal names the field of the request that was at fault.
+- **Before itself, or where it is already,** a tab or a Group stays, and nothing is kept to undo.
+- **A step goes by the row's order,** shown or not: a Site that is in front in a shut Group steps among that Group's Sites, which are out of the way.
+- **The place may be a tab that is out of the way** (a shut Group's Site): the moved tab is put before it, and is out of the way with it unless it is the one in front.
+- **A private window's tabs move among themselves,** and its moves are undone as any: only becoming a Site is refused there.
+
 What a drop in a drawn row is, for a shell: on a tab, `before_tab_id`; on a Group's chip, `end_of_group_id`; after the last Favourite, the last Site in no Group, or the last tab, `end_of`. A shell does not work out what the tab becomes.
 
 ## 6. Decisions
 
-**All of these are put to the owner; none is built.** The first column is the recommendation.
+**All of these are put to the owner.** D1 to D4 are built in the core as recommended; D5 and D6 are the shells', and not built. The first column is the recommendation.
 
 | # | Recommendation | Why | Other ways |
 |---|---|---|---|
@@ -107,16 +115,24 @@ What a drop in a drawn row is, for a shell: on a tab, `before_tab_id`; on a Grou
 
 ## 8. Tests
 
-To be filled in as built.
+| Where | What |
+|---|---|
+| The core, through the contract (`moving.rs`, 9) | **Within its part:** among the tabs that are no Sites, the Sites in no Group, a Group's Sites and the Favourites, a tab is put before another, before the first, and at the part's end, and is what it was; the tab in front stays in front; nothing is loaded and no web view destroyed. **To another part:** a tab before a Site, or at the Sites' end, is a Site; a Site before a tab that is none, or at the tabs' end, is a Site no longer; onto a Group, or before one of its Sites, a tab is that Group's; a Group's Site among the Sites in none is in none; among the Favourites a tab, and a Group's Site, is a Favourite; a Favourite in a Group, or among the Sites, is one no longer. **Refused, and nothing moved:** a tab there is not (first, whatever else was said); no place, and a part or a step this core does not know; a place in another window's row, and one there is not; a Group there is not; an empty tab among the Sites, in a Group, among the Favourites (and it moves among the tabs as any); a thirteenth Favourite, before one and at their end; in a private window, becoming a Site or a Favourite (its tabs move among themselves). Each refusal names the field at fault. **A step:** one place among the tabs of its part; at the part's end, and at the row's, it stays and is what it was; the steps that moved nothing are not kept to undo. **A Group moved whole:** before another, after the last, between two; its Sites go with it; before itself and where it is, nothing; one there is not, either way, and one of another row, refused; a shut Group is moved shut; the Sites in no Group stay before every Group. **Undone:** a move, and a Group's, by undo for the tree, named `tab.moved` and `group.reordered`; a Site that a move unmade is a Site again, where it was. **Into a shut Group:** a tab is out of the way with its Sites, the tab in front is shown still; opened, the Group has them in the order they were put in. **Across a quit** (a store on disk): the tabs' order and the Groups' are as they were left |
+| The rule broken, a part at a time | 34 parts, in the model and where the requests are answered. 32 caught: 26 at once; one that did not build, once written so that it did; one once the tests read which field a refusal names; four written after those. Two were not, and neither is a fault: each was the model's own telling of the window that its row had changed, and the window is told all the same where the row's arrangement is kept (044). The one for a Group moved was taken out of the code, where the row is now arranged and the window told by one call; the one for a step stays |
 
 ## 9. What is not verified
 
-To be filled in as built.
+- **No shell asks for a move.** The contract has it (1.35); no command and no drag sends it.
+- **The choices of §6** are the recommendations, not the owner's word.
+- **A place in another Space's row of the same window** is refused as one in another window's is, by the same lines; the test has another window.
+- **A step among Sites that are out of the way** (the tab in front, in a shut Group): by the row's order, as built; not tested.
+- **A long row.** A move puts the row in order again and, to be undone, copies its arrangement twice (044 §9): nothing for hundreds of tabs, not measured for thousands ([043](043-the-sidebar.md) §8a).
+- **Several windows showing one Space:** each has its own row (039 D6), and a move is of the row it is made in.
 
 ## 10. Done checklist
 
 - [ ] The owner's word on §6.
-- [ ] The core and the contract.
+- [x] The core and the contract.
 - [ ] The commands in the shells.
 - [ ] Dragging.
 - [ ] `Tools/test.sh all` green, and `android-device`.

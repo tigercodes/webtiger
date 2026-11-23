@@ -10,7 +10,7 @@
 
 /// WebTiger Core ↔ shell contract (docs/features/000-master-plan.md §5.5,
 /// docs/features/001-foundations.md §4).
-/// Contract version: 1.34 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
+/// Contract version: 1.35 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
 ///   1.1  Tabs: OpenTab, CloseTab, ActivateTab, TabOpened; WindowSnapshot.tabs.
 ///   1.2  A page that asks for a new window: NewWindowRequested, CloseRequested;
 ///        web view ids with their top bit set are the shell's.
@@ -549,6 +549,23 @@ public nonisolated struct WTRequest: Sendable {
     set {kind = .undoArrangement(newValue)}
   }
 
+  /// Since 1.35
+  public var moveTab: WTMoveTab {
+    get {
+      if case .moveTab(let v)? = kind {return v}
+      return WTMoveTab()
+    }
+    set {kind = .moveTab(newValue)}
+  }
+
+  public var moveGroup: WTMoveGroup {
+    get {
+      if case .moveGroup(let v)? = kind {return v}
+      return WTMoveGroup()
+    }
+    set {kind = .moveGroup(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -623,6 +640,9 @@ public nonisolated struct WTRequest: Sendable {
     case setLayout(WTSetLayout)
     /// Since 1.34
     case undoArrangement(WTUndoArrangement)
+    /// Since 1.35
+    case moveTab(WTMoveTab)
+    case moveGroup(WTMoveGroup)
 
   }
 
@@ -1142,7 +1162,7 @@ nonisolated extension WTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Request"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0\u{3}open_tab\0\u{3}close_tab\0\u{3}activate_tab\0\u{3}query_history\0\u{3}forget_history\0\u{3}find_in_page\0\u{3}suggest_addresses\0\u{3}zoom_page\0\u{3}query_downloads\0\u{3}cancel_download\0\u{3}forget_downloads\0\u{3}answer_prompt\0\u{3}query_permissions\0\u{3}forget_permissions\0\u{3}query_search\0\u{3}choose_search_engine\0\u{3}query_spaces\0\u{3}create_space\0\u{3}rename_space\0\u{3}switch_space\0\u{3}colour_space\0\u{3}proceed_past_certificate\0\u{3}search_words\0\u{3}open_download\0\u{3}open_address\0\u{1}undo\0\u{3}step_tab\0\u{3}keep_tab\0\u{3}let_go_site\0\u{3}send_site_home\0\u{3}make_group\0\u{3}rename_group\0\u{3}colour_group\0\u{3}shut_group\0\u{3}remove_group\0\u{3}move_to_group\0\u{3}set_favourite\0\u{3}set_layout\0\u{3}undo_arrangement\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0\u{3}open_tab\0\u{3}close_tab\0\u{3}activate_tab\0\u{3}query_history\0\u{3}forget_history\0\u{3}find_in_page\0\u{3}suggest_addresses\0\u{3}zoom_page\0\u{3}query_downloads\0\u{3}cancel_download\0\u{3}forget_downloads\0\u{3}answer_prompt\0\u{3}query_permissions\0\u{3}forget_permissions\0\u{3}query_search\0\u{3}choose_search_engine\0\u{3}query_spaces\0\u{3}create_space\0\u{3}rename_space\0\u{3}switch_space\0\u{3}colour_space\0\u{3}proceed_past_certificate\0\u{3}search_words\0\u{3}open_download\0\u{3}open_address\0\u{1}undo\0\u{3}step_tab\0\u{3}keep_tab\0\u{3}let_go_site\0\u{3}send_site_home\0\u{3}make_group\0\u{3}rename_group\0\u{3}colour_group\0\u{3}shut_group\0\u{3}remove_group\0\u{3}move_to_group\0\u{3}set_favourite\0\u{3}set_layout\0\u{3}undo_arrangement\0\u{3}move_tab\0\u{3}move_group\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1761,6 +1781,32 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
           self.kind = .undoArrangement(v)
         }
       }()
+      case 48: try {
+        var v: WTMoveTab?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .moveTab(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .moveTab(v)
+        }
+      }()
+      case 49: try {
+        var v: WTMoveGroup?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .moveGroup(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .moveGroup(v)
+        }
+      }()
       default: break
       }
     }
@@ -1959,6 +2005,14 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     case .undoArrangement?: try {
       guard case .undoArrangement(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 47)
+    }()
+    case .moveTab?: try {
+      guard case .moveTab(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 48)
+    }()
+    case .moveGroup?: try {
+      guard case .moveGroup(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 49)
     }()
     case nil: break
     }

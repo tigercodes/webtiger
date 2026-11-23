@@ -9,10 +9,11 @@ use std::time::Duration;
 use wt_app::{Dispatcher, HOST_TIMEOUT, Outbox, StartError};
 use wt_proto::v1::{
     ActivateTab, CloseTab, ColourGroup, CoreConfig, EngineEvent, EngineInfo, EngineKind, Envelope,
-    FakeOptions, HostResponse, KeepTab, Layout, LetGoSite, MakeGroup, MoveToGroup, OpenTab,
-    OpenWindow, Platform, RemoveGroup, RenameGroup, Request, SendSiteHome, SetFavourite, SetLayout,
-    ShutGroup, SubmitAddress, Subscribe, TestMode, UndoArrangement, WindowSnapshot, WindowTopic,
-    envelope, event, host_request, host_response, request, response, snapshot, subscribe,
+    FakeOptions, HostResponse, KeepTab, Layout, LetGoSite, MakeGroup, MoveGroup, MoveTab,
+    MoveToGroup, OpenTab, OpenWindow, Platform, RemoveGroup, RenameGroup, Request, SendSiteHome,
+    SetFavourite, SetLayout, ShutGroup, SubmitAddress, Subscribe, TestMode, UndoArrangement,
+    WindowSnapshot, WindowTopic, envelope, event, host_request, host_response, move_tab, request,
+    response, snapshot, subscribe,
 };
 use wt_proto::{CONTRACT_MAJOR, CONTRACT_MINOR};
 
@@ -388,6 +389,25 @@ impl FakeShell {
         self.request(request::Kind::MoveToGroup(MoveToGroup {
             tab_id: tab,
             group_id: group,
+        }))
+        .await
+    }
+
+    /// Moves a tab to another place in its row (045), and waits.
+    pub async fn move_tab(&mut self, tab: u64, to: move_tab::To) -> response::Kind {
+        self.request(request::Kind::MoveTab(MoveTab {
+            tab_id: tab,
+            to: Some(to),
+        }))
+        .await
+    }
+
+    /// Moves a Group before another of its row, or (0) after the last (045),
+    /// and waits.
+    pub async fn move_group(&mut self, group: u64, before: u64) -> response::Kind {
+        self.request(request::Kind::MoveGroup(MoveGroup {
+            group_id: group,
+            before_group_id: before,
         }))
         .await
     }

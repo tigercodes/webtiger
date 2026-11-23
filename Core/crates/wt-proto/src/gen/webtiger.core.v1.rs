@@ -397,6 +397,61 @@ pub struct UndoArrangement {
     #[prost(uint64, tag = "1")]
     pub window_id: u64,
 }
+/// Since 1.35. Moves a tab to another place in its row (045). A row has parts,
+/// in an order that does not change: the Favourites; the Sites that are in no
+/// Group; each Group's Sites; the tabs that are no Sites. A tab that is moved
+/// to another part becomes of it, as by the command that makes it so: a
+/// Favourite, a Site, a Site of a Group, or a tab that is no Site. Within its
+/// part it is only put in its place. A shell says what was moved and where it
+/// was dropped, and does not work out what the tab becomes.
+///
+/// Nothing else changes: no page is loaded, closed, put to sleep or woken, and
+/// the tab in front stays in front. A move that is refused moves nothing.
+/// UndoArrangement undoes it ("tab.moved").
+///
+/// Answered with Ack; "tab.unknown"; "move.nowhere" (no place named, or one
+/// this core does not know); "move.other_row" (the tab named as the place is
+/// not in the row); "group.unknown"; and what keeping a tab or making a
+/// Favourite is refused with: "tab.no_page", "window.private",
+/// "favourite.too_many".
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct MoveTab {
+    #[prost(uint64, tag = "1")]
+    pub tab_id: u64,
+    #[prost(oneof = "move_tab::To", tags = "2, 3, 4, 5")]
+    pub to: ::core::option::Option<move_tab::To>,
+}
+/// Nested message and enum types in `MoveTab`.
+pub mod move_tab {
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum To {
+        /// Just before this tab of the same row, as one of its part. Before
+        /// itself, a tab stays where it is.
+        #[prost(uint64, tag = "2")]
+        BeforeTabId(u64),
+        /// The end of a part of the row.
+        #[prost(enumeration = "super::RowPart", tag = "3")]
+        EndOf(i32),
+        /// The end of a Group of the row.
+        #[prost(uint64, tag = "4")]
+        EndOfGroupId(u64),
+        /// One place, among the tabs of its own part: at the end of its part it
+        /// stays, and is what it was.
+        #[prost(enumeration = "super::RowStep", tag = "5")]
+        By(i32),
+    }
+}
+/// Since 1.35. Moves a Group among its row's Groups (045): before another, or
+/// after the last. Its Sites go with it. UndoArrangement undoes it
+/// ("group.reordered"). Answered with Ack; or "group.unknown", for either.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct MoveGroup {
+    #[prost(uint64, tag = "1")]
+    pub group_id: u64,
+    /// The Group it is put before; 0 to put it after the last.
+    #[prost(uint64, tag = "2")]
+    pub before_group_id: u64,
+}
 /// A window, as its subscription publishes it.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WindowSnapshot {
@@ -455,7 +510,8 @@ pub struct WindowSnapshot {
     /// Since 1.34. What UndoArrangement would undo in the row the window shows
     /// (044), by its kind: "site.kept", "site.let_go", "group.made",
     /// "group.removed", "group.renamed", "group.coloured", "group.moved",
-    /// "favourite.added", "favourite.removed"; empty when there is nothing. A
+    /// "favourite.added", "favourite.removed", and since 1.35 "tab.moved" and
+    /// "group.reordered"; empty when there is nothing. A
     /// kind a shell does not know is undone all the same: it is named only.
     #[prost(string, tag = "13")]
     pub undo_arrangement: ::prost::alloc::string::String,
@@ -1359,6 +1415,75 @@ impl Layout {
             "LAYOUT_UNSPECIFIED" => Some(Self::Unspecified),
             "LAYOUT_STRIP" => Some(Self::Strip),
             "LAYOUT_SIDEBAR" => Some(Self::Sidebar),
+            _ => None,
+        }
+    }
+}
+/// Since 1.35. A part of a row that a tab can be moved to the end of (045). A
+/// Group's end is named by the Group.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum RowPart {
+    Unspecified = 0,
+    /// The Favourites.
+    Favourites = 1,
+    /// The Sites that are in no Group.
+    Sites = 2,
+    /// The tabs that are no Sites.
+    Tabs = 3,
+}
+impl RowPart {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "ROW_PART_UNSPECIFIED",
+            Self::Favourites => "ROW_PART_FAVOURITES",
+            Self::Sites => "ROW_PART_SITES",
+            Self::Tabs => "ROW_PART_TABS",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "ROW_PART_UNSPECIFIED" => Some(Self::Unspecified),
+            "ROW_PART_FAVOURITES" => Some(Self::Favourites),
+            "ROW_PART_SITES" => Some(Self::Sites),
+            "ROW_PART_TABS" => Some(Self::Tabs),
+            _ => None,
+        }
+    }
+}
+/// Since 1.35. One place along a row (045).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum RowStep {
+    Unspecified = 0,
+    /// Towards the row's start.
+    Back = 1,
+    /// Towards the row's end.
+    Forward = 2,
+}
+impl RowStep {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "ROW_STEP_UNSPECIFIED",
+            Self::Back => "ROW_STEP_BACK",
+            Self::Forward => "ROW_STEP_FORWARD",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "ROW_STEP_UNSPECIFIED" => Some(Self::Unspecified),
+            "ROW_STEP_BACK" => Some(Self::Back),
+            "ROW_STEP_FORWARD" => Some(Self::Forward),
             _ => None,
         }
     }
@@ -2268,7 +2393,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -2394,6 +2519,11 @@ pub mod request {
         /// Since 1.34
         #[prost(message, tag = "47")]
         UndoArrangement(super::UndoArrangement),
+        /// Since 1.35
+        #[prost(message, tag = "48")]
+        MoveTab(super::MoveTab),
+        #[prost(message, tag = "49")]
+        MoveGroup(super::MoveGroup),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.

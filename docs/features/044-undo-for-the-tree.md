@@ -35,7 +35,7 @@ I remove a Group I did not mean to remove, or let go of a Site by the wrong key,
 
 **One line for each row**, the newest first, fifty deep. Undo undoes the newest and takes it off the line. A thing that changed nothing (a Site kept again; a tab moved to the Group it is in) is not kept.
 
-**The window is told** what its newest is, by its kind: `site.kept`, `site.let_go`, `group.made`, `group.removed`, `group.renamed`, `group.coloured`, `group.moved`, `favourite.added`, `favourite.removed`; or nothing.
+**The window is told** what its newest is, by its kind: `site.kept`, `site.let_go`, `group.made`, `group.removed`, `group.renamed`, `group.coloured`, `group.moved`, `favourite.added`, `favourite.removed`; or nothing. (Since [045](045-moving-in-the-row.md): `tab.moved` and `group.reordered` too.)
 
 **A private window** has no Sites, Groups or Favourites, and nothing to undo.
 

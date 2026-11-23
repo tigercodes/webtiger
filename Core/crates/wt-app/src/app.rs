@@ -15,19 +15,20 @@ use wt_core::{
 use wt_proto::v1::{
     Ack, ActivateTab, AddressSuggestion, AddressSuggestions, CloseTab, CloseWindow, EngineEvent,
     EngineKind, FindInPage, ForgetHistory, GroupMade, HistoryEntry, HistoryPage, KeepTab,
-    LetGoSite, LinkOpenRequested, LoginSet, MakeGroup, MoveToGroup, NavigationCommand, OpenAddress,
-    OpenOutside, OpenTab, OpenWindow, OutsideLinkRequested, QueryHistory, RemoveGroup,
-    SearchRequested, SearchWords, SendSiteHome, SetFavourite, StepTab, SubmitAddress,
-    SuggestAddresses, TabCommand, TabOpened, Undo, UndoArrangement, WebViewCommand, WebViewCreate,
-    WebViewDestroy, WebViewFind, WebViewLoad, WebViewSetZoom, WindowOpened, WindowSnapshot,
-    ZoomChange, ZoomPage, engine_event, forget_history, host_request, request, response, step_tab,
+    LetGoSite, LinkOpenRequested, LoginSet, MakeGroup, MoveGroup, MoveTab, MoveToGroup,
+    NavigationCommand, OpenAddress, OpenOutside, OpenTab, OpenWindow, OutsideLinkRequested,
+    QueryHistory, RemoveGroup, RowPart, RowStep, SearchRequested, SearchWords, SendSiteHome,
+    SetFavourite, StepTab, SubmitAddress, SuggestAddresses, TabCommand, TabOpened, Undo,
+    UndoArrangement, WebViewCommand, WebViewCreate, WebViewDestroy, WebViewFind, WebViewLoad,
+    WebViewSetZoom, WindowOpened, WindowSnapshot, ZoomChange, ZoomPage, engine_event,
+    forget_history, host_request, move_tab, request, response, step_tab,
 };
 use wt_store::{ClosedTab, MAX_SUGGESTIONS, SavedTab, Space, Store};
 
 use crate::downloads::{Downloading, Wanted};
 use crate::error::AppError;
 use crate::host::{Host, HostFuture};
-use crate::model::{LoadTarget, State, Step};
+use crate::model::{LoadTarget, MoveTo, State, Step};
 use crate::spaces::Written;
 
 /// How many visits a page of history holds when the shell does not say
@@ -231,6 +232,8 @@ impl App {
             request::Kind::SetFavourite(set) => answer(self.set_favourite(&set)),
             request::Kind::SetLayout(set) => answer(self.set_layout(&set)),
             request::Kind::UndoArrangement(undo) => answer(self.undo_arrangement(&undo)),
+            request::Kind::MoveTab(moved) => answer(self.move_tab(&moved)),
+            request::Kind::MoveGroup(moved) => answer(self.move_group(&moved)),
             request::Kind::OpenDownload(open) => self.open_download(&open),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
@@ -1072,6 +1075,61 @@ impl App {
         state
             .arranging(row, kind, |state| state.set_favourite(tab, set.favourite))
             .map_err(|code| AppError::new(code).field("tab_id"))?;
+        Ok(response::Kind::Ack(Ack {}))
+    }
+
+    /// Moves a tab to another place in its row (045).
+    fn move_tab(&self, moved: &MoveTab) -> Result<response::Kind, AppError> {
+        let tab = TabId(moved.tab_id);
+        let to = match moved.to {
+            Some(move_tab::To::BeforeTabId(other)) => Some(MoveTo::Before(TabId(other))),
+            Some(move_tab::To::EndOfGroupId(group)) => Some(MoveTo::EndOfGroup(GroupId(group))),
+            Some(move_tab::To::EndOf(part)) => match RowPart::try_from(part) {
+                Ok(RowPart::Favourites) => Some(MoveTo::EndOfFavourites),
+                Ok(RowPart::Sites) => Some(MoveTo::EndOfSites),
+                Ok(RowPart::Tabs) => Some(MoveTo::EndOfTabs),
+                Ok(RowPart::Unspecified) | Err(_) => None,
+            },
+            Some(move_tab::To::By(step)) => match RowStep::try_from(step) {
+                Ok(RowStep::Back) => Some(MoveTo::Back),
+                Ok(RowStep::Forward) => Some(MoveTo::Forward),
+                Ok(RowStep::Unspecified) | Err(_) => None,
+            },
+            None => None,
+        };
+        let mut state = self.state.borrow_mut();
+        // A tab there is not is refused first, whatever else was said.
+        let Some(row) = state.row_of_tab(tab) else {
+            return Err(AppError::new("tab.unknown").field("tab_id"));
+        };
+        let Some(to) = to else {
+            return Err(AppError::new("move.nowhere").field("to"));
+        };
+        state
+            .arranging(Some(row), "tab.moved", |state| state.move_tab(tab, to))
+            .map_err(|code| {
+                AppError::new(code).field(match code {
+                    "move.other_row" => "before_tab_id",
+                    "group.unknown" => "end_of_group_id",
+                    _ => "tab_id",
+                })
+            })?;
+        Ok(response::Kind::Ack(Ack {}))
+    }
+
+    /// Moves a Group among its row's Groups (045).
+    fn move_group(&self, moved: &MoveGroup) -> Result<response::Kind, AppError> {
+        let group = GroupId(moved.group_id);
+        let before = (moved.before_group_id != 0).then_some(GroupId(moved.before_group_id));
+        let mut state = self.state.borrow_mut();
+        let Some(row) = state.row_of_group(group) else {
+            return Err(AppError::new("group.unknown").field("group_id"));
+        };
+        state
+            .arranging(Some(row), "group.reordered", |state| {
+                state.move_group(group, before)
+            })
+            .map_err(|code| AppError::new(code).field("before_group_id"))?;
         Ok(response::Kind::Ack(Ack {}))
     }
 

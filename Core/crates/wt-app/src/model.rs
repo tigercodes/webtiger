@@ -839,28 +839,60 @@ struct Group {
 /// The most Groups a row has.
 const MOST_GROUPS: usize = 64;
 
-/// Puts a row's tabs in the order a row has (041, 042): the Favourites; the
-/// Sites that are in no Group; each Group's Sites, Group by Group; the tabs
-/// that are no Sites. Within each, the tabs stay in the order they were in.
+/// A part of a row (041, 042), in the order a row has its parts: the
+/// Favourites; the Sites that are in no Group; each Group's Sites, Group by
+/// Group; the tabs that are no Sites.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum Part {
+    Favourites,
+    Sites,
+    /// A Group's Sites: the Group by its place among the row's Groups.
+    Group(usize),
+    Tabs,
+}
+
+/// The part of its row a tab is of.
+fn part_of(tabs: &BTreeMap<TabId, Tab>, row: &Row, id: TabId) -> Part {
+    match tabs.get(&id) {
+        // (Only a Site is a Favourite: where the mark is set sees to it.)
+        Some(tab) if tab.favourite => Part::Favourites,
+        Some(tab) if tab.site.is_some() => tab
+            .group
+            .and_then(|group| row.groups.iter().position(|one| one.id == group))
+            .map_or(Part::Sites, Part::Group),
+        _ => Part::Tabs,
+    }
+}
+
+/// Puts a row's tabs in the order a row has (041, 042): part by part. Within
+/// each, the tabs stay in the order they were in.
 fn arrange(tabs: &BTreeMap<TabId, Tab>, row: &mut Row) {
-    let places: BTreeMap<TabId, (u8, usize)> = row
+    let parts: BTreeMap<TabId, Part> = row
         .tabs
         .iter()
-        .map(|id| {
-            let place = match tabs.get(id) {
-                // (Only a Site is a Favourite: where the mark is set sees to it.)
-                Some(tab) if tab.favourite => (0, 0),
-                Some(tab) if tab.site.is_some() => tab
-                    .group
-                    .and_then(|group| row.groups.iter().position(|one| one.id == group))
-                    .map_or((1, 0), |group| (2, group)),
-                _ => (3, 0),
-            };
-            (*id, place)
-        })
+        .map(|id| (*id, part_of(tabs, row, *id)))
         .collect();
     row.tabs
-        .sort_by_key(|id| places.get(id).copied().unwrap_or((3, 0)));
+        .sort_by_key(|id| parts.get(id).copied().unwrap_or(Part::Tabs));
+}
+
+/// Where a tab is moved to in its row (045).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum MoveTo {
+    /// Just before this tab of the row, as one of its part.
+    Before(TabId),
+    /// The end of the Favourites.
+    EndOfFavourites,
+    /// The end of the Sites that are in no Group.
+    EndOfSites,
+    /// The end of a Group.
+    EndOfGroup(GroupId),
+    /// The end of the tabs that are no Sites.
+    EndOfTabs,
+    /// One place towards the row's start, among the tabs of its part.
+    Back,
+    /// One place towards the row's end, among the tabs of its part.
+    Forward,
 }
 
 /// The most Favourites a row has (042).
@@ -1921,6 +1953,154 @@ impl State {
             row.tabs.push(tab_id);
         }
         self.arrange_row(window, space);
+    }
+
+    /// Moves a tab to another place in its row (045). Moved to another part
+    /// of the row it becomes of that part, as by the command that makes it
+    /// so, and is refused as that command is, before anything is moved;
+    /// within its part it is only put in its place. By a step it goes one
+    /// place among the tabs of its own part, and at the part's end it stays.
+    /// No page is touched, and the tab in front stays in front. The code to
+    /// refuse with.
+    pub(crate) fn move_tab(&mut self, tab_id: TabId, to: MoveTo) -> Result<(), &'static str> {
+        let tab = self.tabs.get(&tab_id).ok_or("tab.unknown")?;
+        let (window, space) = (tab.window, tab.space);
+        let row = self
+            .windows
+            .get(&window)
+            .and_then(|found| found.rows.get(&space))
+            .ok_or("tab.unknown")?;
+        let was = part_of(&self.tabs, row, tab_id);
+        // The part it is to be of, the Group when that is one's, and the tab
+        // it is put before; none for the part's end.
+        let (part, before) = match to {
+            MoveTo::Back | MoveTo::Forward => {
+                self.step_in_part(window, space, tab_id, to == MoveTo::Forward);
+                return Ok(());
+            }
+            MoveTo::Before(other) if other == tab_id => return Ok(()),
+            MoveTo::Before(other) => {
+                if !row.tabs.contains(&other) {
+                    return Err("move.other_row");
+                }
+                (part_of(&self.tabs, row, other), Some(other))
+            }
+            MoveTo::EndOfFavourites => (Part::Favourites, None),
+            MoveTo::EndOfSites => (Part::Sites, None),
+            MoveTo::EndOfTabs => (Part::Tabs, None),
+            MoveTo::EndOfGroup(group) => {
+                let place = row
+                    .groups
+                    .iter()
+                    .position(|one| one.id == group)
+                    .ok_or("group.unknown")?;
+                (Part::Group(place), None)
+            }
+        };
+        let group = match part {
+            Part::Group(place) => row.groups.get(place).map(|one| one.id),
+            _ => None,
+        };
+        // It becomes of that part: each of these refuses before it changes
+        // anything, and a tab that is refused is where it was.
+        if was != part {
+            match part {
+                Part::Favourites => self.set_favourite(tab_id, true)?,
+                Part::Sites => {
+                    self.keep_tab(tab_id)?;
+                    if let Some(tab) = self.tabs.get_mut(&tab_id) {
+                        tab.group = None;
+                        tab.favourite = false;
+                    }
+                }
+                Part::Group(_) => self.move_to_group(tab_id, group)?,
+                Part::Tabs => {
+                    self.let_go_site(tab_id);
+                }
+            }
+        }
+        // And is put in its place: before the tab named, or last, which in a
+        // row's order is the end of its part.
+        if let Some(row) = self
+            .windows
+            .get_mut(&window)
+            .and_then(|found| found.rows.get_mut(&space))
+        {
+            row.tabs.retain(|id| *id != tab_id);
+            match before.and_then(|other| row.tabs.iter().position(|id| *id == other)) {
+                Some(place) => row.tabs.insert(place, tab_id),
+                None => row.tabs.push(tab_id),
+            }
+        }
+        self.arrange_row(window, space);
+        Ok(())
+    }
+
+    /// Moves a tab one place among the tabs of its own part of the row
+    /// (045): it changes places with the one before it, or the one after.
+    /// At the end of its part it stays.
+    fn step_in_part(&mut self, window: WindowId, space: SpaceId, tab_id: TabId, forward: bool) {
+        let Some(row) = self
+            .windows
+            .get_mut(&window)
+            .and_then(|found| found.rows.get_mut(&space))
+        else {
+            return;
+        };
+        let part = part_of(&self.tabs, row, tab_id);
+        // A part's tabs are together in a row: the neighbour is of the part,
+        // or the part ends here.
+        let Some(at) = row.tabs.iter().position(|id| *id == tab_id) else {
+            return;
+        };
+        let other = if forward {
+            at.checked_add(1)
+        } else {
+            at.checked_sub(1)
+        };
+        let Some(other) = other.filter(|place| {
+            row.tabs
+                .get(*place)
+                .is_some_and(|id| part_of(&self.tabs, row, *id) == part)
+        }) else {
+            return;
+        };
+        row.tabs.swap(at, other);
+        self.dirty.insert(window);
+    }
+
+    /// Moves a Group among its row's Groups (045): before another, or after
+    /// the last. Its Sites go with it. The code to refuse with.
+    pub(crate) fn move_group(
+        &mut self,
+        group: GroupId,
+        before: Option<GroupId>,
+    ) -> Result<(), &'static str> {
+        let (window, space) = self.row_of_group(group).ok_or("group.unknown")?;
+        let row = self
+            .windows
+            .get_mut(&window)
+            .and_then(|found| found.rows.get_mut(&space))
+            .ok_or("group.unknown")?;
+        if before == Some(group) {
+            return Ok(());
+        }
+        if let Some(before) = before
+            && !row.groups.iter().any(|one| one.id == before)
+        {
+            return Err("group.unknown");
+        }
+        let Some(at) = row.groups.iter().position(|one| one.id == group) else {
+            return Err("group.unknown");
+        };
+        let moved = row.groups.remove(at);
+        let place = before
+            .and_then(|before| row.groups.iter().position(|one| one.id == before))
+            .unwrap_or(row.groups.len());
+        row.groups.insert(place, moved);
+        // Its Sites go with it: the row is in a row's order again.
+        self.arrange_row(window, space);
+        Ok(())
     }
 
     /// Where a Site is to be sent to be home again (039): its home, when it
