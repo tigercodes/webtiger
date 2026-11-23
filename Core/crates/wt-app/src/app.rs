@@ -18,9 +18,9 @@ use wt_proto::v1::{
     LetGoSite, LinkOpenRequested, LoginSet, MakeGroup, MoveToGroup, NavigationCommand, OpenAddress,
     OpenOutside, OpenTab, OpenWindow, OutsideLinkRequested, QueryHistory, RemoveGroup,
     SearchRequested, SearchWords, SendSiteHome, SetFavourite, StepTab, SubmitAddress,
-    SuggestAddresses, TabCommand, TabOpened, Undo, WebViewCommand, WebViewCreate, WebViewDestroy,
-    WebViewFind, WebViewLoad, WebViewSetZoom, WindowOpened, WindowSnapshot, ZoomChange, ZoomPage,
-    engine_event, forget_history, host_request, request, response, step_tab,
+    SuggestAddresses, TabCommand, TabOpened, Undo, UndoArrangement, WebViewCommand, WebViewCreate,
+    WebViewDestroy, WebViewFind, WebViewLoad, WebViewSetZoom, WindowOpened, WindowSnapshot,
+    ZoomChange, ZoomPage, engine_event, forget_history, host_request, request, response, step_tab,
 };
 use wt_store::{ClosedTab, MAX_SUGGESTIONS, SavedTab, Space, Store};
 
@@ -230,6 +230,7 @@ impl App {
             request::Kind::MoveToGroup(moved) => answer(self.move_to_group(&moved)),
             request::Kind::SetFavourite(set) => answer(self.set_favourite(&set)),
             request::Kind::SetLayout(set) => answer(self.set_layout(&set)),
+            request::Kind::UndoArrangement(undo) => answer(self.undo_arrangement(&undo)),
             request::Kind::OpenDownload(open) => self.open_download(&open),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
@@ -969,16 +970,21 @@ impl App {
     /// Keeps a tab: it becomes a Site (039). Its place in the row, and what
     /// closing it means from now on, are the model's.
     fn keep_tab(&self, keep: &KeepTab) -> Result<response::Kind, AppError> {
-        self.state
-            .borrow_mut()
-            .keep_tab(TabId(keep.tab_id))
+        let tab = TabId(keep.tab_id);
+        let mut state = self.state.borrow_mut();
+        let row = state.row_of_tab(tab);
+        state
+            .arranging(row, "site.kept", |state| state.keep_tab(tab))
             .map_err(|code| AppError::new(code).field("tab_id"))?;
         Ok(response::Kind::Ack(Ack {}))
     }
 
     /// Lets a Site go (039): it is a tab like any other again.
     fn let_go_site(&self, let_go: &LetGoSite) -> Result<response::Kind, AppError> {
-        if !self.state.borrow_mut().let_go_site(TabId(let_go.tab_id)) {
+        let tab = TabId(let_go.tab_id);
+        let mut state = self.state.borrow_mut();
+        let row = state.row_of_tab(tab);
+        if !state.arranging(row, "site.let_go", |state| state.let_go_site(tab)) {
             return Err(AppError::new("tab.unknown").field("tab_id"));
         }
         Ok(response::Kind::Ack(Ack {}))
@@ -986,10 +992,13 @@ impl App {
 
     /// Makes a Group in the row a window shows (041).
     fn make_group(&self, make: &MakeGroup) -> Result<response::Kind, AppError> {
-        let group = self
-            .state
-            .borrow_mut()
-            .make_group(WindowId(make.window_id), &make.name)
+        let window = WindowId(make.window_id);
+        let mut state = self.state.borrow_mut();
+        let row = state.row_shown(window);
+        let group = state
+            .arranging(row, "group.made", |state| {
+                state.make_group(window, &make.name)
+            })
             .map_err(|code| AppError::new(code).field(group_field(code)))?;
         Ok(response::Kind::GroupMade(GroupMade {
             group_id: group.get(),
@@ -1005,20 +1014,34 @@ impl App {
         colour: Option<&str>,
         shut: Option<bool>,
     ) -> Result<response::Kind, AppError> {
-        self.state
-            .borrow_mut()
-            .change_group(GroupId(group), name, colour, shut)
-            .map_err(|code| AppError::new(code).field(group_field(code)))?;
+        let group = GroupId(group);
+        let mut state = self.state.borrow_mut();
+        // A Group named or coloured is arranged (044): what it was is kept to
+        // go back to. Shut or opened, it is only looked at another way.
+        let kind = match (name, colour) {
+            (Some(_), _) => Some("group.renamed"),
+            (None, Some(_)) => Some("group.coloured"),
+            (None, None) => None,
+        };
+        let changed = match kind {
+            Some(kind) => {
+                let row = state.row_of_group(group);
+                state.arranging(row, kind, |state| {
+                    state.change_group(group, name, colour, shut)
+                })
+            }
+            None => state.change_group(group, name, colour, shut),
+        };
+        changed.map_err(|code| AppError::new(code).field(group_field(code)))?;
         Ok(response::Kind::Ack(Ack {}))
     }
 
     /// Takes a Group away (041): its Sites stay.
     fn remove_group(&self, remove: &RemoveGroup) -> Result<response::Kind, AppError> {
-        if !self
-            .state
-            .borrow_mut()
-            .remove_group(GroupId(remove.group_id))
-        {
+        let group = GroupId(remove.group_id);
+        let mut state = self.state.borrow_mut();
+        let row = state.row_of_group(group);
+        if !state.arranging(row, "group.removed", |state| state.remove_group(group)) {
             return Err(AppError::new("group.unknown").field("group_id"));
         }
         Ok(response::Kind::Ack(Ack {}))
@@ -1026,20 +1049,38 @@ impl App {
 
     /// Puts a tab in a Group, or takes a Site out of its Group (041).
     fn move_to_group(&self, moved: &MoveToGroup) -> Result<response::Kind, AppError> {
+        let tab = TabId(moved.tab_id);
         let group = (moved.group_id != 0).then_some(GroupId(moved.group_id));
-        self.state
-            .borrow_mut()
-            .move_to_group(TabId(moved.tab_id), group)
+        let mut state = self.state.borrow_mut();
+        let row = state.row_of_tab(tab);
+        state
+            .arranging(row, "group.moved", |state| state.move_to_group(tab, group))
             .map_err(|code| AppError::new(code).field(group_field(code)))?;
         Ok(response::Kind::Ack(Ack {}))
     }
 
     /// Marks a tab as a Favourite, or unmarks it (042).
     fn set_favourite(&self, set: &SetFavourite) -> Result<response::Kind, AppError> {
+        let tab = TabId(set.tab_id);
+        let kind = if set.favourite {
+            "favourite.added"
+        } else {
+            "favourite.removed"
+        };
+        let mut state = self.state.borrow_mut();
+        let row = state.row_of_tab(tab);
+        state
+            .arranging(row, kind, |state| state.set_favourite(tab, set.favourite))
+            .map_err(|code| AppError::new(code).field("tab_id"))?;
+        Ok(response::Kind::Ack(Ack {}))
+    }
+
+    /// Undoes the newest thing done to arrange the row a window shows (044).
+    fn undo_arrangement(&self, undo: &UndoArrangement) -> Result<response::Kind, AppError> {
         self.state
             .borrow_mut()
-            .set_favourite(TabId(set.tab_id), set.favourite)
-            .map_err(|code| AppError::new(code).field("tab_id"))?;
+            .undo_arrangement(WindowId(undo.window_id))
+            .map_err(|code| AppError::new(code).field("window_id"))?;
         Ok(response::Kind::Ack(Ack {}))
     }
 

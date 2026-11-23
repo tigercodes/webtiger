@@ -11,8 +11,8 @@ use wt_proto::v1::{
     ActivateTab, CloseTab, ColourGroup, CoreConfig, EngineEvent, EngineInfo, EngineKind, Envelope,
     FakeOptions, HostResponse, KeepTab, Layout, LetGoSite, MakeGroup, MoveToGroup, OpenTab,
     OpenWindow, Platform, RemoveGroup, RenameGroup, Request, SendSiteHome, SetFavourite, SetLayout,
-    ShutGroup, SubmitAddress, Subscribe, TestMode, WindowSnapshot, WindowTopic, envelope, event,
-    host_request, host_response, request, response, snapshot, subscribe,
+    ShutGroup, SubmitAddress, Subscribe, TestMode, UndoArrangement, WindowSnapshot, WindowTopic,
+    envelope, event, host_request, host_response, request, response, snapshot, subscribe,
 };
 use wt_proto::{CONTRACT_MAJOR, CONTRACT_MINOR};
 
@@ -388,6 +388,15 @@ impl FakeShell {
         self.request(request::Kind::MoveToGroup(MoveToGroup {
             tab_id: tab,
             group_id: group,
+        }))
+        .await
+    }
+
+    /// Undoes the newest thing done to arrange the row a window shows (044),
+    /// and waits.
+    pub async fn undo_arrangement(&mut self, window: u64) -> response::Kind {
+        self.request(request::Kind::UndoArrangement(UndoArrangement {
+            window_id: window,
         }))
         .await
     }

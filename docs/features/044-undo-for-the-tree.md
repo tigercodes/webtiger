@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | **Designed; nothing built.** The choices of §6 are put to the owner |
+| **Status** | **The core and the contract are built and tested, on the recommendations of §6, which are provisional:** they are put to the owner and not yet answered. **No shell offers it, and none will until the owner has said where** (D5, D6): on the Mac the recommendation shares ⌘Z with a field's own undo, which is not a thing to build twice |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "undo". 000 §6.2: "Undo for every organising action, including closing a tab and deleting a Group" |
-| **Contract** | To be 1.34 (§5) |
+| **Contract** | 1.34 (§5). Nothing is kept in the store |
 | **Builds on** | [033](033-a-closed-tab-comes-back.md): the journal's first form, and undo for a closed tab ("each joins the journal with its own feature"). [039](039-sites.md), [041](041-groups.md), [042](042-favourites.md): what is done to the tree, none of which can be undone yet |
 | **Last updated** | 2026-11-22 |
 
@@ -45,7 +45,7 @@ I remove a Group I did not mean to remove, or let go of a Site by the wrong key,
 
 In the core's memory, for the run (D3).
 
-## 5. The contract (to be 1.34)
+## 5. The contract (1.34)
 
 Added; nothing is changed or removed.
 
@@ -58,6 +58,14 @@ message WindowSnapshot { … string undo_arrangement = 13; }   // the kind of th
 ```
 
 `Undo` (033) stays what it is: the closed tab's.
+
+**As built, where the design did not say:**
+
+- **A Group that comes back** (its removal undone) is shut or open as it was when it was removed; one that is still there is as it is now.
+- **A tab that has come since** is after the others when a row is put back: it is no Site, whatever was done to it since having been undone before.
+- **Each window's row has its own line**, as it has its own Groups (041): what is done in one window is not another's to undo.
+- **What is put back is then what is kept** across a quit, as any arrangement is: only the line of what could be undone is the run's.
+- **A kind a shell does not know** is undone all the same: the kind is a name for the command, and nothing goes by it.
 
 ## 6. Decisions
 
@@ -79,15 +87,21 @@ message WindowSnapshot { … string undo_arrangement = 13; }   // the kind of th
 
 ## 8. Tests
 
-To be filled in as built.
+| Where | What |
+|---|---|
+| The core, through the contract (`tree_undo.rs`, 6) | **Each thing, the newest first:** nine things done to a row (a tab kept; a Group made; a tab put in it; the Group named, and coloured; a Favourite made, and unmade; a Site let go; the Group removed), the window told after each what an undo would undo; undone one by one, the row is each time as it was before that thing, and at the end as it began; nothing to undo is refused, and a window there is not; none of it loads a page or destroys a web view. **Not kept:** what changed nothing (a Site kept again, a tab that is none let go or taken out or unmarked, a Group given the name and colour it has), what was refused, and what is no arranging (a Group shut and opened, the layout switched, a tab brought in front); a private window has nothing to undo. **Tabs that have come and gone:** a Group with two Sites removed while shut; then a tab closed, a tab opened, a Site of the Group put to sleep; undone, the Group is back, shut as it was, with its Sites, the sleeping one asleep; the closed tab is not in the row in any way (the row's second place is the tab that came since), and the tab that came since stays; the closed tab comes back by its own undo, which is no arranging. **A Group still there** is shut as it is now. **Each row its own, fifty deep:** another window's row has nothing to undo of this one's; of sixty-one things done the newest fifty are undone, and the row is as it was after the eleventh. **Across a quit** (a store on disk): what was undone is what is kept, and there is nothing of the arrangement to undo afterwards |
+| The rule broken, a part at a time | 19 parts, in the model and where the requests are answered: 18 caught, one once the test looked for a closed tab at the row's second place. The one that was not was no fault: the row was put in a row's order again after an undo, which what is put back already is; taken out of the code |
 
 ## 9. What is not verified
 
-To be filled in as built.
+- **No shell offers it.** The contract has it (1.34) and the window is told what an undo would undo; nothing asks. Where it is asked from is the owner's to say first (D5, D6).
+- **The choices of §6** are the recommendations, not the owner's word.
+- **A long row.** Each thing that arranges a row copies the row's arrangement, twice: nothing for a row of hundreds, and not measured for thousands ([043](043-the-sidebar.md) §8a).
+- **Dragging**, when it comes, is to be one more thing that arranges a row, and is kept the same way: nothing here needs to change for it, and nothing here was tested with it.
 
 ## 10. Done checklist
 
 - [ ] The owner's word on §6.
-- [ ] The core and the contract.
+- [x] The core and the contract.
 - [ ] The shells.
 - [ ] `Tools/test.sh all` green, and `android-device`.

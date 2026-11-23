@@ -214,6 +214,18 @@ message SetLayout {
   Layout layout = 2;
 }
 
+// Since 1.34. Undoes the newest thing done to arrange the row a window shows
+// (044): a tab kept or let go, a Group made, named, coloured or removed, a tab
+// put in a Group or taken out, a Favourite made or unmade. The row is put
+// back as it was before that: every tab that is still in it is what it was,
+// and where it was among those; a tab closed since stays closed (Undo is its
+// way back), and one opened since stays. No page is loaded, closed, put to
+// sleep or woken by it. It is apart from Undo, which is a closed tab's.
+// Answered with Ack; "window.unknown"; or "undo.nothing".
+message UndoArrangement {
+  uint64 window_id = 1;
+}
+
 // A window, as its subscription publishes it.
 message WindowSnapshot {
   uint64 window_id = 1;
@@ -256,6 +268,12 @@ message WindowSnapshot {
   // row, its order and everything else here are the same in every layout.
   // A shell that cannot draw the one named draws the strip.
   Layout layout = 12;
+  // Since 1.34. What UndoArrangement would undo in the row the window shows
+  // (044), by its kind: "site.kept", "site.let_go", "group.made",
+  // "group.removed", "group.renamed", "group.coloured", "group.moved",
+  // "favourite.added", "favourite.removed"; empty when there is nothing. A
+  // kind a shell does not know is undone all the same: it is named only.
+  string undo_arrangement = 13;
 }
 
 // A tab as a strip of tabs shows it: enough to name it, and no more.

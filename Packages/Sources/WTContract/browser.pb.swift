@@ -584,6 +584,26 @@ public nonisolated struct WTSetLayout: Sendable {
   public init() {}
 }
 
+/// Since 1.34. Undoes the newest thing done to arrange the row a window shows
+/// (044): a tab kept or let go, a Group made, named, coloured or removed, a tab
+/// put in a Group or taken out, a Favourite made or unmade. The row is put
+/// back as it was before that: every tab that is still in it is what it was,
+/// and where it was among those; a tab closed since stays closed (Undo is its
+/// way back), and one opened since stays. No page is loaded, closed, put to
+/// sleep or woken by it. It is apart from Undo, which is a closed tab's.
+/// Answered with Ack; "window.unknown"; or "undo.nothing".
+public nonisolated struct WTUndoArrangement: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var windowID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 /// A window, as its subscription publishes it.
 public nonisolated struct WTWindowSnapshot: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
@@ -648,6 +668,13 @@ public nonisolated struct WTWindowSnapshot: Sendable {
   /// row, its order and everything else here are the same in every layout.
   /// A shell that cannot draw the one named draws the strip.
   public var layout: WTLayout = .unspecified
+
+  /// Since 1.34. What UndoArrangement would undo in the row the window shows
+  /// (044), by its kind: "site.kept", "site.let_go", "group.made",
+  /// "group.removed", "group.renamed", "group.coloured", "group.moved",
+  /// "favourite.added", "favourite.removed"; empty when there is nothing. A
+  /// kind a shell does not know is undone all the same: it is named only.
+  public var undoArrangement: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2780,9 +2807,39 @@ nonisolated extension WTSetLayout: SwiftProtobuf.Message, SwiftProtobuf._Message
   }
 }
 
+nonisolated extension WTUndoArrangement: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UndoArrangement"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.windowID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.windowID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.windowID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTUndoArrangement, rhs: WTUndoArrangement) -> Bool {
+    if lhs.windowID != rhs.windowID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".WindowSnapshot"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0\u{3}downloads_active\0\u{3}space_id\0\u{3}space_name\0\u{3}space_colour\0\u{1}undo\0\u{3}private_window\0\u{1}groups\0\u{3}favourites_full\0\u{1}layout\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0\u{3}downloads_active\0\u{3}space_id\0\u{3}space_name\0\u{3}space_colour\0\u{1}undo\0\u{3}private_window\0\u{1}groups\0\u{3}favourites_full\0\u{1}layout\0\u{3}undo_arrangement\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2802,6 +2859,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 10: try { try decoder.decodeRepeatedMessageField(value: &self.groups) }()
       case 11: try { try decoder.decodeSingularBoolField(value: &self.favouritesFull) }()
       case 12: try { try decoder.decodeSingularEnumField(value: &self.layout) }()
+      case 13: try { try decoder.decodeSingularStringField(value: &self.undoArrangement) }()
       default: break
       }
     }
@@ -2848,6 +2906,9 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
     if self.layout != .unspecified {
       try visitor.visitSingularEnumField(value: self.layout, fieldNumber: 12)
     }
+    if !self.undoArrangement.isEmpty {
+      try visitor.visitSingularStringField(value: self.undoArrangement, fieldNumber: 13)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2864,6 +2925,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.groups != rhs.groups {return false}
     if lhs.favouritesFull != rhs.favouritesFull {return false}
     if lhs.layout != rhs.layout {return false}
+    if lhs.undoArrangement != rhs.undoArrangement {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

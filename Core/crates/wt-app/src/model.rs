@@ -795,7 +795,34 @@ struct Row {
     front: TabId,
     /// The Groups, in their order.
     groups: Vec<Group>,
+    /// The row's arrangement before each of the newest things done to
+    /// arrange it (044), the newest last: what undoing them puts back.
+    arrangements: Vec<Arrangement>,
 }
+
+/// A row's arrangement as it was before something was done to it (044).
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Arrangement {
+    /// What was then done, by the kind a window is told an undo would undo.
+    kind: &'static str,
+    /// The Groups there were.
+    groups: Vec<Group>,
+    /// The row's tabs, in their order, each as it was.
+    tabs: Vec<Arranged>,
+}
+
+/// A tab as an arrangement has it: whether it was a Site, and of which
+/// home and name; the Group it was in; whether it was a Favourite.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Arranged {
+    tab: TabId,
+    site: Option<Site>,
+    group: Option<GroupId>,
+    favourite: bool,
+}
+
+/// How many arrangements a row keeps to go back to (044).
+const MOST_ARRANGEMENTS: usize = 50;
 
 /// A Group of a row (041): a folder of Sites, one level deep.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1119,6 +1146,7 @@ impl State {
             tabs,
             front,
             groups,
+            arrangements: Vec::new(),
         };
         // What was kept is in a row's order already; a store that was
         // meddled with is put in it.
@@ -1548,8 +1576,122 @@ impl State {
         Ok(())
     }
 
+    /// The row a tab is in: its window, and the Space whose row it is.
+    pub(crate) fn row_of_tab(&self, tab: TabId) -> Option<(WindowId, SpaceId)> {
+        self.tabs.get(&tab).map(|tab| (tab.window, tab.space))
+    }
+
+    /// The row a window shows.
+    pub(crate) fn row_shown(&self, window: WindowId) -> Option<(WindowId, SpaceId)> {
+        self.windows.get(&window).map(|found| (window, found.space))
+    }
+
+    /// A row's arrangement as it is now (044).
+    fn arrangement(&self, row: (WindowId, SpaceId), kind: &'static str) -> Option<Arrangement> {
+        let found = self.windows.get(&row.0)?.rows.get(&row.1)?;
+        Some(Arrangement {
+            kind,
+            groups: found.groups.clone(),
+            tabs: found
+                .tabs
+                .iter()
+                .filter_map(|id| {
+                    let tab = self.tabs.get(id)?;
+                    Some(Arranged {
+                        tab: *id,
+                        site: tab.site.clone(),
+                        group: tab.group,
+                        favourite: tab.favourite,
+                    })
+                })
+                .collect(),
+        })
+    }
+
+    /// Does one of the things that arrange a row (044), and keeps the
+    /// arrangement the row had before it, when the doing changed it: what
+    /// an undo puts back. A thing that changed nothing is not kept; nor is
+    /// anything of a row there is not.
+    pub(crate) fn arranging<T>(
+        &mut self,
+        row: Option<(WindowId, SpaceId)>,
+        kind: &'static str,
+        action: impl FnOnce(&mut State) -> T,
+    ) -> T {
+        let before = row.and_then(|row| self.arrangement(row, kind));
+        let done = action(self);
+        if let (Some(row), Some(before)) = (row, before)
+            && self.arrangement(row, kind).as_ref() != Some(&before)
+            && let Some(found) = self
+                .windows
+                .get_mut(&row.0)
+                .and_then(|window| window.rows.get_mut(&row.1))
+        {
+            found.arrangements.push(before);
+            if found.arrangements.len() > MOST_ARRANGEMENTS {
+                found.arrangements.remove(0);
+            }
+            self.dirty.insert(row.0);
+        }
+        done
+    }
+
+    /// Undoes the newest thing done to arrange the row a window shows
+    /// (044): the row is put back as it was before it. Every tab that is
+    /// still in the row is what it was, and where it was among those; a tab
+    /// that has come since stays; the Groups are those there were, each shut
+    /// or open as it is now when it is still there. The code to refuse with.
+    pub(crate) fn undo_arrangement(&mut self, window_id: WindowId) -> Result<(), &'static str> {
+        let window = self.windows.get_mut(&window_id).ok_or("window.unknown")?;
+        let space = window.space;
+        let row = window.rows.get_mut(&space).ok_or("window.unknown")?;
+        let was = row.arrangements.pop().ok_or("undo.nothing")?;
+        let shut_now: BTreeMap<GroupId, bool> = row
+            .groups
+            .iter()
+            .map(|group| (group.id, group.shut))
+            .collect();
+        row.groups = was
+            .groups
+            .into_iter()
+            .map(|mut group| {
+                if let Some(shut) = shut_now.get(&group.id) {
+                    group.shut = *shut;
+                }
+                group
+            })
+            .collect();
+        // The tabs that are still in the row, in the order they had; then
+        // those that have come since, in theirs.
+        let here: BTreeSet<TabId> = row.tabs.iter().copied().collect();
+        let then: BTreeSet<TabId> = was.tabs.iter().map(|arranged| arranged.tab).collect();
+        let mut order: Vec<TabId> = was
+            .tabs
+            .iter()
+            .map(|arranged| arranged.tab)
+            .filter(|id| here.contains(id))
+            .collect();
+        order.extend(row.tabs.iter().copied().filter(|id| !then.contains(id)));
+        row.tabs = order;
+        for arranged in was.tabs {
+            if here.contains(&arranged.tab)
+                && let Some(tab) = self.tabs.get_mut(&arranged.tab)
+            {
+                tab.site = arranged.site;
+                tab.group = arranged.group;
+                tab.favourite = arranged.favourite;
+            }
+        }
+        // (The row is in a row's order: it was when it was kept, a tab that
+        // has gone leaves the rest in theirs, and one that has come since is
+        // no Site, whatever was done to it since having been undone before
+        // this was, and is after the others.)
+        self.dirty.insert(window_id);
+        Ok(())
+    }
+
     /// The window and the Space whose row a Group is in.
-    fn row_of_group(&self, group: GroupId) -> Option<(WindowId, SpaceId)> {
+    pub(crate) fn row_of_group(&self, group: GroupId) -> Option<(WindowId, SpaceId)> {
         self.windows.iter().find_map(|(id, window)| {
             window
                 .rows
@@ -2857,6 +2999,10 @@ impl State {
                 })
                 .collect(),
             layout: window.layout as i32,
+            undo_arrangement: row
+                .arrangements
+                .last()
+                .map_or_else(String::new, |was| was.kind.to_owned()),
             favourites_full: favourites >= MOST_FAVOURITES,
             downloads_active: self
                 .downloads_active

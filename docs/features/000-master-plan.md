@@ -846,7 +846,7 @@ Three features of W2 are built on the recommendations of their own documents, th
 6. The command: "Tabs at the Side" and "Tabs at the Top"; on the Mac in the View menu, ⌃⌘S.
 7. On a touch screen the switch is a button beside Find, Zoom and History; with a keyboard ⌃⌘S on an iPad and Ctrl+Shift+S on Android.
 
-**Undo for the tree** ([044](044-undo-for-the-tree.md) §6, put on 2026-11-22; designed, not built):
+**Undo for the tree** ([044](044-undo-for-the-tree.md) §6, put on 2026-11-22; built in the core, and in no shell until 5 and 6 are answered):
 
 1. Two ways back, apart: "Reopen Closed Tab" as it is, and an undo of its own for what is done to arrange a row.
 2. The whole arrangement is kept and put back, not the one thing that was done.

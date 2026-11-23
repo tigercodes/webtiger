@@ -384,6 +384,19 @@ pub struct SetLayout {
     #[prost(enumeration = "Layout", tag = "2")]
     pub layout: i32,
 }
+/// Since 1.34. Undoes the newest thing done to arrange the row a window shows
+/// (044): a tab kept or let go, a Group made, named, coloured or removed, a tab
+/// put in a Group or taken out, a Favourite made or unmade. The row is put
+/// back as it was before that: every tab that is still in it is what it was,
+/// and where it was among those; a tab closed since stays closed (Undo is its
+/// way back), and one opened since stays. No page is loaded, closed, put to
+/// sleep or woken by it. It is apart from Undo, which is a closed tab's.
+/// Answered with Ack; "window.unknown"; or "undo.nothing".
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct UndoArrangement {
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
+}
 /// A window, as its subscription publishes it.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WindowSnapshot {
@@ -439,6 +452,13 @@ pub struct WindowSnapshot {
     /// A shell that cannot draw the one named draws the strip.
     #[prost(enumeration = "Layout", tag = "12")]
     pub layout: i32,
+    /// Since 1.34. What UndoArrangement would undo in the row the window shows
+    /// (044), by its kind: "site.kept", "site.let_go", "group.made",
+    /// "group.removed", "group.renamed", "group.coloured", "group.moved",
+    /// "favourite.added", "favourite.removed"; empty when there is nothing. A
+    /// kind a shell does not know is undone all the same: it is named only.
+    #[prost(string, tag = "13")]
+    pub undo_arrangement: ::prost::alloc::string::String,
 }
 /// A tab as a strip of tabs shows it: enough to name it, and no more.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -2248,7 +2268,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -2371,6 +2391,9 @@ pub mod request {
         /// Since 1.33
         #[prost(message, tag = "46")]
         SetLayout(super::SetLayout),
+        /// Since 1.34
+        #[prost(message, tag = "47")]
+        UndoArrangement(super::UndoArrangement),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.
