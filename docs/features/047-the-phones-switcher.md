@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Built and tested in the core, the Apple shell and the Android shell, on the recommendations of §6, which are provisional:** they are put to the owner and not yet answered. A phone's toolbar has the button, and the switcher has the whole row |
+| **Status** | **Built and tested in the core, the Apple shell and the Android shell, on the recommendations of §6.** D2 and D3, where its button is and that the strip stays, are the owner's (WT-D34, 2026-11-23: "use suggested choices for the blocked items"); D1, D4 and D5 are still the recommendations. A phone's toolbar has the button, and the switcher has the whole row |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "the phone switcher". 000 §6.4: "The tab switcher is a full-height sheet. The layout setting chooses its form: the same tree as the sidebar, or cards" |
 | **Contract** | 1.38 (§5): one number. The switcher itself draws the row a window is told already |
 | **Builds on** | [043](043-the-sidebar.md): the sidebar's parts, which are the switcher's; and its D3, "a phone has no sidebar". [041](041-groups.md) §9: "A phone's strip is narrow. With Groups the row is longer, and a phone shows the part round the tab in front" |

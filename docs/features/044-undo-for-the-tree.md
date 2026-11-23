@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **The core and the contract are built and tested, on the recommendations of §6, which are provisional:** they are put to the owner and not yet answered. **No shell offers it, and none will until the owner has said where** (D5, D6): on the Mac the recommendation shares ⌘Z with a field's own undo, which is not a thing to build twice |
+| **Status** | **The core and the contract are built and tested, on the recommendations of §6.** D5 and D6, where it is asked from, are the owner's (WT-D32, 2026-11-23: "use suggested choices for the blocked items"); D1 to D4 are still the recommendations. **No shell offers it yet:** the shells are next |
 | **Phase** | W2 of [000](000-master-plan.md) §9: "undo". 000 §6.2: "Undo for every organising action, including closing a tab and deleting a Group" |
 | **Contract** | 1.34 (§5). Nothing is kept in the store |
 | **Builds on** | [033](033-a-closed-tab-comes-back.md): the journal's first form, and undo for a closed tab ("each joins the journal with its own feature"). [039](039-sites.md), [041](041-groups.md), [042](042-favourites.md): what is done to the tree, none of which can be undone yet |

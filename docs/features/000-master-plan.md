@@ -812,6 +812,9 @@ W1 to W4 are the critical path. W5 to W9 can be reordered by what is wanted firs
 | WT-D29 | What a Site is | A tab that is kept: first in its row; closed, it sleeps at its home and stays; brought in front, it wakes there; closing one never wakes another; it is of the row it was kept in; none in a private window. The words are "Site", "Keep as Site", "Stop Keeping"; the key is ⌘D on a Mac and Ctrl+D on Android; in the strip a Site has a mark, and is drawn fainter asleep ([039](039-sites.md) §6). The owner's, 2026-11-22, on the seven choices as recommended | A closed Site sleeping where it was, or Arc's two closes; "Pin Tab"; no key yet |
 | WT-D30 | One catalogue of words, at build time | Every user-visible string is in one file; one Rust tool in `Core/` writes every platform's file from it, and `lint` fails on either machine when one is stale; Swift asks by generated name, so a deleted string stops the build; a string must take the same arguments in every language and on every platform. No shell asks the core for a word while it runs, and no word is fetched from anywhere ([040](040-one-catalogue-of-words.md)). The owner's, 2026-11-22: no cost in speed or in safety | Words asked of the core at run time; words fetched from a server |
 | WT-D31 | A Site's home that moves | Where a load of a Site's home lands is its home: an address that sends the browser on to another is at that other ([039](039-sites.md) §7b). The owner's, 2026-11-22: "the site that is redirected to should be the decided home page for that site" | The Site is away at once, and its home is the address it was kept at for ever |
+| WT-D32 | Where undo for the tree is asked from | On the Mac in the Edit menu, ⌘Z, when the keyboard is not in a field of words; on a touch screen in the menu of the thing nearest to what was done ([044](044-undo-for-the-tree.md) D5, D6). The owner's, 2026-11-23, when told these held up dragging: "use suggested choices for the blocked items" | The File menu with a key of its own; a line across the window with "Undo" after each thing done |
+| WT-D33 | A page's icon where the engine hands none over | On Apple's systems the app fetches the icon a page names itself: one request, with no cookie and no login, nothing kept of what comes back but the picture ([046](046-a-sites-icon.md) D1). The owner's, 2026-11-23, in the same words | In the page, by a script; or no icons on Apple's systems |
+| WT-D34 | The switcher's button on a phone | At the end of the toolbar, after the address field; and the strip stays on a phone ([047](047-the-phones-switcher.md) D2, D3). The owner's, 2026-11-23, in the same words, on what was built as provisional | In the strip, with Find, Zoom and History gone into one button's menu; or no strip on a phone |
 
 ### 11.1 Built on a recommendation, waiting for the owner
 
@@ -846,14 +849,14 @@ Four features of W2 are built on the recommendations of their own documents, the
 6. The command: "Tabs at the Side" and "Tabs at the Top"; on the Mac in the View menu, ⌃⌘S.
 7. On a touch screen the switch is a button beside Find, Zoom and History; with a keyboard ⌃⌘S on an iPad and Ctrl+Shift+S on Android.
 
-**Undo for the tree** ([044](044-undo-for-the-tree.md) §6, put on 2026-11-22; built in the core, and in no shell until 5 and 6 are answered):
+**Undo for the tree** ([044](044-undo-for-the-tree.md) §6, put on 2026-11-22; built in the core; 5 and 6 are decided, WT-D32, and the shells follow):
 
 1. Two ways back, apart: "Reopen Closed Tab" as it is, and an undo of its own for what is done to arrange a row.
 2. The whole arrangement is kept and put back, not the one thing that was done.
 3. For the run only: nothing of the arrangement to undo after a quit.
 4. The command says what it undoes ("Undo Remove Group").
-5. On the Mac in the Edit menu, ⌘Z, when the keyboard is not in a field of words.
-6. On a touch screen in the menu of the thing nearest to what was done.
+5. ~~On the Mac in the Edit menu, ⌘Z, when the keyboard is not in a field of words.~~ Decided: WT-D32.
+6. ~~On a touch screen in the menu of the thing nearest to what was done.~~ Decided: WT-D32.
 
 **Moving in the row** ([045](045-moving-in-the-row.md) §6, put on 2026-11-22; 1 to 4 built in the core and 6 in the shells; 5, dragging, not built):
 
@@ -866,7 +869,7 @@ Four features of W2 are built on the recommendations of their own documents, the
 
 **A site's icon** ([046](046-a-sites-icon.md) §6, put on 2026-11-23; 2, 3 and 5 built in the core and 6 on Android, where icons are drawn; the first is the owner's to say before Apple's part is built):
 
-1. **On Apple's systems the app fetches a page's icon itself** (WebKit hands none over): one request for the picture the page named, with no cookie and no login. It is a request the web engine did not make, and the picture is decoded in the app.
+1. ~~**On Apple's systems the app fetches a page's icon itself** (WebKit hands none over): one request for the picture the page named, with no cookie and no login. It is a request the web engine did not make, and the picture is decoded in the app.~~ Decided: WT-D33.
 2. An icon is kept for a host in the login set it came from, and is not shown in another.
 3. A Site shows its home's icon, wherever it has wandered.
 4. The page's own icon nearest 64 points; PNG, ICO, JPEG and GIF; no SVG yet.
@@ -876,8 +879,8 @@ Four features of W2 are built on the recommendations of their own documents, the
 **The phone's switcher** ([047](047-the-phones-switcher.md) §6, put on 2026-11-23; built as recommended, on the iPhone and on Android):
 
 1. The sidebar's tree in a sheet first; cards when there are pictures of pages.
-2. Its button at the end of the toolbar, after the address field: a square with the number of tabs in it.
-3. The strip stays on a phone.
+2. ~~Its button at the end of the toolbar, after the address field: a square with the number of tabs in it.~~ Decided: WT-D34.
+3. ~~The strip stays on a phone.~~ Decided: WT-D34.
 4. The number is of all the row's tabs, those of shut Groups among them.
 5. The sheet covers the page, with the Space's name at its head.
 

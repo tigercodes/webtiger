@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Built and tested in the core and on Android, on the recommendations of §6, which are provisional:** the System WebView hands a page's icon over, the core keeps it for its host in its login set, and Android's window draws it before a tab's name and as a Favourite's tile. **Not built on Apple's systems,** where the app would have to fetch the picture itself (D1): that is the owner's to say first |
+| **Status** | **Built and tested in the core and on Android, on the recommendations of §6, which are provisional:** the System WebView hands a page's icon over, the core keeps it for its host in its login set, and Android's window draws it before a tab's name and as a Favourite's tile. **Not built yet on Apple's systems,** where the app fetches the picture itself: D1 is the owner's (WT-D33, 2026-11-23: "use suggested choices for the blocked items"), and Apple's part follows |
 | **Phase** | W2 of [000](000-master-plan.md) §9. 000 §5.6: "Favourites. A row of icon tiles at the top of a Space" |
 | **Contract** | 1.37 for what is built (§5); the rest to come. The store's schema is 13: a table of icons (§4) |
 | **Builds on** | [042](042-favourites.md) D4: "Until sites have icons, a tile shows the first letter of the Site's name". [039](039-sites.md) D5: a Site's mark before its name, "icons alone need favicons, which are not fetched yet". [024](024-several-spaces.md): a login set is one data store, and nothing of one is seen in another |
