@@ -151,6 +151,17 @@ Two rules every adapter keeps, found while building the first (and now in `engin
 
 `WEBTIGER_FAKE=1`: the store is in memory, the login set's id and the clock are fixed, nothing on the device is read or written. `WEBTIGER_FAKE_START=<address>` is opened in every new window. The engine stays real: UI tests load pages from a site on the loopback address, served from inside the test process. (The Mac's UI-test runner is sandboxed and needs the network-server entitlement to do that; `project.yml` gives it.)
 
+**What pages keep is in memory too, on Apple's systems** (the owner's, WT-D35, 2026-11-23). The core's store was in memory and the engine's was not: in fake mode a login set has the same id at every start, and WebKit keeps a login set's data on disk by its id, so a cookie with an expiry that one test's page was given was there for the next test, at every port of the loopback address. (Found when a new test signed in with such a cookie, and seven tests after it found somebody signed in: [046](046-a-sites-icon.md) §8.) Now the app's engine is made, in fake mode, to keep what pages keep in memory: each login set has a store of its own still, held while the app runs, so that Spaces are apart and a tab that sleeps wakes signed in; and nothing is written. Started for real, and on a profile, it is on disk as before.
+
+| Where | What |
+|---|---|
+| The adapter suite (`WebKitWebDataTests`, 3, real WebKit and the test site, on the Mac and the iPhone simulator) | Signed in, in an engine made to keep in memory, with a cookie that is to be kept for an hour: the login set's next web view is signed in still (the engine holds the store); another such engine, as the app started again, finds nobody; and an engine that keeps finds nothing of it on disk. The same with engines that keep: the second finds who the first signed in. Two login sets in memory share nothing, each signed in as its own. A login set in memory is not deleted while a web view uses it, and deleted leaves nothing; one never used has nothing to delete |
+| The session's choices (`ProfileTests`, 2 more) | In fake mode what pages keep is kept in memory, and started for real on disk; an engine nobody made otherwise keeps. And the choice that came with icons (046 §5a), which had no test of its own: started for real icons are fetched from the web, whatever a suite's switch says; in fake mode from nowhere, and with the switch from this device only |
+| The apps (`FakeModeTests`, 1, on the Mac and the iPhone simulator) | Signed in at the site with a cookie that is to be kept: signed in while the app runs; the app ended and started again, nobody is signed in, and the site was asked with no cookie |
+| Broken, a part at a time | 12 parts, in the engine and in the session's choices: 12 caught |
+
+**Not verified, and not done:** Android. The System WebView has no login set in memory (a profile is always on disk, 037), so there what a page keeps in fake mode is on disk still, and its device tests are written not to count on a clean one. Kinds of data other than a cookie (storage, caches, service workers) are kept apart and in memory by the same store, and were not each tried.
+
 The showcase of Spaces and pages, memory-pressure injection and a pinned clock (000 §8.10) arrive with the features that need them.
 
 ## 8. Testing

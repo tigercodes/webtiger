@@ -17,11 +17,9 @@ class AppTestCase: XCTestCase {
 
     /// Starts the app in fake mode, at an address or at an empty tab.
     ///
-    /// What the app's pages keep (a cookie with an expiry, storage) outlives the test: in fake
-    /// mode the window's login set is the same one at every start, and its web data is the
-    /// engine's, on disk. A test that signs in, in a window that is not a private one, does
-    /// it for the session only (the site's `/session`), which the engine keeps in memory:
-    /// a cookie that is kept (`/set`) signs the next test's window in too.
+    /// Nothing a page keeps outlives the app in fake mode (a cookie with an expiry, storage):
+    /// the engine keeps it in memory there, as the core keeps its store. Each test starts
+    /// with nobody signed in anywhere, whatever the test before it did.
     func launch(start: String?, firstRun: Bool = false, icons: Bool = false) -> XCUIApplication {
         let app = inFakeMode(start: start, firstRun: firstRun)
         if icons {

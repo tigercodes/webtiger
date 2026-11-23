@@ -31,6 +31,24 @@
             XCTAssertEqual(WebKitEngine().deviceAccess, .never, "and an engine nobody made otherwise is a test's")
         }
 
+        func testInFakeModeWhatPagesKeepIsKeptInMemory() {
+            // So that nothing of one run of a suite is there in the next (WT-D35).
+            XCTAssertEqual(BrowserSession.webData(fake: true), .inMemory)
+            XCTAssertEqual(BrowserSession.webData(fake: false), .kept)
+            XCTAssertEqual(WebKitEngine().webData, .kept, "an engine nobody made otherwise keeps")
+        }
+
+        func testOnlyTheAppStartedForRealFetchesIconsFromTheWeb() {
+            // In fake mode nothing is fetched (046 §5a), unless a suite says so: and then
+            // from this device only, where its site is.
+            XCTAssertEqual(BrowserSession.iconFetching(fake: false, environment: [:]), .web)
+            XCTAssertEqual(BrowserSession.iconFetching(fake: false, environment: ["WEBTIGER_FAKE_ICONS": "1"]), .web)
+            XCTAssertEqual(BrowserSession.iconFetching(fake: true, environment: [:]), .never)
+            XCTAssertEqual(BrowserSession.iconFetching(fake: true, environment: ["WEBTIGER_FAKE_ICONS": "0"]), .never)
+            XCTAssertEqual(BrowserSession.iconFetching(fake: true, environment: ["WEBTIGER_FAKE_ICONS": "1"]), .thisDevice)
+            XCTAssertEqual(WebKitEngine().iconFetching, .never, "and an engine nobody made otherwise fetches none")
+        }
+
         /// What opens a downloaded file (030), by how the app was started. In fake mode nothing
         /// does, and nothing of the system's is shown, though the file is there; started for
         /// real, an iPhone's preview is given the file. (A Mac started for real hands the file

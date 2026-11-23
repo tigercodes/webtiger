@@ -39,9 +39,10 @@ public final class BrowserSession {
     #if WEBTIGER_CORE
         /// Starts the Rust core for this process.
         ///
-        /// Fake mode, for UI suites and screenshots: `WEBTIGER_FAKE=1` keeps the store in memory
-        /// and makes ids deterministic; `WEBTIGER_FAKE_START` names an address every new window
-        /// opens. Nothing leaves the app in it: a link for the system opens no other app.
+        /// Fake mode, for UI suites and screenshots: `WEBTIGER_FAKE=1` keeps the store in memory,
+        /// and what pages keep too, and makes ids deterministic; `WEBTIGER_FAKE_START` names an
+        /// address every new window opens. Nothing leaves the app in it: a link for the system
+        /// opens no other app.
         ///
         /// A profile, for a test that must outlive a quit, or for running the app without
         /// touching one's own data: `WEBTIGER_PROFILE=<name>` keeps everything in a folder of
@@ -81,14 +82,9 @@ public final class BrowserSession {
                 opener = .system
                 downloads = Self.downloadsFolder(profile: profile, data: folder)
             }
-            let engine = WebKitEngine(downloads: downloads, deviceAccess: deviceAccess(fake: config.testMode == .fake))
-            // A page's icon is fetched by the app itself (046 §5a). In fake mode nothing is,
-            // unless a suite asks: and then only from this device, where its site is.
-            if config.testMode != .fake {
-                engine.iconFetching = .web
-            } else if environment["WEBTIGER_FAKE_ICONS"] == "1" {
-                engine.iconFetching = .thisDevice
-            }
+            let fake = config.testMode == .fake
+            let engine = WebKitEngine(downloads: downloads, deviceAccess: deviceAccess(fake: fake), webData: webData(fake: fake))
+            engine.iconFetching = iconFetching(fake: fake, environment: environment)
             #if os(macOS)
                 // A page's file input opens the system's picker (019). Not in fake mode: its
                 // engine picks nothing, and shows nothing of the system's.
@@ -125,6 +121,21 @@ public final class BrowserSession {
         /// the screen, which a UI suite must never do.
         static func deviceAccess(fake: Bool) -> DeviceAccess {
             fake ? .never : .asTheCoreSays
+        }
+
+        /// Where what pages keep is kept (their cookies, their storage). In fake mode in memory,
+        /// as the core's store is: nothing of one run is there in the next, so that a suite's
+        /// test finds nothing another left (the owner's, WT-D35). Otherwise on disk.
+        static func webData(fake: Bool) -> WebKitEngine.WebData {
+            fake ? .inMemory : .kept
+        }
+
+        /// Whether the app fetches a page's icon itself (046 §5a), and from where. Started for
+        /// real, from the web. In fake mode from nowhere, unless a suite says so
+        /// (`WEBTIGER_FAKE_ICONS=1`): and then from this device only, where its site is.
+        static func iconFetching(fake: Bool, environment: [String: String]) -> WebKitEngine.IconFetching {
+            guard fake else { return .web }
+            return environment["WEBTIGER_FAKE_ICONS"] == "1" ? .thisDevice : .never
         }
 
         /// Where the app saves downloads (013): the system's place for them. A profile's go in
