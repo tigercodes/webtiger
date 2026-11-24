@@ -6,7 +6,8 @@ use std::time::Duration;
 
 use wt_core::{TabId, WebViewId};
 use wt_proto::v1::{
-    CoreConfig, DeviceKind, WebViewDestroy, WebViewSaveState, host_request, host_response,
+    CoreConfig, DeviceKind, MemoryLevel, WebViewDestroy, WebViewSaveState, host_request,
+    host_response,
 };
 
 use crate::app::App;
@@ -93,6 +94,17 @@ impl App {
     /// this returns, each as the time would have put it to sleep.
     pub(crate) fn sleep_over_the_limit(&self) {
         let due = self.state.borrow_mut().over_the_limit(self.live_tabs);
+        self.let_go(due);
+    }
+
+    /// The system is short of memory (055): the tabs that are out of sight
+    /// with no reason to be awake are asleep when this returns, each as the
+    /// time would have put it to sleep; and when it is very short, the tabs
+    /// that are only on their way too. A level this core does not know is
+    /// taken for short. Done once, and nothing lasts.
+    pub fn memory_short(&self, level: i32) {
+        let very = matches!(MemoryLevel::try_from(level), Ok(MemoryLevel::VeryShort));
+        let due = self.state.borrow_mut().short_of_memory(very);
         self.let_go(due);
     }
 

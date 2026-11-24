@@ -252,6 +252,12 @@ public nonisolated struct WTFakeOptions: Sendable {
   /// about something else.
   public var liveTabs: UInt32 = 0
 
+  /// Since 1.48. The core acts as though it had been told the system is
+  /// short of memory (055, MemoryShort with MEMORY_LEVEL_SHORT), every so
+  /// many seconds, for a suite that must see what follows: no suite may make
+  /// a system short of memory. 0: never.
+  public var memoryShortEverySeconds: UInt32 = 0
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -376,7 +382,7 @@ nonisolated extension WTCoreConfig: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".FakeOptions"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}start_address\0\u{3}first_run\0\u{3}seconds_a_read\0\u{3}sleep_after_seconds\0\u{3}live_tabs\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}start_address\0\u{3}first_run\0\u{3}seconds_a_read\0\u{3}sleep_after_seconds\0\u{3}live_tabs\0\u{3}memory_short_every_seconds\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -389,6 +395,7 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
       case 3: try { try decoder.decodeSingularUInt32Field(value: &self.secondsARead) }()
       case 4: try { try decoder.decodeSingularUInt32Field(value: &self.sleepAfterSeconds) }()
       case 5: try { try decoder.decodeSingularUInt32Field(value: &self.liveTabs) }()
+      case 6: try { try decoder.decodeSingularUInt32Field(value: &self.memoryShortEverySeconds) }()
       default: break
       }
     }
@@ -410,6 +417,9 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if self.liveTabs != 0 {
       try visitor.visitSingularUInt32Field(value: self.liveTabs, fieldNumber: 5)
     }
+    if self.memoryShortEverySeconds != 0 {
+      try visitor.visitSingularUInt32Field(value: self.memoryShortEverySeconds, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -419,6 +429,7 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if lhs.secondsARead != rhs.secondsARead {return false}
     if lhs.sleepAfterSeconds != rhs.sleepAfterSeconds {return false}
     if lhs.liveTabs != rhs.liveTabs {return false}
+    if lhs.memoryShortEverySeconds != rhs.memoryShortEverySeconds {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

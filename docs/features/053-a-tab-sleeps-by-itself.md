@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Built and tested, on the recommendations of §6, which are provisional:** they are put to the owner and not yet answered. A tab that has been out of sight for half an hour, with no reason to be awake, is put to sleep by the browser on every system, keeps what [051](051-a-tabs-kept-state.md) has it keep, and wakes as it was. The limit of live tabs is [054](054-the-limit-of-live-tabs.md); the system's shortage of memory is not built |
+| **Status** | **Built and tested, on the recommendations of §6, which are provisional:** they are put to the owner and not yet answered. A tab that has been out of sight for half an hour, with no reason to be awake, is put to sleep by the browser on every system, keeps what [051](051-a-tabs-kept-state.md) has it keep, and wakes as it was. The limit of live tabs is [054](054-the-limit-of-live-tabs.md); the system's shortage of memory is [055](055-the-system-short-of-memory.md) |
 | **Phase** | W3 of [000](000-master-plan.md) §9. 000 §5.7: "A tab goes to sleep when any of these holds: it has been in the background past the sleep time (30 minutes by default on desktop); the system reports memory pressure; the number of live tabs passes the device's limit". The third of W3: the first of those three, the sleep time |
 | **Contract** | 1.46 (§4): only what a suite needs to see a tab sleep without waiting half an hour |
 | **Builds on** | [051](051-a-tabs-kept-state.md): what a tab that sleeps keeps, and how it wakes. [052](052-what-keeps-a-tab-awake.md): the reasons a tab is not put to sleep. [039](039-sites.md): a Site sleeps at its home. [049](049-tidying-temporary-tabs.md): the core's look, once a minute |
@@ -19,7 +19,7 @@ I have forty tabs open. Most of them I have not looked at since this morning, an
 **Not in, each with where it goes:**
 
 - **The limit of live tabs,** and what kind of device this is: the next of W3 ([054](054-the-limit-of-live-tabs.md), built since). It needs the shells to say what they run on.
-- **The system short of memory:** after that. It needs a shell to say so.
+- **The system short of memory:** after that ([055](055-the-system-short-of-memory.md), built since). It needs a shell to say so.
 - **A setting for the sleep time,** and "never": with settings. Until then the time is the plan's, half an hour.
 - **A Site marked "keep awake":** with the Sites' own settings.
 - **A mark for why a tab is awake,** and a different look for a tab the browser put to sleep: none. It looks as a sleeping tab looks today.

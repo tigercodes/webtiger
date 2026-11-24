@@ -26,12 +26,19 @@ class AppTestCase: XCTestCase {
     /// been out of sight for that many seconds is put to sleep, and not after half an hour:
     /// for a test that must see one sleep (053). With `liveTabs`, no more tabs than that are
     /// alive at once, where fake mode has no limit: for a test that must see it met (054).
+    /// With `memoryShortEvery`, the core acts every so many seconds as though the system had
+    /// said it is short of memory: for a test that must see what follows (055). No test
+    /// makes a system short of memory.
     func launch(
-        start: String?, firstRun: Bool = false, icons: Bool = false, clockStep: Int = 0, sleepAfter: Int = 0, liveTabs: Int = 0
+        start: String?, firstRun: Bool = false, icons: Bool = false, clockStep: Int = 0, sleepAfter: Int = 0, liveTabs: Int = 0,
+        memoryShortEvery: Int = 0
     ) -> XCUIApplication {
         let app = inFakeMode(start: start, firstRun: firstRun)
         if liveTabs > 0 {
             app.launchEnvironment["WEBTIGER_FAKE_LIVE_TABS"] = String(liveTabs)
+        }
+        if memoryShortEvery > 0 {
+            app.launchEnvironment["WEBTIGER_FAKE_MEMORY_SHORT_EVERY"] = String(memoryShortEvery)
         }
         if clockStep > 0 {
             app.launchEnvironment["WEBTIGER_FAKE_CLOCK_STEP"] = String(clockStep)

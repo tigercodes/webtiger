@@ -15,9 +15,10 @@ use std::time::Duration;
 
 use wt_core::{Clock, ManualClock, SystemClock, Timestamp, Uuid, WindowId};
 use wt_proto::v1::{
-    Ack, CoreConfig, CoreStatus, EngineKind, Envelope, Event, HostPing, Ping, Pong, Request,
-    Response, Snapshot, Subscribe, Subscribed, TestMode, Unsubscribe, WindowSnapshot, core_status,
-    envelope, event, host_request, host_response, request, response, snapshot, subscribe,
+    Ack, CoreConfig, CoreStatus, EngineKind, Envelope, Event, HostPing, MemoryLevel, Ping, Pong,
+    Request, Response, Snapshot, Subscribe, Subscribed, TestMode, Unsubscribe, WindowSnapshot,
+    core_status, envelope, event, host_request, host_response, request, response, snapshot,
+    subscribe,
 };
 use wt_proto::{CONTRACT_MAJOR, CONTRACT_MINOR};
 use wt_store::Store;
@@ -111,6 +112,10 @@ pub struct Dispatcher {
     tidying: std::cell::Cell<bool>,
     /// The look for tabs to put to sleep (053) is going.
     sleeping: std::cell::Cell<bool>,
+    /// Fake mode, for a suite (055): how often the core acts as though it
+    /// had been told the system is short of memory. `None` when it does
+    /// not, and once that has been set going.
+    short_every: std::cell::Cell<Option<Duration>>,
 }
 
 impl Dispatcher {
@@ -239,6 +244,15 @@ impl Dispatcher {
             fake,
             tidying: std::cell::Cell::new(false),
             sleeping: std::cell::Cell::new(false),
+            short_every: std::cell::Cell::new(
+                config
+                    .fake
+                    .as_ref()
+                    .filter(|_| fake)
+                    .map(|options| u64::from(options.memory_short_every_seconds))
+                    .filter(|seconds| *seconds > 0)
+                    .map(Duration::from_secs),
+            ),
         });
         dispatcher.send_event(event::Kind::Status(CoreStatus {
             state: core_status::State::Ready as i32,
@@ -265,6 +279,28 @@ impl Dispatcher {
         // Whatever it was may have put a tab out of sight (053): the look
         // for tabs to put to sleep is set going when there is one.
         self.watch_for_sleepers();
+        self.say_memory_is_short();
+    }
+
+    /// Fake mode, for a suite that must see what follows (055): from the
+    /// first thing a shell sends, the core acts every so often as though it
+    /// had been told the system is short of memory, by the runtime's own
+    /// time, until the core stops.
+    fn say_memory_is_short(self: &Rc<Self>) {
+        let Some(every) = self.short_every.take() else {
+            return;
+        };
+        let core = Rc::downgrade(self);
+        tokio::task::spawn_local(async move {
+            loop {
+                tokio::time::sleep(every).await;
+                let Some(core) = core.upgrade() else {
+                    break;
+                };
+                core.app.memory_short(MemoryLevel::Short as i32);
+                core.flush();
+            }
+        });
     }
 
     /// Sets the look for tabs to put to sleep going (053), when some tab is

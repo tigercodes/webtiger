@@ -1598,6 +1598,20 @@ pub mod forget_archived {
         All(bool),
     }
 }
+/// Since 1.48. The system has said it is short of memory (055), and how
+/// short. The core puts to sleep, now, every tab that is out of sight and has
+/// no reason to be awake (052), as the time puts one to sleep (053), however
+/// lately it came alive; when the system is very short, also a tab whose only
+/// reason is that it is on its way somewhere. The tab in sight stays, and a
+/// private window's tabs. Said each time the system says so, and acted on
+/// once: nothing lasts. Answered with Ack, which a shell need not wait for;
+/// it may be sent as a notification. A shell in fake mode does not listen to
+/// its system: a suite's run must not go by how busy the machine is.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct MemoryShort {
+    #[prost(enumeration = "MemoryLevel", tag = "1")]
+    pub level: i32,
+}
 /// The layout of a window (043). Since 1.33.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -1848,6 +1862,37 @@ impl DownloadState {
         }
     }
 }
+/// How short of memory the system says it is (055).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum MemoryLevel {
+    /// Taken for short, as a level this core does not know is.
+    Unspecified = 0,
+    Short = 1,
+    VeryShort = 2,
+}
+impl MemoryLevel {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "MEMORY_LEVEL_UNSPECIFIED",
+            Self::Short => "MEMORY_LEVEL_SHORT",
+            Self::VeryShort => "MEMORY_LEVEL_VERY_SHORT",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "MEMORY_LEVEL_UNSPECIFIED" => Some(Self::Unspecified),
+            "MEMORY_LEVEL_SHORT" => Some(Self::Short),
+            "MEMORY_LEVEL_VERY_SHORT" => Some(Self::VeryShort),
+            _ => None,
+        }
+    }
+}
 /// Passed to wt_core_start.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CoreConfig {
@@ -1917,6 +1962,12 @@ pub struct FakeOptions {
     /// about something else.
     #[prost(uint32, tag = "5")]
     pub live_tabs: u32,
+    /// Since 1.48. The core acts as though it had been told the system is
+    /// short of memory (055, MemoryShort with MEMORY_LEVEL_SHORT), every so
+    /// many seconds, for a suite that must see what follows: no suite may make
+    /// a system short of memory. 0: never.
+    #[prost(uint32, tag = "6")]
+    pub memory_short_every_seconds: u32,
 }
 /// One engine a shell offers.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -2857,7 +2908,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -3003,6 +3054,9 @@ pub mod request {
         /// Since 1.43
         #[prost(message, tag = "55")]
         IconSpace(super::IconSpace),
+        /// Since 1.48. May be sent as a notification (envelope id 0).
+        #[prost(message, tag = "56")]
+        MemoryShort(super::MemoryShort),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.

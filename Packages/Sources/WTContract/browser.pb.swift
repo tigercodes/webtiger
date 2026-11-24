@@ -370,6 +370,47 @@ public nonisolated enum WTDownloadState: SwiftProtobuf.Enum, Swift.CaseIterable 
 
 }
 
+/// How short of memory the system says it is (055).
+public nonisolated enum WTMemoryLevel: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+
+  /// Taken for short, as a level this core does not know is.
+  case unspecified // = 0
+  case short // = 1
+  case veryShort // = 2
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .short
+    case 2: self = .veryShort
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .short: return 1
+    case .veryShort: return 2
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [WTMemoryLevel] = [
+    .unspecified,
+    .short,
+    .veryShort,
+  ]
+
+}
+
 /// Opens a window in the default Space, with one tab. Answered with
 /// WindowOpened. In fake mode the tab opens FakeOptions.start_address.
 public nonisolated struct WTOpenWindow: Sendable {
@@ -2608,6 +2649,27 @@ public nonisolated struct WTForgetArchived: Sendable {
   public init() {}
 }
 
+/// Since 1.48. The system has said it is short of memory (055), and how
+/// short. The core puts to sleep, now, every tab that is out of sight and has
+/// no reason to be awake (052), as the time puts one to sleep (053), however
+/// lately it came alive; when the system is very short, also a tab whose only
+/// reason is that it is on its way somewhere. The tab in sight stays, and a
+/// private window's tabs. Said each time the system says so, and acted on
+/// once: nothing lasts. Answered with Ack, which a shell need not wait for;
+/// it may be sent as a notification. A shell in fake mode does not listen to
+/// its system: a suite's run must not go by how busy the machine is.
+public nonisolated struct WTMemoryShort: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var level: WTMemoryLevel = .unspecified
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
@@ -2638,6 +2700,10 @@ nonisolated extension WTZoomChange: SwiftProtobuf._ProtoNameProviding {
 
 nonisolated extension WTDownloadState: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0DOWNLOAD_STATE_UNSPECIFIED\0\u{1}DOWNLOAD_STATE_COMING\0\u{1}DOWNLOAD_STATE_FINISHED\0\u{1}DOWNLOAD_STATE_FAILED\0")
+}
+
+nonisolated extension WTMemoryLevel: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0MEMORY_LEVEL_UNSPECIFIED\0\u{1}MEMORY_LEVEL_SHORT\0\u{1}MEMORY_LEVEL_VERY_SHORT\0")
 }
 
 nonisolated extension WTOpenWindow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
@@ -6292,6 +6358,36 @@ nonisolated extension WTForgetArchived: SwiftProtobuf.Message, SwiftProtobuf._Me
   public static func ==(lhs: WTForgetArchived, rhs: WTForgetArchived) -> Bool {
     if lhs.windowID != rhs.windowID {return false}
     if lhs.which != rhs.which {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTMemoryShort: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MemoryShort"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}level\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularEnumField(value: &self.level) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.level != .unspecified {
+      try visitor.visitSingularEnumField(value: self.level, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTMemoryShort, rhs: WTMemoryShort) -> Bool {
+    if lhs.level != rhs.level {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

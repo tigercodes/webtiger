@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Built and tested, on the recommendations of §6, which are provisional:** they are put to the owner and not yet answered. On every system the core keeps no more tabs alive than the device holds: three on a phone, six on a tablet, by its memory on a desktop; the ones longest out of sight sleep, keep what [051](051-a-tabs-kept-state.md) has them keep, and wake as they were. Each shell says what it runs on. The system's own shortage of memory is not built |
+| **Status** | **Built and tested, on the recommendations of §6, which are provisional:** they are put to the owner and not yet answered. On every system the core keeps no more tabs alive than the device holds: three on a phone, six on a tablet, by its memory on a desktop; the ones longest out of sight sleep, keep what [051](051-a-tabs-kept-state.md) has them keep, and wake as they were. Each shell says what it runs on. The system's own shortage of memory is [055](055-the-system-short-of-memory.md) |
 | **Phase** | W3 of [000](000-master-plan.md) §9. 000 §5.7: "A tab goes to sleep when … the number of live tabs passes the device's limit (3 on a phone, 6 on a tablet or open foldable, set by memory on a desktop)." The fourth of W3 |
 | **Contract** | 1.47 (§4): what a shell says of the device it runs on, and a suite's limit |
 | **Builds on** | [053](053-a-tab-sleeps-by-itself.md): putting a tab to sleep, and the tabs that are passed over. [052](052-what-keeps-a-tab-awake.md): the reasons. [051](051-a-tabs-kept-state.md): what a sleeping tab keeps |
@@ -18,7 +18,7 @@ On my phone I open links one after another, each in a tab of its own, and read t
 
 **Not in, each with where it goes:**
 
-- **The system saying it is short of memory:** the next of W3. It needs a shell to hear the system say so.
+- **The system saying it is short of memory:** the next of W3 ([055](055-the-system-short-of-memory.md), built since). It needs a shell to hear the system say so.
 - **A foldable that is opened or shut** while the app runs, and a window that is made wide or narrow: the device is what it was when the app started. With foldables (W8).
 - **A setting for the limit:** with settings.
 - **The Memory view,** with its "sleep all others": later in W3.

@@ -37,15 +37,18 @@
                 "WEBTIGER_FAKE_CLOCK_STEP": "86400",
                 "WEBTIGER_FAKE_SLEEP_AFTER": "4",
                 "WEBTIGER_FAKE_LIVE_TABS": "2",
+                "WEBTIGER_FAKE_MEMORY_SHORT_EVERY": "3",
             ])
             XCTAssertEqual(all.startAddress, "https://example.com/")
             XCTAssertTrue(all.firstRun)
             XCTAssertEqual(all.secondsARead, 86400)
             XCTAssertEqual(all.sleepAfterSeconds, 4)
             XCTAssertEqual(all.liveTabs, 2)
-            // What is no count is no limit.
+            XCTAssertEqual(all.memoryShortEverySeconds, 3)
+            // What is no count is no limit, and no seconds are never.
             for said in ["many", "-1", "", "2.5"] {
                 XCTAssertEqual(BrowserSession.fakeOptions(["WEBTIGER_FAKE_LIVE_TABS": said]).liveTabs, 0, said)
+                XCTAssertEqual(BrowserSession.fakeOptions(["WEBTIGER_FAKE_MEMORY_SHORT_EVERY": said]).memoryShortEverySeconds, 0, said)
             }
         }
     }

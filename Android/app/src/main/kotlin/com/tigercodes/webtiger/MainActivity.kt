@@ -27,6 +27,7 @@ import com.tigercodes.webtiger.ui.CatalogueScreen
 import com.tigercodes.webtiger.ui.FillableWindow
 import com.tigercodes.webtiger.ui.LaunchOptions
 import com.tigercodes.webtiger.ui.LocalWindowKeys
+import com.tigercodes.webtiger.ui.MemoryWatch
 import com.tigercodes.webtiger.ui.PrivateWindows
 import com.tigercodes.webtiger.ui.StartFailed
 import com.tigercodes.webtiger.ui.WindowKeys
@@ -39,6 +40,12 @@ class MainActivity : ComponentActivity() {
 
     /** The window's answer to a keyboard's keys (036), asked before anything in the window has a key. */
     private val keys = WindowKeys()
+
+    /**
+     * What passes the system's word on its memory to the core (055), told when this window
+     * comes in front and when it leaves. Null in fake mode, whose session listens to nothing.
+     */
+    private var memory: MemoryWatch? = null
 
     /** What is told when the system's dialog has been answered: one question is up at a time. */
     private var answered: (() -> Unit)? = null
@@ -74,6 +81,7 @@ class MainActivity : ComponentActivity() {
             return
         }
         val session = (application as WebTigerApp).session(launch)
+        memory = session.getOrNull()?.memory
         // A page the core lets use the camera, the microphone or the location gets it when the
         // system lets the app: this window is how the system is asked. Not in fake mode, whose
         // session has nothing to ask with.
@@ -152,6 +160,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        memory?.inFront(true)
+    }
+
+    override fun onStop() {
+        memory?.inFront(false)
+        super.onStop()
+    }
+
     override fun onDestroy() {
         // The window goes, and the system's dialog with it: nobody can be asked from here, and
         // a question that was up is answered by what the app holds.
@@ -188,6 +206,13 @@ class MainActivity : ComponentActivity() {
          * to see the limit met (054). Without it fake mode has none.
          */
         const val EXTRA_FAKE_LIVE_TABS = "webtiger.fake.live_tabs"
+
+        /**
+         * `--ei webtiger.fake.memory_short_every 3`: in fake mode, how often the core acts as
+         * though the system had said it is short of memory, in seconds, to see what follows
+         * (055). Without it: never.
+         */
+        const val EXTRA_FAKE_MEMORY_SHORT_EVERY = "webtiger.fake.memory_short_every"
 
         /** The words of [ACTION_SEARCH_WORDS]. */
         const val EXTRA_WORDS = "webtiger.search.words"
@@ -264,6 +289,7 @@ class MainActivity : ComponentActivity() {
                 clockStep = intent.getIntExtra(EXTRA_FAKE_CLOCK_STEP, 0).coerceAtLeast(0),
                 sleepAfter = intent.getIntExtra(EXTRA_FAKE_SLEEP_AFTER, 0).coerceAtLeast(0),
                 liveTabs = intent.getIntExtra(EXTRA_FAKE_LIVE_TABS, 0).coerceAtLeast(0),
+                memoryShortEvery = intent.getIntExtra(EXTRA_FAKE_MEMORY_SHORT_EVERY, 0).coerceAtLeast(0),
             )
         }
     }

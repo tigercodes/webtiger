@@ -11,6 +11,8 @@ import com.tigercodes.webtiger.core.v1.CoreConfig
 import com.tigercodes.webtiger.core.v1.EngineInfo
 import com.tigercodes.webtiger.core.v1.Event
 import com.tigercodes.webtiger.core.v1.FakeOptions
+import com.tigercodes.webtiger.core.v1.MemoryLevel
+import com.tigercodes.webtiger.core.v1.MemoryShort
 import com.tigercodes.webtiger.core.v1.OpenWindow
 import com.tigercodes.webtiger.core.v1.Platform
 import com.tigercodes.webtiger.core.v1.Request
@@ -56,6 +58,11 @@ data class LaunchOptions(
      * (054). 0: none, whatever the device.
      */
     val liveTabs: Int = 0,
+    /**
+     * Fake mode: how often the core acts as though the system had said it is short of memory,
+     * in seconds, for a suite that must see what follows (055). 0: never.
+     */
+    val memoryShortEvery: Int = 0,
 )
 
 /**
@@ -83,6 +90,13 @@ class BrowserSession(
     val files: AppFiles? = null,
 ) {
     private val windows = HashMap<Long, (WindowSnapshot) -> Unit>()
+
+    /**
+     * What the system says of its memory, passed on to the core (055). Null in a session that
+     * does not listen to the system: fake mode's, and every session a test makes.
+     */
+    var memory: MemoryWatch? = null
+        private set
 
     /** Windows being opened, and the snapshots that came for subscriptions not yet known to be theirs. */
     private var opening = 0
@@ -138,6 +152,11 @@ class BrowserSession(
         }
     }
 
+    /** Says to the core that the system is short of memory, so short (055). Nothing is waited for. */
+    internal fun memoryShort(level: MemoryLevel) {
+        send(Request(memory_short = MemoryShort(level = level)))
+    }
+
     private fun receive(event: Event) {
         val snapshot = event.snapshot ?: return
         val window = snapshot.window ?: return
@@ -176,8 +195,19 @@ class BrowserSession(
             val opensFiles = if (launch.fake) FileOpener.nothing else SystemFileOpener(application)
             val core = NativeCore.start(config, ShellHost(engine, opener, opensFiles), Dispatchers.Main)
             val clipboard = if (launch.fake) MemoryClipboard() else SystemClipboard(application)
-            return BrowserSession(core, engine, MainScope(), permissions.takeIf { mayAskTheSystem(launch) }, clipboard, files)
+            val session = BrowserSession(core, engine, MainScope(), permissions.takeIf { mayAskTheSystem(launch) }, clipboard, files)
+            if (hearsTheSystemsMemory(launch)) {
+                session.memory = MemoryWatch.of(application, session.scope, session::memoryShort).also(application::registerComponentCallbacks)
+            }
+            return session
         }
+
+        /**
+         * Whether the system's word that it is short of memory is passed on to the core (055).
+         * Not in fake mode: a suite's run must not go by how busy its device is, and it has a
+         * knob for the core to be told by.
+         */
+        internal fun hearsTheSystemsMemory(launch: LaunchOptions): Boolean = !launch.fake
 
         /**
          * What the core is started with. In fake mode the store is in memory, so no folder is
@@ -218,6 +248,7 @@ class BrowserSession(
                 seconds_a_read = launch.clockStep,
                 sleep_after_seconds = launch.sleepAfter,
                 live_tabs = launch.liveTabs,
+                memory_short_every_seconds = launch.memoryShortEvery,
             )
     }
 }

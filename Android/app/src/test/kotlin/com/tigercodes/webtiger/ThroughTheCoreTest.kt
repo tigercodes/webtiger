@@ -13,6 +13,7 @@ import com.tigercodes.webtiger.core.v1.EngineInfo
 import com.tigercodes.webtiger.core.v1.EngineKind
 import com.tigercodes.webtiger.core.v1.FakeOptions
 import com.tigercodes.webtiger.core.v1.LoadState
+import com.tigercodes.webtiger.core.v1.MemoryLevel
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.core.v1.Platform
 import com.tigercodes.webtiger.core.v1.QuerySpaces
@@ -512,6 +513,103 @@ class ThroughTheCoreTest {
                 core = null
                 folder.deleteRecursively()
             }
+        }
+
+    /** A suite's seconds between the core's being told are fake mode's alone (055); and fake mode listens to no system. */
+    @Test
+    fun aSuitesSecondsOfMemoryAreHandedOnAndFakeModeDoesNotListenToTheSystem() {
+        assertEquals(3, config(LaunchOptions(fake = true, memoryShortEvery = 3)).fake?.memory_short_every_seconds)
+        assertEquals("a launch that says nothing is never told", 0, config(LaunchOptions(fake = true)).fake?.memory_short_every_seconds)
+        assertNull("and outside fake mode there is no such thing", config(LaunchOptions(memoryShortEvery = 3)).fake)
+        assertFalse(BrowserSession.hearsTheSystemsMemory(LaunchOptions(fake = true)))
+        assertTrue(BrowserSession.hearsTheSystemsMemory(LaunchOptions()))
+        assertNull("a session a test makes has no watch", session().memory)
+    }
+
+    /** A window with a first tab at a page that has a state to give, and a second in front of it. The model and the first tab. */
+    private suspend fun twoTabs(running: BrowserSession): Pair<BrowserModel, Long> {
+        val model = BrowserModel(running)
+        onMain { model.open() }
+        await("the window's first snapshot") { model.tab.tab_id != 0L }
+        val firstTab = onMain { model.tab.tab_id }
+        onMain {
+            model.isEditingAddress = true
+            model.addressText = "example.com"
+            model.submit()
+        }
+        await("the first load") { pages.made.size == 1 && pages.made[0].loaded.isNotEmpty() }
+        arrive(pages.made[0], "https://example.com/", "Example Domain")
+        await("the first page named") { model.tab.title == "Example Domain" }
+        pages.made[0].hasState = "the first tab's state".toByteArray()
+        openInFront(model, 2, "https://example.org/story", "A Story")
+        await("asked as it left the front") { pages.made[0].statesAsked == 1 }
+        return model to firstTab
+    }
+
+    /**
+     * The system short of memory (055), through the real core, with the app's own engine over
+     * pages that have no WebView: the session says what the shell heard, and the core puts the
+     * tab left behind to sleep at once, asked for its state once more and let go; the tab in
+     * front stays; brought in front, the first has a web view made from the state it gave.
+     */
+    @Test
+    fun toldTheSystemIsShortOfMemoryTheCorePutsTheTabLeftBehindToSleep() =
+        runBlocking {
+            val running = session()
+            val (model, firstTab) = twoTabs(running)
+            assertFalse(onMain { pages.made[0].closed })
+            assertFalse(asleep(model, firstTab))
+
+            val secondTab = onMain { model.tab.tab_id }
+
+            onMain { running.memoryShort(MemoryLevel.MEMORY_LEVEL_SHORT) }
+            await("the first put to sleep") { pages.made[0].closed && model.tabs.first { it.tab_id == firstTab }.asleep }
+            assertEquals(2, onMain { pages.made[0].statesAsked })
+            assertEquals("Example Domain", onMain { model.tabs.first { it.tab_id == firstTab }.title })
+            assertFalse("the tab in front is awake", onMain { pages.made[1].closed })
+            // Said again, very short this time: the tab in front stays still.
+            onMain { running.memoryShort(MemoryLevel.MEMORY_LEVEL_VERY_SHORT) }
+            running.core.request(Request(query_spaces = QuerySpaces()))
+            assertFalse(onMain { pages.made[1].closed })
+            assertEquals("A Story", onMain { model.tab.title })
+
+            onMain { model.activate(firstTab) }
+            await("a web view for the tab that wakes") { pages.made.size == 3 && pages.made[2].restored.isNotEmpty() }
+            onMain {
+                assertEquals(listOf("the first tab's state" to "https://example.com/"), pages.made[2].restored)
+                assertTrue("and not loaded beside it", pages.made[2].loaded.isEmpty())
+            }
+
+            // The word the shell heard is the word the core is told. A third tab is sent on its
+            // way and left behind before its page has come: with the second, two are behind.
+            onMain { model.openFromOutside("https://example.net/slow") }
+            await("the third's load reaching its web view") { pages.made.size == 4 && pages.made[3].loaded.isNotEmpty() }
+            val thirdTab = onMain { model.tab.tab_id }
+            onMain { model.activate(firstTab) }
+            await("the first in front again") { model.tab.tab_id == firstTab }
+            // Short: the second sleeps, and the one on its way stays.
+            onMain { running.memoryShort(MemoryLevel.MEMORY_LEVEL_SHORT) }
+            await("the second put to sleep") { pages.made[1].closed && model.tabs.first { it.tab_id == secondTab }.asleep }
+            running.core.request(Request(query_spaces = QuerySpaces()))
+            assertFalse("a tab on its way stays when the system is only short", onMain { pages.made[3].closed })
+            assertFalse(asleep(model, thirdTab))
+            // Very short: it sleeps too.
+            onMain { running.memoryShort(MemoryLevel.MEMORY_LEVEL_VERY_SHORT) }
+            await("the tab on its way put to sleep") { pages.made[3].closed && model.tabs.first { it.tab_id == thirdTab }.asleep }
+            assertFalse("the tab in front is awake", onMain { pages.made[2].closed })
+        }
+
+    /**
+     * A suite's knob (055): the core is told every second, by itself, and the tab left behind
+     * is asleep without the shell having said anything. The shell timed nothing.
+     */
+    @Test
+    fun aSuiteCanHaveTheCoreToldTheSystemIsShortOfMemory() =
+        runBlocking {
+            val (model, firstTab) = twoTabs(session(LaunchOptions(fake = true, memoryShortEvery = 1)))
+            await("the first put to sleep") { pages.made[0].closed && model.tabs.first { it.tab_id == firstTab }.asleep }
+            assertFalse("the tab in front is awake", onMain { pages.made[1].closed })
+            assertEquals("A Story", onMain { model.tab.title })
         }
 
     @Test

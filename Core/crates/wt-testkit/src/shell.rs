@@ -562,10 +562,16 @@ impl FakeShell {
     /// for it here: what a look changes, the look publishes.
     pub async fn a_minute_passes(&mut self) {
         // A minute by the clock on the wall, and not by the core's own word for how often it
-        // looks: a core that looked less often would be found out. A second at a time: what
-        // the core asks of the shell in that minute is answered within the second, as a
-        // shell that is there answers, and not when the minute is over.
-        for _ in 0..61 {
+        // looks: a core that looked less often would be found out.
+        self.seconds_pass(61).await;
+    }
+
+    /// So many seconds pass, in which the shell only listens: what the core
+    /// asks of it in a second is answered within that second, as a shell
+    /// that is there answers, and nothing is asked of the core. What is
+    /// seen to have changed after, the core said by itself.
+    pub async fn seconds_pass(&mut self, seconds: u64) {
+        for _ in 0..seconds {
             tokio::time::sleep(Duration::from_secs(1)).await;
             let mut idle_rounds = 0;
             while idle_rounds < 2 {

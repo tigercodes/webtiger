@@ -91,6 +91,11 @@ message FakeOptions {
   // own, whatever the device: a suite that opens five tabs on a phone is
   // about something else.
   uint32 live_tabs = 5;
+  // Since 1.48. The core acts as though it had been told the system is
+  // short of memory (055, MemoryShort with MEMORY_LEVEL_SHORT), every so
+  // many seconds, for a suite that must see what follows: no suite may make
+  // a system short of memory. 0: never.
+  uint32 memory_short_every_seconds = 6;
 }
 
 // One engine a shell offers.

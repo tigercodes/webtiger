@@ -32,7 +32,10 @@ class LaunchOptionsTest {
         )
     }
 
-    /** Fake mode's numbers: the clock's step (049), the sleep time (053), the limit of live tabs (054). */
+    /**
+     * Fake mode's numbers: the clock's step (049), the sleep time (053), the limit of live tabs
+     * (054), how often the core is told the system is short of memory (055).
+     */
     @Test
     fun theExtrasGiveFakeModeItsNumbers() {
         val numbers =
@@ -40,9 +43,17 @@ class LaunchOptionsTest {
                 .putExtra(MainActivity.EXTRA_FAKE_CLOCK_STEP, 86_400)
                 .putExtra(MainActivity.EXTRA_FAKE_SLEEP_AFTER, 5)
                 .putExtra(MainActivity.EXTRA_FAKE_LIVE_TABS, 2)
-        assertEquals(LaunchOptions(fake = true, clockStep = 86_400, sleepAfter = 5, liveTabs = 2), MainActivity.launchOptions(numbers, debuggable = true))
+                .putExtra(MainActivity.EXTRA_FAKE_MEMORY_SHORT_EVERY, 3)
+        assertEquals(
+            LaunchOptions(fake = true, clockStep = 86_400, sleepAfter = 5, liveTabs = 2, memoryShortEvery = 3),
+            MainActivity.launchOptions(numbers, debuggable = true),
+        )
         // A number below nothing is nothing; and without fake mode none of them is anything.
-        val below = fake().putExtra(MainActivity.EXTRA_FAKE_LIVE_TABS, -3).putExtra(MainActivity.EXTRA_FAKE_SLEEP_AFTER, -1)
+        val below =
+            fake()
+                .putExtra(MainActivity.EXTRA_FAKE_LIVE_TABS, -3)
+                .putExtra(MainActivity.EXTRA_FAKE_SLEEP_AFTER, -1)
+                .putExtra(MainActivity.EXTRA_FAKE_MEMORY_SHORT_EVERY, -2)
         assertEquals(LaunchOptions(fake = true), MainActivity.launchOptions(below, debuggable = true))
         val alone = Intent(Intent.ACTION_MAIN).putExtra(MainActivity.EXTRA_FAKE_LIVE_TABS, 2)
         assertEquals(LaunchOptions(), MainActivity.launchOptions(alone, debuggable = true))

@@ -21,6 +21,9 @@ public final class BrowserSession {
     private var opening = 0
     private var unclaimed: [UInt64: WTWindowSnapshot] = [:]
     private var listening: Task<Void, Never>?
+    /// What the system says of its memory, passed on to the core (055). `nil` in a session
+    /// that does not listen to the system: a test's, and fake mode's.
+    private(set) var memory: MemoryWatch?
 
     /// A session over a core that is already running. Tests pass a `ScriptedCore`. A link is
     /// copied to a clipboard of the app's own unless the session is given the system's (018).
@@ -98,9 +101,20 @@ public final class BrowserSession {
             let files = filesOpener(fake: config.testMode == .fake, folder: engine.downloadsFolder, preview: preview)
             let core = try NativeCore.start(config: config, host: ShellHost(engine: engine, opener: opener, files: files))
             // In fake mode nothing of the person's is touched: not their clipboard either.
-            return BrowserSession(
-                core: core, engine: engine, clipboard: config.testMode == .fake ? .ownOfTheApp : .system, preview: preview
-            )
+            let session = BrowserSession(core: core, engine: engine, clipboard: fake ? .ownOfTheApp : .system, preview: preview)
+            if hearsTheSystemsMemory(fake: fake) {
+                let memory = MemoryWatch(core: core)
+                memory.listen()
+                session.memory = memory
+            }
+            return session
+        }
+
+        /// Whether the system's word that it is short of memory is passed on to the core
+        /// (055). Not in fake mode: a suite's run must not go by how busy its machine is,
+        /// and it has a knob for the core to be told by.
+        static func hearsTheSystemsMemory(fake: Bool) -> Bool {
+            !fake
         }
 
         /// Fake mode's knobs, as a suite set them in what the app was started with.
@@ -118,6 +132,9 @@ public final class BrowserSession {
             // The most tabs that are alive at once, for a suite that must see the limit met
             // (054). Without it fake mode has none, whatever it runs on.
             fake.liveTabs = UInt32(environment["WEBTIGER_FAKE_LIVE_TABS"] ?? "") ?? 0
+            // How often the core acts as though the system had said it is short of memory,
+            // in seconds, for a suite that must see what follows (055). Without it: never.
+            fake.memoryShortEverySeconds = UInt32(environment["WEBTIGER_FAKE_MEMORY_SHORT_EVERY"] ?? "") ?? 0
             return fake
         }
 

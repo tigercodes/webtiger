@@ -919,6 +919,16 @@ impl Tab {
         .collect()
     }
 
+    /// Whether nothing keeps the tab from sleeping when the system is short
+    /// of memory (055): it has no reason to be awake; or, when the system is
+    /// `very` short, none but that it is on its way somewhere. What a page
+    /// plays, holds, was told, is fetching or asks is the person's, however
+    /// short the system is.
+    fn gives_way(&self, very: bool) -> bool {
+        let reasons = self.keeps_awake();
+        reasons.is_empty() || (very && reasons == [KeepAwake::Loading as i32])
+    }
+
     /// The site of the page that owns the web view (012). `None` with no
     /// page, and for a page with no host.
     fn site(&self) -> Option<&str> {
@@ -1776,6 +1786,33 @@ impl State {
             }
         }
         due
+    }
+
+    /// The system is short of memory (055): every tab that is out of sight,
+    /// has a web view and no reason to be awake (052), and is of no private
+    /// window (037), is put to sleep now, as the time puts one to sleep
+    /// (053): however short a time it has been out of sight, however few
+    /// tabs are alive, and whether or not it has just come alive (054). When
+    /// the system is `very` short, a tab whose only reason is that it is on
+    /// its way sleeps too. The web views to let go.
+    pub(crate) fn short_of_memory(&mut self, very: bool) -> Vec<Sleeper> {
+        let in_sight = self.in_sight();
+        let giving: Vec<TabId> = self
+            .tabs
+            .iter()
+            .filter(|(id, tab)| {
+                tab.web_view.is_some()
+                    && !in_sight.contains(id)
+                    && !self.is_private(tab.login_set)
+                    && tab.gives_way(very)
+            })
+            .map(|(id, _)| *id)
+            .collect();
+        // One with nothing of the web's to wake to is left as it is.
+        giving
+            .into_iter()
+            .filter_map(|id| self.put_to_sleep(id))
+            .collect()
     }
 
     /// The state of a tab that was put to sleep has arrived (053), kept in

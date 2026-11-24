@@ -270,6 +270,10 @@ impl App {
             request::Kind::RestoreArchived(restore) => self.restore_archived(&restore),
             request::Kind::ForgetArchived(forget) => answer(self.forget_archived(&forget)),
             request::Kind::OpenDownload(open) => self.open_download(&open),
+            request::Kind::MemoryShort(short) => {
+                self.memory_short(short.level);
+                answer(Ok(response::Kind::Ack(Ack {})))
+            }
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
             | request::Kind::Unsubscribe(_)

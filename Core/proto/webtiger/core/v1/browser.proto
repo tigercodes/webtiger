@@ -1178,3 +1178,24 @@ message ForgetArchived {
     bool all = 3;
   }
 }
+
+// Since 1.48. The system has said it is short of memory (055), and how
+// short. The core puts to sleep, now, every tab that is out of sight and has
+// no reason to be awake (052), as the time puts one to sleep (053), however
+// lately it came alive; when the system is very short, also a tab whose only
+// reason is that it is on its way somewhere. The tab in sight stays, and a
+// private window's tabs. Said each time the system says so, and acted on
+// once: nothing lasts. Answered with Ack, which a shell need not wait for;
+// it may be sent as a notification. A shell in fake mode does not listen to
+// its system: a suite's run must not go by how busy the machine is.
+message MemoryShort {
+  MemoryLevel level = 1;
+}
+
+// How short of memory the system says it is (055).
+enum MemoryLevel {
+  // Taken for short, as a level this core does not know is.
+  MEMORY_LEVEL_UNSPECIFIED = 0;
+  MEMORY_LEVEL_SHORT = 1;
+  MEMORY_LEVEL_VERY_SHORT = 2;
+}
