@@ -161,4 +161,4 @@ Nothing a person typed, played or was asked crosses the contract by this: three 
 - [x] The core and the contract.
 - [x] Apple's shell, and the adapter suite.
 - [x] Android's shell, and the adapter suite on a device.
-- [ ] The gate.
+- [x] The gate, over the core and both shells together, on 2026-11-24: `lint`, `core` (684, and the strings tool's 24), `unit` (370 on the Mac), `build`, the Mac's UI suite (59), `ios` (352 on the iPhone simulator), the iPhone's UI suite (46), `android` (484 and 32 on the JVM) and `android-device` (188 on the emulator). Its first run stopped at `ios`: one test of the adapter suite held the iPhone to what a Mac does (§4a). With that test mended and nothing else changed, `lint`, `unit` and `ios` were run again, and the stages after `ios` for the first time; `core`, `build` and the Mac's UI suite stand from the first run.
