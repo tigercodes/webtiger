@@ -19,6 +19,8 @@ final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
     private(set) var provisional = false
     /// The address last reported as the page on screen, by a commit or an address change.
     private var reportedURL: URL?
+    /// What the page is doing that would keep its tab awake (052), as far as is known.
+    private var doing = PageDoing()
     /// A navigation was refused on the core's verdict while a load had started and not yet
     /// committed. If that load now ends as interrupted, the refusal was of where it was
     /// redirected to, and the load's end is the refusal's.
@@ -34,6 +36,20 @@ final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
         webView.navigationDelegate = self
         webView.uiDelegate = self
         observe()
+        engine.activity.attend(self)
+    }
+
+    /// A frame of the page said what it is doing (052): that it plays sound, and that it was
+    /// typed into.
+    func heard(frame: String, sound: Bool, typed: Bool) {
+        doing.heard(frame: frame, sound: sound, typed: typed)
+        reportDoing()
+    }
+
+    /// Tells the core what the page is doing, when it is not what the core was last told.
+    private func reportDoing() {
+        guard let news = doing.news(camera: webView.cameraCaptureState, microphone: webView.microphoneCaptureState) else { return }
+        engine?.report(id, .pageActivityChanged(news))
     }
 
     /// Finds text in the page and shows the match, or with empty text clears what a find
@@ -97,6 +113,13 @@ final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
             },
             webView.observe(\.url) { [weak self] _, _ in
                 MainActor.assumeIsolated { self?.urlChanged() }
+            },
+            // The camera and the microphone, which WebKit says of itself (052).
+            webView.observe(\.cameraCaptureState) { [weak self] _, _ in
+                MainActor.assumeIsolated { self?.reportDoing() }
+            },
+            webView.observe(\.microphoneCaptureState) { [weak self] _, _ in
+                MainActor.assumeIsolated { self?.reportDoing() }
             },
         ]
     }
@@ -183,6 +206,9 @@ final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
         committed.url = webView.url?.absoluteString ?? ""
         engine?.report(id, .navigationCommitted(committed))
         historyChanged()
+        // The page before's doings went with it (052); a camera this one holds already is said.
+        doing.committed()
+        reportDoing()
     }
 
     func webView(_ webView: WKWebView, didFinish _: WKNavigation?) {

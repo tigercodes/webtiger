@@ -63,6 +63,9 @@ public final class WebKitEngine: HostServices {
         /// What was right-clicked, as the adapter's own script says (022).
         let pressed = PressedReports()
     #endif
+    /// What each page is doing that would keep its tab awake, as the adapter's own script
+    /// says of sound and of typing (052).
+    let activity = ActivityReports()
 
     /// How a page's file input is given files (019). Nothing is picked, and nothing of the
     /// system's shown, unless the app itself gives its engine the system's picker.
@@ -311,6 +314,7 @@ public final class WebKitEngine: HostServices {
         #if os(macOS)
             pressed.listen(in: configuration.userContentController)
         #endif
+        activity.listen(in: configuration.userContentController)
         pages[create.webViewID] = Page(
             id: create.webViewID,
             webView: Self.webView(configuration),

@@ -717,7 +717,7 @@ Spaces with their login sets, colours and icons; shared logins; the tree with dr
 
 The lifecycle of §5.7; snapshots; keep-awake reasons; live-tab limits; pressure handling; tidying and the Archive; the Memory view; every §7 budget as a failing test; the published run.
 
-**Where W3 stands (2026-11-24).** Built: tidying and the Archive (049, with W2). What a sleeping tab keeps ([051](051-a-tabs-kept-state.md)), in the core and both shells: a tab's state is asked for when it leaves the front, kept in the store, dropped when the tab goes elsewhere or its history is forgotten, and handed back when the tab wakes, so that a tab that left the front wakes as it was, from its engine's own state. In the core: what keeps a tab awake ([052](052-what-keeps-a-tab-awake.md)), which no shell's adapter feeds yet. Not built: the sleep time and the limit of live tabs; pressure; pictures of pages; the Memory view; the budgets as tests; the published run.
+**Where W3 stands (2026-11-24).** Built: tidying and the Archive (049, with W2). What a sleeping tab keeps ([051](051-a-tabs-kept-state.md)), in the core and both shells: a tab's state is asked for when it leaves the front, kept in the store, dropped when the tab goes elsewhere or its history is forgotten, and handed back when the tab wakes, so that a tab that left the front wakes as it was, from its engine's own state. What keeps a tab awake ([052](052-what-keeps-a-tab-awake.md)), in the core and both shells: sound, the camera or the microphone, typed text, a download, a question, a load. Not built: the sleep time and the limit of live tabs; pressure; pictures of pages; the Memory view; the budgets as tests; the published run.
 
 ### W4 — Guard (large)
 
@@ -929,7 +929,7 @@ Four features of W2 are built on the recommendations of their own documents, the
 5. The tab in front at a quit wakes at its address.
 6. Forgetting history drops the states of the tabs with those logins, and a tab that is open is asked for none until it has another web view.
 
-**What keeps a tab awake** ([052](052-what-keeps-a-tab-awake.md) §6, put on 2026-11-24; built in the core, where no shell's adapter reports what a page is doing yet; the second of W3, before any tab is put to sleep by the browser itself):
+**What keeps a tab awake** ([052](052-what-keeps-a-tab-awake.md) §6, put on 2026-11-24; built in the core and both shells; nothing is put to sleep by it, and nothing drawn; the second of W3, before any tab is put to sleep by the browser itself):
 
 1. Typed text keeps a tab awake from the first key until the page goes, whatever became of the text.
 2. The adapter learns of typing and of sound from a small script of the browser's own in the page, which says yes or no and nothing else.

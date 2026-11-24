@@ -177,6 +177,12 @@ internal class WebViewPage(
      */
     private var zoomPercent = ACTUAL_SIZE
 
+    /**
+     * What the page is doing that would keep its tab awake (052), as far as is known. Before
+     * the web view, which is given its ear for it as it is made.
+     */
+    private val doing = PageDoing()
+
     /** Null once the renderer has died, until the page is loaded again. */
     private var webView: WebView? = create()
 
@@ -383,6 +389,34 @@ internal class WebViewPage(
         throw IllegalStateException("engine.no_profiles")
     }
 
+    /**
+     * Puts the adapter's script, and its ear, in every page and frame of a web view (052),
+     * where the WebView can be given them. One that cannot leaves the adapter deaf, which
+     * [PageDoing] takes the careful way. What a frame says is taken up in its turn, like what
+     * a page asks: the WebView says it at once, and a commit it has not yet said may be before it.
+     */
+    private fun listenForDoings(view: WebView) {
+        val can = WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT) && WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)
+        doing.deaf = !can
+        if (!can) return
+        WebViewCompat.addWebMessageListener(view, PageDoing.NAME, setOf("*")) { _, message, _, _, _ ->
+            PageDoing.parse(message.data.orEmpty())?.let { said ->
+                inTurn {
+                    if (view === webView) {
+                        doing.heard(said)
+                        reportDoing()
+                    }
+                }
+            }
+        }
+        WebViewCompat.addDocumentStartJavaScript(view, PageDoing.SCRIPT, setOf("*"))
+    }
+
+    /** Tells the core what the page is doing, when it is not what the core was last told. */
+    private fun reportDoing() {
+        doing.news()?.let { news -> host.report(EngineEvent(web_view_id = id, page_activity_changed = news)) }
+    }
+
     @SuppressLint("SetJavaScriptEnabled") // A browser runs the pages' scripts.
     private fun configure(view: WebView) {
         view.settings.apply {
@@ -405,6 +439,7 @@ internal class WebViewPage(
         view.settings.textZoom = zoomPercent
         view.webViewClient = Client()
         view.webChromeClient = Chrome()
+        listenForDoings(view)
         // The WebView does not download: it says one was asked for (013). What it was loading
         // then comes to nothing, and the page stays. The name is what the site suggests, read
         // as the platform reads it; the core makes the name the file is saved under.
@@ -466,6 +501,11 @@ internal class WebViewPage(
             if (view !== webView) return
             topUrl = url
             val newPage = tracker.committed(url, view.canGoBack(), view.canGoForward())
+            if (newPage) {
+                // The page before's doings went with it (052).
+                doing.committed()
+                reportDoing()
+            }
             if (newPage && finding.isNotEmpty()) {
                 // A new page ends the find (010 §3). Left alone, the WebView goes on with it:
                 // it looks for the old text in the new page, unasked, and marks what it finds.
@@ -679,6 +719,11 @@ internal class WebViewPage(
                         try {
                             if (granted) request.grant(request.resources) else request.deny()
                         } catch (_: RuntimeException) {
+                        }
+                        // A page that was given the camera or the microphone holds it (052).
+                        if (granted) {
+                            doing.granted()
+                            reportDoing()
                         }
                     }
             }
