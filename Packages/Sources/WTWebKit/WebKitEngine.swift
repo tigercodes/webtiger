@@ -134,13 +134,8 @@ public final class WebKitEngine: HostServices {
             var pong = WTHostPong()
             pong.payload = ping.payload
             return .pong(pong)
-        case let .webViewCreate(create):
-            return self.create(create)
-        case let .webViewLoad(load):
-            guard let page = pages[load.webViewID] else { return failure("webview.unknown") }
-            guard let url = URL(string: load.url) else { return failure("webview.bad_address") }
-            page.webView.load(URLRequest(url: url))
-            return .ack(WTAck())
+        case let .webViewCreate(create): return self.create(create)
+        case let .webViewLoad(load): return self.load(load.url, in: load.webViewID)
         case let .webViewCommand(command):
             guard let page = pages[command.webViewID] else { return failure("webview.unknown") }
             switch command.command {
@@ -199,9 +194,27 @@ public final class WebKitEngine: HostServices {
             guard let page = pages[trust.webViewID] else { return failure("webview.unknown") }
             let trusted = certificates.trust(heldBy: page.id, loginSet: page.loginSet, isPrivate: page.isPrivate)
             return trusted ? .ack(WTAck()) : failure("certificate.unknown")
-        case let .webViewFetchIcon(fetch):
-            return fetchIcon(fetch)
+        case let .webViewFetchIcon(fetch): return fetchIcon(fetch)
+        case let .webViewSaveState(save): return state(of: save.webViewID)
+        // This adapter takes no state yet (051): the address is loaded, which is what the
+        // contract has a shell do with a state its engine will not take.
+        case let .webViewRestore(restore): return load(restore.url, in: restore.webViewID)
         }
+    }
+
+    /// Loads an address in a web view, as the core asked.
+    private func load(_ address: String, in webViewID: UInt64) -> WTHostResponse.OneOf_Kind {
+        guard let page = pages[webViewID] else { return failure("webview.unknown") }
+        guard let url = URL(string: address) else { return failure("webview.bad_address") }
+        page.webView.load(URLRequest(url: url))
+        return .ack(WTAck())
+    }
+
+    /// A web view's own state (051). This adapter gives none yet: its tab wakes at its
+    /// address, as before there were states.
+    private func state(of webViewID: UInt64) -> WTHostResponse.OneOf_Kind {
+        guard pages[webViewID] != nil else { return failure("webview.unknown") }
+        return .webViewState(WTWebViewState())
     }
 
     /// The core asked for a page's icon (046 §5a): answered at once, whatever comes of it.

@@ -1301,6 +1301,11 @@ public nonisolated struct WTHistoryEntry: Sendable {
 /// files, not only from the list. Answered with Ack (also when there was
 /// nothing to forget), "window.unknown", or "history.nothing_named" when
 /// `what` is not set.
+///
+/// Since 1.44 the kept states (051) of the tabs of those logins go with
+/// them, whatever is named: a state holds the list of pages its tab goes back
+/// through. A tab that is open is asked for no state again until it has
+/// another web view.
 public nonisolated struct WTForgetHistory: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for

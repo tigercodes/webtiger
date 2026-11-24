@@ -21,6 +21,7 @@ mod session;
 mod setting;
 mod site;
 mod space;
+mod state;
 mod suggest;
 
 use std::path::Path;

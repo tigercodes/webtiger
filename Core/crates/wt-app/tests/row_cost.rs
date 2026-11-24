@@ -41,6 +41,7 @@ fn row(rows: usize) -> Vec<SavedTab> {
                 },
                 favourite: false,
                 shown_at: 0,
+                state: 0,
                 url,
             }
         })

@@ -28,6 +28,7 @@ mod permissions;
 mod search;
 mod signin;
 mod spaces;
+mod states;
 mod tidying;
 
 pub use app::{App, AppFuture, AppOptions, HISTORY_PAGE, OUTSIDE_LINK_INTERVAL, SUGGESTIONS};

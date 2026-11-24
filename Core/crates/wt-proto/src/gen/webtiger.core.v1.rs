@@ -792,6 +792,11 @@ pub struct HistoryEntry {
 /// files, not only from the list. Answered with Ack (also when there was
 /// nothing to forget), "window.unknown", or "history.nothing_named" when
 /// `what` is not set.
+///
+/// Since 1.44 the kept states (051) of the tabs of those logins go with
+/// them, whatever is named: a state holds the list of pages its tab goes back
+/// through. A tab that is open is asked for no state again until it has
+/// another web view.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ForgetHistory {
     #[prost(uint64, tag = "1")]
@@ -2362,7 +2367,7 @@ pub struct NamedIcon {
 pub struct HostRequest {
     #[prost(
         oneof = "host_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18"
     )]
     pub kind: ::core::option::Option<host_request::Kind>,
 }
@@ -2412,11 +2417,16 @@ pub mod host_request {
         /// Since 1.39
         #[prost(message, tag = "16")]
         WebViewFetchIcon(super::WebViewFetchIcon),
+        /// Since 1.44
+        #[prost(message, tag = "17")]
+        WebViewSaveState(super::WebViewSaveState),
+        #[prost(message, tag = "18")]
+        WebViewRestore(super::WebViewRestore),
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct HostResponse {
-    #[prost(oneof = "host_response::Kind", tags = "1, 2, 3")]
+    #[prost(oneof = "host_response::Kind", tags = "1, 2, 3, 4")]
     pub kind: ::core::option::Option<host_response::Kind>,
 }
 /// Nested message and enum types in `HostResponse`.
@@ -2429,6 +2439,9 @@ pub mod host_response {
         Ack(super::Ack),
         #[prost(message, tag = "3")]
         Pong(super::HostPong),
+        /// Since 1.44
+        #[prost(message, tag = "4")]
+        WebViewState(super::WebViewState),
     }
 }
 /// The contract's health check through the shell (Ping.via_host).
@@ -2496,6 +2509,36 @@ pub struct WebViewCommand {
 pub struct WebViewDestroy {
     #[prost(uint64, tag = "1")]
     pub web_view_id: u64,
+}
+/// Since 1.44. WebViews: the engine's own state of a web view (051): what
+/// another web view can be made from, as far as the engine keeps it (the list
+/// Back and Forward go through, where a page was scrolled to). The core keeps
+/// it and never reads it. Answered with WebViewState, whose bytes are empty
+/// when the engine has none to give; or "webview.unknown".
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct WebViewSaveState {
+    #[prost(uint64, tag = "1")]
+    pub web_view_id: u64,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct WebViewState {
+    #[prost(bytes = "vec", tag = "1")]
+    pub state: ::prost::alloc::vec::Vec<u8>,
+}
+/// Since 1.44. WebViews: makes a web view what a state says (051), and loads
+/// the page it was at. Where the engine will not take the state (it is
+/// another engine's, an older version's, or damaged), `url` is loaded
+/// instead, as WebViewLoad would load it: the tab wakes either way, and
+/// which way is the shell's to know. Answered with Ack once one or the other
+/// has begun; how it goes arrives as EngineEvents. "webview.unknown".
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct WebViewRestore {
+    #[prost(uint64, tag = "1")]
+    pub web_view_id: u64,
+    #[prost(bytes = "vec", tag = "2")]
+    pub state: ::prost::alloc::vec::Vec<u8>,
+    #[prost(string, tag = "3")]
+    pub url: ::prost::alloc::string::String,
 }
 /// System: opens an address that is not a browser's with whatever the system
 /// has for it: the mail app for a letter, the dialler for a number (007).

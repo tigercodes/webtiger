@@ -258,6 +258,9 @@ impl Dispatcher {
     /// Publishes a snapshot of every subscribed model that changed since the
     /// last call. Changes that arrived together leave as one snapshot.
     pub fn flush(&self) {
+        // A tab that has left the front is asked for its state (051), and a
+        // tab that is gone has its state dropped.
+        self.app.keep_states();
         // What is published is what is kept: the session is written here,
         // when it has changed (009).
         self.app.persist();

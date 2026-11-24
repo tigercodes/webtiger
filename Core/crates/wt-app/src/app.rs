@@ -22,8 +22,8 @@ use wt_proto::v1::{
     OutsideLinkRequested, QueryHistory, RemoveGroup, RowPart, RowStep, SearchRequested,
     SearchWords, SendSiteHome, SetFavourite, StepTab, SubmitAddress, SuggestAddresses, TabCommand,
     TabOpened, Undo, UndoArrangement, WebViewCommand, WebViewCreate, WebViewDestroy, WebViewFind,
-    WebViewLoad, WebViewSetZoom, WindowOpened, WindowSnapshot, ZoomChange, ZoomPage, engine_event,
-    forget_history, host_request, move_tab, request, response, step_tab,
+    WebViewLoad, WebViewRestore, WebViewSetZoom, WindowOpened, WindowSnapshot, ZoomChange,
+    ZoomPage, engine_event, forget_history, host_request, move_tab, request, response, step_tab,
 };
 use wt_store::{ClosedTab, MAX_SUGGESTIONS, SavedTab, Space, Store};
 
@@ -174,6 +174,9 @@ impl App {
         };
         // Each Space's time (049), as the store has it.
         app.learn_tidy_times();
+        // A state that no saved tab names is of no use to anybody (051): what a
+        // run left behind that its session did not keep goes now.
+        let _ = app.store.borrow_mut().drop_states_no_tab_names();
         app
     }
 
@@ -556,7 +559,12 @@ impl App {
         }
         // No tab's page is a visit any more, as far as writing its title
         // goes: one that was forgotten must stay forgotten.
-        self.state.borrow_mut().visits_forgotten();
+        // Nor does a tab of these logins keep the state it had (051): the
+        // list a tab goes back through is what was visited. They are gone
+        // from the store's files with this answer, as the visits are.
+        self.state.borrow_mut().visits_forgotten(login_set);
+        self.forget_states()
+            .map_err(|error| AppError::new(error.code()))?;
         Ok(response::Kind::Ack(Ack {}))
     }
 
@@ -589,7 +597,7 @@ impl App {
         };
         // The tab is there whatever becomes of its page: a load that fails
         // shows in the tab.
-        if let Some(loading) = self.begin_load_as(tab, address, false) {
+        if let Some(loading) = self.begin_load_as(tab, address, false, None) {
             tokio::task::spawn_local(async move {
                 let _ = loading.await;
             });
@@ -619,7 +627,7 @@ impl App {
         };
         // The person's own search, as one typed in the address field is:
         // the tab says where it goes from the start.
-        if let Some(loading) = self.begin_load_as(tab, address, true) {
+        if let Some(loading) = self.begin_load_as(tab, address, true, None) {
             tokio::task::spawn_local(async move {
                 let _ = loading.await;
             });
@@ -679,7 +687,7 @@ impl App {
         let opened = response::Kind::TabOpened(TabOpened { tab_id: tab.get() });
         // The person's own, as an address typed in the field is: the tab
         // says where it goes from the start.
-        let Some(loading) = self.begin_load_as(tab, address, true) else {
+        let Some(loading) = self.begin_load_as(tab, address, true, None) else {
             return Box::pin(std::future::ready(Ok(opened)));
         };
         Box::pin(async move {
@@ -722,6 +730,7 @@ impl App {
             group: 0,
             favourite: false,
             shown_at: 0,
+            state: 0,
         };
         let reopened = self
             .state
@@ -810,7 +819,11 @@ impl App {
         let waking = self.state.borrow_mut().tabs_to_wake();
         waking
             .into_iter()
-            .filter_map(|(tab, address)| self.begin_load(tab, address))
+            .filter_map(|(tab, address, kept)| {
+                // From its kept state, where the store has it (051).
+                let state = kept.and_then(|id| self.store.borrow().kept_state(id).ok().flatten());
+                self.begin_load_as(tab, address, true, state)
+            })
             .collect()
     }
 
@@ -1435,16 +1448,22 @@ impl App {
         tab: TabId,
         address: Address,
     ) -> Option<impl Future<Output = Result<(), AppError>> + use<>> {
-        self.begin_load_as(tab, address, true)
+        self.begin_load_as(tab, address, true, None)
     }
 
     /// The same, for an address that is the user's own (typed, chosen from
     /// history) or, when it is not, where a page's link leads (018).
+    ///
+    /// With `kept`, a state and the engine it is of, the web view is made
+    /// from it where it is of the engine the tab has (051): the shell is
+    /// asked to restore it, and loads the address itself should its engine
+    /// not take the state.
     fn begin_load_as(
         &self,
         tab: TabId,
         address: Address,
         users: bool,
+        kept: Option<(i32, Vec<u8>)>,
     ) -> Option<impl Future<Output = Result<(), AppError>> + use<>> {
         let url = address.as_str().to_owned();
         let target = self
@@ -1470,12 +1489,20 @@ impl App {
                     }),
                 }))
         });
-        let loading = self
-            .host
-            .request(host_request::Kind::WebViewLoad(WebViewLoad {
+        let kept = kept
+            .filter(|(of, _)| *of == engine as i32)
+            .map(|(_, state)| state);
+        let loading = self.host.request(match kept {
+            Some(state) => host_request::Kind::WebViewRestore(WebViewRestore {
+                web_view_id: web_view.get(),
+                state,
+                url,
+            }),
+            None => host_request::Kind::WebViewLoad(WebViewLoad {
                 web_view_id: web_view.get(),
                 url,
-            }));
+            }),
+        });
         let state = Rc::clone(&self.state);
         Some(async move {
             if let Some(creating) = creating

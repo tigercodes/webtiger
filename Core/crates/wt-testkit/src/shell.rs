@@ -32,6 +32,12 @@ pub struct FakeShell {
     /// would, until [`FakeShell::release_host`].
     pub hold_host: bool,
     held: VecDeque<(u64, host_request::Kind)>,
+    /// A web view's state is not said when it is asked for (051), until
+    /// `release_states`: a shell whose engine is slow to say.
+    pub hold_states: bool,
+    held_states: VecDeque<(u64, host_request::Kind)>,
+    /// How many times a web view's state was asked for.
+    states_asked: usize,
     /// Answer the next host request with this instead of the engine's answer.
     pub answer_next_with: Option<host_response::Kind>,
     /// Every host request the core made, in order.
@@ -143,6 +149,9 @@ impl FakeShell {
             engine: FakeEngine::new(engines),
             hold_host: false,
             held: VecDeque::new(),
+            hold_states: false,
+            held_states: VecDeque::new(),
+            states_asked: 0,
             answer_next_with: None,
             host_requests: Vec::new(),
             events: Vec::new(),
@@ -230,6 +239,26 @@ impl FakeShell {
                     }
                 }
                 Some(envelope::Body::HostRequest(request)) => {
+                    // A web view's state being asked for (051) is the scripted
+                    // engine's to answer, at once, and is listed there
+                    // (`engine.states_asked`) and not among the host requests:
+                    // it is asked whenever a tab leaves the front, whatever
+                    // else a test is counting, holding or answering.
+                    if let Some(kind @ host_request::Kind::WebViewSaveState(_)) = request.kind {
+                        self.states_asked += 1;
+                        // A core that asks the tab in front, and asks again
+                        // when it is answered, would never be done.
+                        assert!(
+                            self.states_asked < 10_000,
+                            "the core asks for a web view's state without end"
+                        );
+                        if self.hold_states {
+                            self.held_states.push_back((envelope.id, kind));
+                        } else {
+                            self.answer_state(envelope.id, kind);
+                        }
+                        continue;
+                    }
                     self.order.push("host_request");
                     let Some(kind) = request.kind else { continue };
                     self.host_requests.push(kind.clone());
@@ -259,6 +288,26 @@ impl FakeShell {
         });
         for report in reports {
             self.report(report);
+        }
+    }
+
+    /// Says a web view's state, as the scripted engine has it now.
+    fn answer_state(&mut self, id: u64, kind: host_request::Kind) {
+        let (answer, _) = self.engine.answer(kind);
+        self.dispatcher.accept(Envelope {
+            id,
+            body: Some(envelope::Body::HostResponse(HostResponse {
+                kind: Some(answer),
+            })),
+        });
+    }
+
+    /// Says the states held back while `hold_states` was set, in the order
+    /// they were asked for, each as its web view is now, and stops holding.
+    pub fn release_states(&mut self) {
+        self.hold_states = false;
+        while let Some((id, kind)) = self.held_states.pop_front() {
+            self.answer_state(id, kind);
         }
     }
 

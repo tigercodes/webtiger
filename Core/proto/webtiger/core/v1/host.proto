@@ -47,6 +47,9 @@ message HostRequest {
     OpenFile open_file = 15;
     // Since 1.39
     WebViewFetchIcon web_view_fetch_icon = 16;
+    // Since 1.44
+    WebViewSaveState web_view_save_state = 17;
+    WebViewRestore web_view_restore = 18;
   }
 }
 
@@ -55,6 +58,8 @@ message HostResponse {
     Error error = 1;
     Ack ack = 2;
     HostPong pong = 3;
+    // Since 1.44
+    WebViewState web_view_state = 4;
   }
 }
 
@@ -110,6 +115,31 @@ message WebViewCommand {
 // with Ack, also when the shell no longer had it.
 message WebViewDestroy {
   uint64 web_view_id = 1;
+}
+
+// Since 1.44. WebViews: the engine's own state of a web view (051): what
+// another web view can be made from, as far as the engine keeps it (the list
+// Back and Forward go through, where a page was scrolled to). The core keeps
+// it and never reads it. Answered with WebViewState, whose bytes are empty
+// when the engine has none to give; or "webview.unknown".
+message WebViewSaveState {
+  uint64 web_view_id = 1;
+}
+
+message WebViewState {
+  bytes state = 1 [(wt.redact) = true];
+}
+
+// Since 1.44. WebViews: makes a web view what a state says (051), and loads
+// the page it was at. Where the engine will not take the state (it is
+// another engine's, an older version's, or damaged), `url` is loaded
+// instead, as WebViewLoad would load it: the tab wakes either way, and
+// which way is the shell's to know. Answered with Ack once one or the other
+// has begun; how it goes arrives as EngineEvents. "webview.unknown".
+message WebViewRestore {
+  uint64 web_view_id = 1;
+  bytes state = 2 [(wt.redact) = true];
+  string url = 3 [(wt.redact) = true];
 }
 
 // System: opens an address that is not a browser's with whatever the system

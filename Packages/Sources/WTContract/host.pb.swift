@@ -181,6 +181,23 @@ public nonisolated struct WTHostRequest: Sendable {
     set {kind = .webViewFetchIcon(newValue)}
   }
 
+  /// Since 1.44
+  public var webViewSaveState: WTWebViewSaveState {
+    get {
+      if case .webViewSaveState(let v)? = kind {return v}
+      return WTWebViewSaveState()
+    }
+    set {kind = .webViewSaveState(newValue)}
+  }
+
+  public var webViewRestore: WTWebViewRestore {
+    get {
+      if case .webViewRestore(let v)? = kind {return v}
+      return WTWebViewRestore()
+    }
+    set {kind = .webViewRestore(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -210,6 +227,9 @@ public nonisolated struct WTHostRequest: Sendable {
     case openFile(WTOpenFile)
     /// Since 1.39
     case webViewFetchIcon(WTWebViewFetchIcon)
+    /// Since 1.44
+    case webViewSaveState(WTWebViewSaveState)
+    case webViewRestore(WTWebViewRestore)
 
   }
 
@@ -247,12 +267,23 @@ public nonisolated struct WTHostResponse: Sendable {
     set {kind = .pong(newValue)}
   }
 
+  /// Since 1.44
+  public var webViewState: WTWebViewState {
+    get {
+      if case .webViewState(let v)? = kind {return v}
+      return WTWebViewState()
+    }
+    set {kind = .webViewState(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
     case error(WTError)
     case ack(WTAck)
     case pong(WTHostPong)
+    /// Since 1.44
+    case webViewState(WTWebViewState)
 
   }
 
@@ -377,6 +408,57 @@ public nonisolated struct WTWebViewDestroy: Sendable {
   // methods supported on all messages.
 
   public var webViewID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Since 1.44. WebViews: the engine's own state of a web view (051): what
+/// another web view can be made from, as far as the engine keeps it (the list
+/// Back and Forward go through, where a page was scrolled to). The core keeps
+/// it and never reads it. Answered with WebViewState, whose bytes are empty
+/// when the engine has none to give; or "webview.unknown".
+public nonisolated struct WTWebViewSaveState: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var webViewID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct WTWebViewState: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var state: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Since 1.44. WebViews: makes a web view what a state says (051), and loads
+/// the page it was at. Where the engine will not take the state (it is
+/// another engine's, an older version's, or damaged), `url` is loaded
+/// instead, as WebViewLoad would load it: the tab wakes either way, and
+/// which way is the shell's to know. Answered with Ack once one or the other
+/// has begun; how it goes arrives as EngineEvents. "webview.unknown".
+public nonisolated struct WTWebViewRestore: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var webViewID: UInt64 = 0
+
+  public var state: Data = Data()
+
+  public var url: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -618,7 +700,7 @@ fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
 
 nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".HostRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{3}web_view_create\0\u{3}web_view_load\0\u{3}web_view_command\0\u{3}web_view_destroy\0\u{3}open_outside\0\u{3}web_view_find\0\u{3}web_view_set_zoom\0\u{3}download_start\0\u{3}download_cancel\0\u{3}permission_answer\0\u{3}dialog_answer\0\u{3}sign_in_answer\0\u{3}web_view_trust_certificate\0\u{3}open_file\0\u{3}web_view_fetch_icon\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{3}web_view_create\0\u{3}web_view_load\0\u{3}web_view_command\0\u{3}web_view_destroy\0\u{3}open_outside\0\u{3}web_view_find\0\u{3}web_view_set_zoom\0\u{3}download_start\0\u{3}download_cancel\0\u{3}permission_answer\0\u{3}dialog_answer\0\u{3}sign_in_answer\0\u{3}web_view_trust_certificate\0\u{3}open_file\0\u{3}web_view_fetch_icon\0\u{3}web_view_save_state\0\u{3}web_view_restore\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -834,6 +916,32 @@ nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
           self.kind = .webViewFetchIcon(v)
         }
       }()
+      case 17: try {
+        var v: WTWebViewSaveState?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .webViewSaveState(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .webViewSaveState(v)
+        }
+      }()
+      case 18: try {
+        var v: WTWebViewRestore?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .webViewRestore(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .webViewRestore(v)
+        }
+      }()
       default: break
       }
     }
@@ -909,6 +1017,14 @@ nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
       guard case .webViewFetchIcon(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 16)
     }()
+    case .webViewSaveState?: try {
+      guard case .webViewSaveState(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
+    }()
+    case .webViewRestore?: try {
+      guard case .webViewRestore(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 18)
+    }()
     case nil: break
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -923,7 +1039,7 @@ nonisolated extension WTHostRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 nonisolated extension WTHostResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".HostResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}error\0\u{1}ack\0\u{1}pong\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}error\0\u{1}ack\0\u{1}pong\0\u{3}web_view_state\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -970,6 +1086,19 @@ nonisolated extension WTHostResponse: SwiftProtobuf.Message, SwiftProtobuf._Mess
           self.kind = .pong(v)
         }
       }()
+      case 4: try {
+        var v: WTWebViewState?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .webViewState(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .webViewState(v)
+        }
+      }()
       default: break
       }
     }
@@ -992,6 +1121,10 @@ nonisolated extension WTHostResponse: SwiftProtobuf.Message, SwiftProtobuf._Mess
     case .pong?: try {
       guard case .pong(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+    }()
+    case .webViewState?: try {
+      guard case .webViewState(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
     }()
     case nil: break
     }
@@ -1239,6 +1372,106 @@ nonisolated extension WTWebViewDestroy: SwiftProtobuf.Message, SwiftProtobuf._Me
 
   public static func ==(lhs: WTWebViewDestroy, rhs: WTWebViewDestroy) -> Bool {
     if lhs.webViewID != rhs.webViewID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTWebViewSaveState: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WebViewSaveState"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.webViewID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.webViewID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.webViewID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTWebViewSaveState, rhs: WTWebViewSaveState) -> Bool {
+    if lhs.webViewID != rhs.webViewID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTWebViewState: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WebViewState"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}state\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBytesField(value: &self.state) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.state.isEmpty {
+      try visitor.visitSingularBytesField(value: self.state, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTWebViewState, rhs: WTWebViewState) -> Bool {
+    if lhs.state != rhs.state {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTWebViewRestore: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WebViewRestore"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{1}state\0\u{1}url\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.webViewID) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.state) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.webViewID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.webViewID, fieldNumber: 1)
+    }
+    if !self.state.isEmpty {
+      try visitor.visitSingularBytesField(value: self.state, fieldNumber: 2)
+    }
+    if !self.url.isEmpty {
+      try visitor.visitSingularStringField(value: self.url, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTWebViewRestore, rhs: WTWebViewRestore) -> Bool {
+    if lhs.webViewID != rhs.webViewID {return false}
+    if lhs.state != rhs.state {return false}
+    if lhs.url != rhs.url {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

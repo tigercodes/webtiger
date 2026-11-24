@@ -11,7 +11,7 @@ use wt_proto::v1::{
     NavigationCommand, NavigationCommitted, NavigationFailed, NavigationFinished,
     NavigationStarted, NewWindowRequested, OutsideLinkRequested, PermissionKind,
     PermissionRequested, PermissionWithdrawn, ProgressChanged, RendererGone, SearchRequested,
-    SignInRequested, TitleChanged, engine_event, host_request, host_response,
+    SignInRequested, TitleChanged, WebViewState, engine_event, host_request, host_response,
 };
 
 /// A page of the scripted web.
@@ -44,9 +44,53 @@ pub struct FakeWebView {
     pub index: usize,
 }
 
+/// The first line of a state the scripted engine made (051).
+const STATE_MARK: &str = "scripted engine's state";
+
+/// A web view's state as the scripted engine gives it (051): a mark, where in
+/// its list it is, the addresses of the list, and `padding` bytes that say
+/// nothing, for a test that wants a large one.
+fn state_of(view: &FakeWebView, padding: usize) -> Vec<u8> {
+    let mut state = format!(
+        "{STATE_MARK}\n{}\n{}\n",
+        view.index,
+        view.history.join("\n")
+    );
+    state.push('#');
+    state.push_str(&"x".repeat(padding));
+    state.into_bytes()
+}
+
+/// The list and the place in it that a state says, when it is one the
+/// scripted engine made.
+fn read_state(state: &[u8]) -> Option<(Vec<String>, usize)> {
+    let text = std::str::from_utf8(state).ok()?;
+    let mut lines = text.lines();
+    if lines.next()? != STATE_MARK {
+        return None;
+    }
+    let index: usize = lines.next()?.parse().ok()?;
+    let history: Vec<String> = lines
+        .take_while(|line| !line.starts_with('#'))
+        .map(str::to_owned)
+        .collect();
+    (index < history.len()).then_some((history, index))
+}
+
 /// The engine behind a [`crate::FakeShell`].
 #[derive(Debug)]
 pub struct FakeEngine {
+    /// The web views whose state was asked for (051), in order.
+    pub states_asked: Vec<u64>,
+    /// The web views that were to be made from a state (051): each with the
+    /// state, and the address to load should the engine not take it.
+    pub restores: Vec<(u64, Vec<u8>, String)>,
+    /// The engine takes no state: it loads the address it was given instead.
+    pub refuses_states: bool,
+    /// The engine has no state to give.
+    pub gives_no_state: bool,
+    /// Bytes that say nothing, added to every state the engine gives.
+    pub state_padding: usize,
     pages: BTreeMap<String, FakePage>,
     /// The web views that exist, by id.
     pub web_views: BTreeMap<u64, FakeWebView>,
@@ -119,6 +163,11 @@ pub struct FakeEngine {
 impl FakeEngine {
     pub(crate) fn new(engines: Vec<EngineKind>) -> FakeEngine {
         FakeEngine {
+            states_asked: Vec::new(),
+            restores: Vec::new(),
+            refuses_states: false,
+            gives_no_state: false,
+            state_padding: 0,
             pages: BTreeMap::new(),
             web_views: BTreeMap::new(),
             engines,
@@ -418,6 +467,49 @@ impl FakeEngine {
             Kind::WebViewDestroy(destroy) => {
                 self.web_views.remove(&destroy.web_view_id);
                 (ack, Vec::new())
+            }
+            Kind::WebViewSaveState(save) => {
+                let Some(view) = self.web_views.get(&save.web_view_id) else {
+                    return (error("webview.unknown"), Vec::new());
+                };
+                self.states_asked.push(save.web_view_id);
+                // A web view that has been nowhere has no state; nor has any,
+                // when the engine is one that gives none.
+                let state = if self.gives_no_state || view.history.is_empty() {
+                    Vec::new()
+                } else {
+                    state_of(view, self.state_padding)
+                };
+                (
+                    host_response::Kind::WebViewState(WebViewState { state }),
+                    Vec::new(),
+                )
+            }
+            Kind::WebViewRestore(restore) => {
+                if !self.web_views.contains_key(&restore.web_view_id) {
+                    return (error("webview.unknown"), Vec::new());
+                }
+                self.restores.push((
+                    restore.web_view_id,
+                    restore.state.clone(),
+                    restore.url.clone(),
+                ));
+                // A state this engine did not make, or will not take: the
+                // address is loaded instead, as the contract says.
+                let Some((history, index)) =
+                    read_state(&restore.state).filter(|_| !self.refuses_states)
+                else {
+                    return (ack, self.load(restore.web_view_id, &restore.url));
+                };
+                if let Some(view) = self.web_views.get_mut(&restore.web_view_id) {
+                    view.history = history;
+                    view.index = index;
+                }
+                // The page the list was at arrives, with its list.
+                (
+                    ack,
+                    self.command(restore.web_view_id, NavigationCommand::Reload),
+                )
             }
             Kind::WebViewFind(find) => {
                 if !self.web_views.contains_key(&find.web_view_id) {

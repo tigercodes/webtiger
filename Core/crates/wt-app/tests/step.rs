@@ -284,13 +284,16 @@ fn start(folder: &Path) -> FakeShell {
     shell
 }
 
-/// The addresses the shell was asked to load, in order.
+/// The addresses the shell was asked to load, in order: by a load, or by
+/// waking a tab from its kept state (051), which names the address the tab
+/// is at and comes to the same page.
 fn loads(shell: &FakeShell) -> Vec<String> {
     shell
         .host_requests
         .iter()
         .filter_map(|request| match request {
             host_request::Kind::WebViewLoad(load) => Some(load.url.clone()),
+            host_request::Kind::WebViewRestore(restore) => Some(restore.url.clone()),
             _ => None,
         })
         .collect()

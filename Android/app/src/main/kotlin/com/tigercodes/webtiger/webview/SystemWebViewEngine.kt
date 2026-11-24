@@ -40,6 +40,7 @@ import com.tigercodes.webtiger.core.v1.SearchRequested
 import com.tigercodes.webtiger.core.v1.WebViewCommand
 import com.tigercodes.webtiger.core.v1.WebViewCreate
 import com.tigercodes.webtiger.core.v1.WebViewLoad
+import com.tigercodes.webtiger.core.v1.WebViewState
 
 /**
  * Answers the WebViews host service with the System WebView. Used on the main thread only, as
@@ -179,6 +180,8 @@ class SystemWebViewEngine internal constructor(
         val dialog = request.dialog_answer
         val signIn = request.sign_in_answer
         val trust = request.web_view_trust_certificate
+        val saveState = request.web_view_save_state
+        val restore = request.web_view_restore
         val response =
             when {
                 // The core's word on a download this adapter reported (013).
@@ -242,6 +245,12 @@ class SystemWebViewEngine internal constructor(
                 ping != null -> HostResponse(pong = HostPong(payload = ping.payload))
                 create != null -> create(create)
                 load != null -> load(load)
+                // A web view's own state (051). This adapter gives none yet: its tab wakes at
+                // its address, as before there were states.
+                saveState != null -> if (pages[saveState.web_view_id] == null) failure("webview.unknown") else HostResponse(web_view_state = WebViewState())
+                // And it takes none: the address is loaded, which is what the contract has a
+                // shell do with a state its engine will not take.
+                restore != null -> load(WebViewLoad(web_view_id = restore.web_view_id, url = restore.url))
                 command != null -> command(command)
                 destroy != null -> {
                     // What its page was asking goes with it: refused, while there is a page to tell.

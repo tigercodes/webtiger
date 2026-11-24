@@ -307,6 +307,17 @@ pub(crate) struct Tab {
     shown_at: Option<Timestamp>,
     /// The tab was in front of its row when tidying last looked.
     fronted: bool,
+    /// The tab's kept state (051), by its id in the store: what its engine
+    /// saved of its web view when it last left the front. `None` when it has
+    /// none: it has not left the front, or has gone on to another page since.
+    kept: Option<i64>,
+    /// How many pages the tab has committed: by it, a state that was asked
+    /// for before the tab went elsewhere is known to be an old one.
+    commits: u64,
+    /// The web view whose list of pages may hold what the person asked to
+    /// be forgotten (051): while it is the tab's, its state is neither asked
+    /// for nor kept. Another web view's list starts anew.
+    withheld: Option<WebViewId>,
 }
 
 /// What makes a tab a Site (039): where its home is, and what it is called
@@ -375,7 +386,16 @@ impl Tab {
             icon_waiting: None,
             shown_at: None,
             fronted: false,
+            kept: None,
+            commits: 0,
+            withheld: None,
         }
+    }
+
+    /// Whether the web view the tab has is one whose state is withheld
+    /// (051): history was forgotten while it had it.
+    fn is_withheld(&self) -> bool {
+        self.withheld.is_some() && self.withheld == self.web_view
     }
 
     /// A tab as the session kept it (009): where it was and what it was
@@ -392,6 +412,8 @@ impl Tab {
         // When it was last in front, as the session kept it (049): a quit
         // does not start a tab's time again.
         tab.shown_at = (saved.shown_at != 0).then_some(Timestamp(saved.shown_at));
+        // Its state is the one it had (051): it wakes from it.
+        tab.kept = (saved.state != 0).then_some(saved.state);
         let web = |text: &str| {
             Address::parse(text)
                 .ok()
@@ -494,6 +516,7 @@ impl Tab {
                 group: 0,
                 favourite: false,
                 shown_at,
+                state: 0,
             };
         }
         let url = self
@@ -512,6 +535,7 @@ impl Tab {
                 group: 0,
                 favourite: false,
                 shown_at,
+                state: 0,
             };
         }
         let kept = self
@@ -538,6 +562,7 @@ impl Tab {
             group: 0,
             favourite: false,
             shown_at,
+            state: self.kept.unwrap_or(0),
         }
     }
 
@@ -589,6 +614,7 @@ impl Tab {
                 self.passable = None;
             }
             Kind::NavigationCommitted(committed) => {
+                self.commits = self.commits.wrapping_add(1);
                 // An address the engine reports but the parser refuses is
                 // shown as no address at all rather than as the old one.
                 self.committed = Address::parse(&committed.url).ok();
@@ -654,6 +680,9 @@ impl Tab {
                 if let Ok(address) = Address::parse(&changed.url) {
                     self.committed = Some(address);
                 }
+                // The page has gone on, as far as a kept state goes (051):
+                // its list has a place more than the state has.
+                self.commits = self.commits.wrapping_add(1);
             }
             Kind::TitleChanged(changed) => self.title = changed.title,
             Kind::ProgressChanged(changed) => {
@@ -1087,6 +1116,12 @@ pub(crate) struct State {
     /// tab of its that is no Site is tidied. A Space that is not here is
     /// never tidied.
     tidy_after: BTreeMap<SpaceId, u32>,
+    /// The tab each window showed when the tabs that had left the front
+    /// were last asked for (051).
+    was_front: BTreeMap<WindowId, TabId>,
+    /// The kept states whose tabs are gone, or have gone on to another page
+    /// (051): to be dropped from the store.
+    states_to_drop: Vec<i64>,
 }
 
 /// The number of the first private window's row, where a Space's number is
@@ -1116,6 +1151,8 @@ impl State {
             private: Vec::new(),
             private_made: 0,
             tidy_after: BTreeMap::new(),
+            was_front: BTreeMap::new(),
+            states_to_drop: Vec::new(),
             spaces,
             start: (start.id, start.login_set),
             engine,
@@ -1406,7 +1443,7 @@ impl State {
     /// to be loaded now, and is asleep no longer. The tab in front of what
     /// a window shows is never left asleep; one in front of a Space that is
     /// not shown sleeps on until it is.
-    pub(crate) fn tabs_to_wake(&mut self) -> Vec<(TabId, Address)> {
+    pub(crate) fn tabs_to_wake(&mut self) -> Vec<(TabId, Address, Option<i64>)> {
         let fronts: Vec<TabId> = self
             .windows
             .values()
@@ -1420,9 +1457,77 @@ impl State {
                     return None;
                 }
                 tab.asleep = false;
-                Some((id, tab.pending.clone()?))
+                // With its kept state, where it has one (051): it wakes from it.
+                Some((id, tab.pending.clone()?, tab.kept))
             })
             .collect()
+    }
+
+    /// The tabs that have left the front since this was last asked (051):
+    /// each was the tab its window showed, is so no longer, and is at rest
+    /// on a page of the web's in a web view of its own. A Site is none of them (it
+    /// sleeps at its home, 039), nor a private window's tab, of which
+    /// nothing is written (037), nor one whose list may hold what was asked
+    /// to be forgotten. With each: its web view, how many pages it has
+    /// committed, and the engine its state will be of.
+    pub(crate) fn left_the_front(&mut self) -> Vec<(TabId, WebViewId, u64, i32)> {
+        let now: BTreeMap<WindowId, TabId> = self
+            .windows
+            .iter()
+            .filter_map(|(id, window)| window.shown().map(|row| (*id, row.front)))
+            .collect();
+        let before = std::mem::replace(&mut self.was_front, now);
+        before
+            .into_iter()
+            .filter(|(window, tab)| self.was_front.get(window) != Some(tab))
+            .filter_map(|(_, id)| {
+                let tab = self.tabs.get(&id)?;
+                let web = tab
+                    .committed
+                    .as_ref()
+                    .is_some_and(|at| matches!(at.scheme(), "http" | "https"));
+                // At rest on the page it has: a tab that is on its way
+                // somewhere, or whose load failed, is shown where it was
+                // going, and its web view's state is of where it was.
+                let kept = tab.site.is_none()
+                    && web
+                    && !tab.is_withheld()
+                    && !tab.asleep
+                    && tab.pending.is_none()
+                    && !self.is_private(tab.login_set);
+                kept.then_some((id, tab.web_view?, tab.commits, tab.engine as i32))
+            })
+            .collect()
+    }
+
+    /// A tab's state was kept in the store as `id`; or, with `None`, there
+    /// was none to keep (051). What is to be dropped from the store: the
+    /// state the tab had; or the new one, when the tab is gone, has another
+    /// web view, or has gone on to another page, or been sent to one, or
+    /// become a Site, or had its history forgotten, since it was asked.
+    pub(crate) fn state_kept(
+        &mut self,
+        tab: TabId,
+        web_view: WebViewId,
+        commits: u64,
+        id: Option<i64>,
+    ) -> Vec<i64> {
+        let asked = self.tabs.get_mut(&tab).filter(|tab| {
+            tab.web_view == Some(web_view)
+                && tab.commits == commits
+                && tab.pending.is_none()
+                && tab.site.is_none()
+                && !tab.is_withheld()
+        });
+        match asked {
+            Some(tab) => std::mem::replace(&mut tab.kept, id).into_iter().collect(),
+            None => id.into_iter().collect(),
+        }
+    }
+
+    /// The kept states that are wanted no longer (051), once.
+    pub(crate) fn take_states_to_drop(&mut self) -> Vec<i64> {
+        std::mem::take(&mut self.states_to_drop)
     }
 
     /// The session as it now is (009, 024): the Space its window shows,
@@ -1486,9 +1591,18 @@ impl State {
         let closing = self.windows.remove(&window)?;
         let closing_space = closing.space;
         let mut web_views = Vec::new();
+        // The window the session is of keeps its tabs when it closes (009),
+        // and they keep their states (051); another window's tabs are gone.
+        let kept_by_the_session = self.saved.is_some() && self.session_window == Some(window);
         // The tabs of every Space it has shown, not only the one it shows.
         for tab in closing.rows.into_values().flat_map(|row| row.tabs) {
-            if let Some(web_view) = self.tabs.remove(&tab).and_then(|tab| tab.web_view) {
+            let Some(tab) = self.tabs.remove(&tab) else {
+                continue;
+            };
+            if !kept_by_the_session {
+                self.states_to_drop.extend(tab.kept);
+            }
+            if let Some(web_view) = tab.web_view {
                 self.web_views.remove(&web_view);
                 web_views.push(web_view);
             }
@@ -1565,6 +1679,8 @@ impl State {
             return self.sleep_site(tab_id);
         }
         let tab = self.tabs.remove(&tab_id)?;
+        // Its state goes with it (051).
+        self.states_to_drop.extend(tab.kept);
         if let Some(web_view) = tab.web_view {
             self.web_views.remove(&web_view);
         }
@@ -1692,6 +1808,10 @@ impl State {
         let (window, space, name) = (tab.window, tab.space, tab.title.clone());
         if let Some(tab) = self.tabs.get_mut(&tab_id) {
             tab.site = Some(Site { home, name });
+            // A Site has no state (051 D4): it sleeps at its home, and the
+            // one it had as a tab goes.
+            let stale = tab.kept.take();
+            self.states_to_drop.extend(stale);
         }
         // Among the tabs that were no Sites it was after every Site: in a
         // row's order it is the last of the Sites that are in no Group.
@@ -2415,6 +2535,14 @@ impl State {
         users: Option<Address>,
     ) -> Option<LoadTarget> {
         let tab = self.tabs.get_mut(&tab_id)?;
+        // A tab that is sent somewhere is shown as going there: the state it
+        // had is of where it was, and is its no longer (051). (A tab that is
+        // waking has had its state taken for it already.)
+        let stale = if users.is_some() {
+            tab.kept.take()
+        } else {
+            None
+        };
         match users {
             Some(address) => tab.begin_user_load(address),
             None => tab.begin_link_load(),
@@ -2429,12 +2557,14 @@ impl State {
             }
         };
         self.dirty.insert(tab.window);
-        Some(LoadTarget {
+        let target = LoadTarget {
             web_view,
             create,
             engine: tab.engine,
             login_set: tab.login_set,
-        })
+        };
+        self.states_to_drop.extend(stale);
+        Some(target)
     }
 
     /// The shell could not create `web_view`: the tab has none after all.
@@ -3384,9 +3514,18 @@ impl State {
     /// Every tab forgets which visit its page is: history was forgotten, and
     /// a title must not be written to a visit that is gone, nor a reload be
     /// taken for a visit that is no longer there.
-    pub(crate) fn visits_forgotten(&mut self) {
+    ///
+    /// And the tabs of the login set whose history it was lose their kept
+    /// states (051): a state holds the list a tab goes back through, which
+    /// is what was visited. One that has a web view is asked for no other
+    /// until it has another web view: the one it has still holds that list.
+    pub(crate) fn visits_forgotten(&mut self, login_set: LoginSetId) {
         for tab in self.tabs.values_mut() {
             tab.visit = None;
+            if tab.login_set == login_set {
+                self.states_to_drop.extend(tab.kept.take());
+                tab.withheld = tab.web_view;
+            }
         }
     }
 
@@ -3451,9 +3590,18 @@ impl State {
             .and_then(|tab_id| self.tabs.get_mut(tab_id))?;
         let before = tab.clone();
         tab.apply(event);
+        // A state is of the page the tab was on when it was asked (051): a
+        // tab that has gone on to another page has none, until it is asked
+        // again.
+        let stale = if tab.commits == before.commits {
+            None
+        } else {
+            tab.kept.take()
+        };
         if *tab != before {
             self.dirty.insert(tab.window);
         }
+        self.states_to_drop.extend(stale);
         None
     }
 

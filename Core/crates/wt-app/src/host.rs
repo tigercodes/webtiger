@@ -98,6 +98,8 @@ impl Host for HostBridge {
 enum Expected {
     Pong,
     Ack,
+    /// A web view's state (051).
+    State,
 }
 
 impl Expected {
@@ -118,7 +120,9 @@ impl Expected {
             | host_request::Kind::SignInAnswer(_)
             | host_request::Kind::WebViewTrustCertificate(_)
             | host_request::Kind::OpenFile(_)
-            | host_request::Kind::WebViewFetchIcon(_) => Expected::Ack,
+            | host_request::Kind::WebViewFetchIcon(_)
+            | host_request::Kind::WebViewRestore(_) => Expected::Ack,
+            host_request::Kind::WebViewSaveState(_) => Expected::State,
         }
     }
 
@@ -130,7 +134,8 @@ impl Expected {
                 HostError::new("host.failed")
             }),
             (Expected::Pong, Some(kind @ host_response::Kind::Pong(_)))
-            | (Expected::Ack, Some(kind @ host_response::Kind::Ack(_))) => Ok(kind),
+            | (Expected::Ack, Some(kind @ host_response::Kind::Ack(_)))
+            | (Expected::State, Some(kind @ host_response::Kind::WebViewState(_))) => Ok(kind),
             _ => Err(HostError::new("host.wrong_answer")),
         }
     }

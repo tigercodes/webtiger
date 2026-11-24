@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use crate::StoreError;
 
 /// The version this build's store is at.
-pub const SCHEMA_VERSION: u32 = 15;
+pub const SCHEMA_VERSION: u32 = 16;
 
 /// The migrations, in order: `MIGRATIONS[n]` takes version `n` to `n + 1`.
 const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
@@ -187,6 +187,15 @@ const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
     // 15 (W2, 050): a Space's icon, an emoji of the core's list; empty for
     // none, which is what every Space there was has.
     "ALTER TABLE space ADD COLUMN icon TEXT NOT NULL DEFAULT '';",
+    // 16 (W3, 051): a tab's kept state. What an engine saved of a web view,
+    // with the engine it is of; and the state a saved tab names (0: none).
+    // Ids are never used twice.
+    "CREATE TABLE tab_state (
+         id INTEGER PRIMARY KEY AUTOINCREMENT,
+         engine INTEGER NOT NULL,
+         state BLOB NOT NULL
+     ) STRICT;
+     ALTER TABLE tab ADD COLUMN state_id INTEGER NOT NULL DEFAULT 0;",
 ];
 
 pub(crate) fn version(connection: &Connection) -> Result<u32, StoreError> {
