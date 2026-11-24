@@ -58,6 +58,8 @@ pub(crate) fn fake_config() -> CoreConfig {
             kind: EngineKind::Webkit as i32,
             version: "test".to_owned(),
         }],
+        device_kind: 0,
+        memory_megabytes: 0,
     }
 }
 

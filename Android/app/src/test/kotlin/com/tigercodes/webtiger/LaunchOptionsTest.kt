@@ -32,6 +32,23 @@ class LaunchOptionsTest {
         )
     }
 
+    /** Fake mode's numbers: the clock's step (049), the sleep time (053), the limit of live tabs (054). */
+    @Test
+    fun theExtrasGiveFakeModeItsNumbers() {
+        val numbers =
+            fake()
+                .putExtra(MainActivity.EXTRA_FAKE_CLOCK_STEP, 86_400)
+                .putExtra(MainActivity.EXTRA_FAKE_SLEEP_AFTER, 5)
+                .putExtra(MainActivity.EXTRA_FAKE_LIVE_TABS, 2)
+        assertEquals(LaunchOptions(fake = true, clockStep = 86_400, sleepAfter = 5, liveTabs = 2), MainActivity.launchOptions(numbers, debuggable = true))
+        // A number below nothing is nothing; and without fake mode none of them is anything.
+        val below = fake().putExtra(MainActivity.EXTRA_FAKE_LIVE_TABS, -3).putExtra(MainActivity.EXTRA_FAKE_SLEEP_AFTER, -1)
+        assertEquals(LaunchOptions(fake = true), MainActivity.launchOptions(below, debuggable = true))
+        val alone = Intent(Intent.ACTION_MAIN).putExtra(MainActivity.EXTRA_FAKE_LIVE_TABS, 2)
+        assertEquals(LaunchOptions(), MainActivity.launchOptions(alone, debuggable = true))
+        assertEquals(LaunchOptions(), MainActivity.launchOptions(numbers, debuggable = false))
+    }
+
     @Test
     fun aBuildThatIsNotDebuggableIgnoresThem() {
         assertEquals(LaunchOptions(), MainActivity.launchOptions(fake("http://127.0.0.1:8080/start"), debuggable = false))

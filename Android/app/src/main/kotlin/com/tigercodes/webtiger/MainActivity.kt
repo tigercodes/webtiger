@@ -183,6 +183,12 @@ class MainActivity : ComponentActivity() {
          */
         const val EXTRA_FAKE_SLEEP_AFTER = "webtiger.fake.sleep_after"
 
+        /**
+         * `--ei webtiger.fake.live_tabs 2`: in fake mode, the most tabs that are alive at once,
+         * to see the limit met (054). Without it fake mode has none.
+         */
+        const val EXTRA_FAKE_LIVE_TABS = "webtiger.fake.live_tabs"
+
         /** The words of [ACTION_SEARCH_WORDS]. */
         const val EXTRA_WORDS = "webtiger.search.words"
 
@@ -257,6 +263,7 @@ class MainActivity : ComponentActivity() {
                 firstRun = intent.getBooleanExtra(EXTRA_FAKE_FIRST_RUN, false),
                 clockStep = intent.getIntExtra(EXTRA_FAKE_CLOCK_STEP, 0).coerceAtLeast(0),
                 sleepAfter = intent.getIntExtra(EXTRA_FAKE_SLEEP_AFTER, 0).coerceAtLeast(0),
+                liveTabs = intent.getIntExtra(EXTRA_FAKE_LIVE_TABS, 0).coerceAtLeast(0),
             )
         }
     }

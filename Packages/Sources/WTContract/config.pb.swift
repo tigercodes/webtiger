@@ -22,6 +22,51 @@ fileprivate nonisolated struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobu
   typealias Version = _2
 }
 
+/// What a shell runs on, for the limit of live tabs (054).
+public nonisolated enum WTDeviceKind: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+
+  /// Taken for a desktop.
+  case unspecified // = 0
+  case phone // = 1
+  case tablet // = 2
+  case desktop // = 3
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .phone
+    case 2: self = .tablet
+    case 3: self = .desktop
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .phone: return 1
+    case .tablet: return 2
+    case .desktop: return 3
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [WTDeviceKind] = [
+    .unspecified,
+    .phone,
+    .tablet,
+    .desktop,
+  ]
+
+}
+
 public nonisolated enum WTPlatform: SwiftProtobuf.Enum, Swift.CaseIterable {
   public typealias RawValue = Int
   case unspecified // = 0
@@ -159,6 +204,15 @@ public nonisolated struct WTCoreConfig: Sendable {
   /// least one. A pack installed later is announced with a request (W6).
   public var engines: [WTEngineInfo] = []
 
+  /// Since 1.47. The device, as the shell finds it when it starts (054): the
+  /// core works out from it how many tabs may be alive at once. A window made
+  /// wide or narrow, or a foldable opened, after that changes nothing.
+  public var deviceKind: WTDeviceKind = .unspecified
+
+  /// Since 1.47. The device's memory, in megabytes. 0 when the shell does
+  /// not know.
+  public var memoryMegabytes: UInt32 = 0
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -192,6 +246,12 @@ public nonisolated struct WTFakeOptions: Sendable {
   /// minute.
   public var sleepAfterSeconds: UInt32 = 0
 
+  /// Since 1.47. The most tabs that are alive at once (054), for a suite
+  /// that must see the limit met. 0: none. Fake mode has no limit of its
+  /// own, whatever the device: a suite that opens five tabs on a phone is
+  /// about something else.
+  public var liveTabs: UInt32 = 0
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -218,6 +278,10 @@ public nonisolated struct WTEngineInfo: Sendable {
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
 
+nonisolated extension WTDeviceKind: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0DEVICE_KIND_UNSPECIFIED\0\u{1}DEVICE_KIND_PHONE\0\u{1}DEVICE_KIND_TABLET\0\u{1}DEVICE_KIND_DESKTOP\0")
+}
+
 nonisolated extension WTPlatform: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0PLATFORM_UNSPECIFIED\0\u{1}PLATFORM_MACOS\0\u{1}PLATFORM_IOS\0\u{1}PLATFORM_WINDOWS\0\u{1}PLATFORM_ANDROID\0\u{1}PLATFORM_CLI\0")
 }
@@ -228,7 +292,7 @@ nonisolated extension WTTestMode: SwiftProtobuf._ProtoNameProviding {
 
 nonisolated extension WTCoreConfig: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CoreConfig"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}contract_major\0\u{3}contract_minor\0\u{1}platform\0\u{1}locale\0\u{3}data_dir\0\u{3}test_mode\0\u{1}fake\0\u{3}app_version\0\u{1}engines\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}contract_major\0\u{3}contract_minor\0\u{1}platform\0\u{1}locale\0\u{3}data_dir\0\u{3}test_mode\0\u{1}fake\0\u{3}app_version\0\u{1}engines\0\u{3}device_kind\0\u{3}memory_megabytes\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -245,6 +309,8 @@ nonisolated extension WTCoreConfig: SwiftProtobuf.Message, SwiftProtobuf._Messag
       case 7: try { try decoder.decodeSingularMessageField(value: &self._fake) }()
       case 8: try { try decoder.decodeSingularStringField(value: &self.appVersion) }()
       case 9: try { try decoder.decodeRepeatedMessageField(value: &self.engines) }()
+      case 10: try { try decoder.decodeSingularEnumField(value: &self.deviceKind) }()
+      case 11: try { try decoder.decodeSingularUInt32Field(value: &self.memoryMegabytes) }()
       default: break
       }
     }
@@ -282,6 +348,12 @@ nonisolated extension WTCoreConfig: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if !self.engines.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.engines, fieldNumber: 9)
     }
+    if self.deviceKind != .unspecified {
+      try visitor.visitSingularEnumField(value: self.deviceKind, fieldNumber: 10)
+    }
+    if self.memoryMegabytes != 0 {
+      try visitor.visitSingularUInt32Field(value: self.memoryMegabytes, fieldNumber: 11)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -295,6 +367,8 @@ nonisolated extension WTCoreConfig: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs._fake != rhs._fake {return false}
     if lhs.appVersion != rhs.appVersion {return false}
     if lhs.engines != rhs.engines {return false}
+    if lhs.deviceKind != rhs.deviceKind {return false}
+    if lhs.memoryMegabytes != rhs.memoryMegabytes {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -302,7 +376,7 @@ nonisolated extension WTCoreConfig: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".FakeOptions"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}start_address\0\u{3}first_run\0\u{3}seconds_a_read\0\u{3}sleep_after_seconds\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}start_address\0\u{3}first_run\0\u{3}seconds_a_read\0\u{3}sleep_after_seconds\0\u{3}live_tabs\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -314,6 +388,7 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
       case 2: try { try decoder.decodeSingularBoolField(value: &self.firstRun) }()
       case 3: try { try decoder.decodeSingularUInt32Field(value: &self.secondsARead) }()
       case 4: try { try decoder.decodeSingularUInt32Field(value: &self.sleepAfterSeconds) }()
+      case 5: try { try decoder.decodeSingularUInt32Field(value: &self.liveTabs) }()
       default: break
       }
     }
@@ -332,6 +407,9 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if self.sleepAfterSeconds != 0 {
       try visitor.visitSingularUInt32Field(value: self.sleepAfterSeconds, fieldNumber: 4)
     }
+    if self.liveTabs != 0 {
+      try visitor.visitSingularUInt32Field(value: self.liveTabs, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -340,6 +418,7 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if lhs.firstRun != rhs.firstRun {return false}
     if lhs.secondsARead != rhs.secondsARead {return false}
     if lhs.sleepAfterSeconds != rhs.sleepAfterSeconds {return false}
+    if lhs.liveTabs != rhs.liveTabs {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

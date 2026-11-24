@@ -82,6 +82,9 @@ pub struct AppOptions {
     /// (053), in seconds, looked for every second. 0: the usual time,
     /// looked for every minute.
     pub sleep_after_seconds: u32,
+    /// The most tabs that are alive at once (054): what the device can
+    /// hold.
+    pub live_tabs: usize,
     /// Gives a login set nobody has had, for a Space that is made with
     /// logins of its own (024); `None` when there is none to give. Fake
     /// mode gives the same ones in the same order every run.
@@ -110,6 +113,8 @@ pub struct App {
     /// How many of the core's looks a tab is out of sight for before it is
     /// put to sleep (053), and how often the core looks.
     pub(crate) sleep: (u32, std::time::Duration),
+    /// The most tabs that are alive at once (054).
+    pub(crate) live_tabs: usize,
     pub(crate) new_login_set: Rc<dyn Fn() -> Option<Uuid>>,
     /// The session as the store has it: written again only where it
     /// differs.
@@ -175,6 +180,7 @@ impl App {
                 .map(|store| Rc::new(RefCell::new(store))),
             clock: options.clock,
             sleep: crate::states::sleep_time(options.sleep_after_seconds),
+            live_tabs: options.live_tabs,
             downloads: Rc::new(RefCell::new(BTreeMap::new())),
             downloaded: Rc::new(RefCell::new(BTreeMap::new())),
             waiting: Rc::new(RefCell::new(BTreeMap::new())),

@@ -1878,6 +1878,15 @@ pub struct CoreConfig {
     /// least one. A pack installed later is announced with a request (W6).
     #[prost(message, repeated, tag = "9")]
     pub engines: ::prost::alloc::vec::Vec<EngineInfo>,
+    /// Since 1.47. The device, as the shell finds it when it starts (054): the
+    /// core works out from it how many tabs may be alive at once. A window made
+    /// wide or narrow, or a foldable opened, after that changes nothing.
+    #[prost(enumeration = "DeviceKind", tag = "10")]
+    pub device_kind: i32,
+    /// Since 1.47. The device's memory, in megabytes. 0 when the shell does
+    /// not know.
+    #[prost(uint32, tag = "11")]
+    pub memory_megabytes: u32,
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct FakeOptions {
@@ -1902,6 +1911,12 @@ pub struct FakeOptions {
     /// minute.
     #[prost(uint32, tag = "4")]
     pub sleep_after_seconds: u32,
+    /// Since 1.47. The most tabs that are alive at once (054), for a suite
+    /// that must see the limit met. 0: none. Fake mode has no limit of its
+    /// own, whatever the device: a suite that opens five tabs on a phone is
+    /// about something else.
+    #[prost(uint32, tag = "5")]
+    pub live_tabs: u32,
 }
 /// One engine a shell offers.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -1912,6 +1927,40 @@ pub struct EngineInfo {
     /// diagnostics and, later, the minimum-safe-version rule.
     #[prost(string, tag = "2")]
     pub version: ::prost::alloc::string::String,
+}
+/// What a shell runs on, for the limit of live tabs (054).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum DeviceKind {
+    /// Taken for a desktop.
+    Unspecified = 0,
+    Phone = 1,
+    Tablet = 2,
+    Desktop = 3,
+}
+impl DeviceKind {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "DEVICE_KIND_UNSPECIFIED",
+            Self::Phone => "DEVICE_KIND_PHONE",
+            Self::Tablet => "DEVICE_KIND_TABLET",
+            Self::Desktop => "DEVICE_KIND_DESKTOP",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "DEVICE_KIND_UNSPECIFIED" => Some(Self::Unspecified),
+            "DEVICE_KIND_PHONE" => Some(Self::Phone),
+            "DEVICE_KIND_TABLET" => Some(Self::Tablet),
+            "DEVICE_KIND_DESKTOP" => Some(Self::Desktop),
+            _ => None,
+        }
+    }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]

@@ -181,7 +181,7 @@ class NativeCore private constructor(
     companion object {
         /** The contract this shell was built with (`WT_CONTRACT_*` in webtiger_core.h). */
         const val CONTRACT_MAJOR = 1
-        const val CONTRACT_MINOR = 46
+        const val CONTRACT_MINOR = 47
 
         /**
          * Starts the core. [config] needs no contract version: it is filled in here. Host

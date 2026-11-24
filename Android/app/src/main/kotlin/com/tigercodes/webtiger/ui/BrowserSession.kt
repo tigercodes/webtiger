@@ -51,6 +51,11 @@ data class LaunchOptions(
      * for a suite that must see one sleep (053). 0: the usual half hour.
      */
     val sleepAfter: Int = 0,
+    /**
+     * Fake mode: the most tabs that are alive at once, for a suite that must see the limit met
+     * (054). 0: none, whatever the device.
+     */
+    val liveTabs: Int = 0,
 )
 
 /**
@@ -161,6 +166,7 @@ class BrowserSession(
                     engine = SystemWebViewEngine.info(application),
                     // The app's own files, which no other app can read. The core makes the folder.
                     dataDir = File(application.filesDir, "core").path,
+                    device = Device.of(application),
                 )
             // In fake mode nothing leaves the app: a link for the system opens no other app (007).
             val opener = if (launch.fake) OutsideOpener.nothing else SystemOpener(application)
@@ -190,15 +196,28 @@ class BrowserSession(
          */
         internal fun mayAskTheSystem(launch: LaunchOptions): Boolean = !launch.fake
 
-        internal fun coreConfig(launch: LaunchOptions, locale: String, appVersion: String, engine: EngineInfo, dataDir: String): CoreConfig =
+        internal fun coreConfig(launch: LaunchOptions, locale: String, appVersion: String, engine: EngineInfo, dataDir: String, device: Device): CoreConfig =
             CoreConfig(
                 platform = Platform.PLATFORM_ANDROID,
                 locale = locale,
                 app_version = appVersion,
                 engines = listOf(engine),
                 test_mode = if (launch.fake) TestMode.TEST_MODE_FAKE else TestMode.TEST_MODE_LIVE,
-                fake = if (launch.fake) FakeOptions(start_address = launch.fakeStart, first_run = launch.firstRun, seconds_a_read = launch.clockStep, sleep_after_seconds = launch.sleepAfter) else null,
+                fake = if (launch.fake) fakeOptions(launch) else null,
                 data_dir = if (launch.fake) "" else dataDir,
+                // What the app runs on (054): the core works out the limit of live tabs from it.
+                device_kind = device.kind,
+                memory_megabytes = device.megabytes,
+            )
+
+        /** Fake mode's knobs, as the launch asked for them. */
+        private fun fakeOptions(launch: LaunchOptions): FakeOptions =
+            FakeOptions(
+                start_address = launch.fakeStart,
+                first_run = launch.firstRun,
+                seconds_a_read = launch.clockStep,
+                sleep_after_seconds = launch.sleepAfter,
+                live_tabs = launch.liveTabs,
             )
     }
 }

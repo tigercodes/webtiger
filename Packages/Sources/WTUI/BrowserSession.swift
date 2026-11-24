@@ -3,6 +3,9 @@ public import Foundation
 public import WTCoreClient
 public import WTWebKit
 import WTContract
+#if canImport(UIKit)
+    import UIKit
+#endif
 
 /// The app's connection to the core: started once, shared by every window.
 @MainActor
@@ -59,21 +62,14 @@ public final class BrowserSession {
             config.locale = Locale.current.identifier(.bcp47)
             config.appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
             config.engines = [WebKitEngine.info]
+            (config.deviceKind, config.memoryMegabytes) = device()
             let opener: OutsideOpener
             // Where downloads are saved (013). In fake mode, a folder of the engine's own among
             // the temporary files: a UI suite writes nothing into anybody's Downloads.
             let downloads: URL?
             if environment["WEBTIGER_FAKE"] == "1" {
                 config.testMode = .fake
-                config.fake.startAddress = environment["WEBTIGER_FAKE_START"] ?? ""
-                // A first run, in which nobody has chosen where searches go (020).
-                config.fake.firstRun = environment["WEBTIGER_FAKE_FIRST_RUN"] == "1"
-                // How far the core's clock moves each time it is read, in seconds, for a suite
-                // that must see a day pass (049). Without it: a second.
-                config.fake.secondsARead = UInt32(environment["WEBTIGER_FAKE_CLOCK_STEP"] ?? "") ?? 0
-                // How long a tab is out of sight before the core puts it to sleep, in seconds,
-                // for a suite that must see one sleep (053). Without it: the usual half hour.
-                config.fake.sleepAfterSeconds = UInt32(environment["WEBTIGER_FAKE_SLEEP_AFTER"] ?? "") ?? 0
+                config.fake = fakeOptions(environment)
                 opener = .nothing
                 downloads = nil
             } else {
@@ -106,6 +102,43 @@ public final class BrowserSession {
                 core: core, engine: engine, clipboard: config.testMode == .fake ? .ownOfTheApp : .system, preview: preview
             )
         }
+
+        /// Fake mode's knobs, as a suite set them in what the app was started with.
+        static func fakeOptions(_ environment: [String: String]) -> WTFakeOptions {
+            var fake = WTFakeOptions()
+            fake.startAddress = environment["WEBTIGER_FAKE_START"] ?? ""
+            // A first run, in which nobody has chosen where searches go (020).
+            fake.firstRun = environment["WEBTIGER_FAKE_FIRST_RUN"] == "1"
+            // How far the core's clock moves each time it is read, in seconds, for a suite
+            // that must see a day pass (049). Without it: a second.
+            fake.secondsARead = UInt32(environment["WEBTIGER_FAKE_CLOCK_STEP"] ?? "") ?? 0
+            // How long a tab is out of sight before the core puts it to sleep, in seconds,
+            // for a suite that must see one sleep (053). Without it: the usual half hour.
+            fake.sleepAfterSeconds = UInt32(environment["WEBTIGER_FAKE_SLEEP_AFTER"] ?? "") ?? 0
+            // The most tabs that are alive at once, for a suite that must see the limit met
+            // (054). Without it fake mode has none, whatever it runs on.
+            fake.liveTabs = UInt32(environment["WEBTIGER_FAKE_LIVE_TABS"] ?? "") ?? 0
+            return fake
+        }
+
+        /// What the app runs on (054): the core works out from it how many tabs may be alive
+        /// at once. A Mac is a desktop, an iPad a tablet and an iPhone a phone; the memory is
+        /// the device's own, in megabytes. Said once, as the app starts.
+        static func device() -> (kind: WTDeviceKind, megabytes: UInt32) {
+            let megabytes = UInt32(clamping: ProcessInfo.processInfo.physicalMemory / (1024 * 1024))
+            #if os(macOS)
+                return (.desktop, megabytes)
+            #else
+                return (kind(of: UIDevice.current.userInterfaceIdiom), megabytes)
+            #endif
+        }
+
+        #if !os(macOS)
+            /// An iPad is a tablet; anything else the app runs on here is taken for a phone.
+            static func kind(of idiom: UIUserInterfaceIdiom) -> WTDeviceKind {
+                idiom == .pad ? .tablet : .phone
+            }
+        #endif
 
         /// What opens a downloaded file from where the app saves (030). On a Mac the system
         /// opens it with whatever it has for its kind; on an iPhone and an iPad the system's

@@ -208,6 +208,7 @@ impl Dispatcher {
                 .as_ref()
                 .filter(|_| fake)
                 .map_or(0, |options| options.sleep_after_seconds),
+            live_tabs: crate::states::live_tabs(config, fake),
             new_login_set: if fake {
                 // The same ones in the same order every run: each a step
                 // on from the app's own.
@@ -299,6 +300,9 @@ impl Dispatcher {
         // A tab that has left the front is asked for its state (051), and a
         // tab that is gone has its state dropped.
         self.app.keep_states();
+        // No more tabs are alive than the device can hold (054): one that
+        // has just come alive may have put another to sleep.
+        self.app.sleep_over_the_limit();
         // What is published is what is kept: the session is written here,
         // when it has changed (009).
         self.app.persist();

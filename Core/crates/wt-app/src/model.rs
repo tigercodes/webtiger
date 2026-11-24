@@ -271,6 +271,10 @@ pub(crate) struct Tab {
     /// How many of the core's looks the tab has been out of sight for, with
     /// no reason to be awake (053): at so many, it is put to sleep.
     idle: u32,
+    /// When the tab last went out of sight, or came alive (054): a number
+    /// that only grows, and no time. Of the tabs that are alive, the one
+    /// with the least has been out of sight the longest.
+    out_since: u64,
     /// The web view the tab was put to sleep out of, while the state that
     /// was asked of it has not arrived (053): the state is the tab's when it
     /// does, unless the tab was woken first.
@@ -344,6 +348,18 @@ struct PageActivity {
     typed: bool,
 }
 
+/// What the limit of live tabs goes by (054).
+#[derive(Debug, Default)]
+struct Alive {
+    /// The web views tabs had when the limit was last looked at.
+    before: BTreeSet<WebViewId>,
+    /// The web views that came alive last, together. The limit puts none of
+    /// them to sleep: a tab is not put back to sleep by its own arrival.
+    newest: BTreeSet<WebViewId>,
+    /// How many times a tab has gone out of sight or come alive.
+    turns: u64,
+}
+
 /// A tab that has just been put to sleep (053): the web view to let go, and
 /// whether its state is to be asked for first.
 #[derive(Clone, Copy, Debug)]
@@ -410,6 +426,7 @@ impl Tab {
             refused: Vec::new(),
             activity: PageActivity::default(),
             idle: 0,
+            out_since: 0,
             sleeping_with: None,
             downloading: false,
             own_load: false,
@@ -1216,6 +1233,8 @@ pub(crate) struct State {
     /// The kept states whose tabs are gone, or have gone on to another page
     /// (051): to be dropped from the store.
     states_to_drop: Vec<i64>,
+    /// Which tabs were alive, and which came alive last (054).
+    alive: Alive,
 }
 
 /// The number of the first private window's row, where a Space's number is
@@ -1247,6 +1266,7 @@ impl State {
             tidy_after: BTreeMap::new(),
             was_front: BTreeMap::new(),
             states_to_drop: Vec::new(),
+            alive: Alive::default(),
             spaces,
             start: (start.id, start.login_set),
             engine,
@@ -1582,6 +1602,8 @@ impl State {
         for id in &left {
             if let Some(tab) = self.tabs.get_mut(id) {
                 tab.idle = 0;
+                self.alive.turns += 1;
+                tab.out_since = self.alive.turns;
             }
         }
         left.into_iter()
@@ -1637,15 +1659,10 @@ impl State {
         let ids: Vec<TabId> = self.tabs.keys().copied().collect();
         let mut due = Vec::new();
         for id in ids {
-            let Some(tab) = self.tabs.get(&id) else {
-                continue;
+            let stays = match self.tabs.get(&id) {
+                Some(tab) if tab.web_view.is_some() => self.stays_awake(id, tab, &in_sight),
+                _ => continue,
             };
-            let Some(web_view) = tab.web_view else {
-                continue;
-            };
-            let stays = in_sight.contains(&id)
-                || !tab.keeps_awake().is_empty()
-                || self.is_private(tab.login_set);
             let Some(tab) = self.tabs.get_mut(&id) else {
                 continue;
             };
@@ -1657,28 +1674,106 @@ impl State {
             if tab.idle < after {
                 continue;
             }
-            let at_rest = tab.pending.is_none()
-                && tab
-                    .committed
-                    .as_ref()
-                    .is_some_and(|at| matches!(at.scheme(), "http" | "https"));
-            let ask_state = tab.site.is_none() && at_rest && !tab.is_withheld();
-            let Some(mut asleep) = tab.asleep_here() else {
+            match self.put_to_sleep(id) {
+                Some(sleeper) => due.push(sleeper),
                 // Nothing of the web's to wake to: it is left as it is.
-                tab.idle = 0;
-                continue;
-            };
-            asleep.sleeping_with = ask_state.then_some(web_view);
-            let (window, engine) = (tab.window, tab.engine as i32);
-            self.web_views.remove(&web_view);
-            self.tabs.insert(id, asleep);
-            self.dirty.insert(window);
-            due.push(Sleeper {
-                tab: id,
-                web_view,
-                ask_state,
-                engine,
-            });
+                None => {
+                    if let Some(tab) = self.tabs.get_mut(&id) {
+                        tab.idle = 0;
+                    }
+                }
+            }
+        }
+        due
+    }
+
+    /// Whether a tab is one that is not put to sleep, by the time (053) or
+    /// by the limit (054): it is in sight, it has a reason to be awake
+    /// (052), or it is of a private window (037).
+    fn stays_awake(&self, id: TabId, tab: &Tab, in_sight: &BTreeSet<TabId>) -> bool {
+        in_sight.contains(&id) || !tab.keeps_awake().is_empty() || self.is_private(tab.login_set)
+    }
+
+    /// Puts a tab to sleep where it is (053): it has no web view from now,
+    /// and says the address and the title it had. The web view to let go,
+    /// with whether its state is to be asked for first: of a tab at rest on
+    /// its page, that is no Site and has nothing forgotten in its list.
+    /// `None`, and nothing done, for a tab that has no web view, or nothing
+    /// of the web's to wake to.
+    fn put_to_sleep(&mut self, id: TabId) -> Option<Sleeper> {
+        let tab = self.tabs.get_mut(&id)?;
+        let web_view = tab.web_view?;
+        let at_rest = tab.pending.is_none()
+            && tab
+                .committed
+                .as_ref()
+                .is_some_and(|at| matches!(at.scheme(), "http" | "https"));
+        let ask_state = tab.site.is_none() && at_rest && !tab.is_withheld();
+        let mut asleep = tab.asleep_here()?;
+        asleep.sleeping_with = ask_state.then_some(web_view);
+        let (window, engine) = (tab.window, tab.engine as i32);
+        self.web_views.remove(&web_view);
+        self.tabs.insert(id, asleep);
+        self.dirty.insert(window);
+        Some(Sleeper {
+            tab: id,
+            web_view,
+            ask_state,
+            engine,
+        })
+    }
+
+    /// A look at the limit of live tabs (054): with more tabs alive than
+    /// `limit`, the ones that have been out of sight the longest are put to
+    /// sleep, down to the limit, as the time puts a tab to sleep (053). A
+    /// tab that would not be put to sleep by the time is not by the limit:
+    /// one in sight, one with a reason to be awake, a private window's. Nor
+    /// are the tabs that came alive last. With nobody to put to sleep, the
+    /// limit is passed. The web views to let go.
+    pub(crate) fn over_the_limit(&mut self, limit: usize) -> Vec<Sleeper> {
+        let alive: BTreeSet<WebViewId> =
+            self.tabs.values().filter_map(|tab| tab.web_view).collect();
+        let came: BTreeSet<WebViewId> = alive.difference(&self.alive.before).copied().collect();
+        if !came.is_empty() {
+            // A tab that comes alive behind has been out of sight since now.
+            for tab in self.tabs.values_mut() {
+                if tab
+                    .web_view
+                    .is_some_and(|web_view| came.contains(&web_view))
+                {
+                    self.alive.turns += 1;
+                    tab.out_since = self.alive.turns;
+                }
+            }
+            self.alive.newest = came;
+        }
+        let over = alive.len().saturating_sub(limit);
+        self.alive.before = alive;
+        if over == 0 {
+            return Vec::new();
+        }
+        let in_sight = self.in_sight();
+        let mut may: Vec<(u64, TabId)> = self
+            .tabs
+            .iter()
+            .filter(|(id, tab)| {
+                tab.web_view
+                    .is_some_and(|web_view| !self.alive.newest.contains(&web_view))
+                    && !self.stays_awake(**id, tab, &in_sight)
+            })
+            .map(|(id, tab)| (tab.out_since, *id))
+            .collect();
+        may.sort_unstable();
+        let mut due = Vec::new();
+        for (_, id) in may {
+            if due.len() == over {
+                break;
+            }
+            // One with nothing of the web's to wake to is left as it is,
+            // and the next is looked at in its place.
+            if let Some(sleeper) = self.put_to_sleep(id) {
+                due.push(sleeper);
+            }
         }
         due
     }

@@ -8,6 +8,7 @@ package com.tigercodes.webtiger
 import com.tigercodes.webtiger.core.NativeCore
 import com.tigercodes.webtiger.core.v1.AddressView
 import com.tigercodes.webtiger.core.v1.CoreConfig
+import com.tigercodes.webtiger.core.v1.DeviceKind
 import com.tigercodes.webtiger.core.v1.EngineInfo
 import com.tigercodes.webtiger.core.v1.EngineKind
 import com.tigercodes.webtiger.core.v1.FakeOptions
@@ -21,6 +22,7 @@ import com.tigercodes.webtiger.core.v1.TestMode
 import com.tigercodes.webtiger.ui.ArchiveModel
 import com.tigercodes.webtiger.ui.BrowserModel
 import com.tigercodes.webtiger.ui.BrowserSession
+import com.tigercodes.webtiger.ui.Device
 import com.tigercodes.webtiger.ui.LaunchOptions
 import com.tigercodes.webtiger.webview.DownloadPlace
 import com.tigercodes.webtiger.webview.FakePage
@@ -56,13 +58,14 @@ class ThroughTheCoreTest {
         main.close()
     }
 
-    private fun config(launch: LaunchOptions): CoreConfig =
+    private fun config(launch: LaunchOptions, device: Device = Device(DeviceKind.DEVICE_KIND_PHONE, megabytes = 6_144)): CoreConfig =
         BrowserSession.coreConfig(
             launch = launch,
             locale = "en-GB",
             appVersion = "0.0.0-test",
             engine = EngineInfo(kind = EngineKind.ENGINE_KIND_CHROMIUM, version = "test"),
             dataDir = "/nowhere",
+            device = device,
         )
 
     private fun session(launch: LaunchOptions = LaunchOptions(fake = true)): BrowserSession {
@@ -389,6 +392,125 @@ class ThroughTheCoreTest {
             onMain {
                 assertEquals(listOf("the first tab's state" to "https://example.com/"), pages.made[2].restored)
                 assertTrue("and not loaded beside it", pages.made[2].loaded.isEmpty())
+            }
+        }
+
+    /** What the app runs on is said to the core as the shell found it (054); a suite's limit is fake mode's alone. */
+    @Test
+    fun theDeviceIsSaidToTheCoreAndASuitesLimitIsHandedOn() {
+        val tablet = Device(DeviceKind.DEVICE_KIND_TABLET, megabytes = 8_192)
+        val live = config(LaunchOptions(), tablet)
+        assertEquals(DeviceKind.DEVICE_KIND_TABLET, live.device_kind)
+        assertEquals(8_192, live.memory_megabytes)
+        assertNull(live.fake)
+        val fake = config(LaunchOptions(fake = true, liveTabs = 2), tablet)
+        assertEquals("fake mode is told the device too", DeviceKind.DEVICE_KIND_TABLET, fake.device_kind)
+        assertEquals(2, fake.fake?.live_tabs)
+        assertEquals("a launch that says no limit has none", 0, config(LaunchOptions(fake = true)).fake?.live_tabs)
+        assertNull("and outside fake mode there is no such thing", config(LaunchOptions(liveTabs = 2)).fake)
+    }
+
+    /** Opens a tab in front at an address, as a link from another app does, and has its page arrive: the web view it is the [number]th to be made. */
+    private suspend fun openInFront(model: BrowserModel, number: Int, url: String, title: String) {
+        onMain { model.openFromOutside(url) }
+        await("load $number reaching its web view") { pages.made.size == number && pages.made[number - 1].loaded.isNotEmpty() }
+        arrive(pages.made[number - 1], url, title)
+        await("page $number in front") { model.tab.title == title }
+    }
+
+    private suspend fun asleep(model: BrowserModel, tab: Long): Boolean = onMain { model.tabs.first { it.tab_id == tab }.asleep }
+
+    /**
+     * The limit of live tabs (054), through the real core, with the app's own engine over pages
+     * that have no WebView, and a limit of two given by the suite: a third tab's arrival puts
+     * the first to sleep, asked for its state once more and let go, by the core; the tab that
+     * has just left the front stays; brought in front, the first has a web view made from the
+     * state it gave, and the tab that is then the longest out of sight sleeps in its turn.
+     */
+    @Test
+    fun aThirdTabPutsTheFirstToSleepWhereTwoAreHeld() =
+        runBlocking {
+            val model = BrowserModel(session(LaunchOptions(fake = true, liveTabs = 2)))
+            onMain { model.open() }
+            await("the window's first snapshot") { model.tab.tab_id != 0L }
+            val firstTab = onMain { model.tab.tab_id }
+            onMain {
+                model.isEditingAddress = true
+                model.addressText = "example.com"
+                model.submit()
+            }
+            await("the first load") { pages.made.size == 1 && pages.made[0].loaded.isNotEmpty() }
+            arrive(pages.made[0], "https://example.com/", "Example Domain")
+            await("the first page named") { model.tab.title == "Example Domain" }
+            pages.made[0].hasState = "the first tab's state".toByteArray()
+
+            // A second in front: two are held, and two are alive.
+            openInFront(model, 2, "https://example.org/story", "A Story")
+            val secondTab = onMain { model.tab.tab_id }
+            await("asked as it left the front") { pages.made[0].statesAsked == 1 }
+            assertFalse(onMain { pages.made[0].closed })
+
+            // A third: the first, the longest out of sight, is asked once more and let go.
+            openInFront(model, 3, "https://example.net/third", "Third")
+            await("the first put to sleep") { pages.made[0].closed && model.tabs.first { it.tab_id == firstTab }.asleep }
+            assertEquals(2, onMain { pages.made[0].statesAsked })
+            assertEquals("Example Domain", onMain { model.tabs.first { it.tab_id == firstTab }.title })
+            assertFalse("the tab that has just left the front is awake", onMain { pages.made[1].closed })
+            assertFalse(asleep(model, secondTab))
+            assertFalse("and the tab in front", onMain { pages.made[2].closed })
+
+            // Brought in front, it wakes from the state it gave: a tab come alive, and the
+            // second, now the longest out of sight, sleeps in its turn.
+            onMain { model.activate(firstTab) }
+            await("a web view for the tab that wakes") { pages.made.size == 4 && pages.made[3].restored.isNotEmpty() }
+            await("the second put to sleep in its turn") { pages.made[1].closed && model.tabs.first { it.tab_id == secondTab }.asleep }
+            onMain {
+                assertEquals(listOf("the first tab's state" to "https://example.com/"), pages.made[3].restored)
+                assertTrue("and not loaded beside it", pages.made[3].loaded.isEmpty())
+                assertFalse("the tab that has just left the front is awake", pages.made[2].closed)
+            }
+        }
+
+    /**
+     * Nobody says a limit: the shell says it runs on a phone (054), and the real core, started
+     * for real over a store in a folder of the test's, holds three live tabs. A fourth puts the
+     * first to sleep. Nothing is fetched: the pages are the test's, and their addresses are the
+     * device's own, where nothing listens.
+     */
+    @Test
+    fun aPhoneHoldsThreeLiveTabsAndATabletMore() =
+        runBlocking {
+            val folder = java.nio.file.Files.createTempDirectory("webtiger-live-tabs").toFile()
+            try {
+                val phone = config(LaunchOptions(), Device(DeviceKind.DEVICE_KIND_PHONE, megabytes = 12_288)).copy(data_dir = folder.path)
+                val started = NativeCore.start(phone, engine, main).also { core = it }
+                val model = BrowserModel(BrowserSession(started, engine, scope))
+                onMain { model.open() }
+                await("the window's first snapshot") { model.tab.tab_id != 0L }
+                val firstTab = onMain { model.tab.tab_id }
+                onMain {
+                    model.isEditingAddress = true
+                    model.addressText = "127.0.0.1:9/one"
+                    model.submit()
+                }
+                await("the first load") { pages.made.size == 1 && pages.made[0].loaded.isNotEmpty() }
+                arrive(pages.made[0], "http://127.0.0.1:9/one", "One")
+                await("the first page") { model.tab.title == "One" }
+                openInFront(model, 2, "http://127.0.0.1:9/two", "Two")
+                openInFront(model, 3, "http://127.0.0.1:9/three", "Three")
+                // The core has answered since: three are alive, as many as a phone holds.
+                started.request(Request(query_spaces = QuerySpaces()))
+                assertEquals(listOf(false, false, false), onMain { pages.made.map { it.closed } })
+                assertFalse(asleep(model, firstTab))
+
+                // A fourth: the first sleeps, and the rest are awake.
+                openInFront(model, 4, "http://127.0.0.1:9/four", "Four")
+                await("the first put to sleep") { pages.made[0].closed && model.tabs.first { it.tab_id == firstTab }.asleep }
+                assertEquals(listOf(true, false, false, false), onMain { pages.made.map { it.closed } })
+            } finally {
+                core?.stop()
+                core = null
+                folder.deleteRecursively()
             }
         }
 

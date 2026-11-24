@@ -73,6 +73,10 @@ impl FakeShell {
                 kind: engine as i32,
                 version: "fake".to_owned(),
             }],
+            // What it runs on is not said: a suite that is about the
+            // device says it.
+            device_kind: 0,
+            memory_megabytes: 0,
         }
     }
 

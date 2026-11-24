@@ -5,9 +5,12 @@
 use std::time::Duration;
 
 use wt_core::{TabId, WebViewId};
-use wt_proto::v1::{WebViewDestroy, WebViewSaveState, host_request, host_response};
+use wt_proto::v1::{
+    CoreConfig, DeviceKind, WebViewDestroy, WebViewSaveState, host_request, host_response,
+};
 
 use crate::app::App;
+use crate::model::Sleeper;
 
 /// The most bytes of a state that is kept (051 D3). A larger one is not
 /// kept: its tab wakes at its address.
@@ -17,6 +20,38 @@ pub(crate) const MOST_STATE: usize = 512 * 1024;
 /// of the core's looks, one a minute.
 const SLEEP_AFTER_LOOKS: u32 = 30;
 const SLEEP_LOOK_EVERY: Duration = Duration::from_secs(60);
+
+/// The most tabs a phone has alive at once, and a tablet (054 D1).
+const LIVE_TABS_PHONE: usize = 3;
+const LIVE_TABS_TABLET: usize = 6;
+/// On a desktop (054 D2): one for each so many megabytes of the machine's
+/// memory, and no fewer than so many.
+const MEGABYTES_A_LIVE_TAB: u32 = 512;
+const LIVE_TABS_AT_LEAST: usize = 8;
+
+/// The most tabs that are alive at once (054), from what the shell says of
+/// the device. A shell that does not say what it runs on is taken for a
+/// desktop; one that does not say its memory, for one with none to speak
+/// of. Fake mode has no limit of its own: only the one a suite gives.
+pub(crate) fn live_tabs(config: &CoreConfig, fake: bool) -> usize {
+    if fake {
+        let given = config.fake.as_ref().map_or(0, |options| options.live_tabs);
+        return match given {
+            0 => usize::MAX,
+            given => usize::try_from(given).unwrap_or(usize::MAX),
+        };
+    }
+    match DeviceKind::try_from(config.device_kind) {
+        Ok(DeviceKind::Phone) => LIVE_TABS_PHONE,
+        Ok(DeviceKind::Tablet) => LIVE_TABS_TABLET,
+        Ok(DeviceKind::Desktop | DeviceKind::Unspecified) | Err(_) => {
+            let by_memory = config.memory_megabytes / MEGABYTES_A_LIVE_TAB;
+            usize::try_from(by_memory)
+                .unwrap_or(usize::MAX)
+                .max(LIVE_TABS_AT_LEAST)
+        }
+    }
+}
 
 /// The sleep time as the app counts it: so many looks, so far apart. With a
 /// time in seconds (fake mode, for a suite that must see a tab sleep), a
@@ -50,6 +85,21 @@ impl App {
     /// together, in that order. The state is the tab's when it arrives.
     pub fn sleep_idle_tabs(&self) {
         let due = self.state.borrow_mut().sleepers(self.sleep.0);
+        self.let_go(due);
+    }
+
+    /// A look at the limit of live tabs (054): with more tabs alive than
+    /// the device can hold, the ones longest out of sight are asleep when
+    /// this returns, each as the time would have put it to sleep.
+    pub(crate) fn sleep_over_the_limit(&self) {
+        let due = self.state.borrow_mut().over_the_limit(self.live_tabs);
+        self.let_go(due);
+    }
+
+    /// Asks the shell for what is left to do for tabs that were put to
+    /// sleep: each one's state, where it has one worth asking for, and then
+    /// its web view let go, the two together and in that order.
+    fn let_go(&self, due: Vec<Sleeper>) {
         for sleeper in due {
             if sleeper.ask_state {
                 let asking =

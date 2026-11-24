@@ -30,6 +30,22 @@ message CoreConfig {
   // The engines this shell can create web views with, the default first. At
   // least one. A pack installed later is announced with a request (W6).
   repeated EngineInfo engines = 9;
+  // Since 1.47. The device, as the shell finds it when it starts (054): the
+  // core works out from it how many tabs may be alive at once. A window made
+  // wide or narrow, or a foldable opened, after that changes nothing.
+  DeviceKind device_kind = 10;
+  // Since 1.47. The device's memory, in megabytes. 0 when the shell does
+  // not know.
+  uint32 memory_megabytes = 11;
+}
+
+// What a shell runs on, for the limit of live tabs (054).
+enum DeviceKind {
+  // Taken for a desktop.
+  DEVICE_KIND_UNSPECIFIED = 0;
+  DEVICE_KIND_PHONE = 1;
+  DEVICE_KIND_TABLET = 2;
+  DEVICE_KIND_DESKTOP = 3;
 }
 
 enum Platform {
@@ -70,6 +86,11 @@ message FakeOptions {
   // looks every second. 0: the usual time, half an hour, looked for every
   // minute.
   uint32 sleep_after_seconds = 4;
+  // Since 1.47. The most tabs that are alive at once (054), for a suite
+  // that must see the limit met. 0: none. Fake mode has no limit of its
+  // own, whatever the device: a suite that opens five tabs on a phone is
+  // about something else.
+  uint32 live_tabs = 5;
 }
 
 // One engine a shell offers.
