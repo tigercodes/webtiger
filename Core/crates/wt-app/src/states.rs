@@ -4,13 +4,14 @@
 
 use std::time::Duration;
 
-use wt_core::{TabId, WebViewId};
+use wt_core::{TabId, WebViewId, WindowId};
 use wt_proto::v1::{
-    CoreConfig, DeviceKind, MemoryLevel, WebViewDestroy, WebViewSaveState, host_request,
-    host_response,
+    Ack, CoreConfig, DeviceKind, MemoryLevel, QueryAwake, SleepOthers, WebViewDestroy,
+    WebViewSaveState, host_request, host_response, response,
 };
 
 use crate::app::App;
+use crate::error::AppError;
 use crate::model::Sleeper;
 
 /// The most bytes of a state that is kept (051 D3). A larger one is not
@@ -106,6 +107,37 @@ impl App {
         let very = matches!(MemoryLevel::try_from(level), Ok(MemoryLevel::VeryShort));
         let due = self.state.borrow_mut().short_of_memory(very);
         self.let_go(due);
+    }
+
+    /// What is awake (056), for the window that asks.
+    ///
+    /// # Errors
+    /// `window.unknown`.
+    pub(crate) fn query_awake(&self, query: &QueryAwake) -> Result<response::Kind, AppError> {
+        self.state
+            .borrow()
+            .awake(WindowId(query.window_id))
+            .map(response::Kind::AwakePage)
+            .ok_or_else(|| AppError::new("window.unknown").field("window_id"))
+    }
+
+    /// "Sleep all others" (056): every tab that can be put to sleep is
+    /// asleep when this returns, in every window, as when the system is
+    /// short of memory (055). The person's command, done once.
+    ///
+    /// # Errors
+    /// `window.unknown`.
+    pub(crate) fn sleep_others(&self, asked: &SleepOthers) -> Result<response::Kind, AppError> {
+        if self
+            .state
+            .borrow()
+            .awake(WindowId(asked.window_id))
+            .is_none()
+        {
+            return Err(AppError::new("window.unknown").field("window_id"));
+        }
+        self.memory_short(MemoryLevel::Short as i32);
+        Ok(response::Kind::Ack(Ack {}))
     }
 
     /// Asks the shell for what is left to do for tabs that were put to

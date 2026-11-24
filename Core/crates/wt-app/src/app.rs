@@ -274,6 +274,8 @@ impl App {
                 self.memory_short(short.level);
                 answer(Ok(response::Kind::Ack(Ack {})))
             }
+            request::Kind::QueryAwake(query) => answer(self.query_awake(&query)),
+            request::Kind::SleepOthers(asked) => answer(self.sleep_others(&asked)),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
             | request::Kind::Unsubscribe(_)

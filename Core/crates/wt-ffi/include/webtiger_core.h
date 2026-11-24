@@ -32,7 +32,7 @@ extern "C" {
  * as (major << 16) | minor; a shell refuses to start on a major mismatch, and
  * puts its own in CoreConfig. */
 #define WT_CONTRACT_MAJOR 1u
-#define WT_CONTRACT_MINOR 48u
+#define WT_CONTRACT_MINOR 49u
 
 /* What wt_core_send, wt_core_stop and the fast path return. */
 #define WT_OK 0

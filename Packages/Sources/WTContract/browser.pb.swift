@@ -2670,6 +2670,105 @@ public nonisolated struct WTMemoryShort: Sendable {
   public init() {}
 }
 
+/// Since 1.49. Asks what is awake (056): every tab that has a web view, in
+/// every window and every Space. Answered with AwakePage; "window.unknown".
+public nonisolated struct WTQueryAwake: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// The window that asks: its tabs come first, and it decides whether a
+  /// private window's tabs are named.
+  public var windowID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// What is awake (056). The tabs are in this order: by window, the one that
+/// asked first and the others in the order they were opened; within a window
+/// by Space, the one it shows first and then the others in the Spaces' own
+/// order; within a Space, in the row's order.
+public nonisolated struct WTAwakePage: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var tabs: [WTAwakeTab] = []
+
+  /// Tabs that are alive in private windows and are not listed. A private
+  /// window's tabs are named only to that window (037).
+  public var privateTabs: UInt32 = 0
+
+  /// Tabs that are asleep, in every window and Space: each costs a row in the
+  /// store and nothing else.
+  public var asleep: UInt32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// A tab that is alive (056).
+public nonisolated struct WTAwakeTab: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var tabID: UInt64 = 0
+
+  public var windowID: UInt64 = 0
+
+  public var spaceID: UInt64 = 0
+
+  /// The Space's name. Empty for the Space the app made itself, for which a
+  /// shell has its own word; and for a private window's row, which has none.
+  public var spaceName: String = String()
+
+  public var title: String = String()
+
+  public var host: String = String()
+
+  /// It is the tab in front of the row its window shows.
+  public var inSight: Bool = false
+
+  /// Why it would not be put to sleep (052), as in TabSummary. With none, and
+  /// out of sight, it is only waiting for its time (053).
+  public var keepsAwake: [WTKeepAwake] = []
+
+  /// It is a Site (039).
+  public var kept: Bool = false
+
+  /// What its web view uses, in bytes, where the engine says. 0: it does not
+  /// say. (Neither WebKit nor Android's System WebView does.)
+  public var memoryBytes: UInt64 = 0
+
+  /// It is a private window's tab (037): listed for that window only.
+  public var privateWindow: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Since 1.49. "Sleep all others" (056): puts to sleep, now, every tab that
+/// can be: out of sight, with no reason to be awake (052), of no private
+/// window; in every window, as MemoryShort does when the system is short
+/// (055). The person's command: nothing lasts. Answered with Ack;
+/// "window.unknown".
+public nonisolated struct WTSleepOthers: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var windowID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
@@ -6388,6 +6487,186 @@ nonisolated extension WTMemoryShort: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
   public static func ==(lhs: WTMemoryShort, rhs: WTMemoryShort) -> Bool {
     if lhs.level != rhs.level {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTQueryAwake: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".QueryAwake"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.windowID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.windowID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.windowID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTQueryAwake, rhs: WTQueryAwake) -> Bool {
+    if lhs.windowID != rhs.windowID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTAwakePage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".AwakePage"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}tabs\0\u{3}private_tabs\0\u{1}asleep\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.tabs) }()
+      case 2: try { try decoder.decodeSingularUInt32Field(value: &self.privateTabs) }()
+      case 3: try { try decoder.decodeSingularUInt32Field(value: &self.asleep) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.tabs.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.tabs, fieldNumber: 1)
+    }
+    if self.privateTabs != 0 {
+      try visitor.visitSingularUInt32Field(value: self.privateTabs, fieldNumber: 2)
+    }
+    if self.asleep != 0 {
+      try visitor.visitSingularUInt32Field(value: self.asleep, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTAwakePage, rhs: WTAwakePage) -> Bool {
+    if lhs.tabs != rhs.tabs {return false}
+    if lhs.privateTabs != rhs.privateTabs {return false}
+    if lhs.asleep != rhs.asleep {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTAwakeTab: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".AwakeTab"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}window_id\0\u{3}space_id\0\u{3}space_name\0\u{1}title\0\u{1}host\0\u{3}in_sight\0\u{3}keeps_awake\0\u{1}kept\0\u{3}memory_bytes\0\u{3}private_window\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.tabID) }()
+      case 2: try { try decoder.decodeSingularUInt64Field(value: &self.windowID) }()
+      case 3: try { try decoder.decodeSingularUInt64Field(value: &self.spaceID) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.spaceName) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.title) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.host) }()
+      case 7: try { try decoder.decodeSingularBoolField(value: &self.inSight) }()
+      case 8: try { try decoder.decodeRepeatedEnumField(value: &self.keepsAwake) }()
+      case 9: try { try decoder.decodeSingularBoolField(value: &self.kept) }()
+      case 10: try { try decoder.decodeSingularUInt64Field(value: &self.memoryBytes) }()
+      case 11: try { try decoder.decodeSingularBoolField(value: &self.privateWindow) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.tabID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.tabID, fieldNumber: 1)
+    }
+    if self.windowID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.windowID, fieldNumber: 2)
+    }
+    if self.spaceID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.spaceID, fieldNumber: 3)
+    }
+    if !self.spaceName.isEmpty {
+      try visitor.visitSingularStringField(value: self.spaceName, fieldNumber: 4)
+    }
+    if !self.title.isEmpty {
+      try visitor.visitSingularStringField(value: self.title, fieldNumber: 5)
+    }
+    if !self.host.isEmpty {
+      try visitor.visitSingularStringField(value: self.host, fieldNumber: 6)
+    }
+    if self.inSight != false {
+      try visitor.visitSingularBoolField(value: self.inSight, fieldNumber: 7)
+    }
+    if !self.keepsAwake.isEmpty {
+      try visitor.visitPackedEnumField(value: self.keepsAwake, fieldNumber: 8)
+    }
+    if self.kept != false {
+      try visitor.visitSingularBoolField(value: self.kept, fieldNumber: 9)
+    }
+    if self.memoryBytes != 0 {
+      try visitor.visitSingularUInt64Field(value: self.memoryBytes, fieldNumber: 10)
+    }
+    if self.privateWindow != false {
+      try visitor.visitSingularBoolField(value: self.privateWindow, fieldNumber: 11)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTAwakeTab, rhs: WTAwakeTab) -> Bool {
+    if lhs.tabID != rhs.tabID {return false}
+    if lhs.windowID != rhs.windowID {return false}
+    if lhs.spaceID != rhs.spaceID {return false}
+    if lhs.spaceName != rhs.spaceName {return false}
+    if lhs.title != rhs.title {return false}
+    if lhs.host != rhs.host {return false}
+    if lhs.inSight != rhs.inSight {return false}
+    if lhs.keepsAwake != rhs.keepsAwake {return false}
+    if lhs.kept != rhs.kept {return false}
+    if lhs.memoryBytes != rhs.memoryBytes {return false}
+    if lhs.privateWindow != rhs.privateWindow {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTSleepOthers: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SleepOthers"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.windowID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.windowID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.windowID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTSleepOthers, rhs: WTSleepOthers) -> Bool {
+    if lhs.windowID != rhs.windowID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

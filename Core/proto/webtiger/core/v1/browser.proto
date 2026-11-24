@@ -1199,3 +1199,58 @@ enum MemoryLevel {
   MEMORY_LEVEL_SHORT = 1;
   MEMORY_LEVEL_VERY_SHORT = 2;
 }
+
+// Since 1.49. Asks what is awake (056): every tab that has a web view, in
+// every window and every Space. Answered with AwakePage; "window.unknown".
+message QueryAwake {
+  // The window that asks: its tabs come first, and it decides whether a
+  // private window's tabs are named.
+  uint64 window_id = 1;
+}
+
+// What is awake (056). The tabs are in this order: by window, the one that
+// asked first and the others in the order they were opened; within a window
+// by Space, the one it shows first and then the others in the Spaces' own
+// order; within a Space, in the row's order.
+message AwakePage {
+  repeated AwakeTab tabs = 1;
+  // Tabs that are alive in private windows and are not listed. A private
+  // window's tabs are named only to that window (037).
+  uint32 private_tabs = 2;
+  // Tabs that are asleep, in every window and Space: each costs a row in the
+  // store and nothing else.
+  uint32 asleep = 3;
+}
+
+// A tab that is alive (056).
+message AwakeTab {
+  uint64 tab_id = 1;
+  uint64 window_id = 2;
+  uint64 space_id = 3;
+  // The Space's name. Empty for the Space the app made itself, for which a
+  // shell has its own word; and for a private window's row, which has none.
+  string space_name = 4 [(wt.redact) = true];
+  string title = 5 [(wt.redact) = true];
+  string host = 6 [(wt.redact) = true];
+  // It is the tab in front of the row its window shows.
+  bool in_sight = 7;
+  // Why it would not be put to sleep (052), as in TabSummary. With none, and
+  // out of sight, it is only waiting for its time (053).
+  repeated KeepAwake keeps_awake = 8;
+  // It is a Site (039).
+  bool kept = 9;
+  // What its web view uses, in bytes, where the engine says. 0: it does not
+  // say. (Neither WebKit nor Android's System WebView does.)
+  uint64 memory_bytes = 10;
+  // It is a private window's tab (037): listed for that window only.
+  bool private_window = 11;
+}
+
+// Since 1.49. "Sleep all others" (056): puts to sleep, now, every tab that
+// can be: out of sight, with no reason to be awake (052), of no private
+// window; in every window, as MemoryShort does when the system is short
+// (055). The person's command: nothing lasts. Answered with Ack;
+// "window.unknown".
+message SleepOthers {
+  uint64 window_id = 1;
+}

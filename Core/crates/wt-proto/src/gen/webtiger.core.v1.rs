@@ -1612,6 +1612,77 @@ pub struct MemoryShort {
     #[prost(enumeration = "MemoryLevel", tag = "1")]
     pub level: i32,
 }
+/// Since 1.49. Asks what is awake (056): every tab that has a web view, in
+/// every window and every Space. Answered with AwakePage; "window.unknown".
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct QueryAwake {
+    /// The window that asks: its tabs come first, and it decides whether a
+    /// private window's tabs are named.
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
+}
+/// What is awake (056). The tabs are in this order: by window, the one that
+/// asked first and the others in the order they were opened; within a window
+/// by Space, the one it shows first and then the others in the Spaces' own
+/// order; within a Space, in the row's order.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AwakePage {
+    #[prost(message, repeated, tag = "1")]
+    pub tabs: ::prost::alloc::vec::Vec<AwakeTab>,
+    /// Tabs that are alive in private windows and are not listed. A private
+    /// window's tabs are named only to that window (037).
+    #[prost(uint32, tag = "2")]
+    pub private_tabs: u32,
+    /// Tabs that are asleep, in every window and Space: each costs a row in the
+    /// store and nothing else.
+    #[prost(uint32, tag = "3")]
+    pub asleep: u32,
+}
+/// A tab that is alive (056).
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct AwakeTab {
+    #[prost(uint64, tag = "1")]
+    pub tab_id: u64,
+    #[prost(uint64, tag = "2")]
+    pub window_id: u64,
+    #[prost(uint64, tag = "3")]
+    pub space_id: u64,
+    /// The Space's name. Empty for the Space the app made itself, for which a
+    /// shell has its own word; and for a private window's row, which has none.
+    #[prost(string, tag = "4")]
+    pub space_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "5")]
+    pub title: ::prost::alloc::string::String,
+    #[prost(string, tag = "6")]
+    pub host: ::prost::alloc::string::String,
+    /// It is the tab in front of the row its window shows.
+    #[prost(bool, tag = "7")]
+    pub in_sight: bool,
+    /// Why it would not be put to sleep (052), as in TabSummary. With none, and
+    /// out of sight, it is only waiting for its time (053).
+    #[prost(enumeration = "KeepAwake", repeated, tag = "8")]
+    pub keeps_awake: ::prost::alloc::vec::Vec<i32>,
+    /// It is a Site (039).
+    #[prost(bool, tag = "9")]
+    pub kept: bool,
+    /// What its web view uses, in bytes, where the engine says. 0: it does not
+    /// say. (Neither WebKit nor Android's System WebView does.)
+    #[prost(uint64, tag = "10")]
+    pub memory_bytes: u64,
+    /// It is a private window's tab (037): listed for that window only.
+    #[prost(bool, tag = "11")]
+    pub private_window: bool,
+}
+/// Since 1.49. "Sleep all others" (056): puts to sleep, now, every tab that
+/// can be: out of sight, with no reason to be awake (052), of no private
+/// window; in every window, as MemoryShort does when the system is short
+/// (055). The person's command: nothing lasts. Answered with Ack;
+/// "window.unknown".
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SleepOthers {
+    #[prost(uint64, tag = "1")]
+    pub window_id: u64,
+}
 /// The layout of a window (043). Since 1.33.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -2908,7 +2979,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -3057,6 +3128,11 @@ pub mod request {
         /// Since 1.48. May be sent as a notification (envelope id 0).
         #[prost(message, tag = "56")]
         MemoryShort(super::MemoryShort),
+        /// Since 1.49
+        #[prost(message, tag = "57")]
+        QueryAwake(super::QueryAwake),
+        #[prost(message, tag = "58")]
+        SleepOthers(super::SleepOthers),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.
@@ -3064,7 +3140,7 @@ pub mod request {
 pub struct Response {
     #[prost(
         oneof = "response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17"
     )]
     pub kind: ::core::option::Option<response::Kind>,
 }
@@ -3114,6 +3190,9 @@ pub mod response {
         /// Since 1.41
         #[prost(message, tag = "16")]
         ArchivePage(super::ArchivePage),
+        /// Since 1.49
+        #[prost(message, tag = "17")]
+        AwakePage(super::AwakePage),
     }
 }
 /// Core → shell, unasked.

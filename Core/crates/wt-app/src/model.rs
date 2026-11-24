@@ -9,10 +9,10 @@ use wt_core::{
     WebViewId, WindowId, space_colour, space_name, zoom_in, zoom_out,
 };
 use wt_proto::v1::{
-    AddressView, DialogKind, DialogPrompt, DownloadPrompt, EngineKind, FindView, GroupSummary,
-    IconNamed, KeepAwake, Layout, LoadState, NavigationFailed, PermissionKind, PermissionPrompt,
-    PromptView, SignInPrompt, TabSummary, TabView, WindowSnapshot, ZoomView, address_view,
-    engine_event, prompt_view,
+    AddressView, AwakePage, AwakeTab, DialogKind, DialogPrompt, DownloadPrompt, EngineKind,
+    FindView, GroupSummary, IconNamed, KeepAwake, Layout, LoadState, NavigationFailed,
+    PermissionKind, PermissionPrompt, PromptView, SignInPrompt, TabSummary, TabView,
+    WindowSnapshot, ZoomView, address_view, engine_event, prompt_view,
 };
 use wt_store::{SavedGroup, SavedTab, Space};
 
@@ -1813,6 +1813,89 @@ impl State {
             .into_iter()
             .filter_map(|id| self.put_to_sleep(id))
             .collect()
+    }
+
+    /// What is awake (056): every tab that has a web view, for the window
+    /// that asks. By window, the asking one first and the others in the
+    /// order they were opened; within a window by Space, the one it shows
+    /// first and then the others in the Spaces' own order; within a Space,
+    /// in the row's order. A private window's tabs are named to that window
+    /// alone (037): to another they are counted. With how many tabs are
+    /// asleep. `None` when there is no such window.
+    pub(crate) fn awake(&self, asking: WindowId) -> Option<AwakePage> {
+        self.windows.get(&asking)?;
+        let in_sight = self.in_sight();
+        let mut page = AwakePage::default();
+        let others = self.windows.keys().copied().filter(|id| *id != asking);
+        for id in std::iter::once(asking).chain(others) {
+            let Some(window) = self.windows.get(&id) else {
+                continue;
+            };
+            let private = self.is_private_space(window.space);
+            let behind = self
+                .spaces
+                .iter()
+                .map(|space| space.id)
+                .filter(|space| *space != window.space);
+            for space in std::iter::once(window.space).chain(behind) {
+                let Some(row) = window.rows.get(&space) else {
+                    continue;
+                };
+                let name = self
+                    .spaces
+                    .iter()
+                    .find(|known| known.id == space)
+                    .map_or_else(String::new, |known| known.name.clone());
+                for tab_id in &row.tabs {
+                    let Some(tab) = self.tabs.get(tab_id).filter(|tab| tab.web_view.is_some())
+                    else {
+                        continue;
+                    };
+                    if private && id != asking {
+                        page.private_tabs = page.private_tabs.saturating_add(1);
+                        continue;
+                    }
+                    let summary = tab.summary(*tab_id);
+                    page.tabs.push(AwakeTab {
+                        tab_id: tab_id.get(),
+                        window_id: id.0,
+                        space_id: space.0,
+                        space_name: name.clone(),
+                        title: summary.title,
+                        host: summary.host,
+                        in_sight: in_sight.contains(tab_id),
+                        keeps_awake: summary.keeps_awake,
+                        kept: summary.kept,
+                        // Neither engine built here says what a web view uses.
+                        memory_bytes: 0,
+                        private_window: private,
+                    });
+                }
+            }
+        }
+        page.asleep = u32::try_from(self.asleep()).unwrap_or(u32::MAX);
+        Some(page)
+    }
+
+    /// How many tabs are asleep (056): the ones in the rows windows have,
+    /// and the ones the session keeps of Spaces its window has not shown in
+    /// this run (009), which are nowhere but in the store until it does. An
+    /// empty tab is not asleep: it has nothing to wake to.
+    fn asleep(&self) -> usize {
+        let here = self.tabs.values().filter(|tab| tab.asleep).count();
+        let shown: BTreeSet<SpaceId> = self
+            .session_window
+            .and_then(|window| self.windows.get(&window))
+            .map(|window| window.rows.keys().copied().collect())
+            .unwrap_or_default();
+        let kept: usize = self.saved.as_ref().map_or(0, |saved| {
+            saved
+                .iter()
+                .filter(|(space, _)| !shown.contains(space))
+                .map(|(_, tabs)| tabs.iter().filter(|tab| !tab.url.is_empty()).count())
+                .sum()
+        });
+        here.saturating_add(kept)
     }
 
     /// The state of a tab that was put to sleep has arrived (053), kept in
