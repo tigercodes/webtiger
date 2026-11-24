@@ -183,6 +183,32 @@ internal class SystemWebViewPermissionTest : AdapterTestCase() {
         assertEquals(2, asked().size)
     }
 
+    /**
+     * A page that asks as it loads is heard of after it has arrived, each time. The WebView
+     * says a page has arrived by a message to the app's thread, and says what a page asks at
+     * once: a question could so be reported before its page's commit, and the core, which ends
+     * what a page asks when another page commits, then told the page no with nobody asked. It
+     * was seen in the app, on the first run after an emulator's cold start, with the camera
+     * just used: so the camera is granted here in every round, and the same address loaded
+     * again. A race is not made to happen by a test; twelve rounds are twelve chances.
+     */
+    @Test
+    fun aPageThatAsksAsItLoadsIsHeardOfAfterItHasArrived() {
+        theAppHolds(Manifest.permission.CAMERA)
+        create(1)
+        repeat(12) { round ->
+            load(1, site.url("/asks?now=camera"))
+            await(1, "the page of round ${round + 1} to ask") { asked().size > round }
+            val said = reports(1)
+            val arrived = said.indexOfLast { it.navigation_committed != null }
+            val question = said.indexOfLast { it.permission_requested != null }
+            assertEquals("round ${round + 1}: one commit for each load", round + 1, said.count { it.navigation_committed != null })
+            assertTrue("round ${round + 1}: the page's question was reported before the page: ${names(said).takeLast(8)}", question > arrived)
+            say(asked().last(), true)
+            await(1, "the page of round ${round + 1} to have the camera") { reports -> reports.count { it.title_changed?.title == "granted camera 1" } > round }
+        }
+    }
+
     @Test
     fun aFrameFromAnotherOriginIsReportedAsItself() {
         create(1)

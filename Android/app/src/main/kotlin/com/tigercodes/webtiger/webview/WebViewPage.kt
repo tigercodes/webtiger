@@ -587,11 +587,13 @@ internal class WebViewPage(
         }
 
         private fun says(kind: DialogKind, url: String?, message: String?, defaultText: String, answer: (Boolean, String) -> Unit) {
-            host.dialog(id, url.orEmpty(), kind, message.orEmpty(), defaultText) { accepted, text ->
-                // A page that has gone meanwhile has nobody to tell.
-                try {
-                    answer(accepted, text)
-                } catch (_: RuntimeException) {
+            inTurn {
+                host.dialog(id, url.orEmpty(), kind, message.orEmpty(), defaultText) { accepted, text ->
+                    // A page that has gone meanwhile has nobody to tell.
+                    try {
+                        answer(accepted, text)
+                    } catch (_: RuntimeException) {
+                    }
                 }
             }
         }
@@ -626,19 +628,22 @@ internal class WebViewPage(
                 request.deny()
                 return
             }
-            asking[request] =
-                host.permissionAsked(id, request.origin?.toString().orEmpty(), kinds.filterNotNull()) { granted ->
-                    asking.remove(request)
-                    // A request whose page has gone meanwhile has nobody to tell.
-                    try {
-                        if (granted) request.grant(request.resources) else request.deny()
-                    } catch (_: RuntimeException) {
+            inTurn {
+                asking[request] =
+                    host.permissionAsked(id, request.origin?.toString().orEmpty(), kinds.filterNotNull()) { granted ->
+                        asking.remove(request)
+                        // A request whose page has gone meanwhile has nobody to tell.
+                        try {
+                            if (granted) request.grant(request.resources) else request.deny()
+                        } catch (_: RuntimeException) {
+                        }
                     }
-                }
+            }
         }
 
+        /** In its turn too: after the request it takes back, however soon it follows it. */
         override fun onPermissionRequestCanceled(request: PermissionRequest) {
-            asking.remove(request)?.let(host::permissionWithdrawn)
+            inTurn { asking.remove(request)?.let(host::permissionWithdrawn) }
         }
 
         /**
@@ -647,18 +652,42 @@ internal class WebViewPage(
          */
         override fun onGeolocationPermissionsShowPrompt(origin: String?, callback: GeolocationPermissions.Callback?) {
             if (origin == null || callback == null) return
-            locating =
-                host.permissionAsked(id, origin, listOf(PermissionKind.PERMISSION_KIND_LOCATION)) { granted ->
-                    locating = null
-                    callback.invoke(origin, granted, false)
-                }
+            inTurn {
+                locating =
+                    host.permissionAsked(id, origin, listOf(PermissionKind.PERMISSION_KIND_LOCATION)) { granted ->
+                        locating = null
+                        callback.invoke(origin, granted, false)
+                    }
+            }
         }
 
         override fun onGeolocationPermissionsHidePrompt() {
-            locating?.let(host::permissionWithdrawn)
-            locating = null
+            inTurn {
+                locating?.let(host::permissionWithdrawn)
+                locating = null
+            }
         }
     }
+
+    /**
+     * Takes up what a page asks of the person behind whatever already waits for this thread.
+     *
+     * That a page has arrived, the WebView says by a message to this thread
+     * (`doUpdateVisitedHistory`, like its other words about a load); what a page asks, it says
+     * at once. A page that asks as it loads can so be heard before the message that says it
+     * arrived has been read. The core would then ask on behalf of the page that is going, and
+     * end the question, unanswered, when the commit came after all: the page was told no, and
+     * nobody had been asked. (Seen on an emulator: a page that asked for the camera as it
+     * loaded, heard in the same millisecond as its commit, and before it.) A question taken up
+     * in its turn reaches the core after the page it is of.
+     *
+     * A page that is closed before its turn comes has nobody to ask for.
+     */
+    private fun inTurn(ask: () -> Unit) {
+        turns.post { if (webView != null) ask() }
+    }
+
+    private val turns = Handler(Looper.getMainLooper())
 
     /** The page's requests for the camera or the microphone that wait for an answer, each by the adapter's name for it. */
     private val asking = HashMap<PermissionRequest, Long>()

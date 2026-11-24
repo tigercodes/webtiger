@@ -122,6 +122,7 @@ No dialog of the system's is involved anywhere, so the adapter suites run all of
 - **Who called** is the origin of the address the WebView names, with nothing of its path. Seen on the emulator: for a frame from another origin, the WebView names the frame's address, so the adapter reports the frame and the core's rule dismisses it.
 - "Leave site?" is answered at once: leave. On the emulator, a finger on a link of a page that asks to keep the person went where the link led, and nothing was reported.
 - A web view that is destroyed dismisses what its pages said, before it is closed.
+- **What a page says is reported after the page has arrived** (2026-11-24): like what a page asks to use, and for the same reason ([014](014-permissions.md) §6). The WebView says what a page says at once, and that a page has committed by a message that may still be waiting: a page that speaks as it loads could be heard before its commit, and the commit would then have dismissed what it said. It is taken up behind the messages that already wait. The script waits either way: the WebView's result is kept, as before. For dialogs this was not seen to go wrong; it is the same order of words as for the camera, where it was.
 
 ## 6. The shells
 

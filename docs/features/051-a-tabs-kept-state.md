@@ -123,6 +123,7 @@ The store (schema 16): `tab_state(id, engine, state)`, and `tab.state_id`: a sav
 - **How large the store grows** with forty tabs' states from a real engine, and how long it then takes to open: not measured. The limit of D3 is a guess, far above what W0 measured for three pages of history (001 §11.3: 1 KB from WebKit, 2.4 KB from the System WebView).
 - **An app killed between a state being kept and its session being written.** The state is then one that no saved tab names, and goes at the next start: tested with such a state put into the store by hand, not by killing anything.
 - **Tidying** (049) closes a tab by the way a person does, so its state goes with it; no test tidies a tab that has a state.
+- **Why the gate over this found a fault of the Android adapter's.** One of the app's device tests failed on this commit, on the first run after the emulator's cold start, three times of three, and passed on the commit before: a page that asked for the camera as it loaded was reported before its own commit ([014](014-permissions.md) §6). The adapter's order was wrong before this change and is mended. What this change did to bring it out is not known: in that test no tab leaves the front, so nothing is asked of the shell that was not asked before.
 - **A store that refuses** while a state is forgotten: `ForgetHistory` is then answered with the store's code, after the visits are gone. Not tested: the store in a test does not refuse.
 
 ## 9. Done checklist

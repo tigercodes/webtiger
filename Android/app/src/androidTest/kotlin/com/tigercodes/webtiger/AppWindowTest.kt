@@ -799,7 +799,13 @@ internal class AppWindowTest {
 
         // Taken back, the site is asked about again: the page waits for the person.
         type(site.url("/asks?now=camera"))
-        compose.waitUntil(15_000) { bars() == 1 }
+        try {
+            compose.waitUntil(15_000) { bars() == 1 }
+        } catch (_: androidx.compose.ui.test.ComposeTimeoutException) {
+            // What the page says of itself tells how far the asking got: whether it loaded,
+            // and whether it was told yes or no with nobody asked.
+            throw AssertionError("the person was not asked again: the page's title is <${pageTitle()}>, and ${bars()} prompts are shown")
+        }
         assertEquals("asking camera", pageTitle())
         answer("prompt-refuse")
         awaitPage("refused camera NotAllowedError")
