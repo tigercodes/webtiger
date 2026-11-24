@@ -135,4 +135,4 @@ Nothing else a shell does is new: a tab the limit puts to sleep is asked for its
 - [ ] The owner's word on §6.
 - [x] The core and the contract.
 - [x] The shells.
-- [ ] The gate.
+- [x] The gate: `Tools/test.sh all` green, and `android-device`, on 2026-11-24: `lint`, `core` (716, and the strings tool's 24), `unit` (372 on the Mac), `build`, the Mac's UI suite (61), `ios` (354 on the iPhone simulator), the iPhone's UI suite (49), `android` (492 and 32 on the JVM) and `android-device` (190 on the emulator).
