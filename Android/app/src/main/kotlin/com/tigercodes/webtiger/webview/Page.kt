@@ -40,6 +40,19 @@ internal interface Page {
      */
     fun save(url: String)
 
+    /**
+     * The web view's own state (051): what another web view can be made from, as far as the
+     * engine keeps it. Null when it has none to give.
+     */
+    fun state(): ByteArray?
+
+    /**
+     * Makes the web view what a state says, at `url`, the page the state is of; or, where the
+     * engine will not take the state, or the state is at another page, loads `url`. False when
+     * no web view could be made to do either in.
+     */
+    fun restore(state: ByteArray, url: String): Boolean
+
     /** Destroys the web view and releases what it held. */
     fun close()
 }

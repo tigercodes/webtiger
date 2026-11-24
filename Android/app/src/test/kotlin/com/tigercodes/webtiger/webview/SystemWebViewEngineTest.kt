@@ -21,6 +21,8 @@ import com.tigercodes.webtiger.core.v1.WebViewDestroy
 import com.tigercodes.webtiger.core.v1.WebViewFind
 import com.tigercodes.webtiger.core.v1.WebViewSetZoom
 import com.tigercodes.webtiger.core.v1.WebViewLoad
+import com.tigercodes.webtiger.core.v1.WebViewRestore
+import com.tigercodes.webtiger.core.v1.WebViewSaveState
 import com.tigercodes.webtiger.core.v1.WebViewTrustCertificate
 import kotlinx.coroutines.test.runTest
 import okio.ByteString.Companion.encodeUtf8
@@ -438,6 +440,57 @@ class SystemWebViewEngineTest {
             assertEquals(listOf("clear $PRIVATE"), pages.did.filter { it.startsWith("clear") })
             assertDone(engine.answer(destroy(2)))
             assertEquals(listOf("clear $PRIVATE", "clear $other"), pages.did.filter { it.startsWith("clear") })
+        }
+
+    private fun saveState(id: Long) = HostRequest(web_view_save_state = WebViewSaveState(web_view_id = id))
+
+    private fun restore(id: Long, state: String, url: String) = HostRequest(web_view_restore = WebViewRestore(web_view_id = id, state = state.encodeUtf8(), url = url))
+
+    @Test
+    fun aWebViewsStateIsWhatItsPageGivesAndNoneWhenItGivesNone() =
+        runTest {
+            engine.answer(create(4))
+            // A page with none to give: answered, with none.
+            val none = engine.answer(saveState(4))
+            assertNull(none.error)
+            assertEquals(0, checkNotNull(none.web_view_state).state.size)
+            pages.made[0].hasState = "the page's own".toByteArray()
+            assertEquals("the page's own", engine.answer(saveState(4)).web_view_state?.state?.utf8())
+            assertEquals(2, pages.made[0].statesAsked)
+            assertRefused("webview.unknown", engine.answer(saveState(9)))
+        }
+
+    @Test
+    fun aWebViewIsMadeFromAStateWithTheAddressItCameWith() =
+        runTest {
+            engine.answer(create(4))
+            assertDone(engine.answer(restore(4, "a state", "https://example.com/")))
+            assertEquals(listOf("a state" to "https://example.com/"), pages.made[0].restored)
+            assertTrue("nothing is loaded beside it", pages.made[0].loaded.isEmpty())
+            // A page that does not take the state loads the address.
+            engine.answer(create(5))
+            pages.made[1].takesStates = false
+            assertDone(engine.answer(restore(5, "a state", "https://example.com/")))
+            assertEquals(listOf("https://example.com/"), pages.made[1].loaded)
+            assertRefused("webview.unknown", engine.answer(restore(9, "a state", "https://example.com/")))
+        }
+
+    @Test
+    fun aStateIsFollowedOnlyToAnAddressTheCoresPolicyAllows() =
+        runTest {
+            engine.answer(create(4))
+            core.setVerdict(NavigationVerdict.CANCEL, "https://refused.example.com/")
+            assertRefused("webview.bad_address", engine.answer(restore(4, "a state", "https://refused.example.com/")))
+            assertRefused("webview.bad_address", engine.answer(restore(4, "a state", "")))
+            assertTrue(pages.made[0].restored.isEmpty())
+            assertTrue(pages.made[0].loaded.isEmpty())
+            // Before a core is attached, nothing is restored either.
+            val alone = SystemWebViewEngine(pages)
+            assertDone(alone.answer(create(6)))
+            assertRefused("webview.bad_address", alone.answer(restore(6, "a state", "https://example.com/")))
+            // And a web view that cannot be made to go anywhere says the engine is not there.
+            pages.made[0].loads = false
+            assertRefused("engine.unavailable", engine.answer(restore(4, "a state", "https://example.com/")))
         }
 }
 

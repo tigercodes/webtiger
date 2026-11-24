@@ -16,6 +16,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
 import android.net.http.SslError
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.Message
@@ -189,6 +190,48 @@ internal class WebViewPage(
         tracker.willLoad(url)
         view.loadUrl(url)
         return true
+    }
+
+    /**
+     * The WebView's own state (051): what `saveState` writes, which is one array of bytes under
+     * one name (the adapter suite holds it to that). Null when the WebView writes none (it has
+     * been nowhere), or writes anything else: nothing is handed on that could not be handed
+     * back as it was.
+     */
+    override fun state(): ByteArray? {
+        val view = webView ?: return null
+        val saved = Bundle()
+        if (view.saveState(saved) == null) return null
+        if (saved.keySet() != setOf(STATE_NAME)) return null
+        return saved.getByteArray(STATE_NAME)
+    }
+
+    /**
+     * Hands the WebView a state, which it takes or does not, and says by the list it gives
+     * back. One it took is loading the page the state is at: when that is `url`, the page the
+     * tab is at and the core's policy was asked about, that is the load. The WebView asks the
+     * app about no load that goes through its own list, so a state that is at any other page
+     * is not followed: the web view that took it is let go, and another loads `url`, as one
+     * does when the state was not taken at all.
+     */
+    override fun restore(state: ByteArray, url: String): Boolean {
+        val view = webView ?: recreate() ?: return false
+        val list =
+            try {
+                view.restoreState(Bundle().apply { putByteArray(STATE_NAME, state) })
+            } catch (_: RuntimeException) {
+                null
+            }
+        if (list != null && list.size > 0) {
+            if (list.currentItem?.url == url) {
+                tracker.willLoad(url)
+                return true
+            }
+            view.stopLoading()
+            destroy(view)
+            webView = null
+        }
+        return load(url)
     }
 
     override fun command(command: NavigationCommand) {
@@ -696,6 +739,8 @@ internal class WebViewPage(
     private var locating: Long? = null
 
     private companion object {
+        /** The name the WebView writes its state under, in the bundle `saveState` fills. */
+        const val STATE_NAME = "WEBVIEW_CHROMIUM_STATE"
         const val ACTUAL_SIZE = 100
         const val SMALLEST_ZOOM = 50
         const val LARGEST_ZOOM = 500

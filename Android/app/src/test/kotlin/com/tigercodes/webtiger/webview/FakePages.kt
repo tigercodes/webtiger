@@ -33,6 +33,31 @@ internal class FakePage(
         commands.add(command)
     }
 
+    /** What the page gives as its state: none, until a test says. */
+    var hasState: ByteArray? = null
+
+    /** How many times the page was asked for its state. */
+    var statesAsked = 0
+
+    override fun state(): ByteArray? {
+        statesAsked += 1
+        return hasState
+    }
+
+    /** The states the page was handed, each with the address it came with. */
+    val restored = ArrayList<Pair<String, String>>()
+
+    /** Whether the page takes a state it is handed: one that does not loads the address. */
+    var takesStates = true
+
+    override fun restore(state: ByteArray, url: String): Boolean {
+        if (!loads) return false
+        restored.add(String(state) to url)
+        if (!takesStates) return load(url)
+        tracker.willLoad(url)
+        return true
+    }
+
     /** What the page was asked to find, in order: the text (empty to stop), and whether backwards. */
     val finds = ArrayList<Pair<String, Boolean>>()
 

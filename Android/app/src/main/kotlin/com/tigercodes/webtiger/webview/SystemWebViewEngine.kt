@@ -41,6 +41,8 @@ import com.tigercodes.webtiger.core.v1.WebViewCommand
 import com.tigercodes.webtiger.core.v1.WebViewCreate
 import com.tigercodes.webtiger.core.v1.WebViewLoad
 import com.tigercodes.webtiger.core.v1.WebViewState
+import okio.ByteString
+import okio.ByteString.Companion.toByteString
 
 /**
  * Answers the WebViews host service with the System WebView. Used on the main thread only, as
@@ -245,12 +247,8 @@ class SystemWebViewEngine internal constructor(
                 ping != null -> HostResponse(pong = HostPong(payload = ping.payload))
                 create != null -> create(create)
                 load != null -> load(load)
-                // A web view's own state (051). This adapter gives none yet: its tab wakes at
-                // its address, as before there were states.
-                saveState != null -> if (pages[saveState.web_view_id] == null) failure("webview.unknown") else HostResponse(web_view_state = WebViewState())
-                // And it takes none: the address is loaded, which is what the contract has a
-                // shell do with a state its engine will not take.
-                restore != null -> load(WebViewLoad(web_view_id = restore.web_view_id, url = restore.url))
+                saveState != null -> state(saveState.web_view_id)
+                restore != null -> go(restore.web_view_id, restore.url) { page -> page.restore(restore.state.toByteArray(), restore.url) }
                 command != null -> command(command)
                 destroy != null -> {
                     // What its page was asking goes with it: refused, while there is a page to tell.
@@ -334,16 +332,26 @@ class SystemWebViewEngine internal constructor(
         return page
     }
 
-    private fun load(load: WebViewLoad): HostResponse {
-        val page = pages[load.web_view_id] ?: return failure("webview.unknown")
+    private fun load(load: WebViewLoad): HostResponse = go(load.web_view_id, load.url) { page -> page.load(load.url) }
+
+    /**
+     * Sends a web view to an address: by a load, or by a state that is at it (051), as `how`
+     * does it.
+     */
+    private fun go(webViewId: Long, url: String, how: (Page) -> Boolean): HostResponse {
+        val page = pages[webViewId] ?: return failure("webview.unknown")
         // The core sends only addresses its own policy allows. It is asked once more here
         // because of what WebView.loadUrl does with the others: a `javascript:` address is run
         // as script in the page that is showing.
-        val allowed =
-            load.url.isNotEmpty() &&
-                core?.navigationVerdict(load.url, load.web_view_id, mainFrame = true, userGesture = true) == NavigationVerdict.ALLOW
+        val allowed = url.isNotEmpty() && core?.navigationVerdict(url, webViewId, mainFrame = true, userGesture = true) == NavigationVerdict.ALLOW
         if (!allowed) return failure("webview.bad_address")
-        return if (page.load(load.url)) done else failure("engine.unavailable")
+        return if (how(page)) done else failure("engine.unavailable")
+    }
+
+    /** A web view's own state (051), or none where its engine has none to give. */
+    private fun state(webViewId: Long): HostResponse {
+        val page = pages[webViewId] ?: return failure("webview.unknown")
+        return HostResponse(web_view_state = WebViewState(state = page.state()?.toByteString() ?: ByteString.EMPTY))
     }
 
     private fun command(command: WebViewCommand): HostResponse {

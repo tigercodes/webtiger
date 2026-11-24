@@ -436,4 +436,77 @@ class ThroughTheCoreTest {
                 assertTrue(pages.made.isEmpty())
             }
         }
+
+    /**
+     * A tab's kept state (051), through the real core and a store on disk, with the app's own
+     * engine over pages that have no WebView: a tab that leaves the front is asked for its
+     * state; the core keeps it; and when the app starts again and the tab is brought in front,
+     * its web view is made from that state, with the address it was at to fall back on. The
+     * tab that was in front at the end was never asked, and is loaded. Nothing is fetched: the
+     * pages are the test's, and their addresses are the device's own, where nothing listens.
+     */
+    @Test
+    fun aTabThatLeftTheFrontIsMadeFromItsStateWhenTheAppStartsAgain() =
+        runBlocking {
+            val folder = java.nio.file.Files.createTempDirectory("webtiger-state").toFile()
+            try {
+                val live = config(LaunchOptions()).copy(data_dir = folder.path)
+                val first = NativeCore.start(live, engine, main).also { core = it }
+                val model = BrowserModel(BrowserSession(first, engine, scope))
+                onMain { model.open() }
+                await("the window's first snapshot") { model.tab.tab_id != 0L }
+                val firstTab = onMain { model.tab.tab_id }
+                onMain {
+                    model.isEditingAddress = true
+                    model.addressText = "127.0.0.1:9/one"
+                    model.submit()
+                }
+                await("the load reaching the web view") { pages.made.size == 1 && pages.made[0].loaded.isNotEmpty() }
+                arrive(pages.made[0], "http://127.0.0.1:9/one", "One")
+                await("the first page") { model.tab.title == "One" }
+                pages.made[0].hasState = "the first tab's state".toByteArray()
+                assertEquals("in front, a tab is asked nothing", 0, onMain { pages.made[0].statesAsked })
+
+                // Another tab comes in front: the first has left it, and is asked, once.
+                onMain { model.openTab() }
+                await("the new tab in front") { model.tab.tab_id != 0L && model.tab.tab_id != firstTab }
+                await("the first tab asked for its state") { pages.made[0].statesAsked == 1 }
+                onMain {
+                    model.isEditingAddress = true
+                    model.addressText = "127.0.0.1:9/two"
+                    model.submit()
+                }
+                await("the second load reaching its web view") { pages.made.size == 2 && pages.made[1].loaded.isNotEmpty() }
+                arrive(pages.made[1], "http://127.0.0.1:9/two", "Two")
+                await("the second page") { model.tab.title == "Two" }
+                // The core has answered since the state was handed over: it is kept by now.
+                first.request(Request(query_spaces = QuerySpaces()))
+                assertEquals(1, onMain { pages.made[0].statesAsked })
+                first.stop()
+
+                // The app starts again, over the same store, with web views of its own.
+                val pagesAgain = FakePages()
+                val engineAgain = SystemWebViewEngine(pagesAgain)
+                val second = NativeCore.start(live, engineAgain, main).also { core = it }
+                val again = BrowserModel(BrowserSession(second, engineAgain, scope))
+                onMain { again.open() }
+                await("both tabs back, the second in front and loaded") {
+                    again.tabs.size == 2 && pagesAgain.made.size == 1 && pagesAgain.made[0].loaded == listOf("http://127.0.0.1:9/two")
+                }
+                assertTrue("the tab in front was never asked: nothing to make it from", onMain { pagesAgain.made[0].restored.isEmpty() })
+
+                // The first is brought in front: its web view is made from its state.
+                val asleep = onMain { again.tabs.first().tab_id }
+                onMain { again.activate(asleep) }
+                await("the first tab's web view") { pagesAgain.made.size == 2 }
+                await("it is made from its state") { pagesAgain.made[1].restored.isNotEmpty() }
+                onMain {
+                    assertEquals(listOf("the first tab's state" to "http://127.0.0.1:9/one"), pagesAgain.made[1].restored)
+                    assertTrue("and not loaded beside it", pagesAgain.made[1].loaded.isEmpty())
+                }
+            } finally {
+                core?.stop()
+                folder.deleteRecursively()
+            }
+        }
 }
