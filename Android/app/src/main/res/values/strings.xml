@@ -235,6 +235,8 @@
     <string name="error_space_colour_unknown">That colour isn’t one a Space can have.</string>
     <!-- Said on the page that makes a Space when it could not be made and no more is known. -->
     <string name="error_space_failed">The Space couldn’t be made.</string>
+    <!-- Said where a Space is made or edited when the app does not know the icon that was chosen. -->
+    <string name="error_space_icon_unknown">That icon isn’t one a Space can have.</string>
     <!-- Said on the page that makes a Space when the name is empty. -->
     <string name="error_space_name_empty">A Space needs a name.</string>
     <!-- Said on the page that edits a Space when it could not be changed and no more is known. -->
@@ -493,6 +495,8 @@
     <string name="space_colour_yellow">Yellow</string>
     <!-- Name shown for the Space the app made itself, until the person gives it a name. A Space is a set of tabs kept apart from the others, such as home and work. -->
     <string name="space_home">Home</string>
+    <!-- Heading over the icons to choose among for a Space, where one is made and where one is edited. The icons are emoji. -->
+    <string name="space_icon">Icon</string>
     <!-- Button on the page that makes a Space: back to the list of Spaces, with nothing made. -->
     <string name="space_new_back">Back</string>
     <!-- Heading over the choice of whose logins a new Space has: its own, or another Space's. -->
@@ -515,6 +519,8 @@
     <string name="space_new_title">New Space</string>
     <!-- The choice of no colour for a Space or a Group, beside the colours. -->
     <string name="space_no_colour">None</string>
+    <!-- Accessibility label of the first choice among a Space's icons: none. The other choices are emoji, which a screen reader names itself. -->
+    <string name="space_no_icon">No icon</string>
     <!-- Button that gives the Space the name in the field. -->
     <string name="space_rename_save">Save</string>
     <!-- Heading of the page that gives a Space another name or colour. -->

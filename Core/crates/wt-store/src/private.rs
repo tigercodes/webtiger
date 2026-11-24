@@ -205,7 +205,7 @@ mod tests {
     fn a_login_set_a_space_has_is_not_dropped() {
         let mut store = Store::open_in_memory().unwrap();
         let made = store
-            .create_space("Work", Logins::Own(Uuid::from_bytes([3; 16])), "", NOW)
+            .create_space("Work", Logins::Own(Uuid::from_bytes([3; 16])), "", "", NOW)
             .unwrap()
             .expect("a Space");
         store.set_zoom(made.login_set, "example.com", 125).unwrap();

@@ -168,7 +168,9 @@ internal class AppSpacesTest {
             compose.onNodeWithTag("space-name").performTextInput("Work")
             compose.onNodeWithTag("space-make").assertIsEnabled()
             compose.onRoot().tryPerformAccessibilityChecks()
-            compose.onNodeWithTag("space-make").performClick()
+            // (The page is longer than a phone's screen has room for above the keyboard since
+            // it has the icons too, 050: the button is moved to before it is pressed.)
+            compose.onNodeWithTag("space-make").performScrollTo().performClick()
 
             // The window shows it: one empty tab, and logins of its own.
             awaitSpace("Work")

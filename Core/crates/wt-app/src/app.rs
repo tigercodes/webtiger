@@ -219,6 +219,7 @@ impl App {
             request::Kind::RenameSpace(rename) => answer(self.rename_space(&rename)),
             request::Kind::SwitchSpace(switch) => self.switch_space(&switch),
             request::Kind::ColourSpace(colour) => answer(self.colour_space(&colour)),
+            request::Kind::IconSpace(icon) => answer(self.icon_space(&icon)),
             request::Kind::ProceedPastCertificate(proceed) => {
                 self.proceed_past_certificate(&proceed)
             }

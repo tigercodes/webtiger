@@ -923,6 +923,10 @@ public nonisolated struct WTWindowSnapshot: Sendable {
   /// shown; a shell that says how many there are says this.
   public var rowTabs: UInt32 = 0
 
+  /// Since 1.43. The icon of the Space the window shows (050): one of
+  /// SpacesPage.icons, an emoji, or empty for none.
+  public var spaceIcon: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2083,6 +2087,11 @@ public nonisolated struct WTSpacesPage: Sendable {
   /// their order: nought, which is never, first.
   public var tidyTimes: [UInt32] = []
 
+  /// Since 1.43. The icons a Space can have (050), in their order. Each is an
+  /// emoji: it is what a shell draws, with the system's own font, and there
+  /// are no words or pictures for it elsewhere.
+  public var icons: [String] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2109,6 +2118,9 @@ public nonisolated struct WTSpaceSummary: Sendable {
   /// of its that is no Site is tidied. Nought: never.
   public var tidyAfterSeconds: UInt32 = 0
 
+  /// Since 1.43. Its icon (050): one of SpacesPage.icons, or empty for none.
+  public var icon: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2134,6 +2146,11 @@ public nonisolated struct WTCreateSpace: Sendable {
   /// gives it the first that no Space has. One that is not in the list is
   /// refused with "space.colour_unknown", and nothing is made.
   public var colour: String = String()
+
+  /// Since 1.43. Its icon (050): one of SpacesPage.icons. Empty: none; a
+  /// Space is given no icon it was not asked for. One that is not in the list
+  /// is refused with "space.icon_unknown", and nothing is made.
+  public var icon: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2199,6 +2216,23 @@ public nonisolated struct WTColourSpace: Sendable {
   public var spaceID: UInt64 = 0
 
   public var colour: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Since 1.43. Gives a Space an icon (050): one of SpacesPage.icons, or none
+/// (empty). Answered with Ack, "space.unknown", or "space.icon_unknown" for
+/// one that is not in the list, which changes nothing.
+public nonisolated struct WTIconSpace: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var spaceID: UInt64 = 0
+
+  public var icon: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3517,7 +3551,7 @@ nonisolated extension WTIcon: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
 
 nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".WindowSnapshot"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0\u{3}downloads_active\0\u{3}space_id\0\u{3}space_name\0\u{3}space_colour\0\u{1}undo\0\u{3}private_window\0\u{1}groups\0\u{3}favourites_full\0\u{1}layout\0\u{3}undo_arrangement\0\u{3}row_tabs\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}window_id\0\u{1}tab\0\u{1}tabs\0\u{3}downloads_active\0\u{3}space_id\0\u{3}space_name\0\u{3}space_colour\0\u{1}undo\0\u{3}private_window\0\u{1}groups\0\u{3}favourites_full\0\u{1}layout\0\u{3}undo_arrangement\0\u{3}row_tabs\0\u{3}space_icon\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3539,6 +3573,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 12: try { try decoder.decodeSingularEnumField(value: &self.layout) }()
       case 13: try { try decoder.decodeSingularStringField(value: &self.undoArrangement) }()
       case 14: try { try decoder.decodeSingularUInt32Field(value: &self.rowTabs) }()
+      case 15: try { try decoder.decodeSingularStringField(value: &self.spaceIcon) }()
       default: break
       }
     }
@@ -3591,6 +3626,9 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
     if self.rowTabs != 0 {
       try visitor.visitSingularUInt32Field(value: self.rowTabs, fieldNumber: 14)
     }
+    if !self.spaceIcon.isEmpty {
+      try visitor.visitSingularStringField(value: self.spaceIcon, fieldNumber: 15)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3609,6 +3647,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.layout != rhs.layout {return false}
     if lhs.undoArrangement != rhs.undoArrangement {return false}
     if lhs.rowTabs != rhs.rowTabs {return false}
+    if lhs.spaceIcon != rhs.spaceIcon {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -5415,7 +5454,7 @@ nonisolated extension WTQuerySpaces: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 nonisolated extension WTSpacesPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SpacesPage"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}spaces\0\u{1}colours\0\u{3}tidy_times\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}spaces\0\u{1}colours\0\u{3}tidy_times\0\u{1}icons\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5426,6 +5465,7 @@ nonisolated extension WTSpacesPage: SwiftProtobuf.Message, SwiftProtobuf._Messag
       case 1: try { try decoder.decodeRepeatedMessageField(value: &self.spaces) }()
       case 2: try { try decoder.decodeRepeatedStringField(value: &self.colours) }()
       case 3: try { try decoder.decodeRepeatedUInt32Field(value: &self.tidyTimes) }()
+      case 4: try { try decoder.decodeRepeatedStringField(value: &self.icons) }()
       default: break
       }
     }
@@ -5441,6 +5481,9 @@ nonisolated extension WTSpacesPage: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if !self.tidyTimes.isEmpty {
       try visitor.visitPackedUInt32Field(value: self.tidyTimes, fieldNumber: 3)
     }
+    if !self.icons.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.icons, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -5448,6 +5491,7 @@ nonisolated extension WTSpacesPage: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs.spaces != rhs.spaces {return false}
     if lhs.colours != rhs.colours {return false}
     if lhs.tidyTimes != rhs.tidyTimes {return false}
+    if lhs.icons != rhs.icons {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -5455,7 +5499,7 @@ nonisolated extension WTSpacesPage: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension WTSpaceSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SpaceSummary"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}space_id\0\u{1}name\0\u{1}logins\0\u{1}colour\0\u{3}tidy_after_seconds\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}space_id\0\u{1}name\0\u{1}logins\0\u{1}colour\0\u{3}tidy_after_seconds\0\u{1}icon\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5468,6 +5512,7 @@ nonisolated extension WTSpaceSummary: SwiftProtobuf.Message, SwiftProtobuf._Mess
       case 3: try { try decoder.decodeSingularUInt32Field(value: &self.logins) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.colour) }()
       case 5: try { try decoder.decodeSingularUInt32Field(value: &self.tidyAfterSeconds) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.icon) }()
       default: break
       }
     }
@@ -5489,6 +5534,9 @@ nonisolated extension WTSpaceSummary: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if self.tidyAfterSeconds != 0 {
       try visitor.visitSingularUInt32Field(value: self.tidyAfterSeconds, fieldNumber: 5)
     }
+    if !self.icon.isEmpty {
+      try visitor.visitSingularStringField(value: self.icon, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -5498,6 +5546,7 @@ nonisolated extension WTSpaceSummary: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if lhs.logins != rhs.logins {return false}
     if lhs.colour != rhs.colour {return false}
     if lhs.tidyAfterSeconds != rhs.tidyAfterSeconds {return false}
+    if lhs.icon != rhs.icon {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -5505,7 +5554,7 @@ nonisolated extension WTSpaceSummary: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 nonisolated extension WTCreateSpace: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CreateSpace"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{3}share_logins_with\0\u{1}colour\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{3}share_logins_with\0\u{1}colour\0\u{1}icon\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5516,6 +5565,7 @@ nonisolated extension WTCreateSpace: SwiftProtobuf.Message, SwiftProtobuf._Messa
       case 1: try { try decoder.decodeSingularStringField(value: &self.name) }()
       case 2: try { try decoder.decodeSingularUInt64Field(value: &self.shareLoginsWith) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.colour) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.icon) }()
       default: break
       }
     }
@@ -5531,6 +5581,9 @@ nonisolated extension WTCreateSpace: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if !self.colour.isEmpty {
       try visitor.visitSingularStringField(value: self.colour, fieldNumber: 3)
     }
+    if !self.icon.isEmpty {
+      try visitor.visitSingularStringField(value: self.icon, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -5538,6 +5591,7 @@ nonisolated extension WTCreateSpace: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if lhs.name != rhs.name {return false}
     if lhs.shareLoginsWith != rhs.shareLoginsWith {return false}
     if lhs.colour != rhs.colour {return false}
+    if lhs.icon != rhs.icon {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -5673,6 +5727,41 @@ nonisolated extension WTColourSpace: SwiftProtobuf.Message, SwiftProtobuf._Messa
   public static func ==(lhs: WTColourSpace, rhs: WTColourSpace) -> Bool {
     if lhs.spaceID != rhs.spaceID {return false}
     if lhs.colour != rhs.colour {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTIconSpace: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".IconSpace"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}space_id\0\u{1}icon\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.spaceID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.icon) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.spaceID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.spaceID, fieldNumber: 1)
+    }
+    if !self.icon.isEmpty {
+      try visitor.visitSingularStringField(value: self.icon, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTIconSpace, rhs: WTIconSpace) -> Bool {
+    if lhs.spaceID != rhs.spaceID {return false}
+    if lhs.icon != rhs.icon {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

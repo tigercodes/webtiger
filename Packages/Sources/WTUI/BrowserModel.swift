@@ -39,6 +39,10 @@ public final class BrowserModel {
     public private(set) var spaceName = ""
     /// That Space's colour, by the core's name for it (025); empty for none.
     public private(set) var spaceColour = ""
+    /// That Space's icon, an emoji of the core's (050); empty for none.
+    public private(set) var spaceIcon = ""
+    /// The icons a Space can have, as the core lists them with the Spaces.
+    public internal(set) var spaceIcons: [String] = []
     /// The colours a Space can have, as the core lists them with the Spaces.
     public internal(set) var spaceColours: [String] = []
     /// The times a Space's tidying can have (049), in seconds, as the core lists them with
@@ -510,6 +514,7 @@ public final class BrowserModel {
         spaceID = snapshot.spaceID
         spaceName = snapshot.spaceName
         spaceColour = snapshot.spaceColour
+        spaceIcon = snapshot.spaceIcon
         undoKind = snapshot.undo
         undoArrangementKind = snapshot.undoArrangement
         isPrivate = opensPrivate || snapshot.privateWindow

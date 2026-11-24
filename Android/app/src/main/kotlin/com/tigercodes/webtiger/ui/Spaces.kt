@@ -51,10 +51,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -93,7 +95,16 @@ internal const val COMPACT_WIDTH_DP = 600
  * only the initial, a bar under it, which takes none of the strip's room.
  */
 @Composable
-internal fun SpaceChip(name: String, compact: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, colour: String = "", saidAs: String? = null) {
+internal fun SpaceChip(
+    name: String,
+    compact: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    colour: String = "",
+    saidAs: String? = null,
+    /** The Space's icon, an emoji of the core's (050); empty for none. In the place of the initial, and before the name. */
+    icon: String = "",
+) {
     val shown = spaceName(name)
     // What a screen reader says: the Space, by name; or what the chip was given to say (a
     // private window's is no Space, 037).
@@ -115,7 +126,8 @@ internal fun SpaceChip(name: String, compact: Boolean, onClick: () -> Unit, modi
         val paint = Tokens.SpaceColour.paint(colour)
         if (compact) {
             Box(modifier = Modifier.sizeIn(minWidth = touch, minHeight = touch), contentAlignment = Alignment.Center) {
-                Text(text = spaceInitial(shown), fontWeight = FontWeight.SemiBold)
+                // Its icon where it has one; else its initial.
+                if (icon.isEmpty()) Text(text = spaceInitial(shown), fontWeight = FontWeight.SemiBold) else SpaceIconMark(icon)
                 if (paint != null) {
                     Box(
                         modifier =
@@ -131,6 +143,7 @@ internal fun SpaceChip(name: String, compact: Boolean, onClick: () -> Unit, modi
             }
         } else {
             if (paint != null) SpaceMark(colour)
+            if (icon.isNotEmpty()) SpaceIconMark(icon)
             // A long name is cut: the chip leaves the tabs their room.
             Text(text = shown, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, modifier = Modifier.widthIn(max = 120.dp))
             Icon(painter = painterResource(R.drawable.ic_down), contentDescription = null, modifier = Modifier.size(18.dp))
@@ -158,11 +171,13 @@ internal fun Spaces(
     shownId: Long,
     refusal: String?,
     onShow: (Long) -> Unit,
-    onMake: (String, Long?, String) -> Unit,
-    onEdit: (String?, String?, Int?) -> Unit,
+    onMake: (String, Long?, String, String) -> Unit,
+    onEdit: (String?, String?, Int?, String?) -> Unit,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
     colours: List<String> = emptyList(),
+    /** The icons a Space can have, as the core lists them (050): each an emoji. */
+    icons: List<String> = emptyList(),
     /** The times a Space's tidying can have, in seconds, as the core lists them (049). */
     tidyTimes: List<Int> = emptyList(),
     /** The way to the private window (037), on a phone: the list's last row. None: no row. */
@@ -196,6 +211,7 @@ internal fun Spaces(
                     wouldShareWith = owner(all, shownId),
                     startsNamed = name,
                     colours = colours,
+                    icons = icons,
                     // A picture of the page takes no keyboard.
                     takesKeyboard = !pictured,
                     refusal = refusal,
@@ -209,6 +225,8 @@ internal fun Spaces(
                     named = all.firstOrNull { it.space_id == shownId }?.name.orEmpty(),
                     coloured = all.firstOrNull { it.space_id == shownId }?.colour.orEmpty(),
                     colours = colours,
+                    iconed = all.firstOrNull { it.space_id == shownId }?.icon.orEmpty(),
+                    icons = icons,
                     tidied = all.firstOrNull { it.space_id == shownId }?.tidy_after_seconds ?: 0,
                     tidyTimes = tidyTimes,
                     refusal = refusal,
@@ -275,6 +293,13 @@ private fun SpaceList(
             ) {
                 // Its colour (025): a mark, and a ring for a Space with none.
                 SpaceMark(space.colour)
+                // Its icon (050). Where any Space has one, every row keeps its place, so that
+                // the names stay in line. It is drawn and not read out: the row says the name.
+                if (spaces.any { it.icon.isNotEmpty() }) {
+                    Box(modifier = Modifier.widthIn(min = 28.dp).clearAndSetSemantics { testTag = if (space.icon.isEmpty()) "space-no-icon-mark" else "space-icon-mark" }, contentAlignment = Alignment.Center) {
+                        Text(text = space.icon)
+                    }
+                }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = spaceName(space.name), style = MaterialTheme.typography.bodyLarge)
                     if (other != null) {
@@ -338,9 +363,10 @@ private fun NewSpace(
     wouldShareWith: Long,
     startsNamed: String,
     colours: List<String>,
+    icons: List<String>,
     takesKeyboard: Boolean,
     refusal: String?,
-    onMake: (String, Long?, String) -> Unit,
+    onMake: (String, Long?, String, String) -> Unit,
     onBack: () -> Unit,
 ) {
     // The name is what is asked first: the keyboard is in its field when the page opens.
@@ -353,7 +379,9 @@ private fun NewSpace(
     val sharedWith = owners.firstOrNull { it.space_id == shareWith } ?: owners.firstOrNull()
     // Its colour, by the core's name for it; none, for the core to choose.
     var colour by rememberSaveable { mutableStateOf("") }
-    val submit = { if (name.isNotBlank()) onMake(name, sharedWith?.space_id.takeIf { shares }, colour) }
+    // Its icon, an emoji of the core's; none unless one is chosen (050).
+    var icon by rememberSaveable { mutableStateOf("") }
+    val submit = { if (name.isNotBlank()) onMake(name, sharedWith?.space_id.takeIf { shares }, colour, icon) }
     Column(modifier = Modifier.padding(horizontal = Tokens.Space.l), verticalArrangement = Arrangement.spacedBy(Tokens.Space.m)) {
         Text(
             text = stringResource(R.string.space_new_title),
@@ -415,6 +443,7 @@ private fun NewSpace(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+    SpaceIcons(icons, chosen = icon, onChoose = { icon = it }, modifier = Modifier.padding(horizontal = Tokens.Space.l, vertical = Tokens.Space.s))
     Refusal(refusal, R.string.error_space_failed)
     Row(modifier = Modifier.padding(horizontal = Tokens.Space.l, vertical = Tokens.Space.s), horizontalArrangement = Arrangement.spacedBy(Tokens.Space.s)) {
         TextButton(onClick = onBack, modifier = Modifier.testTag("space-back")) { Text(stringResource(R.string.space_new_back)) }
@@ -446,20 +475,25 @@ private fun SpaceRename(
     named: String,
     coloured: String,
     colours: List<String>,
+    iconed: String,
+    icons: List<String>,
     tidied: Int,
     tidyTimes: List<Int>,
     refusal: String?,
-    onSave: (String?, String?, Int?) -> Unit,
+    onSave: (String?, String?, Int?, String?) -> Unit,
     onBack: () -> Unit,
 ) {
     // The keyboard waits until the name is pressed: raised by itself it would cover the times
     // (049). (The page that makes a Space asks for the name first, and has it at once.)
     var name by rememberSaveable { mutableStateOf(named) }
     var colour by rememberSaveable { mutableStateOf(coloured) }
+    var icon by rememberSaveable { mutableStateOf(iconed) }
     var tidyAfter by rememberSaveable { mutableStateOf(tidied) }
     val mayBeSaved = name.isNotBlank() || named.isEmpty()
     val submit = {
-        if (mayBeSaved) onSave(name.takeIf { it.isNotBlank() && it != named }, colour.takeIf { it != coloured }, tidyAfter.takeIf { it != tidied })
+        if (mayBeSaved) {
+            onSave(name.takeIf { it.isNotBlank() && it != named }, colour.takeIf { it != coloured }, tidyAfter.takeIf { it != tidied }, icon.takeIf { it != iconed })
+        }
     }
     Column(modifier = Modifier.padding(horizontal = Tokens.Space.l), verticalArrangement = Arrangement.spacedBy(Tokens.Space.m)) {
         Text(
@@ -479,6 +513,7 @@ private fun SpaceRename(
         )
     }
     SpaceSwatches(colours, offersNone = true, chosen = colour, onChoose = { colour = it }, modifier = Modifier.padding(horizontal = Tokens.Space.l, vertical = Tokens.Space.s))
+    SpaceIcons(icons, chosen = icon, onChoose = { icon = it }, modifier = Modifier.padding(horizontal = Tokens.Space.l, vertical = Tokens.Space.s))
     // After how long out of sight its tabs are tidied, or never (049).
     SpaceTidyTimes(tidyTimes, chosen = tidyAfter, onChoose = { tidyAfter = it }, modifier = Modifier.padding(vertical = Tokens.Space.s))
     Refusal(refusal, R.string.error_space_rename_failed)

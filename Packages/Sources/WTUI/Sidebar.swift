@@ -229,7 +229,7 @@ struct Sidebar<Toolbar: View>: View {
         if model.isPrivate {
             PrivateChip(action: onSpaces)
         } else {
-            SpaceChip(name: model.spaceName, colour: model.spaceColour, action: onSpaces)
+            SpaceChip(name: model.spaceName, colour: model.spaceColour, icon: model.spaceIcon, action: onSpaces)
         }
     }
 }

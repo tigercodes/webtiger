@@ -121,6 +121,34 @@ class ThroughTheCoreTest {
     }
 
     /**
+     * A Space's icon (050), through the real core: the window's model gives the Space the first
+     * icon the core lists, and the window says it; one the core did not list is refused by its
+     * code, and the Space keeps the one it has. The shell has no list of its own to check by.
+     */
+    @Test
+    fun aSpaceIsGivenAnIconTheCoreListsAndNoOther() =
+        runBlocking {
+            val session = session()
+            val model = BrowserModel(session)
+            onMain { model.open() }
+            await("the window's first snapshot") { model.tab.tab_id != 0L && model.spaceId != 0L }
+            val listed = session.core.request(Request(query_spaces = QuerySpaces())).spaces_page!!
+            assertEquals(24, listed.icons.size)
+            assertEquals("each once", 24, listed.icons.toSet().size)
+            assertEquals("a Space is made with none", "", listed.spaces.first().icon)
+            assertEquals("", onMain { model.spaceIcon })
+
+            onMain { model.editSpace(null, null, null, listed.icons.first()) }
+            await("the window saying its Space's icon") { model.spaceIcon == listed.icons.first() }
+
+            onMain { model.openSpaces() }
+            await("the list") { model.spaces != null && model.spaceIcons == listed.icons }
+            onMain { model.editSpace(null, null, null, "\uD83D\uDE00") }
+            await("the refusal") { model.spaceRefusal == "space.icon_unknown" }
+            assertEquals("the Space keeps the icon it has", listed.icons.first(), onMain { model.spaceIcon })
+        }
+
+    /**
      * The colours the real core lists (025) are the ones this shell has a paint for, by the same
      * names and in the same order. (Their words are the strings': `SpacesTest`.)
      */

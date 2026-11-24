@@ -4,10 +4,11 @@
 use std::collections::BTreeMap;
 
 use wt_core::{
-    MOST_SPACES, SPACE_COLOURS, SpaceId, WindowId, next_space_colour, space_colour, space_name,
+    MOST_SPACES, SPACE_COLOURS, SPACE_ICONS, SpaceId, WindowId, next_space_colour, space_colour,
+    space_icon, space_name,
 };
 use wt_proto::v1::{
-    Ack, ColourSpace, CreateSpace, RenameSpace, SpaceCreated, SpaceSummary, SpacesPage,
+    Ack, ColourSpace, CreateSpace, IconSpace, RenameSpace, SpaceCreated, SpaceSummary, SpacesPage,
     SwitchSpace, response,
 };
 use wt_store::{Logins, SavedGroup, SavedTab, Space, Store};
@@ -142,6 +143,7 @@ impl App {
                     logins: u32::try_from(first + 1).unwrap_or(u32::MAX),
                     colour: space.colour.clone(),
                     tidy_after_seconds: state.tidy_time(space.id),
+                    icon: space.icon.clone(),
                 }
             })
             .collect();
@@ -154,6 +156,8 @@ impl App {
                 .collect(),
             // The times a Space's tidying can have (049).
             tidy_times: crate::tidying::TIDY_TIMES.to_vec(),
+            // The icons a Space can have (050), for a shell to offer.
+            icons: SPACE_ICONS.iter().map(|icon| (*icon).to_owned()).collect(),
         })
     }
 
@@ -176,6 +180,14 @@ impl App {
                     .ok_or_else(|| AppError::new("space.colour_unknown").field("colour"))?
             }
         };
+        // Its icon (050 §3): the one asked for, which has to be one there is;
+        // or none. No icon is given that was not asked for.
+        let icon = if create.icon.is_empty() {
+            ""
+        } else {
+            space_icon(&create.icon)
+                .ok_or_else(|| AppError::new("space.icon_unknown").field("icon"))?
+        };
         let logins = if create.share_logins_with == 0 {
             // Logins of its own: a login set nobody has had.
             Logins::Own((self.new_login_set)().ok_or_else(|| AppError::new("space.random"))?)
@@ -186,7 +198,7 @@ impl App {
         let made = self
             .store
             .borrow_mut()
-            .create_space(&name, logins, colour, self.clock.now())?
+            .create_space(&name, logins, colour, icon, self.clock.now())?
             .ok_or_else(|| AppError::new("space.unknown").field("share_logins_with"))?;
         let space_id = made.id.get();
         self.state.borrow_mut().space_made(made);
@@ -239,6 +251,33 @@ impl App {
             return Err(unknown());
         }
         self.state.borrow_mut().space_coloured(id, colour);
+        Ok(response::Kind::Ack(Ack {}))
+    }
+
+    /// Gives a Space an icon, or none (050 §3).
+    pub(crate) fn icon_space(&self, icon: &IconSpace) -> Result<response::Kind, AppError> {
+        let id = SpaceId(icon.space_id);
+        let unknown = || AppError::new("space.unknown").field("space_id");
+        if !self
+            .state
+            .borrow()
+            .spaces()
+            .iter()
+            .any(|space| space.id == id)
+        {
+            return Err(unknown());
+        }
+        // No icon is none; any other has to be one there is.
+        let icon = if icon.icon.is_empty() {
+            ""
+        } else {
+            space_icon(&icon.icon)
+                .ok_or_else(|| AppError::new("space.icon_unknown").field("icon"))?
+        };
+        if !self.store.borrow_mut().icon_space(id, icon)? {
+            return Err(unknown());
+        }
+        self.state.borrow_mut().space_iconed(id, icon);
         Ok(response::Kind::Ack(Ack {}))
     }
 

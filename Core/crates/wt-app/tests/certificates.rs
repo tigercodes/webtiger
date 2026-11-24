@@ -279,6 +279,7 @@ fn the_exception_is_one_login_sets_and_spaces_that_share_logins_share_it() {
                 name: name.to_owned(),
                 share_logins_with: share,
                 colour: String::new(),
+                icon: String::new(),
             })
         };
         let response::Kind::SpaceCreated(work) = shell.request(make("Work", 0)).await else {

@@ -312,7 +312,7 @@ mod tests {
         store.set_zoom(made.login_set, "example.com", 125).unwrap();
         drop(store);
         let old = rusqlite::Connection::open(&path).unwrap();
-        old.execute_batch("DROP INDEX archive_space; DROP TABLE archive; ALTER TABLE tab DROP COLUMN shown_at; ALTER TABLE space DROP COLUMN tidy_after; DROP TABLE icon; PRAGMA user_version = 12;")
+        old.execute_batch("ALTER TABLE space DROP COLUMN icon; DROP INDEX archive_space; DROP TABLE archive; ALTER TABLE tab DROP COLUMN shown_at; ALTER TABLE space DROP COLUMN tidy_after; DROP TABLE icon; PRAGMA user_version = 12;")
             .unwrap();
         drop(old);
 

@@ -359,6 +359,9 @@ message WindowSnapshot {
   // out of the way in a shut Group among them. `tabs` has the ones that are
   // shown; a shell that says how many there are says this.
   uint32 row_tabs = 14;
+  // Since 1.43. The icon of the Space the window shows (050): one of
+  // SpacesPage.icons, an emoji, or empty for none.
+  string space_icon = 15 [(wt.redact) = true];
 }
 
 // A tab as a strip of tabs shows it: enough to name it, and no more.
@@ -932,6 +935,10 @@ message SpacesPage {
   // Since 1.41. The times a Space's tidying can have (049), in seconds, in
   // their order: nought, which is never, first.
   repeated uint32 tidy_times = 3;
+  // Since 1.43. The icons a Space can have (050), in their order. Each is an
+  // emoji: it is what a shell draws, with the system's own font, and there
+  // are no words or pictures for it elsewhere.
+  repeated string icons = 4;
 }
 
 message SpaceSummary {
@@ -946,6 +953,8 @@ message SpaceSummary {
   // Since 1.41. Its time (049): after how many seconds out of sight a tab
   // of its that is no Site is tidied. Nought: never.
   uint32 tidy_after_seconds = 5;
+  // Since 1.43. Its icon (050): one of SpacesPage.icons, or empty for none.
+  string icon = 6 [(wt.redact) = true];
 }
 
 // Since 1.18. Makes a Space (024), after the others. Its name is what was
@@ -962,6 +971,10 @@ message CreateSpace {
   // gives it the first that no Space has. One that is not in the list is
   // refused with "space.colour_unknown", and nothing is made.
   string colour = 3;
+  // Since 1.43. Its icon (050): one of SpacesPage.icons. Empty: none; a
+  // Space is given no icon it was not asked for. One that is not in the list
+  // is refused with "space.icon_unknown", and nothing is made.
+  string icon = 4 [(wt.redact) = true];
 }
 
 message SpaceCreated {
@@ -992,6 +1005,14 @@ message SwitchSpace {
 message ColourSpace {
   uint64 space_id = 1;
   string colour = 2;
+}
+
+// Since 1.43. Gives a Space an icon (050): one of SpacesPage.icons, or none
+// (empty). Answered with Ack, "space.unknown", or "space.icon_unknown" for
+// one that is not in the list, which changes nothing.
+message IconSpace {
+  uint64 space_id = 1;
+  string icon = 2 [(wt.redact) = true];
 }
 
 // Since 1.20. The person goes on past a certificate that is not trusted

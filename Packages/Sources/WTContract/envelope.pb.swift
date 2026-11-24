@@ -10,7 +10,7 @@
 
 /// WebTiger Core ↔ shell contract (docs/features/000-master-plan.md §5.5,
 /// docs/features/001-foundations.md §4).
-/// Contract version: 1.42 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
+/// Contract version: 1.43 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
 ///   1.1  Tabs: OpenTab, CloseTab, ActivateTab, TabOpened; WindowSnapshot.tabs.
 ///   1.2  A page that asks for a new window: NewWindowRequested, CloseRequested;
 ///        web view ids with their top bit set are the shell's.
@@ -73,7 +73,7 @@ fileprivate nonisolated struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobu
   typealias Version = _2
 }
 
-public nonisolated struct WTEnvelope: Sendable {
+public nonisolated struct WTEnvelope: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -81,48 +81,54 @@ public nonisolated struct WTEnvelope: Sendable {
   /// A request's id, chosen by the shell, correlates its response; a request
   /// sent with id 0 is a notification and gets none. A host request's id,
   /// chosen by the core, correlates the shell's answer. Events carry 0.
-  public var id: UInt64 = 0
+  public var id: UInt64 {
+    get {_storage._id}
+    set {_uniqueStorage()._id = newValue}
+  }
 
-  public var body: WTEnvelope.OneOf_Body? = nil
+  public var body: OneOf_Body? {
+    get {return _storage._body}
+    set {_uniqueStorage()._body = newValue}
+  }
 
   public var request: WTRequest {
     get {
-      if case .request(let v)? = body {return v}
+      if case .request(let v)? = _storage._body {return v}
       return WTRequest()
     }
-    set {body = .request(newValue)}
+    set {_uniqueStorage()._body = .request(newValue)}
   }
 
   public var response: WTResponse {
     get {
-      if case .response(let v)? = body {return v}
+      if case .response(let v)? = _storage._body {return v}
       return WTResponse()
     }
-    set {body = .response(newValue)}
+    set {_uniqueStorage()._body = .response(newValue)}
   }
 
   public var event: WTEvent {
     get {
-      if case .event(let v)? = body {return v}
+      if case .event(let v)? = _storage._body {return v}
       return WTEvent()
     }
-    set {body = .event(newValue)}
+    set {_uniqueStorage()._body = .event(newValue)}
   }
 
   public var hostRequest: WTHostRequest {
     get {
-      if case .hostRequest(let v)? = body {return v}
+      if case .hostRequest(let v)? = _storage._body {return v}
       return WTHostRequest()
     }
-    set {body = .hostRequest(newValue)}
+    set {_uniqueStorage()._body = .hostRequest(newValue)}
   }
 
   public var hostResponse: WTHostResponse {
     get {
-      if case .hostResponse(let v)? = body {return v}
+      if case .hostResponse(let v)? = _storage._body {return v}
       return WTHostResponse()
     }
-    set {body = .hostResponse(newValue)}
+    set {_uniqueStorage()._body = .hostResponse(newValue)}
   }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -137,6 +143,8 @@ public nonisolated struct WTEnvelope: Sendable {
   }
 
   public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 /// Shell → core. The core takes requests in the order they arrive: a
@@ -608,6 +616,15 @@ public nonisolated struct WTRequest: Sendable {
     set {kind = .forgetArchived(newValue)}
   }
 
+  /// Since 1.43
+  public var iconSpace: WTIconSpace {
+    get {
+      if case .iconSpace(let v)? = kind {return v}
+      return WTIconSpace()
+    }
+    set {kind = .iconSpace(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Kind: Equatable, Sendable {
@@ -692,6 +709,8 @@ public nonisolated struct WTRequest: Sendable {
     case queryArchive(WTQueryArchive)
     case restoreArchived(WTRestoreArchived)
     case forgetArchived(WTForgetArchived)
+    /// Since 1.43
+    case iconSpace(WTIconSpace)
 
   }
 
@@ -1112,120 +1131,158 @@ nonisolated extension WTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageI
   public static let protoMessageName: String = _protobuf_package + ".Envelope"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{2}\u{9}request\0\u{1}response\0\u{1}event\0\u{3}host_request\0\u{3}host_response\0")
 
+  fileprivate class _StorageClass {
+    var _id: UInt64 = 0
+    var _body: WTEnvelope.OneOf_Body?
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _id = source._id
+      _body = source._body
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.id) }()
-      case 10: try {
-        var v: WTRequest?
-        var hadOneofValue = false
-        if let current = self.body {
-          hadOneofValue = true
-          if case .request(let m) = current {v = m}
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularUInt64Field(value: &_storage._id) }()
+        case 10: try {
+          var v: WTRequest?
+          var hadOneofValue = false
+          if let current = _storage._body {
+            hadOneofValue = true
+            if case .request(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._body = .request(v)
+          }
+        }()
+        case 11: try {
+          var v: WTResponse?
+          var hadOneofValue = false
+          if let current = _storage._body {
+            hadOneofValue = true
+            if case .response(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._body = .response(v)
+          }
+        }()
+        case 12: try {
+          var v: WTEvent?
+          var hadOneofValue = false
+          if let current = _storage._body {
+            hadOneofValue = true
+            if case .event(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._body = .event(v)
+          }
+        }()
+        case 13: try {
+          var v: WTHostRequest?
+          var hadOneofValue = false
+          if let current = _storage._body {
+            hadOneofValue = true
+            if case .hostRequest(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._body = .hostRequest(v)
+          }
+        }()
+        case 14: try {
+          var v: WTHostResponse?
+          var hadOneofValue = false
+          if let current = _storage._body {
+            hadOneofValue = true
+            if case .hostResponse(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._body = .hostResponse(v)
+          }
+        }()
+        default: break
         }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.body = .request(v)
-        }
-      }()
-      case 11: try {
-        var v: WTResponse?
-        var hadOneofValue = false
-        if let current = self.body {
-          hadOneofValue = true
-          if case .response(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.body = .response(v)
-        }
-      }()
-      case 12: try {
-        var v: WTEvent?
-        var hadOneofValue = false
-        if let current = self.body {
-          hadOneofValue = true
-          if case .event(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.body = .event(v)
-        }
-      }()
-      case 13: try {
-        var v: WTHostRequest?
-        var hadOneofValue = false
-        if let current = self.body {
-          hadOneofValue = true
-          if case .hostRequest(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.body = .hostRequest(v)
-        }
-      }()
-      case 14: try {
-        var v: WTHostResponse?
-        var hadOneofValue = false
-        if let current = self.body {
-          hadOneofValue = true
-          if case .hostResponse(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.body = .hostResponse(v)
-        }
-      }()
-      default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if self.id != 0 {
-      try visitor.visitSingularUInt64Field(value: self.id, fieldNumber: 1)
-    }
-    switch self.body {
-    case .request?: try {
-      guard case .request(let v)? = self.body else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
-    }()
-    case .response?: try {
-      guard case .response(let v)? = self.body else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
-    }()
-    case .event?: try {
-      guard case .event(let v)? = self.body else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
-    }()
-    case .hostRequest?: try {
-      guard case .hostRequest(let v)? = self.body else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
-    }()
-    case .hostResponse?: try {
-      guard case .hostResponse(let v)? = self.body else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
-    }()
-    case nil: break
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._id != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._id, fieldNumber: 1)
+      }
+      switch _storage._body {
+      case .request?: try {
+        guard case .request(let v)? = _storage._body else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
+      }()
+      case .response?: try {
+        guard case .response(let v)? = _storage._body else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
+      }()
+      case .event?: try {
+        guard case .event(let v)? = _storage._body else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
+      }()
+      case .hostRequest?: try {
+        guard case .hostRequest(let v)? = _storage._body else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
+      }()
+      case .hostResponse?: try {
+        guard case .hostResponse(let v)? = _storage._body else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
+      }()
+      case nil: break
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: WTEnvelope, rhs: WTEnvelope) -> Bool {
-    if lhs.id != rhs.id {return false}
-    if lhs.body != rhs.body {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._id != rhs_storage._id {return false}
+        if _storage._body != rhs_storage._body {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1233,7 +1290,7 @@ nonisolated extension WTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Request"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0\u{3}open_tab\0\u{3}close_tab\0\u{3}activate_tab\0\u{3}query_history\0\u{3}forget_history\0\u{3}find_in_page\0\u{3}suggest_addresses\0\u{3}zoom_page\0\u{3}query_downloads\0\u{3}cancel_download\0\u{3}forget_downloads\0\u{3}answer_prompt\0\u{3}query_permissions\0\u{3}forget_permissions\0\u{3}query_search\0\u{3}choose_search_engine\0\u{3}query_spaces\0\u{3}create_space\0\u{3}rename_space\0\u{3}switch_space\0\u{3}colour_space\0\u{3}proceed_past_certificate\0\u{3}search_words\0\u{3}open_download\0\u{3}open_address\0\u{1}undo\0\u{3}step_tab\0\u{3}keep_tab\0\u{3}let_go_site\0\u{3}send_site_home\0\u{3}make_group\0\u{3}rename_group\0\u{3}colour_group\0\u{3}shut_group\0\u{3}remove_group\0\u{3}move_to_group\0\u{3}set_favourite\0\u{3}set_layout\0\u{3}undo_arrangement\0\u{3}move_tab\0\u{3}move_group\0\u{3}query_icons\0\u{3}set_space_tidying\0\u{3}query_archive\0\u{3}restore_archived\0\u{3}forget_archived\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ping\0\u{1}subscribe\0\u{1}unsubscribe\0\u{3}open_window\0\u{3}close_window\0\u{3}submit_address\0\u{3}tab_command\0\u{3}engine_event\0\u{3}open_tab\0\u{3}close_tab\0\u{3}activate_tab\0\u{3}query_history\0\u{3}forget_history\0\u{3}find_in_page\0\u{3}suggest_addresses\0\u{3}zoom_page\0\u{3}query_downloads\0\u{3}cancel_download\0\u{3}forget_downloads\0\u{3}answer_prompt\0\u{3}query_permissions\0\u{3}forget_permissions\0\u{3}query_search\0\u{3}choose_search_engine\0\u{3}query_spaces\0\u{3}create_space\0\u{3}rename_space\0\u{3}switch_space\0\u{3}colour_space\0\u{3}proceed_past_certificate\0\u{3}search_words\0\u{3}open_download\0\u{3}open_address\0\u{1}undo\0\u{3}step_tab\0\u{3}keep_tab\0\u{3}let_go_site\0\u{3}send_site_home\0\u{3}make_group\0\u{3}rename_group\0\u{3}colour_group\0\u{3}shut_group\0\u{3}remove_group\0\u{3}move_to_group\0\u{3}set_favourite\0\u{3}set_layout\0\u{3}undo_arrangement\0\u{3}move_tab\0\u{3}move_group\0\u{3}query_icons\0\u{3}set_space_tidying\0\u{3}query_archive\0\u{3}restore_archived\0\u{3}forget_archived\0\u{3}icon_space\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1943,6 +2000,19 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
           self.kind = .forgetArchived(v)
         }
       }()
+      case 55: try {
+        var v: WTIconSpace?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .iconSpace(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .iconSpace(v)
+        }
+      }()
       default: break
       }
     }
@@ -2169,6 +2239,10 @@ nonisolated extension WTRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     case .forgetArchived?: try {
       guard case .forgetArchived(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 54)
+    }()
+    case .iconSpace?: try {
+      guard case .iconSpace(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 55)
     }()
     case nil: break
     }

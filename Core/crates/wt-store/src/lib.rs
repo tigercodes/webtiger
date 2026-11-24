@@ -88,6 +88,8 @@ pub struct Space {
     pub login_set: LoginSetId,
     /// Its colour, by the core's name for it (025). Empty: none.
     pub colour: String,
+    /// Its icon, an emoji of the core's list (050). Empty: none.
+    pub icon: String,
 }
 
 /// The open database.
@@ -180,6 +182,7 @@ impl Store {
             name: String::new(),
             login_set: LoginSetId(new_login_set),
             colour: String::new(),
+            icon: String::new(),
         })
     }
 
@@ -187,7 +190,7 @@ impl Store {
         let row = self
             .connection
             .query_row(
-                "SELECT id, name, login_set_id, colour FROM space ORDER BY position, id LIMIT 1",
+                "SELECT id, name, login_set_id, colour, icon FROM space ORDER BY position, id LIMIT 1",
                 [],
                 |row| {
                     Ok((
@@ -195,12 +198,13 @@ impl Store {
                         row.get::<_, String>(1)?,
                         row.get::<_, Vec<u8>>(2)?,
                         row.get::<_, String>(3)?,
+                        row.get::<_, String>(4)?,
                     ))
                 },
             )
             .optional()
             .map_err(|_| StoreError::Query)?;
-        let Some((id, name, login_set, colour)) = row else {
+        let Some((id, name, login_set, colour, icon)) = row else {
             return Ok(None);
         };
         let bytes: [u8; 16] = login_set.try_into().map_err(|_| StoreError::Corrupt)?;
@@ -209,6 +213,7 @@ impl Store {
             name,
             login_set: LoginSetId(Uuid::from_bytes(bytes)),
             colour,
+            icon,
         }))
     }
 }

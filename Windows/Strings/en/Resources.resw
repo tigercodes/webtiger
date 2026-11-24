@@ -122,6 +122,7 @@
   <data name="error_retry" xml:space="preserve"><value>Try Again</value><comment>Button on the failed-page view: reload.</comment></data>
   <data name="error_space_colour_unknown" xml:space="preserve"><value>That colour isn’t one a Space can have.</value><comment>Said where a Space is made or edited when the app does not know the colour that was chosen.</comment></data>
   <data name="error_space_failed" xml:space="preserve"><value>The Space couldn’t be made.</value><comment>Said on the page that makes a Space when it could not be made and no more is known.</comment></data>
+  <data name="error_space_icon_unknown" xml:space="preserve"><value>That icon isn’t one a Space can have.</value><comment>Said where a Space is made or edited when the app does not know the icon that was chosen.</comment></data>
   <data name="error_space_name_empty" xml:space="preserve"><value>A Space needs a name.</value><comment>Said on the page that makes a Space when the name is empty.</comment></data>
   <data name="error_space_rename_failed" xml:space="preserve"><value>The Space couldn’t be changed.</value><comment>Said on the page that edits a Space when it could not be changed and no more is known.</comment></data>
   <data name="error_space_too_many" xml:space="preserve"><value>There are as many Spaces as there can be.</value><comment>Said on the page that makes a Space when the app will not make another: it has its limit of them.</comment></data>
@@ -251,6 +252,7 @@
   <data name="space_colour_teal" xml:space="preserve"><value>Teal</value><comment>Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.</comment></data>
   <data name="space_colour_yellow" xml:space="preserve"><value>Yellow</value><comment>Name of a colour a Space can have: read by a screen reader for its swatch, and shown beside the heading when it is chosen.</comment></data>
   <data name="space_home" xml:space="preserve"><value>Home</value><comment>Name shown for the Space the app made itself, until the person gives it a name. A Space is a set of tabs kept apart from the others, such as home and work.</comment></data>
+  <data name="space_icon" xml:space="preserve"><value>Icon</value><comment>Heading over the icons to choose among for a Space, where one is made and where one is edited. The icons are emoji.</comment></data>
   <data name="space_new_back" xml:space="preserve"><value>Back</value><comment>Button on the page that makes a Space: back to the list of Spaces, with nothing made.</comment></data>
   <data name="space_new_logins" xml:space="preserve"><value>Logins</value><comment>Heading over the choice of whose logins a new Space has: its own, or another Space&apos;s.</comment></data>
   <data name="space_new_make" xml:space="preserve"><value>Make Space</value><comment>Button that makes the new Space and shows it in the window.</comment></data>
@@ -262,6 +264,7 @@
   <data name="space_new_shared_detail" xml:space="preserve"><value>Signed in wherever {0} is. The two share history and downloads.</value><comment>Under the choice &apos;The same as another Space&apos;. %@ is the name of the Space whose logins are shared.</comment></data>
   <data name="space_new_title" xml:space="preserve"><value>New Space</value><comment>Heading of the page that makes a Space.</comment></data>
   <data name="space_no_colour" xml:space="preserve"><value>None</value><comment>The choice of no colour for a Space or a Group, beside the colours.</comment></data>
+  <data name="space_no_icon" xml:space="preserve"><value>No icon</value><comment>Accessibility label of the first choice among a Space&apos;s icons: none. The other choices are emoji, which a screen reader names itself.</comment></data>
   <data name="space_rename_save" xml:space="preserve"><value>Save</value><comment>Button that gives the Space the name in the field.</comment></data>
   <data name="space_rename_title" xml:space="preserve"><value>Edit Space</value><comment>Heading of the page that gives a Space another name or colour.</comment></data>
   <data name="space_tidy" xml:space="preserve"><value>Tidy tabs away</value><comment>Heading over the choices of when a Space&apos;s tabs are tidied away, on the page that edits a Space.</comment></data>

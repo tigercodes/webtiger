@@ -1151,6 +1151,7 @@ impl State {
                     name: String::new(),
                     login_set,
                     colour: String::new(),
+                    icon: String::new(),
                 });
                 (space, login_set)
             }
@@ -1331,6 +1332,24 @@ impl State {
         };
         if space.colour != colour {
             colour.clone_into(&mut space.colour);
+            let showing = self
+                .windows
+                .iter()
+                .filter(|(_, window)| window.space == id)
+                .map(|(window, _)| *window);
+            self.dirty.extend(showing);
+        }
+        true
+    }
+
+    /// A Space has an icon now, or none (050): the windows that show it say
+    /// so. Whether there is such a Space.
+    pub(crate) fn space_iconed(&mut self, id: SpaceId, icon: &str) -> bool {
+        let Some(space) = self.spaces.iter_mut().find(|space| space.id == id) else {
+            return false;
+        };
+        if space.icon != icon {
+            icon.clone_into(&mut space.icon);
             let showing = self
                 .windows
                 .iter()
@@ -3527,6 +3546,7 @@ impl State {
             space_id: if private { 0 } else { space.id.get() },
             space_name: space.name.clone(),
             space_colour: space.colour.clone(),
+            space_icon: space.icon.clone(),
             // What an undo would undo here (033): a closed tab, or nothing.
             undo: if self.closed_tabs.get(&space.id).copied().unwrap_or(0) > 0 {
                 UNDO_CLOSED_TAB.to_owned()

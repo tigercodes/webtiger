@@ -82,7 +82,7 @@ internal fun Switcher(model: BrowserModel, onSpaces: () -> Unit, modifier: Modif
                     if (model.isPrivate) {
                         SpaceChip(name = stringResource(R.string.private_chip), compact = false, onClick = onSpaces, saidAs = stringResource(R.string.private_window))
                     } else {
-                        SpaceChip(name = model.spaceName, compact = false, onClick = onSpaces, colour = model.spaceColour)
+                        SpaceChip(name = model.spaceName, compact = false, onClick = onSpaces, colour = model.spaceColour, icon = model.spaceIcon)
                     }
                 }
                 Text(

@@ -17,6 +17,8 @@ public extension BrowserModel {
             self?.spaceColours = page.colours
             // And the times a Space's tidying can have (049).
             self?.spaceTidyTimes = page.tidyTimes
+            // And the icons one can have (050).
+            self?.spaceIcons = page.icons
         }
     }
 
@@ -31,13 +33,14 @@ public extension BrowserModel {
 
     /// Makes a Space, with logins of its own or those of the Space `sharing`, and shows it in
     /// the window. Its colour is `colour`, one of the core's; with none, the core gives it one
-    /// that no Space has (025). False when the core would not: `spaceRefusal` then has its
-    /// code, and nothing else has changed.
-    func makeSpace(named name: String, sharingLoginsWith sharing: UInt64?, colour: String = "") async -> Bool {
+    /// that no Space has (025). Its icon is `icon`, one of the core's, or none (050). False
+    /// when the core would not: `spaceRefusal` then has its code, and nothing else has changed.
+    func makeSpace(named name: String, sharingLoginsWith sharing: UInt64?, colour: String = "", icon: String = "") async -> Bool {
         var ask = WTCreateSpace()
         ask.name = name
         ask.shareLoginsWith = sharing ?? 0
         ask.colour = colour
+        ask.icon = icon
         spaceRefusal = nil
         do {
             switch try await session.core.send(.createSpace(ask)).value {
@@ -109,14 +112,17 @@ public extension BrowserModel {
         return false
     }
 
-    /// What the page that edits a Space asked for (024 §6.3, 025, 049): a name, a colour, a
-    /// time, or any of them. The name first; what the core will not take leaves what follows
-    /// it as it was.
+    /// What the page that edits a Space asked for (024 §6.3, 025, 049, 050): a name, a colour,
+    /// an icon, a time, or any of them. The name first; what the core will not take leaves
+    /// what follows it as it was.
     func editSpace(_ edit: SpaceEdit) async -> Bool {
         if let name = edit.name, await !renameSpace(to: name) {
             return false
         }
         if let colour = edit.colour, await !colourSpace(colour) {
+            return false
+        }
+        if let icon = edit.icon, await !iconSpace(icon) {
             return false
         }
         if let tidyAfter = edit.tidyAfter, await !tidySpace(after: tidyAfter) {
@@ -134,16 +140,19 @@ public extension BrowserModel {
 }
 
 /// What the page that edits a Space asks for: a name, when one was typed that is not the one
-/// the Space has; a colour, when another was chosen; a time after which its tabs are tidied
-/// (049), in seconds, when another was. What is `nil` stays as it is.
+/// the Space has; a colour, when another was chosen; an icon (050), when another was; a time
+/// after which its tabs are tidied (049), in seconds, when another was. What is `nil` stays as
+/// it is.
 public struct SpaceEdit: Equatable, Sendable {
     public var name: String?
     public var colour: String?
+    public var icon: String?
     public var tidyAfter: UInt32?
 
-    public init(name: String? = nil, colour: String? = nil, tidyAfter: UInt32? = nil) {
+    public init(name: String? = nil, colour: String? = nil, icon: String? = nil, tidyAfter: UInt32? = nil) {
         self.name = name
         self.colour = colour
+        self.icon = icon
         self.tidyAfter = tidyAfter
     }
 }

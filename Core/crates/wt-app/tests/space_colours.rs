@@ -52,6 +52,7 @@ async fn ask_for_space(shell: &mut FakeShell, name: &str, colour: &str) -> respo
             name: name.to_owned(),
             share_logins_with: 0,
             colour: colour.to_owned(),
+            icon: String::new(),
         }))
         .await
 }

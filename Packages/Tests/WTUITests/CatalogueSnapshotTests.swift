@@ -23,8 +23,11 @@ final class CatalogueSnapshotTests: XCTestCase {
     private static let wideStates: Set<CatalogueState> = [.sidebar]
     /// For a page over the window that is longer than any window's picture.
     private static let pageSize = CGSize(width: 480, height: 700)
-    /// For the page that edits a Space, which is the longest of the pages (049).
-    private static let editPageSize = CGSize(width: 480, height: 800)
+    /// For the list of Spaces and the page that makes one, with the icons to choose among
+    /// under the colours (050).
+    private static let spacePageSize = CGSize(width: 480, height: 780)
+    /// For the page that edits a Space, which is the longest of the pages (049, 050).
+    private static let editPageSize = CGSize(width: 480, height: 1000)
     // For the Library with its switch (049): as narrow as its sheet is let be on a Mac, and
     // as narrow as a phone, so that the picture has the four names as a person has them.
     #if os(macOS)
@@ -107,7 +110,7 @@ final class CatalogueSnapshotTests: XCTestCase {
             // page that makes a Space has its name, its logins, its colour and what was refused.
             // And the page that edits one is taller still, with the times its tabs are tidied
             // after (049): its buttons are under them.
-            let size = state == .rename ? Self.editPageSize : Self.pageSize
+            let size = state == .rename ? Self.editPageSize : Self.spacePageSize
             await verify(CatalogueSpacesList(state: state), size: size, named: "spaces-\(state.rawValue)")
         }
     }

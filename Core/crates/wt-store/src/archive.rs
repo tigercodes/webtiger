@@ -242,7 +242,7 @@ mod tests {
 
     fn second(store: &mut Store) -> SpaceId {
         store
-            .create_space("Work", Logins::Own(WORK), "", Timestamp(2))
+            .create_space("Work", Logins::Own(WORK), "", "", Timestamp(2))
             .unwrap()
             .unwrap()
             .id
@@ -444,7 +444,7 @@ mod tests {
         {
             let old = Connection::open(&path).unwrap();
             old.execute_batch(
-                "DROP INDEX archive_space; DROP TABLE archive; ALTER TABLE tab DROP COLUMN shown_at; \
+                "ALTER TABLE space DROP COLUMN icon; DROP INDEX archive_space; DROP TABLE archive; ALTER TABLE tab DROP COLUMN shown_at; \
                  ALTER TABLE space DROP COLUMN tidy_after; PRAGMA user_version = 13;",
             )
             .unwrap();

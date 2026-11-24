@@ -541,6 +541,10 @@ pub struct WindowSnapshot {
     /// shown; a shell that says how many there are says this.
     #[prost(uint32, tag = "14")]
     pub row_tabs: u32,
+    /// Since 1.43. The icon of the Space the window shows (050): one of
+    /// SpacesPage.icons, an emoji, or empty for none.
+    #[prost(string, tag = "15")]
+    pub space_icon: ::prost::alloc::string::String,
 }
 /// A tab as a strip of tabs shows it: enough to name it, and no more.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -1284,6 +1288,11 @@ pub struct SpacesPage {
     /// their order: nought, which is never, first.
     #[prost(uint32, repeated, tag = "3")]
     pub tidy_times: ::prost::alloc::vec::Vec<u32>,
+    /// Since 1.43. The icons a Space can have (050), in their order. Each is an
+    /// emoji: it is what a shell draws, with the system's own font, and there
+    /// are no words or pictures for it elsewhere.
+    #[prost(string, repeated, tag = "4")]
+    pub icons: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SpaceSummary {
@@ -1303,6 +1312,9 @@ pub struct SpaceSummary {
     /// of its that is no Site is tidied. Nought: never.
     #[prost(uint32, tag = "5")]
     pub tidy_after_seconds: u32,
+    /// Since 1.43. Its icon (050): one of SpacesPage.icons, or empty for none.
+    #[prost(string, tag = "6")]
+    pub icon: ::prost::alloc::string::String,
 }
 /// Since 1.18. Makes a Space (024), after the others. Its name is what was
 /// typed without the white space at its ends, cut at 60 characters. Answered
@@ -1322,6 +1334,11 @@ pub struct CreateSpace {
     /// refused with "space.colour_unknown", and nothing is made.
     #[prost(string, tag = "3")]
     pub colour: ::prost::alloc::string::String,
+    /// Since 1.43. Its icon (050): one of SpacesPage.icons. Empty: none; a
+    /// Space is given no icon it was not asked for. One that is not in the list
+    /// is refused with "space.icon_unknown", and nothing is made.
+    #[prost(string, tag = "4")]
+    pub icon: ::prost::alloc::string::String,
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SpaceCreated {
@@ -1359,6 +1376,16 @@ pub struct ColourSpace {
     pub space_id: u64,
     #[prost(string, tag = "2")]
     pub colour: ::prost::alloc::string::String,
+}
+/// Since 1.43. Gives a Space an icon (050): one of SpacesPage.icons, or none
+/// (empty). Answered with Ack, "space.unknown", or "space.icon_unknown" for
+/// one that is not in the list, which changes nothing.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct IconSpace {
+    #[prost(uint64, tag = "1")]
+    pub space_id: u64,
+    #[prost(string, tag = "2")]
+    pub icon: ::prost::alloc::string::String,
 }
 /// Since 1.20. The person goes on past a certificate that is not trusted
 /// (026), in a tab whose view says it may be (`certificate_passable`). The
@@ -2655,7 +2682,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -2798,6 +2825,9 @@ pub mod request {
         RestoreArchived(super::RestoreArchived),
         #[prost(message, tag = "54")]
         ForgetArchived(super::ForgetArchived),
+        /// Since 1.43
+        #[prost(message, tag = "55")]
+        IconSpace(super::IconSpace),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.

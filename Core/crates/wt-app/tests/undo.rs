@@ -286,6 +286,7 @@ fn each_space_has_its_own_closed_tabs() {
                 name: "Work".to_owned(),
                 share_logins_with: 0,
                 colour: String::new(),
+                icon: String::new(),
             }))
             .await;
         let response::Kind::SpaceCreated(work) = made else {

@@ -22,20 +22,27 @@ pub enum Logins {
 /// The setting that says which Space the window shows.
 const SHOWN_SPACE: &str = "session.space";
 
-/// A row of `space` as `SELECT id, name, login_set_id, colour` gives it.
-type SpaceRow = (i64, String, Vec<u8>, String);
+/// A row of `space` as `SELECT id, name, login_set_id, colour, icon` gives it.
+type SpaceRow = (i64, String, Vec<u8>, String, String);
 
 fn row(row: &Row<'_>) -> rusqlite::Result<SpaceRow> {
-    Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+    Ok((
+        row.get(0)?,
+        row.get(1)?,
+        row.get(2)?,
+        row.get(3)?,
+        row.get(4)?,
+    ))
 }
 
-fn space((id, name, login_set, colour): SpaceRow) -> Result<Space, StoreError> {
+fn space((id, name, login_set, colour, icon): SpaceRow) -> Result<Space, StoreError> {
     let bytes: [u8; 16] = login_set.try_into().map_err(|_| StoreError::Corrupt)?;
     Ok(Space {
         id: SpaceId(u64::try_from(id).map_err(|_| StoreError::Corrupt)?),
         name,
         login_set: LoginSetId(Uuid::from_bytes(bytes)),
         colour,
+        icon,
     })
 }
 
@@ -49,7 +56,7 @@ impl Store {
         let rows: Vec<SpaceRow> = self
             .connection
             .prepare_cached(
-                "SELECT id, name, login_set_id, colour FROM space ORDER BY position, id",
+                "SELECT id, name, login_set_id, colour, icon FROM space ORDER BY position, id",
             )
             .and_then(|mut statement| statement.query_map([], row)?.collect())
             .map_err(|_| StoreError::Query)?;
@@ -57,9 +64,10 @@ impl Store {
     }
 
     /// Makes a Space called `name`, after the others, with logins of its
-    /// own or those of a Space there is, and the colour `colour` (the
-    /// core's name for one, or empty for none). `None`, with nothing made, when
-    /// the Space whose logins it was to share is not there.
+    /// own or those of a Space there is, the colour `colour` (the core's name
+    /// for one, or empty for none) and the icon `icon` (an emoji of the core's
+    /// list, or empty for none). `None`, with nothing made, when the Space
+    /// whose logins it was to share is not there.
     ///
     /// # Errors
     /// `Query` when the database refuses, `Corrupt` when a row is not what
@@ -69,6 +77,7 @@ impl Store {
         name: &str,
         logins: Logins,
         colour: &str,
+        icon: &str,
         now: Timestamp,
     ) -> Result<Option<Space>, StoreError> {
         let transaction = self
@@ -105,14 +114,41 @@ impl Store {
         };
         transaction
             .execute(
-                "INSERT INTO space (name, position, login_set_id, created_at, colour) \
-                 VALUES (?1, (SELECT COALESCE(MAX(position), -1) + 1 FROM space), ?2, ?3, ?4)",
-                params![name, login_set, now.unix_millis(), colour],
+                "INSERT INTO space (name, position, login_set_id, created_at, colour, icon) \
+                 VALUES (?1, (SELECT COALESCE(MAX(position), -1) + 1 FROM space), ?2, ?3, ?4, ?5)",
+                params![name, login_set, now.unix_millis(), colour, icon],
             )
             .map_err(|_| StoreError::Query)?;
         let id = transaction.last_insert_rowid();
         transaction.commit().map_err(|_| StoreError::Query)?;
-        space((id, name.to_owned(), login_set, colour.to_owned())).map(Some)
+        space((
+            id,
+            name.to_owned(),
+            login_set,
+            colour.to_owned(),
+            icon.to_owned(),
+        ))
+        .map(Some)
+    }
+
+    /// Gives a Space an icon, an emoji, or none (empty). False when there is
+    /// no such Space. What an icon may be is the core's rule: the store keeps
+    /// what it is given.
+    ///
+    /// # Errors
+    /// `Query` when the database refuses.
+    pub fn icon_space(&mut self, id: SpaceId, icon: &str) -> Result<bool, StoreError> {
+        let Ok(id) = i64::try_from(id.0) else {
+            return Ok(false);
+        };
+        let changed = self
+            .connection
+            .execute(
+                "UPDATE space SET icon = ?1 WHERE id = ?2",
+                params![icon, id],
+            )
+            .map_err(|_| StoreError::Query)?;
+        Ok(changed > 0)
     }
 
     /// Gives a Space a colour, by the core's name for it, or none (empty).
@@ -222,11 +258,11 @@ mod tests {
         assert_eq!(store.spaces().unwrap(), std::slice::from_ref(&own));
 
         let work = store
-            .create_space("Work", Logins::Own(WORK), "", Timestamp(2))
+            .create_space("Work", Logins::Own(WORK), "", "", Timestamp(2))
             .unwrap()
             .unwrap();
         let play = store
-            .create_space("Play", Logins::Own(PLAY), "", Timestamp(3))
+            .create_space("Play", Logins::Own(PLAY), "", "", Timestamp(3))
             .unwrap()
             .unwrap();
 
@@ -240,7 +276,7 @@ mod tests {
         let (mut store, own) = a_store();
 
         let work = store
-            .create_space("Work", Logins::Own(WORK), "", Timestamp(2))
+            .create_space("Work", Logins::Own(WORK), "", "", Timestamp(2))
             .unwrap()
             .unwrap();
         assert_eq!(work.login_set, LoginSetId(WORK));
@@ -249,18 +285,18 @@ mod tests {
         // A second project at the same job: Work's logins. And one that
         // shares the app's own Space's.
         let project = store
-            .create_space("Project", Logins::Of(work.id), "", Timestamp(3))
+            .create_space("Project", Logins::Of(work.id), "", "", Timestamp(3))
             .unwrap()
             .unwrap();
         assert_eq!(project.login_set, work.login_set);
         let beside = store
-            .create_space("Beside home", Logins::Of(own.id), "", Timestamp(4))
+            .create_space("Beside home", Logins::Of(own.id), "", "", Timestamp(4))
             .unwrap()
             .unwrap();
         assert_eq!(beside.login_set, own.login_set);
         // Sharing the logins of one that shares them is sharing the same.
         let third = store
-            .create_space("Third", Logins::Of(project.id), "", Timestamp(5))
+            .create_space("Third", Logins::Of(project.id), "", "", Timestamp(5))
             .unwrap()
             .unwrap();
         assert_eq!(third.login_set, work.login_set);
@@ -272,7 +308,7 @@ mod tests {
 
         for nowhere in [SpaceId(4242), SpaceId(0), SpaceId(u64::MAX)] {
             let made = store
-                .create_space("Lost", Logins::Of(nowhere), "", Timestamp(2))
+                .create_space("Lost", Logins::Of(nowhere), "", "", Timestamp(2))
                 .unwrap();
             assert_eq!(made, None);
         }
@@ -284,7 +320,7 @@ mod tests {
     fn a_space_is_renamed_and_one_that_is_not_there_is_not() {
         let (mut store, own) = a_store();
         let work = store
-            .create_space("Work", Logins::Own(WORK), "", Timestamp(2))
+            .create_space("Work", Logins::Own(WORK), "", "", Timestamp(2))
             .unwrap()
             .unwrap();
 
@@ -318,12 +354,12 @@ mod tests {
             let own = store.default_space(FIRST, Timestamp(1)).unwrap();
             assert_eq!(own.colour, "", "the app's own Space starts with none");
             let work = store
-                .create_space("Work", Logins::Own(WORK), "blue", Timestamp(2))
+                .create_space("Work", Logins::Own(WORK), "blue", "", Timestamp(2))
                 .unwrap()
                 .unwrap();
             assert_eq!(work.colour, "blue");
             let plain = store
-                .create_space("Plain", Logins::Of(work.id), "", Timestamp(3))
+                .create_space("Plain", Logins::Of(work.id), "", "", Timestamp(3))
                 .unwrap()
                 .unwrap();
             assert_eq!(plain.colour, "", "none asked for is none");
@@ -356,6 +392,112 @@ mod tests {
     }
 
     #[test]
+    fn a_space_has_the_icon_it_was_made_with_and_another_when_given_one() {
+        const HOUSE: &str = "\u{1F3E0}";
+        const CASE: &str = "\u{1F4BC}";
+        const PLANE: &str = "\u{2708}\u{FE0F}";
+        let folder = tempfile::tempdir().unwrap();
+        let path = folder.path().join("webtiger.sqlite");
+        let icons = |store: &Store| -> Vec<String> {
+            store
+                .spaces()
+                .unwrap()
+                .into_iter()
+                .map(|space| space.icon)
+                .collect()
+        };
+        let (own, work) = {
+            let mut store = Store::open(&path).unwrap();
+            let own = store.default_space(FIRST, Timestamp(1)).unwrap();
+            assert_eq!(own.icon, "", "the app's own Space starts with none");
+            let work = store
+                .create_space("Work", Logins::Own(WORK), "blue", CASE, Timestamp(2))
+                .unwrap()
+                .unwrap();
+            assert_eq!(work.icon, CASE);
+            let plain = store
+                .create_space("Plain", Logins::Of(work.id), "", "", Timestamp(3))
+                .unwrap()
+                .unwrap();
+            assert_eq!(plain.icon, "", "none asked for is none");
+            assert_eq!(icons(&store), ["", CASE, ""]);
+
+            // Another, for the one named: the app's own among them; and none again. An
+            // icon written with a selector is kept with it.
+            assert!(store.icon_space(work.id, PLANE).unwrap());
+            assert!(store.icon_space(own.id, HOUSE).unwrap());
+            assert_eq!(icons(&store), [HOUSE, PLANE, ""]);
+            assert!(store.icon_space(own.id, "").unwrap());
+            assert_eq!(icons(&store), ["", PLANE, ""]);
+            assert!(store.icon_space(own.id, HOUSE).unwrap());
+
+            // A Space that is not there has no icon to change, and nothing changes.
+            assert!(!store.icon_space(SpaceId(9_999), CASE).unwrap());
+            assert!(!store.icon_space(SpaceId(u64::MAX), CASE).unwrap());
+            assert_eq!(icons(&store), [HOUSE, PLANE, ""]);
+            (own, work)
+        };
+
+        // Kept: the list, and the first Space as it is given at a start.
+        let mut store = Store::open(&path).unwrap();
+        assert_eq!(icons(&store), [HOUSE, PLANE, ""]);
+        let first = store.default_space(PLAY, Timestamp(9)).unwrap();
+        assert_eq!((first.id, first.icon.as_str()), (own.id, HOUSE));
+        // An icon changes nothing else of a Space.
+        let listed = store.spaces().unwrap();
+        assert_eq!(
+            (
+                listed[1].id,
+                listed[1].name.as_str(),
+                listed[1].colour.as_str()
+            ),
+            (work.id, "Work", "blue")
+        );
+        assert_eq!(listed[1].login_set, work.login_set);
+    }
+
+    #[test]
+    fn a_store_from_before_icons_gains_them_and_keeps_its_spaces() {
+        let folder = tempfile::tempdir().unwrap();
+        let path = folder.path().join("webtiger.sqlite");
+        // A store as this build makes it, put back to version 14 by taking away the one
+        // thing that came after: what 049 left.
+        let before = {
+            let mut store = Store::open(&path).unwrap();
+            store.default_space(FIRST, Timestamp(1)).unwrap();
+            store
+                .create_space("Work", Logins::Own(WORK), "blue", "\u{1F4BC}", Timestamp(2))
+                .unwrap()
+                .unwrap();
+            store.spaces().unwrap()
+        };
+        let old = rusqlite::Connection::open(&path).unwrap();
+        old.execute_batch("ALTER TABLE space DROP COLUMN icon; PRAGMA user_version = 14;")
+            .unwrap();
+        drop(old);
+
+        let mut store = Store::open(&path).unwrap();
+
+        assert_eq!(store.schema_version().unwrap(), crate::SCHEMA_VERSION);
+        let after = store.spaces().unwrap();
+        assert_eq!(after.len(), 2);
+        for (was, is) in before.iter().zip(&after) {
+            assert_eq!(
+                (is.id, is.name.as_str(), is.login_set, is.colour.as_str()),
+                (
+                    was.id,
+                    was.name.as_str(),
+                    was.login_set,
+                    was.colour.as_str()
+                )
+            );
+            assert_eq!(is.icon, "", "a Space from before has none");
+        }
+        assert!(store.icon_space(after[1].id, "\u{1F331}").unwrap());
+        assert_eq!(store.spaces().unwrap()[1].icon, "\u{1F331}");
+    }
+
+    #[test]
     fn a_store_from_before_colours_gains_them_and_keeps_its_spaces() {
         let folder = tempfile::tempdir().unwrap();
         let path = folder.path().join("webtiger.sqlite");
@@ -365,14 +507,14 @@ mod tests {
             let mut store = Store::open(&path).unwrap();
             store.default_space(FIRST, Timestamp(1)).unwrap();
             store
-                .create_space("Work", Logins::Own(WORK), "blue", Timestamp(2))
+                .create_space("Work", Logins::Own(WORK), "blue", "", Timestamp(2))
                 .unwrap()
                 .unwrap();
             store.spaces().unwrap()
         };
         let old = rusqlite::Connection::open(&path).unwrap();
         old.execute_batch(
-            "DROP INDEX archive_space; DROP TABLE archive; ALTER TABLE tab DROP COLUMN shown_at; ALTER TABLE space DROP COLUMN tidy_after; DROP TABLE icon; ALTER TABLE tab DROP COLUMN favourite; DROP TABLE node; ALTER TABLE tab DROP COLUMN site_group; ALTER TABLE tab DROP COLUMN site_home; ALTER TABLE tab DROP COLUMN site_name; DROP TABLE journal; ALTER TABLE space DROP COLUMN colour; PRAGMA user_version = 7;",
+            "ALTER TABLE space DROP COLUMN icon; DROP INDEX archive_space; DROP TABLE archive; ALTER TABLE tab DROP COLUMN shown_at; ALTER TABLE space DROP COLUMN tidy_after; DROP TABLE icon; ALTER TABLE tab DROP COLUMN favourite; DROP TABLE node; ALTER TABLE tab DROP COLUMN site_group; ALTER TABLE tab DROP COLUMN site_home; ALTER TABLE tab DROP COLUMN site_name; DROP TABLE journal; ALTER TABLE space DROP COLUMN colour; PRAGMA user_version = 7;",
         )
         .unwrap();
         drop(old);
@@ -402,7 +544,7 @@ mod tests {
             let own = store.default_space(FIRST, Timestamp(1)).unwrap();
             assert_eq!(store.shown_space().unwrap(), None, "none was written");
             let work = store
-                .create_space("Work", Logins::Own(WORK), "", Timestamp(2))
+                .create_space("Work", Logins::Own(WORK), "", "", Timestamp(2))
                 .unwrap()
                 .unwrap();
             store.show_space(own.id).unwrap();
@@ -433,11 +575,11 @@ mod tests {
             let mut store = Store::open(&path).unwrap();
             let own = store.default_space(FIRST, Timestamp(1)).unwrap();
             let work = store
-                .create_space("Work", Logins::Own(WORK), "", Timestamp(2))
+                .create_space("Work", Logins::Own(WORK), "", "", Timestamp(2))
                 .unwrap()
                 .unwrap();
             store
-                .create_space("Project", Logins::Of(work.id), "", Timestamp(3))
+                .create_space("Project", Logins::Of(work.id), "", "", Timestamp(3))
                 .unwrap()
                 .unwrap();
             store.rename_space(own.id, "Home").unwrap();

@@ -41,6 +41,48 @@ pub fn next_space_colour<'a>(taken: impl IntoIterator<Item = &'a str>) -> &'stat
         .map_or(SPACE_COLOURS[0], |(colour, _)| *colour)
 }
 
+/// The icons a Space can have (050 §3), in their order: each an emoji, which
+/// is what crosses the contract and what every system draws with its own
+/// font. Written by their code points, so that no editor changes one: house,
+/// briefcase, books, backpack, shopping bags, money bag, aeroplane, puzzle
+/// piece, guitar, popcorn, newspaper, speech balloon, hammer and spanner,
+/// test tube, seedling, heart, star, lock, globe, camera, pizza, running
+/// shoe, dog, light bulb. Each is one that is seen on a light ground
+/// and on a dark one: a black picture (a graduation cap, a game controller)
+/// is lost on a dark window.
+pub const SPACE_ICONS: [&str; 24] = [
+    "\u{1F3E0}",
+    "\u{1F4BC}",
+    "\u{1F4DA}",
+    "\u{1F392}",
+    "\u{1F6CD}\u{FE0F}",
+    "\u{1F4B0}",
+    "\u{2708}\u{FE0F}",
+    "\u{1F9E9}",
+    "\u{1F3B8}",
+    "\u{1F37F}",
+    "\u{1F4F0}",
+    "\u{1F4AC}",
+    "\u{1F6E0}\u{FE0F}",
+    "\u{1F9EA}",
+    "\u{1F331}",
+    "\u{2764}\u{FE0F}",
+    "\u{2B50}",
+    "\u{1F512}",
+    "\u{1F30D}",
+    "\u{1F4F7}",
+    "\u{1F355}",
+    "\u{1F45F}",
+    "\u{1F436}",
+    "\u{1F4A1}",
+];
+
+/// That icon, when it is one a Space can have: the very same characters.
+#[must_use]
+pub fn space_icon(icon: &str) -> Option<&'static str> {
+    SPACE_ICONS.iter().copied().find(|known| *known == icon)
+}
+
 /// A Space's name as it is kept, from what was typed: with no white space
 /// at the ends, every run of white space inside as one space (a name is one
 /// line), and no more than [`SPACE_NAME_LENGTH`] characters. `None` when
@@ -94,6 +136,37 @@ mod tests {
         // No colour, a colour written another way, and one nobody has heard of.
         for other in ["", "Blue", " blue", "gray", "#0000ff", "mauve"] {
             assert_eq!(space_colour(other), None, "{other}");
+        }
+    }
+
+    #[test]
+    fn an_icon_is_one_of_the_list_as_it_is_written_there() {
+        assert_eq!(SPACE_ICONS.len(), 24);
+        assert_eq!(SPACE_ICONS[0], "\u{1F3E0}", "a house is the first");
+        for icon in SPACE_ICONS {
+            assert_eq!(space_icon(icon), Some(icon));
+            // Each is an emoji and nothing else: no letter, digit or space of ASCII, and
+            // short enough to be one picture.
+            assert!(icon.chars().all(|c| !c.is_ascii()), "{icon:?}");
+            assert!((1..=2).contains(&icon.chars().count()), "{icon:?}");
+        }
+        // Each is there once.
+        let mut sorted = SPACE_ICONS.to_vec();
+        sorted.sort_unstable();
+        sorted.dedup();
+        assert_eq!(sorted.len(), SPACE_ICONS.len());
+        // None; an emoji that is not in the list; one of the list without the selector it
+        // is written with, and with something after it; and what is no emoji at all.
+        for other in [
+            "",
+            "\u{1F600}",
+            "\u{2708}",
+            "\u{1F3E0}\u{1F3E0}",
+            "\u{1F3E0} ",
+            "house",
+            "W",
+        ] {
+            assert_eq!(space_icon(other), None, "{other:?}");
         }
     }
 

@@ -588,6 +588,11 @@ enum Words {
     /// Said on the page that makes a Space when it could not be made and no more is known.
     static let errorSpaceFailed = Word(key: "error.space.failed")
 
+    /// That icon isn’t one a Space can have.
+    ///
+    /// Said where a Space is made or edited when the app does not know the icon that was chosen.
+    static let errorSpaceIconUnknown = Word(key: "error.space.icon_unknown")
+
     /// A Space needs a name.
     ///
     /// Said on the page that makes a Space when the name is empty.
@@ -1233,6 +1238,11 @@ enum Words {
     /// Name shown for the Space the app made itself, until the person gives it a name. A Space is a set of tabs kept apart from the others, such as home and work.
     static let spaceHome = Word(key: "space.home")
 
+    /// Icon
+    ///
+    /// Heading over the icons to choose among for a Space, where one is made and where one is edited. The icons are emoji.
+    static let spaceIcon = Word(key: "space.icon")
+
     /// Back
     ///
     /// Button on the page that makes a Space: back to the list of Spaces, with nothing made.
@@ -1287,6 +1297,11 @@ enum Words {
     ///
     /// The choice of no colour for a Space or a Group, beside the colours.
     static let spaceNoColour = Word(key: "space.no_colour")
+
+    /// No icon
+    ///
+    /// Accessibility label of the first choice among a Space's icons: none. The other choices are emoji, which a screen reader names itself.
+    static let spaceNoIcon = Word(key: "space.no_icon")
 
     /// Save
     ///
@@ -1704,6 +1719,7 @@ extension Word {
         "error.retry",
         "error.space.colour_unknown",
         "error.space.failed",
+        "error.space.icon_unknown",
         "error.space.name_empty",
         "error.space.rename_failed",
         "error.space.too_many",
@@ -1833,6 +1849,7 @@ extension Word {
         "space.colour.teal",
         "space.colour.yellow",
         "space.home",
+        "space.icon",
         "space.new.back",
         "space.new.logins",
         "space.new.make",
@@ -1844,6 +1861,7 @@ extension Word {
         "space.new.shared.detail",
         "space.new.title",
         "space.no_colour",
+        "space.no_icon",
         "space.rename.save",
         "space.rename.title",
         "space.tidy",

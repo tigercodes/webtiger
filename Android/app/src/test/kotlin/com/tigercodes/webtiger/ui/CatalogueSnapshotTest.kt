@@ -241,11 +241,12 @@ class CatalogueSnapshotTest {
     fun everyStateOfTheArchiveInTheDarkTheme() = archiveLists("dark")
 
     // Taller than a list's picture: the page that makes a Space has its name, its logins, the
-    // Spaces to share them with, its colour and what was refused.
-    @Test @Config(qualifiers = "w411dp-h820dp-notnight-xhdpi")
+    // Spaces to share them with, its colour, its icon and what was refused; and the page that
+    // edits one has the times its tabs are tidied after, under its icon (049, 050).
+    @Test @Config(qualifiers = "w411dp-h1100dp-notnight-xhdpi")
     fun everyStateOfTheSpacesInTheLightTheme() = spacesLists("light")
 
-    @Test @Config(qualifiers = "w411dp-h820dp-night-xhdpi")
+    @Test @Config(qualifiers = "w411dp-h1100dp-night-xhdpi")
     fun everyStateOfTheSpacesInTheDarkTheme() = spacesLists("dark")
 
     // As tall as the Spaces' pages: the colours take two rows, and the buttons are under what

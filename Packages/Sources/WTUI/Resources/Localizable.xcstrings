@@ -1405,6 +1405,18 @@
         }
       }
     },
+    "error.space.icon_unknown": {
+      "comment": "Said where a Space is made or edited when the app does not know the icon that was chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That icon isn’t one a Space can have."
+          }
+        }
+      }
+    },
     "error.space.name_empty": {
       "comment": "Said on the page that makes a Space when the name is empty.",
       "extractionState": "manual",
@@ -2953,6 +2965,18 @@
         }
       }
     },
+    "space.icon": {
+      "comment": "Heading over the icons to choose among for a Space, where one is made and where one is edited. The icons are emoji.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Icon"
+          }
+        }
+      }
+    },
     "space.new.back": {
       "comment": "Button on the page that makes a Space: back to the list of Spaces, with nothing made.",
       "extractionState": "manual",
@@ -3081,6 +3105,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "None"
+          }
+        }
+      }
+    },
+    "space.no_icon": {
+      "comment": "Accessibility label of the first choice among a Space's icons: none. The other choices are emoji, which a screen reader names itself.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No icon"
           }
         }
       }

@@ -18,6 +18,7 @@ import com.tigercodes.webtiger.core.v1.DialogKind
 import com.tigercodes.webtiger.core.v1.FindInPage
 import com.tigercodes.webtiger.core.v1.ColourGroup
 import com.tigercodes.webtiger.core.v1.GroupSummary
+import com.tigercodes.webtiger.core.v1.IconSpace
 import com.tigercodes.webtiger.core.v1.KeepTab
 import com.tigercodes.webtiger.core.v1.Layout
 import com.tigercodes.webtiger.core.v1.LetGoSite
@@ -768,6 +769,10 @@ class BrowserModel(
     var spaceColour by mutableStateOf("")
         private set
 
+    /** That Space's icon, an emoji of the core's (050); empty for none. */
+    var spaceIcon by mutableStateOf("")
+        private set
+
     /**
      * What an undo would undo now in the Space the window shows (033), by the core's word for
      * it. Empty: there is nothing to undo.
@@ -793,6 +798,10 @@ class BrowserModel(
     var spaceColours by mutableStateOf<List<String>>(emptyList())
         private set
 
+    /** The icons a Space can have (050), as the core lists them with the Spaces: each an emoji. */
+    var spaceIcons by mutableStateOf<List<String>>(emptyList())
+        private set
+
     /** The times a Space's tidying can have (049), in seconds, as the core lists them with the Spaces: never, which is 0, first. */
     var spaceTidyTimes by mutableStateOf<List<Int>>(emptyList())
         private set
@@ -816,7 +825,7 @@ class BrowserModel(
      * the list open, with the core's code in [spaceRefusal]; the chip says what is new when the
      * core's snapshot does.
      */
-    fun editSpace(name: String?, colour: String?, tidyAfter: Int? = null) {
+    fun editSpace(name: String?, colour: String?, tidyAfter: Int? = null, icon: String? = null) {
         val shown = spaceId.takeIf { it != 0L } ?: return
         spaceRefusal = null
         session.scope.launch {
@@ -824,6 +833,8 @@ class BrowserModel(
                 // The name first: a name the core will not take leaves the colour as it was.
                 if (name != null) session.core.request(Request(rename_space = RenameSpace(space_id = shown, name = name)))
                 if (colour != null) session.core.request(Request(colour_space = ColourSpace(space_id = shown, colour = colour)))
+                // Its icon (050): an emoji of the core's, or none.
+                if (icon != null) session.core.request(Request(icon_space = IconSpace(space_id = shown, icon = icon)))
                 // And the time last: one of the core's, in seconds, or 0 for never.
                 if (tidyAfter != null) session.core.request(Request(set_space_tidying = SetSpaceTidying(space_id = shown, after_seconds = tidyAfter)))
             } catch (refused: CoreError.Refused) {
@@ -857,6 +868,7 @@ class BrowserModel(
                 spaces = answer.spaces
                 spaceColours = answer.colours
                 spaceTidyTimes = answer.tidy_times
+                spaceIcons = answer.icons
             }
         }
     }
@@ -878,12 +890,12 @@ class BrowserModel(
      * window. The name goes as it was typed: tidying it is the core's. A Space the core will not
      * make leaves the list open, with the core's code in [spaceRefusal].
      */
-    fun makeSpace(name: String, sharing: Long?, colour: String = "") {
+    fun makeSpace(name: String, sharing: Long?, colour: String = "", icon: String = "") {
         spaceRefusal = null
         session.scope.launch {
             val made =
                 try {
-                    session.core.request(Request(create_space = CreateSpace(name = name, share_logins_with = sharing ?: 0, colour = colour))).space_created
+                    session.core.request(Request(create_space = CreateSpace(name = name, share_logins_with = sharing ?: 0, colour = colour, icon = icon))).space_created
                 } catch (refused: CoreError.Refused) {
                     spaceRefusal = refused.code
                     return@launch
@@ -1081,6 +1093,7 @@ class BrowserModel(
         spaceId = snapshot.space_id
         spaceName = snapshot.space_name
         spaceColour = snapshot.space_colour
+        spaceIcon = snapshot.space_icon
         undoKind = snapshot.undo
         undoArrangementKind = snapshot.undo_arrangement
         isPrivate = asPrivate || snapshot.private_window

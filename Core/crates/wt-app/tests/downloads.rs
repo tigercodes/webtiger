@@ -717,6 +717,7 @@ fn a_download_is_opened_only_from_the_list_it_is_on() {
                 name: "Work".to_owned(),
                 share_logins_with: 0,
                 colour: String::new(),
+                icon: String::new(),
             }))
             .await;
         let response::Kind::SpaceCreated(work) = made else {

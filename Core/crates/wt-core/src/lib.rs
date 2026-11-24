@@ -22,7 +22,8 @@ pub use search::{
     searched_words,
 };
 pub use space::{
-    MOST_SPACES, SPACE_COLOURS, SPACE_NAME_LENGTH, next_space_colour, space_colour, space_name,
+    MOST_SPACES, SPACE_COLOURS, SPACE_ICONS, SPACE_NAME_LENGTH, next_space_colour, space_colour,
+    space_icon, space_name,
 };
 pub use uuid::Uuid;
 pub use zoom::{ACTUAL_SIZE, ZOOM_LEVELS, zoom_in, zoom_out};

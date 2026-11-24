@@ -763,13 +763,28 @@ internal enum class CatalogueSpaces(@StringRes val title: Int) {
         val spaces =
             listOf(
                 SpaceSummary(space_id = 1, name = "", logins = 1),
-                SpaceSummary(space_id = 2, name = "Work", logins = 2, colour = "blue", tidy_after_seconds = 86_400),
-                SpaceSummary(space_id = 3, name = "Project Tiger", logins = 2, colour = "green"),
+                SpaceSummary(space_id = 2, name = "Work", logins = 2, colour = "blue", tidy_after_seconds = 86_400, icon = "\uD83D\uDCBC"),
+                SpaceSummary(space_id = 3, name = "Project Tiger", logins = 2, colour = "green", icon = "\uD83C\uDF31"),
                 SpaceSummary(space_id = 4, name = "A Space with a name that is as long as a name is let be", logins = 4, colour = "pink"),
             )
 
         /** The colours a core lists (025), in its order. */
         val colours = listOf("red", "orange", "yellow", "green", "teal", "blue", "purple", "pink", "grey")
+
+        /**
+         * The icons a core lists (050), in its order, by their code points: house, briefcase,
+         * books, backpack, shopping bags, money bag, aeroplane, puzzle piece, guitar, popcorn,
+         * newspaper, speech balloon, hammer and spanner, test tube, seedling, heart, star, lock,
+         * globe, camera, pizza, running shoe, dog, light bulb.
+         */
+        val icons =
+            listOf(
+                0x1F3E0, 0x1F4BC, 0x1F4DA, 0x1F392, 0x1F6CD, 0x1F4B0, 0x2708, 0x1F9E9, 0x1F3B8, 0x1F37F, 0x1F4F0, 0x1F4AC,
+                0x1F6E0, 0x1F9EA, 0x1F331, 0x2764, 0x2B50, 0x1F512, 0x1F30D, 0x1F4F7, 0x1F355, 0x1F45F, 0x1F436, 0x1F4A1,
+            ).map { point ->
+                // Four of them are written with the selector that asks for the picture.
+                String(Character.toChars(point)) + if (point in setOf(0x1F6CD, 0x2708, 0x1F6E0, 0x2764)) "\uFE0F" else ""
+            }
 
         /** The times a core lists (049), in its order: never, twelve hours, a day, a week, thirty days. */
         val tidyTimes = listOf(0, 43_200, 86_400, 604_800, 2_592_000)
@@ -788,10 +803,11 @@ internal fun CatalogueSpacesList(state: CatalogueSpaces, modifier: Modifier = Mo
                 shownId = 2,
                 refusal = "space.too_many".takeIf { state == CatalogueSpaces.REFUSED },
                 onShow = {},
-                onMake = { _, _, _ -> },
-                onEdit = { _, _, _ -> },
+                onMake = { _, _, _, _ -> },
+                onEdit = { _, _, _, _ -> },
                 onDone = {},
                 colours = CatalogueSpaces.colours,
+                icons = CatalogueSpaces.icons,
                 tidyTimes = CatalogueSpaces.tidyTimes,
                 making = state in setOf(CatalogueSpaces.NEW, CatalogueSpaces.NEW_SHARED, CatalogueSpaces.REFUSED),
                 name = "Travel",

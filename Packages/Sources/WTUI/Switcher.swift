@@ -60,7 +60,7 @@ struct Switcher: View {
             if model.isPrivate {
                 PrivateChip(action: onSpaces)
             } else {
-                SpaceChip(name: model.spaceName, colour: model.spaceColour, action: onSpaces)
+                SpaceChip(name: model.spaceName, colour: model.spaceColour, icon: model.spaceIcon, action: onSpaces)
             }
             Spacer(minLength: Tokens.Space.s)
             Text(Words.switcherTitle)

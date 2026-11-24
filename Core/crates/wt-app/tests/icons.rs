@@ -503,6 +503,7 @@ async fn make_space(shell: &mut FakeShell, name: &str) -> u64 {
             name: name.to_owned(),
             share_logins_with: 0,
             colour: String::new(),
+            icon: String::new(),
         }))
         .await;
     match answer {

@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use crate::StoreError;
 
 /// The version this build's store is at.
-pub const SCHEMA_VERSION: u32 = 14;
+pub const SCHEMA_VERSION: u32 = 15;
 
 /// The migrations, in order: `MIGRATIONS[n]` takes version `n` to `n + 1`.
 const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
@@ -184,6 +184,9 @@ const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
          tidied_at INTEGER NOT NULL
      ) STRICT;
      CREATE INDEX archive_space ON archive (space_id, id);",
+    // 15 (W2, 050): a Space's icon, an emoji of the core's list; empty for
+    // none, which is what every Space there was has.
+    "ALTER TABLE space ADD COLUMN icon TEXT NOT NULL DEFAULT '';",
 ];
 
 pub(crate) fn version(connection: &Connection) -> Result<u32, StoreError> {

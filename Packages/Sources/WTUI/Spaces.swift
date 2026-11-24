@@ -16,6 +16,10 @@ struct SpaceChip: View {
     /// The Space's colour, by the core's name for it (025); empty for none. A Space with one
     /// has its mark here: a dot before the name, or a bar under the initial.
     var colour = ""
+    /// The Space's icon, an emoji of the core's (050); empty for none. With one, the chip
+    /// has it in the place of the initial, and before the name. It is not read out: what a
+    /// screen reader says is the Space's name.
+    var icon = ""
     let action: () -> Void
     /// How wide the name may be: it grows with the text's size, and a long name is cut.
     @ScaledMetric private var widestName: CGFloat = 120
@@ -27,7 +31,7 @@ struct SpaceChip: View {
         Button(action: action) {
             Group {
                 if width == .compact {
-                    Text(verbatim: SpaceName.initial(of: shown))
+                    Text(verbatim: icon.isEmpty ? SpaceName.initial(of: shown) : icon)
                         .fontWeight(.semibold)
                         .frame(minWidth: BrowserWindowView.hitSize, minHeight: BrowserWindowView.hitSize)
                         // The mark takes none of the strip's room: a bar under the initial.
@@ -40,6 +44,9 @@ struct SpaceChip: View {
                     HStack(spacing: Tokens.Space.xs) {
                         if Tokens.SpaceColour.paint(colour) != nil {
                             SpaceMark(colour: colour)
+                        }
+                        if !icon.isEmpty {
+                            SpaceIconMark(icon: icon)
                         }
                         Text(verbatim: shown)
                             .lineLimit(1)
@@ -76,16 +83,16 @@ struct SpacesSheet: ViewModifier {
             .sheet(isPresented: $isShown) {
                 SpacesView(
                     spaces: model.spaces, shownID: model.spaceID, colours: model.spaceColours,
-                    tidyTimes: model.spaceTidyTimes, refusal: model.spaceRefusal,
+                    icons: model.spaceIcons, tidyTimes: model.spaceTidyTimes, refusal: model.spaceRefusal,
                     show: { space in
                         model.showSpace(space)
                         isShown = false
                     },
-                    make: { name, sharing, colour in
+                    make: { name, sharing, colour, icon in
                         Task {
                             // A Space the core would not make leaves the page as it is, with
                             // the core's reason on it.
-                            if await model.makeSpace(named: name, sharingLoginsWith: sharing, colour: colour) {
+                            if await model.makeSpace(named: name, sharingLoginsWith: sharing, colour: colour, icon: icon) {
                                 isShown = false
                             }
                         }
@@ -133,15 +140,17 @@ struct SpacesView: View {
     let shownID: UInt64
     /// The colours a Space can have, as the core lists them (025).
     let colours: [String]
+    /// The icons a Space can have, as the core lists them (050): each an emoji.
+    let icons: [String]
     /// The times a Space's tidying can have, in seconds, as the core lists them (049).
     let tidyTimes: [UInt32]
     /// Why the core would not make a Space, by its code. `nil` when it has refused nothing.
     let refusal: String?
     /// A Space was pressed: the window is to show it.
     let show: (UInt64) -> Void
-    /// A Space is to be made: its name as typed, the Space whose logins it shares, if any, and
-    /// its colour, or none for the core to choose.
-    let make: (String, UInt64?, String) -> Void
+    /// A Space is to be made: its name as typed, the Space whose logins it shares, if any,
+    /// its colour, or none for the core to choose, and its icon, or none.
+    let make: (String, UInt64?, String, String) -> Void
     /// The Space the window shows is to have another name, another colour, or both.
     let edit: (SpaceEdit) -> Void
     let done: () -> Void
@@ -152,6 +161,8 @@ struct SpacesView: View {
     @State private var name: String
     /// The colour chosen on a page, by the core's name for it; empty for none.
     @State private var colour: String
+    /// The icon chosen on a page, an emoji of the core's; empty for none (050).
+    @State private var icon: String
     /// The time chosen on the page that edits a Space, in seconds; 0 for never (049).
     @State private var tidyAfter: UInt32
     @State private var shares: Bool
@@ -168,6 +179,7 @@ struct SpacesView: View {
         spaces: [WTSpaceSummary]?,
         shownID: UInt64,
         colours: [String] = [],
+        icons: [String] = [],
         tidyTimes: [UInt32] = [],
         refusal: String? = nil,
         making: Bool = false,
@@ -175,7 +187,7 @@ struct SpacesView: View {
         sharingWith: UInt64? = nil,
         renaming: Bool = false,
         show: @escaping (UInt64) -> Void,
-        make: @escaping (String, UInt64?, String) -> Void,
+        make: @escaping (String, UInt64?, String, String) -> Void,
         edit: @escaping (SpaceEdit) -> Void,
         done: @escaping () -> Void,
         privateDoor: PrivateDoor? = nil
@@ -184,6 +196,7 @@ struct SpacesView: View {
         self.privateDoor = privateDoor
         self.shownID = shownID
         self.colours = colours
+        self.icons = icons
         self.tidyTimes = tidyTimes
         self.refusal = refusal
         self.show = show
@@ -195,6 +208,7 @@ struct SpacesView: View {
         _page = State(initialValue: making ? .new : renaming ? .rename : .list)
         _name = State(initialValue: renaming ? shown?.name ?? "" : name)
         _colour = State(initialValue: renaming ? shown?.colour ?? "" : "")
+        _icon = State(initialValue: renaming ? shown?.icon ?? "" : "")
         _tidyAfter = State(initialValue: renaming ? shown?.tidyAfterSeconds ?? 0 : 0)
         _shares = State(initialValue: sharingWith != nil)
         // Whose logins it would share, should that be chosen: those of the Space shown.
@@ -240,6 +254,7 @@ struct SpacesView: View {
                     shareWith = Self.owner(of: shownID, among: spaces ?? [])
                     name = ""
                     colour = ""
+                    icon = ""
                     page = .new
                 } label: {
                     Text(Words.spacesNew)
@@ -253,6 +268,7 @@ struct SpacesView: View {
                     // named it. The shell's word for that one is not a name it was given.
                     name = shown?.name ?? ""
                     colour = shown?.colour ?? ""
+                    icon = shown?.icon ?? ""
                     tidyAfter = shown?.tidyAfterSeconds ?? 0
                     page = .rename
                 } label: {
@@ -287,6 +303,12 @@ struct SpacesView: View {
             HStack(spacing: Tokens.Space.m) {
                 // Its colour (025): a mark, and a ring for a Space with none.
                 SpaceMark(colour: space.colour)
+                // Its icon (050). Where any Space has one, every row keeps its place, so
+                // that the names stay in line.
+                if (spaces ?? []).contains(where: { !$0.icon.isEmpty }) {
+                    SpaceIconMark(icon: space.icon)
+                        .frame(minWidth: 28)
+                }
                 VStack(alignment: .leading, spacing: 0) {
                     Text(verbatim: SpaceName.shown(space.name, locale: locale))
                         .fontWeight(.semibold)
@@ -393,6 +415,7 @@ struct SpacesView: View {
                     .font(.callout)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            SpaceIcons(icons: icons, chosen: $icon)
             buttons(Words.spaceNewMake, identifier: "space-make", unknown: Words.errorSpaceFailed, action: submit)
         }
         .padding(Tokens.Space.l)
@@ -462,6 +485,7 @@ struct SpacesView: View {
                     .accessibilityIdentifier("space-name")
             }
             SpaceSwatches(colours: colours, offersNone: true, chosen: $colour)
+            SpaceIcons(icons: icons, chosen: $icon)
             // After how long out of sight its tabs are tidied, or never (049).
             SpaceTidyTimes(times: tidyTimes, chosen: $tidyAfter)
             buttons(
@@ -491,7 +515,7 @@ struct SpacesView: View {
     }
 
     private func submit() {
-        make(name, shares ? (owners.first { $0.spaceID == shareWith } ?? owners.first)?.spaceID : nil, colour)
+        make(name, shares ? (owners.first { $0.spaceID == shareWith } ?? owners.first)?.spaceID : nil, colour, icon)
     }
 
     /// What the page that edits a Space asks for: the name, when one is typed that is not the
@@ -503,6 +527,7 @@ struct SpacesView: View {
         edit(SpaceEdit(
             name: typed.isEmpty || name == shown?.name ? nil : name,
             colour: colour == (shown?.colour ?? "") ? nil : colour,
+            icon: icon == (shown?.icon ?? "") ? nil : icon,
             tidyAfter: tidyAfter == (shown?.tidyAfterSeconds ?? 0) ? nil : tidyAfter
         ))
     }

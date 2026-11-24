@@ -209,10 +209,17 @@ class AppTestCase: XCTestCase {
         private static func isNoFaultOnAPhone(_ issue: XCUIAccessibilityAuditIssue, in app: XCUIApplication) -> Bool {
             let element = issue.element
             // What is under the keyboard is not drawn, and has no contrast to measure: a
-            // page that scrolls has its foot there while a field of it has the keyboard.
-            if issue.auditType == .contrast, let frame = element?.frame, app.keyboards.firstMatch.exists,
-               app.keyboards.firstMatch.frame.intersects(frame) {
-                return true
+            // page that scrolls has its foot there while a field of it has the keyboard. The
+            // frame the keyboard says it has is its rows of keys. The row of suggested words
+            // above them covers the page as they do (45 points of it, measured on the iPhone
+            // 17's simulator: the keys began at 590 and a heading at 552 was under the row),
+            // and is counted with them.
+            if issue.auditType == .contrast, let frame = element?.frame, app.keyboards.firstMatch.exists {
+                let keys = app.keyboards.firstMatch.frame
+                let covered = CGRect(x: keys.minX, y: keys.minY - 48, width: keys.width, height: keys.height + 48)
+                if covered.intersects(frame) {
+                    return true
+                }
             }
             // A one-line text field scrolls what does not fit: that is not clipped text.
             if issue.auditType == .textClipped, element?.elementType == .textField {

@@ -266,6 +266,7 @@ private fun Window(session: BrowserSession, model: BrowserModel, private: Privat
                 onEdit = model::editSpace,
                 onDone = model::closeSpaces,
                 colours = model.spaceColours,
+                icons = model.spaceIcons,
                 tidyTimes = model.spaceTidyTimes,
                 // The way to the private window (037): chosen, the list closes behind it.
                 private =
@@ -348,7 +349,7 @@ private fun TabStrip(model: BrowserModel, onFind: () -> Unit, onZoom: () -> Unit
                 modifier = Modifier.padding(start = Tokens.Space.xs),
                 saidAs = stringResource(R.string.private_window),
             )
-        } else SpaceChip(name = model.spaceName, compact = compact, onClick = onSpaces, modifier = Modifier.padding(start = Tokens.Space.xs), colour = model.spaceColour)
+        } else SpaceChip(name = model.spaceName, compact = compact, onClick = onSpaces, modifier = Modifier.padding(start = Tokens.Space.xs), colour = model.spaceColour, icon = model.spaceIcon)
         Row(
             modifier =
                 Modifier

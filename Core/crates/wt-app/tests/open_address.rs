@@ -251,6 +251,7 @@ fn it_opens_in_the_space_the_window_shows_with_that_spaces_logins() {
                 name: "Work".to_owned(),
                 share_logins_with: 0,
                 colour: String::new(),
+                icon: String::new(),
             }))
             .await;
         let response::Kind::SpaceCreated(work) = made else {
