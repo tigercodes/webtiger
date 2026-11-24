@@ -918,6 +918,14 @@ Four features of W2 are built on the recommendations of their own documents, the
 4. In the chip the icon takes the place of the initial; beside a name it stands before it.
 5. The chip is said to a screen reader by the Space's name, not its icon.
 
+**What a sleeping tab keeps** ([051](051-a-tabs-kept-state.md) §6, put on 2026-11-23; designed, not built; the first of W3):
+
+1. A tab's state is asked for when it leaves the front, and before its web view is destroyed.
+2. It is kept in the store, with the session.
+3. A state larger than 512 KB is not kept.
+4. A Site sleeps at its home, with no state.
+5. The tab in front at a quit wakes at its address.
+
 Also the owner's to say, from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
 
 
