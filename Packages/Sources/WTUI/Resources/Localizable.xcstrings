@@ -205,6 +205,174 @@
         }
       }
     },
+    "awake.asleep": {
+      "comment": "Under the list of tabs that are awake: how many tabs are asleep. %d is the number.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Asleep: %d"
+          }
+        }
+      }
+    },
+    "awake.done": {
+      "comment": "Button that closes the list of tabs that are awake.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        }
+      }
+    },
+    "awake.empty": {
+      "comment": "Shown in the list of tabs that are awake when it lists nothing: every tab is asleep, or has no page.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No tab is awake."
+          }
+        }
+      }
+    },
+    "awake.private": {
+      "comment": "Under the list of tabs that are awake, in an ordinary window: how many tabs are awake in private windows. They are counted and not named. %d is the number.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Awake in private windows: %d"
+          }
+        }
+      }
+    },
+    "awake.sleep_others": {
+      "comment": "Button in the list of tabs that are awake: puts to sleep every tab that is not on screen and is not doing something that would be lost. 'Others' are all but the tabs on screen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sleep All Others"
+          }
+        }
+      }
+    },
+    "awake.title": {
+      "comment": "Title of the list of tabs that are awake (that have a page loaded, and so are using memory), and the name of its part of the switch beside History, Downloads, Permissions and the Archive. A tab that is not awake is asleep: it keeps its place, and its page is loaded again when it is gone to.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Awake"
+          }
+        }
+      }
+    },
+    "awake.why.capture": {
+      "comment": "Why a tab is awake, under its name in the list of tabs that are awake.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Using the camera or microphone"
+          }
+        }
+      }
+    },
+    "awake.why.download": {
+      "comment": "Why a tab is awake, under its name in the list of tabs that are awake: a download its page started is still coming.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloading"
+          }
+        }
+      }
+    },
+    "awake.why.in_sight": {
+      "comment": "Why a tab is awake, under its name in the list of tabs that are awake: it is the tab a window is showing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On screen"
+          }
+        }
+      }
+    },
+    "awake.why.loading": {
+      "comment": "Why a tab is awake, under its name in the list of tabs that are awake: its page is still on its way.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading"
+          }
+        }
+      }
+    },
+    "awake.why.question": {
+      "comment": "Why a tab is awake, under its name in the list of tabs that are awake: its page asked a question that has not been answered, such as whether it may use the camera.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Asking you something"
+          }
+        }
+      }
+    },
+    "awake.why.sound": {
+      "comment": "Why a tab is awake, under its name in the list of tabs that are awake: its page is playing something that can be heard.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Playing sound"
+          }
+        }
+      }
+    },
+    "awake.why.typed": {
+      "comment": "Why a tab is awake, under its name in the list of tabs that are awake: something was typed into its page, which would be lost if it slept.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Has text you typed"
+          }
+        }
+      }
+    },
+    "awake.why.waiting": {
+      "comment": "Under a tab's name in the list of tabs that are awake, when nothing keeps it awake: it is put to sleep when it has been out of sight for half an hour.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Will sleep by itself"
+          }
+        }
+      }
+    },
     "catalogue.colours": {
       "comment": "Design catalogue: heading of the colour tokens.",
       "extractionState": "manual",
@@ -285,6 +453,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "The Archive"
+          }
+        }
+      }
+    },
+    "catalogue.state.awake_empty": {
+      "comment": "Design catalogue: the Library with the list of tabs that are awake shown, when no tab is awake.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What is awake, nothing"
+          }
+        }
+      }
+    },
+    "catalogue.state.awake_list": {
+      "comment": "Design catalogue: the Library with the list of tabs that are awake shown, with tabs in it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What is awake"
           }
         }
       }

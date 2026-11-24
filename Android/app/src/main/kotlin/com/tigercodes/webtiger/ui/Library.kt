@@ -1,7 +1,7 @@
-// What the button beside the tabs opens: the History list (008) and, beside it, the Downloads
-// list (013), the Permissions list (014) and the Archive (049), with a switch between them. The
-// Library (W3) will be their home; until then they share a sheet, so that the row of tabs
-// gains no button.
+// The Library (057): what the button beside the tabs opens. The lists about the browser that
+// are opened now and then, with a switch between them: History (008), Downloads (013),
+// Permissions (014), the Archive (049), and what is awake (056). One sheet and one button, so
+// that the row of tabs gains none.
 package com.tigercodes.webtiger.ui
 
 import androidx.compose.foundation.background
@@ -39,12 +39,14 @@ import com.tigercodes.webtiger.core.v1.HistoryEntry
 import com.tigercodes.webtiger.design.Tokens
 
 /** Which of the sheet's lists is shown. */
-enum class LibraryPart { HISTORY, DOWNLOADS, PERMISSIONS, ARCHIVE }
+enum class LibraryPart { HISTORY, DOWNLOADS, PERMISSIONS, ARCHIVE, AWAKE }
 
 /**
  * `onOpen` is called with a visit a person chose; `onDone` when they are finished, and when a
  * tab they chose in the Archive is a tab again. `archive` is the Archive of the window's Space
- * (049); with none (a private window has none) the switch has no part for it.
+ * (049); with none (a private window has none) the switch has no part for it. `awake` is what
+ * is awake (056), the last of the parts, asked for again whenever `row`, the window's own row
+ * of tabs, changes.
  */
 @Composable
 fun Library(
@@ -56,25 +58,28 @@ fun Library(
     modifier: Modifier = Modifier,
     showing: LibraryPart = LibraryPart.HISTORY,
     archive: ArchiveModel? = null,
+    awake: AwakeModel? = null,
+    row: Any? = null,
 ) {
     var part by rememberSaveable { mutableStateOf(showing) }
-    val switcher: @Composable () -> Unit = { LibrarySwitch(part, archive = archive != null) { part = it } }
+    val switcher: @Composable () -> Unit = { LibrarySwitch(part, archive = archive != null, awake = awake != null) { part = it } }
     when (part) {
         LibraryPart.HISTORY -> HistoryList(model = history, onOpen = onOpen, onDone = onDone, modifier = modifier, switcher = switcher)
         LibraryPart.DOWNLOADS -> DownloadsList(model = downloads, onDone = onDone, modifier = modifier, switcher = switcher)
         LibraryPart.PERMISSIONS -> PermissionsList(model = permissions, onDone = onDone, modifier = modifier, switcher = switcher)
         LibraryPart.ARCHIVE -> archive?.let { ArchiveList(model = it, onBroughtBack = onDone, onDone = onDone, modifier = modifier, switcher = switcher) }
+        LibraryPart.AWAKE -> awake?.let { AwakeList(model = it, onDone = onDone, modifier = modifier, watching = row, switcher = switcher) }
     }
 }
 
 /**
  * The lists to choose between, of which the one that is shown is marked: where a list's title
  * would be. On a narrow window, or with large text, the row is moved sideways to reach its end.
- * It opens with the name of the list that is shown in sight. The Archive (049) is the last of
- * them, where the window has one.
+ * It opens with the name of the list that is shown in sight. The Archive (049) is one of them
+ * where the window has one; what is awake (056) is the last.
  */
 @Composable
-internal fun LibrarySwitch(part: LibraryPart, archive: Boolean = true, onChoose: (LibraryPart) -> Unit) {
+internal fun LibrarySwitch(part: LibraryPart, archive: Boolean = true, awake: Boolean = true, onChoose: (LibraryPart) -> Unit) {
     Row(
         modifier = Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(Tokens.Space.xs),
@@ -84,6 +89,7 @@ internal fun LibrarySwitch(part: LibraryPart, archive: Boolean = true, onChoose:
         Choice(R.string.downloads_title, chosen = part == LibraryPart.DOWNLOADS, tag = "library-downloads") { onChoose(LibraryPart.DOWNLOADS) }
         Choice(R.string.permissions_title, chosen = part == LibraryPart.PERMISSIONS, tag = "library-permissions") { onChoose(LibraryPart.PERMISSIONS) }
         if (archive) Choice(R.string.archive_title, chosen = part == LibraryPart.ARCHIVE, tag = "library-archive") { onChoose(LibraryPart.ARCHIVE) }
+        if (awake) Choice(R.string.awake_title, chosen = part == LibraryPart.AWAKE, tag = "library-awake") { onChoose(LibraryPart.AWAKE) }
     }
 }
 

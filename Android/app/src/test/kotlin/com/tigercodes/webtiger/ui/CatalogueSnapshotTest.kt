@@ -39,6 +39,10 @@ private const val DARK = "w411dp-h320dp-night-xhdpi"
 // Tall enough for the Downloads list's five downloads, each in a different state, and what follows them.
 private const val LIST_LIGHT = "w411dp-h560dp-notnight-xhdpi"
 private const val LIST_DARK = "w411dp-h560dp-night-xhdpi"
+
+/** Tall enough for every tab of what is awake (056), and the counts under them. */
+private const val AWAKE_LIGHT = "w411dp-h760dp-notnight-xhdpi"
+private const val AWAKE_DARK = "w411dp-h760dp-night-xhdpi"
 // Tall enough for every token: the colours a Space can have are nine of them (025).
 private const val TALL_LIGHT = "w411dp-h1300dp-notnight-xhdpi"
 private const val TALL_DARK = "w411dp-h1300dp-night-xhdpi"
@@ -134,6 +138,15 @@ class CatalogueSnapshotTest {
         for (next in CatalogueArchive.entries) {
             state = next
             verify("archive-${next.name.lowercase().replace('_', '-')}-$theme")
+        }
+    }
+
+    private fun awakeLists(theme: String) {
+        var state by mutableStateOf(CatalogueAwake.LIST)
+        show { key(state) { CatalogueAwakeList(state, Modifier.fillMaxSize()) } }
+        for (next in CatalogueAwake.entries) {
+            state = next
+            verify("awake-${next.name.lowercase().replace('_', '-')}-$theme")
         }
     }
 
@@ -233,12 +246,19 @@ class CatalogueSnapshotTest {
     @Test @Config(qualifiers = "w720dp-h560dp-night-xhdpi")
     fun aWindowWithItsTabsAtTheSideInTheDarkTheme() = sidebar("dark")
 
-    // The Archive (049), under the switch's four names.
+    // The Archive (049), under the Library's switch (057): five names, the row moved to show its own.
     @Test @Config(qualifiers = LIST_LIGHT)
     fun everyStateOfTheArchiveInTheLightTheme() = archiveLists("light")
 
     @Test @Config(qualifiers = LIST_DARK)
     fun everyStateOfTheArchiveInTheDarkTheme() = archiveLists("dark")
+
+    // What is awake (056): the last of the switch's names.
+    @Test @Config(qualifiers = AWAKE_LIGHT)
+    fun everyStateOfWhatIsAwakeInTheLightTheme() = awakeLists("light")
+
+    @Test @Config(qualifiers = AWAKE_DARK)
+    fun everyStateOfWhatIsAwakeInTheDarkTheme() = awakeLists("dark")
 
     // Taller than a list's picture: the page that makes a Space has its name, its logins, the
     // Spaces to share them with, its colour, its icon and what was refused; and the page that

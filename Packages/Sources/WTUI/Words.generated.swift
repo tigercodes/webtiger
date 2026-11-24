@@ -88,6 +88,76 @@ enum Words {
     /// Title of the list of tabs that were tidied away, and the name of its part of the switch beside History, Downloads and Permissions.
     static let archiveTitle = Word(key: "archive.title")
 
+    /// Asleep: %d
+    ///
+    /// Under the list of tabs that are awake: how many tabs are asleep. %d is the number.
+    static let awakeAsleep = Word(key: "awake.asleep")
+
+    /// Done
+    ///
+    /// Button that closes the list of tabs that are awake.
+    static let awakeDone = Word(key: "awake.done")
+
+    /// No tab is awake.
+    ///
+    /// Shown in the list of tabs that are awake when it lists nothing: every tab is asleep, or has no page.
+    static let awakeEmpty = Word(key: "awake.empty")
+
+    /// Awake in private windows: %d
+    ///
+    /// Under the list of tabs that are awake, in an ordinary window: how many tabs are awake in private windows. They are counted and not named. %d is the number.
+    static let awakePrivate = Word(key: "awake.private")
+
+    /// Sleep All Others
+    ///
+    /// Button in the list of tabs that are awake: puts to sleep every tab that is not on screen and is not doing something that would be lost. 'Others' are all but the tabs on screen.
+    static let awakeSleepOthers = Word(key: "awake.sleep_others")
+
+    /// Awake
+    ///
+    /// Title of the list of tabs that are awake (that have a page loaded, and so are using memory), and the name of its part of the switch beside History, Downloads, Permissions and the Archive. A tab that is not awake is asleep: it keeps its place, and its page is loaded again when it is gone to.
+    static let awakeTitle = Word(key: "awake.title")
+
+    /// Using the camera or microphone
+    ///
+    /// Why a tab is awake, under its name in the list of tabs that are awake.
+    static let awakeWhyCapture = Word(key: "awake.why.capture")
+
+    /// Downloading
+    ///
+    /// Why a tab is awake, under its name in the list of tabs that are awake: a download its page started is still coming.
+    static let awakeWhyDownload = Word(key: "awake.why.download")
+
+    /// On screen
+    ///
+    /// Why a tab is awake, under its name in the list of tabs that are awake: it is the tab a window is showing.
+    static let awakeWhyInSight = Word(key: "awake.why.in_sight")
+
+    /// Loading
+    ///
+    /// Why a tab is awake, under its name in the list of tabs that are awake: its page is still on its way.
+    static let awakeWhyLoading = Word(key: "awake.why.loading")
+
+    /// Asking you something
+    ///
+    /// Why a tab is awake, under its name in the list of tabs that are awake: its page asked a question that has not been answered, such as whether it may use the camera.
+    static let awakeWhyQuestion = Word(key: "awake.why.question")
+
+    /// Playing sound
+    ///
+    /// Why a tab is awake, under its name in the list of tabs that are awake: its page is playing something that can be heard.
+    static let awakeWhySound = Word(key: "awake.why.sound")
+
+    /// Has text you typed
+    ///
+    /// Why a tab is awake, under its name in the list of tabs that are awake: something was typed into its page, which would be lost if it slept.
+    static let awakeWhyTyped = Word(key: "awake.why.typed")
+
+    /// Will sleep by itself
+    ///
+    /// Under a tab's name in the list of tabs that are awake, when nothing keeps it awake: it is put to sleep when it has been out of sight for half an hour.
+    static let awakeWhyWaiting = Word(key: "awake.why.waiting")
+
     /// Colours
     ///
     /// Design catalogue: heading of the colour tokens.
@@ -122,6 +192,16 @@ enum Words {
     ///
     /// Design catalogue: the Library with the Archive shown, with tidied tabs in it.
     static let catalogueStateArchiveList = Word(key: "catalogue.state.archive_list")
+
+    /// What is awake, nothing
+    ///
+    /// Design catalogue: the Library with the list of tabs that are awake shown, when no tab is awake.
+    static let catalogueStateAwakeEmpty = Word(key: "catalogue.state.awake_empty")
+
+    /// What is awake
+    ///
+    /// Design catalogue: the Library with the list of tabs that are awake shown, with tabs in it.
+    static let catalogueStateAwakeList = Word(key: "catalogue.state.awake_list")
 
     /// Downloads: none
     ///
@@ -1619,6 +1699,20 @@ extension Word {
         "archive.older",
         "archive.tidied",
         "archive.title",
+        "awake.asleep",
+        "awake.done",
+        "awake.empty",
+        "awake.private",
+        "awake.sleep_others",
+        "awake.title",
+        "awake.why.capture",
+        "awake.why.download",
+        "awake.why.in_sight",
+        "awake.why.loading",
+        "awake.why.question",
+        "awake.why.sound",
+        "awake.why.typed",
+        "awake.why.waiting",
         "catalogue.colours",
         "catalogue.radius",
         "catalogue.size",
@@ -1626,6 +1720,8 @@ extension Word {
         "catalogue.start_failed",
         "catalogue.state.archive_empty",
         "catalogue.state.archive_list",
+        "catalogue.state.awake_empty",
+        "catalogue.state.awake_list",
         "catalogue.state.downloads_empty",
         "catalogue.state.downloads_list",
         "catalogue.state.empty",

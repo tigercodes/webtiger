@@ -267,7 +267,7 @@ class ArchiveListTest {
     }
 
     /**
-     * Narrower than the switch's four parts are together, whatever the words measure here (a
+     * Narrower than the switch's five parts are together, whatever the words measure here (a
      * test on the JVM measures them as next to nothing: each part is as wide as its padding).
      */
     private val NARROW = 100.dp
@@ -292,7 +292,29 @@ class ArchiveListTest {
         compose.setContent { WebTigerTheme { Box(Modifier.width(NARROW)) { LibrarySwitch(LibraryPart.HISTORY) {} } } }
         compose.waitForIdle()
         assertEquals(1f, shareInSight("library-history"), 0.01f)
-        assertEquals("the last is past the row's end", 0f, shareInSight("library-archive"), 0.01f)
+        assertEquals("the last is past the row's end", 0f, shareInSight("library-awake"), 0.01f)
+    }
+
+    /** The Library's fifth list (056, 057): its name is the last of the switch, and is brought in sight when it is the one shown. */
+    @Test
+    fun whatIsAwakeIsTheLastOfTheSwitchAndIsBroughtInSightWhenItIsShown() {
+        compose.setContent { WebTigerTheme { Box(Modifier.width(NARROW)) { LibrarySwitch(LibraryPart.AWAKE) {} } } }
+        compose.waitForIdle()
+        assertEquals("the one shown is all in sight", 1f, shareInSight("library-awake"), 0.01f)
+        assertEquals("and the first is out of it", 0f, shareInSight("library-history"), 0.01f)
+        val lefts = listOf("library-history", "library-downloads", "library-permissions", "library-archive", "library-awake").map { compose.onNodeWithTag(it).fetchSemanticsNode().positionInRoot.x }
+        assertEquals("in their order", lefts.sorted(), lefts)
+    }
+
+    /** A window with no Archive has no name for one; it has the name of what is awake still, and that name chooses that list. */
+    @Test
+    fun aWindowWithNoArchiveHasNoNameForOneAndHasWhatIsAwakeStill() {
+        val chosen = ArrayList<LibraryPart>()
+        compose.setContent { WebTigerTheme { LibrarySwitch(LibraryPart.HISTORY, archive = false) { chosen.add(it) } } }
+        compose.onNodeWithTag("library-archive").assertDoesNotExist()
+        compose.onNodeWithTag("library-awake").assertExists().performClick()
+        compose.onNodeWithTag("library-downloads").performClick()
+        assertEquals(listOf(LibraryPart.AWAKE, LibraryPart.DOWNLOADS), chosen)
     }
 
     // The window's way into the list

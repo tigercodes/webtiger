@@ -1,5 +1,5 @@
-// The Archive (049) in the design catalogue: the Library with its fourth list shown, with
-// tidied tabs in it, and with none. What a core would answer, with no core behind it.
+// The Archive (049) in the design catalogue: the Library (057) with its fourth list shown,
+// with tidied tabs in it, and with none. What a core would answer, with no core behind it.
 import SwiftUI
 import WTContract
 import WTCoreClient
@@ -82,6 +82,7 @@ struct CatalogueArchiveList: View {
             downloads: DownloadsModel(core: core, windowID: 1),
             permissions: PermissionsModel(core: core, windowID: 1),
             archive: ArchiveModel(core: core, windowID: 1),
+            awake: AwakeModel(core: core, windowID: 1),
             open: { _ in }, done: {}
         )
         .environment(\.timeZone, Self.calendar.timeZone)

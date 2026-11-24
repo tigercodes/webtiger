@@ -64,6 +64,16 @@ public struct CatalogueView: View {
                             .overlay(RoundedRectangle(cornerRadius: Tokens.Radius.tile).strokeBorder(Tokens.Palette.hairline))
                     }
                 }
+                ForEach(CatalogueAwake.allCases) { state in
+                    VStack(alignment: .leading, spacing: Tokens.Space.s) {
+                        Text(state.title)
+                            .font(.headline)
+                        CatalogueAwakeList(state: state)
+                            .frame(height: CatalogueWindow.height)
+                            .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.tile))
+                            .overlay(RoundedRectangle(cornerRadius: Tokens.Radius.tile).strokeBorder(Tokens.Palette.hairline))
+                    }
+                }
                 ForEach(CatalogueSearch.allCases) { state in
                     VStack(alignment: .leading, spacing: Tokens.Space.s) {
                         Text(state.title)

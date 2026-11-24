@@ -87,11 +87,22 @@ final class CatalogueSnapshotTests: XCTestCase {
         }
     }
 
-    /// The Archive (049), in the Library: the switch has its four names.
+    /// The Archive (049), in the Library (057): the switch has its five names, on a line of
+    /// its own.
     func testEveryStateOfTheArchive() async throws {
         try skipWithoutPictures()
         for state in CatalogueArchive.allCases {
             await verify(CatalogueArchiveList(state: state), size: Self.librarySize, named: "archive-\(state.rawValue)")
+        }
+    }
+
+    /// What is awake (056), in the Library: the last of the switch's names. Tall enough for
+    /// every tab of the state, and the counts under them.
+    func testEveryStateOfWhatIsAwake() async throws {
+        try skipWithoutPictures()
+        let size = CGSize(width: Self.librarySize.width, height: 700)
+        for state in CatalogueAwake.allCases {
+            await verify(CatalogueAwakeList(state: state), size: size, named: "awake-\(state.rawValue)")
         }
     }
 

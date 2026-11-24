@@ -631,6 +631,12 @@ fun CatalogueScreen() {
                     CatalogueArchiveList(state, Modifier.fillMaxWidth().height(CatalogueWindowHeight).framed())
                 }
             }
+            for (state in CatalogueAwake.entries) {
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.Space.s)) {
+                    Text(text = stringResource(state.title), style = MaterialTheme.typography.titleMedium)
+                    CatalogueAwakeList(state, Modifier.fillMaxWidth().height(CatalogueWindowHeight).framed())
+                }
+            }
             for (state in CatalogueSpaces.entries) {
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.Space.s)) {
                     Text(text = stringResource(state.title), style = MaterialTheme.typography.titleMedium)

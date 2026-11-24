@@ -717,7 +717,7 @@ Spaces with their login sets, colours and icons; shared logins; the tree with dr
 
 The lifecycle of §5.7; snapshots; keep-awake reasons; live-tab limits; pressure handling; tidying and the Archive; the Memory view; every §7 budget as a failing test; the published run.
 
-**Where W3 stands (2026-11-24).** Built: tidying and the Archive (049, with W2). What a sleeping tab keeps ([051](051-a-tabs-kept-state.md)), in the core and both shells: a tab's state is asked for when it leaves the front, kept in the store, dropped when the tab goes elsewhere or its history is forgotten, and handed back when the tab wakes, so that a tab that left the front wakes as it was, from its engine's own state. What keeps a tab awake ([052](052-what-keeps-a-tab-awake.md)), in the core and both shells: sound, the camera or the microphone, typed text, a download, a question, a load. The sleep time ([053](053-a-tab-sleeps-by-itself.md)): a tab out of sight for half an hour, with no reason to be awake, is put to sleep and wakes as it was. The limit of live tabs ([054](054-the-limit-of-live-tabs.md)), in the core and both shells: each shell says what it runs on, and no more tabs are alive than the device holds (three on a phone, six on a tablet, by its memory on a desktop), the ones longest out of sight sleeping first. The system short of memory ([055](055-the-system-short-of-memory.md)), in the core and both shells: a shell that hears its system say so tells the core, short or very short, and the tabs out of sight with no reason to be awake sleep at once; a Mac, an iPhone and an iPad hear the system's memory-pressure source, and Android, which no longer tells a running app from Android 14, is asked once a minute. With it the three ways a tab comes to sleep by itself are built. The list of what is awake, with "sleep all others" ([056](056-what-is-awake.md)), which is the plan's Memory view without its figures: built in the core, and in no shell yet: where it is shown waits for the Library, which is not designed. Not built: that list in a window; the Library; marks for the reasons; pictures of pages; the budgets as tests; the published run.
+**Where W3 stands (2026-11-24).** Built: tidying and the Archive (049, with W2). What a sleeping tab keeps ([051](051-a-tabs-kept-state.md)), in the core and both shells: a tab's state is asked for when it leaves the front, kept in the store, dropped when the tab goes elsewhere or its history is forgotten, and handed back when the tab wakes, so that a tab that left the front wakes as it was, from its engine's own state. What keeps a tab awake ([052](052-what-keeps-a-tab-awake.md)), in the core and both shells: sound, the camera or the microphone, typed text, a download, a question, a load. The sleep time ([053](053-a-tab-sleeps-by-itself.md)): a tab out of sight for half an hour, with no reason to be awake, is put to sleep and wakes as it was. The limit of live tabs ([054](054-the-limit-of-live-tabs.md)), in the core and both shells: each shell says what it runs on, and no more tabs are alive than the device holds (three on a phone, six on a tablet, by its memory on a desktop), the ones longest out of sight sleeping first. The system short of memory ([055](055-the-system-short-of-memory.md)), in the core and both shells: a shell that hears its system say so tells the core, short or very short, and the tabs out of sight with no reason to be awake sleep at once; a Mac, an iPhone and an iPad hear the system's memory-pressure source, and Android, which no longer tells a running app from Android 14, is asked once a minute. With it the three ways a tab comes to sleep by itself are built. The list of what is awake, with "sleep all others" ([056](056-what-is-awake.md)), which is the plan's Memory view without its figures: built in the core and in both shells, as the fifth list of the Library. The Library ([057](057-the-library.md)): the sheet that History, Downloads, Permissions and the Archive shared, with its switch on a line of its own on every system so that it holds as many lists as there are. Not built: marks for the reasons; pictures of pages; the budgets as tests; the published run.
 
 ### W4 — Guard (large)
 
@@ -965,15 +965,22 @@ Four features of W2 are built on the recommendations of their own documents, the
 8. An iPhone's memory warning is short, and very short is left to the system's memory-pressure source: the warning comes with that source's warning too.
 9. A shell in fake mode does not listen to its system: a suite's run must not go by how busy its machine is.
 
-**What is awake, and "sleep all others"** ([056](056-what-is-awake.md) §6, put on 2026-11-24; the core is built on these, the shells are not; the sixth of W3):
+**What is awake, and "sleep all others"** ([056](056-what-is-awake.md) §6, put on 2026-11-24; built on these; the sixth of W3):
 
 1. The list is of the whole app: every window, every Space.
 2. A private window's tabs are counted, and named only in that window's own list.
 3. "Sleep all others" leaves a tab with a reason awake.
 4. No figure of memory until an engine gives one: neither engine built here does.
-5. The list waits for the Library, and is one of its parts: the sheet that History, Downloads, Permissions and the Archive share has no room in its switch for a fifth name, and is a stopgap for the Library. Or it is put in that sheet now, or opened by a command of its own.
+5. The list is one of the Library's parts, the fifth ([057](057-the-library.md)).
 6. It is called "Awake", and its button "Sleep All Others".
 7. A tab cannot be put to sleep by itself from the list yet.
+
+**The Library** ([057](057-the-library.md) §6, put on 2026-11-24; built on these; the seventh of W3):
+
+1. The Library is the sheet the four lists shared, kept as a sheet.
+2. Its switch is on a line of its own, above the shown list's buttons, on every system; one line, moved sideways where the names are more than it holds. (On a narrow window a name can then be past the row's end: a menu would have none out of sight, and all but one out of sight.)
+3. Awake is the last of the five.
+4. The button keeps its words, "History and Downloads", and its key.
 
 Also the owner's to say, from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
 

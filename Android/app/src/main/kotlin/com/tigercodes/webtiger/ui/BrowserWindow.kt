@@ -310,12 +310,16 @@ private fun Window(session: BrowserSession, model: BrowserModel, private: Privat
             // The Archive of the window's Space (049). A private window has none: nothing of
             // it is tidied, or written.
             val archive = remember(windowId) { ArchiveModel(session, windowId) }
+            // What is awake (056), in every window and Space: the last of the Library's lists.
+            val awake = remember(windowId) { AwakeModel(session, windowId) }
             BackHandler { showingHistory = false }
             Library(
                 history = history,
                 downloads = downloads,
                 permissions = permissions,
                 archive = archive.takeUnless { model.isPrivate },
+                awake = awake,
+                row = model.tabs,
                 onOpen = { visit ->
                     showingHistory = false
                     model.load(visit.url)

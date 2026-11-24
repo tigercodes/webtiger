@@ -21,6 +21,7 @@ import com.tigercodes.webtiger.core.v1.Request
 import com.tigercodes.webtiger.design.Tokens
 import com.tigercodes.webtiger.core.v1.TestMode
 import com.tigercodes.webtiger.ui.ArchiveModel
+import com.tigercodes.webtiger.ui.AwakeModel
 import com.tigercodes.webtiger.ui.BrowserModel
 import com.tigercodes.webtiger.ui.BrowserSession
 import com.tigercodes.webtiger.ui.Device
@@ -610,6 +611,38 @@ class ThroughTheCoreTest {
             await("the first put to sleep") { pages.made[0].closed && model.tabs.first { it.tab_id == firstTab }.asleep }
             assertFalse("the tab in front is awake", onMain { pages.made[1].closed })
             assertEquals("A Story", onMain { model.tab.title })
+        }
+
+    /**
+     * What is awake (056), through the real core: the list names both tabs, in their row's
+     * order, the one in front on screen; "sleep all others" has the core put the one behind to
+     * sleep, and the list is then of the one that is left, with one counted asleep.
+     */
+    @Test
+    fun theRealCoreSaysWhatIsAwakeAndSleepsTheOthersWhenAsked() =
+        runBlocking {
+            val running = session()
+            val (model, firstTab) = twoTabs(running)
+            val awake = AwakeModel(running, onMain { model.windowId!! })
+            onMain { awake.reload() }
+            await("the list of what is awake") { awake.loaded }
+            onMain {
+                assertEquals(listOf("Example Domain", "A Story"), awake.tabs.map { it.title })
+                assertEquals(listOf(false, true), awake.tabs.map { it.in_sight })
+                assertEquals(firstTab, awake.tabs[0].tab_id)
+                assertEquals("example.com", awake.tabs[0].host)
+                assertEquals(0, awake.asleep)
+                assertTrue(awake.othersCouldSleep)
+            }
+
+            onMain { awake.sleepOthers() }
+            await("the first put to sleep, and the list asked for again") { pages.made[0].closed && awake.tabs.size == 1 }
+            onMain {
+                assertEquals(listOf("A Story"), awake.tabs.map { it.title })
+                assertEquals(1, awake.asleep)
+                assertFalse(awake.othersCouldSleep)
+                assertTrue(model.tabs.first { it.tab_id == firstTab }.asleep)
+            }
         }
 
     @Test
