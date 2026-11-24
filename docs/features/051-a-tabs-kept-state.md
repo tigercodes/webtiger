@@ -159,6 +159,7 @@ The store (schema 16): `tab_state(id, engine, state)`, and `tab.state_id`: a sav
 - **Tidying** (049) closes a tab by the way a person does, so its state goes with it; no test tidies a tab that has a state.
 - **Why the gate over this found a fault of the Android adapter's.** One of the app's device tests failed on this commit, on the first run after the emulator's cold start, three times of three, and passed on the commit before: a page that asked for the camera as it loaded was reported before its own commit ([014](014-permissions.md) §6). The adapter's order was wrong before this change and is mended. What this change did to bring it out is not known: in that test no tab leaves the front, so nothing is asked of the shell that was not asked before.
 - **A store that refuses** while a state is forgotten: `ForgetHistory` is then answered with the store's code, after the visits are gone. Not tested: the store in a test does not refuse.
+- **The plan's budget for a sleeping tab** is 250 KB on disk ([000](000-master-plan.md) §7), and D3 keeps a state of up to 512 KB: a tab with a state near the limit is over the budget before it has a picture. Found on 2026-11-24, while the list of what is awake was built; not settled. It is the owner's to say which number gives way, with the budgets as tests (W3).
 
 ## 9. Done checklist
 

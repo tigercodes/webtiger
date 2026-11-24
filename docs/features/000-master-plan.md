@@ -975,7 +975,7 @@ Four features of W2 are built on the recommendations of their own documents, the
 6. It is called "Awake", and its button "Sleep All Others".
 7. A tab cannot be put to sleep by itself from the list yet.
 
-Also the owner's to say, from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
+Also the owner's to say: which gives way, the budget of 250 KB on disk for a sleeping tab (§7) or the 512 KB a kept state may be ([051](051-a-tabs-kept-state.md) D3, §8). And from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
 
 
 ---
