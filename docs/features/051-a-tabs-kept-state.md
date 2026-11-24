@@ -132,5 +132,5 @@ The store (schema 16): `tab_state(id, engine, state)`, and `tab.state_id`: a sav
 - [x] The core, the store and the contract, with D6.
 - [ ] Apple's shell, and the adapter suite.
 - [ ] Android's shell, and the adapter suite on a device.
-- [ ] The core: the gate.
+- [x] The core: the gate, on 2026-11-24. Over the core's commit: `lint`, `core` (678, and the strings tool's 24), `unit` (351 on the Mac), `build`, the Mac's UI suite (58), `ios` (333 on the iPhone simulator), the iPhone's UI suite (45) and `android` (474 and 32 on the JVM) were green; `android-device` failed one test of 170, by a fault of the Android adapter's that the run brought out (§8; [014](014-permissions.md) §6). With that mended, in a commit that touches the Android adapter and its device tests and nothing else: `lint`, `android` (474 and 32) and `android-device` (171 on the emulator, twice from a cold start) were green. The stages of Apple's systems and the core were not run again over that commit: it changes nothing they build.
 - [ ] The shells: the gate.
