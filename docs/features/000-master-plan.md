@@ -924,7 +924,7 @@ Four features of W2 are built on the recommendations of their own documents, the
 
 1. A tab's state is asked for when it leaves the front, and before its web view is destroyed.
 2. It is kept in the store, with the session.
-3. A state larger than 512 KB is not kept.
+3. A state larger than 128 KB is not kept: the half of the budget of 250 KB on disk for a sleeping tab (§7), which its page's picture is to share. (512 KB until 2026-11-24.)
 4. A Site sleeps at its home, with no state.
 5. The tab in front at a quit wakes at its address.
 6. Forgetting history drops the states of the tabs with those logins, and a tab that is open is asked for none until it has another web view.
@@ -975,7 +975,7 @@ Four features of W2 are built on the recommendations of their own documents, the
 6. It is called "Awake", and its button "Sleep All Others".
 7. A tab cannot be put to sleep by itself from the list yet.
 
-Also the owner's to say: which gives way, the budget of 250 KB on disk for a sleeping tab (§7) or the 512 KB a kept state may be ([051](051-a-tabs-kept-state.md) D3, §8). And from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
+Also the owner's to say, from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
 
 
 ---

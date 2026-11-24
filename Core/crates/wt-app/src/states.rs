@@ -15,8 +15,10 @@ use crate::error::AppError;
 use crate::model::Sleeper;
 
 /// The most bytes of a state that is kept (051 D3). A larger one is not
-/// kept: its tab wakes at its address.
-pub(crate) const MOST_STATE: usize = 512 * 1024;
+/// kept: its tab wakes at its address. A sleeping tab is to cost no more
+/// than 250 KB on disk (the plan's budget), its page's picture with it: a
+/// state has the half of that.
+pub(crate) const MOST_STATE: usize = 128 * 1024;
 
 /// How long a tab is out of sight before it is put to sleep (053 D1): thirty
 /// of the core's looks, one a minute.

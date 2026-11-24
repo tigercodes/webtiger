@@ -399,9 +399,10 @@ fn a_state_that_is_too_large_is_not_kept_and_the_one_before_it_is_dropped() {
         shell.submit(first, HOME).await;
         let second = shell.open_tab(window, MAIL).await;
         shell.settle().await;
-        // The first has a state, of the usual size (1). One of four hundred thousand bytes
-        // is kept as well: the limit is above it. It is the second's (2).
-        shell.engine.state_padding = 400_000;
+        // The first has a state, of the usual size (1). One of a hundred and thirty
+        // thousand bytes is kept as well: the limit, 128 KB, is just above it. It is the
+        // second's (2).
+        shell.engine.state_padding = 130_000;
         shell.activate_tab(first).await;
         shell.settle().await;
         // And the first's again, of the usual size (3), in the place of the one it had.
@@ -411,7 +412,7 @@ fn a_state_that_is_too_large_is_not_kept_and_the_one_before_it_is_dropped() {
         drop(shell);
         assert_eq!(kept(folder.path()), [2, 3]);
         let large = store(folder.path()).kept_state(2).unwrap().unwrap().1.len();
-        assert!((400_000..=512 * 1024).contains(&large), "{large} bytes");
+        assert!((130_000..=128 * 1024).contains(&large), "{large} bytes");
 
         // Each wakes from its own, and has a state again when it leaves the front (4, 5).
         let mut shell = start(folder.path());
@@ -423,10 +424,10 @@ fn a_state_that_is_too_large_is_not_kept_and_the_one_before_it_is_dropped() {
         shell.activate_tab(second).await;
         shell.settle().await;
         assert_eq!(shell.engine.restores.len(), 2);
-        // Then each leaves the front with a state of half a megabyte and more: it is not
-        // kept, and the one the tab had is dropped. An old state for a page that has
-        // changed so would wake the tab as it no longer is.
-        shell.engine.state_padding = 600_000;
+        // Then each leaves the front with a state just over the limit: it is not kept, and
+        // the one the tab had is dropped. An old state for a page that has changed so would
+        // wake the tab as it no longer is.
+        shell.engine.state_padding = 132_000;
         shell.activate_tab(first).await;
         shell.activate_tab(second).await;
         shell.settle().await;

@@ -624,9 +624,9 @@ fn with_no_state_to_give_as_a_tab_sleeps_or_one_too_large_the_one_it_had_is_its_
         shell.settle().await;
 
         // The second tab left the front as the first woke, with a state of the usual size
-        // (2). As it sleeps the engine gives one of more than half a megabyte, which is not
+        // (2). As it sleeps the engine gives one just over the limit of 128 KB, which is not
         // kept: the one it had is its still.
-        shell.engine.state_padding = 600_000;
+        shell.engine.state_padding = 132_000;
         minutes(&mut shell, SLEEP_AFTER).await;
         assert_eq!(asleep(&shell, subscription), [false, true]);
         shell.settle().await;
