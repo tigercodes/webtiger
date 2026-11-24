@@ -117,4 +117,4 @@ The first list of icons had five black pictures and two grey ones. On the first 
 - [ ] The owner's word on §6.
 - [x] The core, the store and the contract.
 - [x] The shells: Apple's systems and Android.
-- [ ] The gate, over the core and the shells together.
+- [x] The gate, over the core and the shells together: `Tools/test.sh all` green, and `android-device`, on 2026-11-23: `lint`, `core` (660, and the strings tool's 24), `unit` (351 on the Mac), `build`, the Mac's UI suite (58), `ios` (333 on the iPhone simulator), the iPhone's UI suite (45), `android` (474 and 32 on the JVM) and `android-device` (170 on the emulator).
