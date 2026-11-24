@@ -717,7 +717,7 @@ Spaces with their login sets, colours and icons; shared logins; the tree with dr
 
 The lifecycle of §5.7; snapshots; keep-awake reasons; live-tab limits; pressure handling; tidying and the Archive; the Memory view; every §7 budget as a failing test; the published run.
 
-**Where W3 stands (2026-11-24).** Built: tidying and the Archive (049, with W2). What a sleeping tab keeps ([051](051-a-tabs-kept-state.md)), in the core and both shells: a tab's state is asked for when it leaves the front, kept in the store, dropped when the tab goes elsewhere or its history is forgotten, and handed back when the tab wakes, so that a tab that left the front wakes as it was, from its engine's own state. What keeps a tab awake ([052](052-what-keeps-a-tab-awake.md)), in the core and both shells: sound, the camera or the microphone, typed text, a download, a question, a load. The sleep time ([053](053-a-tab-sleeps-by-itself.md)): a tab out of sight for half an hour, with no reason to be awake, is put to sleep and wakes as it was. The limit of live tabs ([054](054-the-limit-of-live-tabs.md)), in the core and both shells: each shell says what it runs on, and no more tabs are alive than the device holds (three on a phone, six on a tablet, by its memory on a desktop), the ones longest out of sight sleeping first. Not built: the system short of memory; pictures of pages; the Memory view; the budgets as tests; the published run.
+**Where W3 stands (2026-11-24).** Built: tidying and the Archive (049, with W2). What a sleeping tab keeps ([051](051-a-tabs-kept-state.md)), in the core and both shells: a tab's state is asked for when it leaves the front, kept in the store, dropped when the tab goes elsewhere or its history is forgotten, and handed back when the tab wakes, so that a tab that left the front wakes as it was, from its engine's own state. What keeps a tab awake ([052](052-what-keeps-a-tab-awake.md)), in the core and both shells: sound, the camera or the microphone, typed text, a download, a question, a load. The sleep time ([053](053-a-tab-sleeps-by-itself.md)): a tab out of sight for half an hour, with no reason to be awake, is put to sleep and wakes as it was. The limit of live tabs ([054](054-the-limit-of-live-tabs.md)), in the core and both shells: each shell says what it runs on, and no more tabs are alive than the device holds (three on a phone, six on a tablet, by its memory on a desktop), the ones longest out of sight sleeping first. Designed: the system short of memory ([055](055-the-system-short-of-memory.md)). Not built: the system short of memory; pictures of pages; the Memory view; the budgets as tests; the published run.
 
 ### W4 — Guard (large)
 
@@ -952,6 +952,16 @@ Four features of W2 are built on the recommendations of their own documents, the
 3. The limit is passed when every other tab has a reason to be awake.
 4. A private window's tabs are counted, and are never the ones put to sleep.
 5. Fake mode has no limit unless a suite gives one.
+
+**When the system is short of memory** ([055](055-the-system-short-of-memory.md) §6, put on 2026-11-24; designed, not built; the fifth of W3):
+
+1. Short: every tab out of sight with no reason to be awake sleeps at once.
+2. The tabs that have just come alive are not spared, as they are by the limit.
+3. Very short: a tab that is only on its way sleeps too; a song, a call, a draft, a download and a question stay.
+4. A private window's tabs stay.
+5. A report is acted on once, and changes nothing after.
+6. In fake mode the core is told every few seconds, by a knob of the suite's.
+7. On Android 14 and later, where a running app is no longer told, the shell asks the system once a minute while the app is in front.
 
 Also the owner's to say, from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
 
