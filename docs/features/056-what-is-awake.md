@@ -95,7 +95,9 @@ Nothing is asked of a shell that it does not do already: a tab that is put to sl
 ## 5. In what order
 
 1. **The core:** the list (what is on it, its order, a private window's tabs, the count of those asleep), and the command. Against the scripted engine. **Built.**
-2. **The shells, not built:** the list drawn, where History, Downloads and the Archive are (D5), with the reasons in words; the command as its one button. Asked for when it is opened and again whenever the window changes while it is open: no timer.
+2. **The shells, not built:** the list drawn, with the reasons in words; the command as its one button. Asked for when it is opened and again whenever the window changes while it is open: no timer.
+
+**Why the shells wait.** The recommendation was to put the list where History, Downloads, Permissions and the Archive are (D5): a sheet whose top is a switch with their four names, beside each list's own buttons. Tried on 2026-11-24, a fifth name does not fit. On the Mac the sheet's top is one line, and four names beside two buttons fill it at the width it has; on an iPhone the names already run off the side and are moved along. And that sheet is itself a stopgap: its own comment says the Library of W3 "will be their home". So where this list lives is the Library's question, and the Library is not designed. The shells wait for that, and the choice is put to the owner as D5 now stands.
 
 ## 6. Decisions
 
@@ -107,7 +109,7 @@ Nothing is asked of a shell that it does not do already: a tab that is put to sl
 | D2 | A private window's tabs are counted, and named only in that window's own list | A page's name in a private window is not for another window's list (037) | Never listed anywhere, only counted; or listed everywhere, since the person opened them |
 | D3 | "Sleep all others" leaves a tab with a reason awake | The list has just said why it is awake. One press should not end a call or lose a draft | It sleeps everything that is out of sight but a draft; or it asks first when something would be lost |
 | D4 | No figure of memory until an engine gives one | Neither engine here gives one. A figure that is guessed is worse than none | The whole app's memory as one figure at the top, which the system does give: true, and no help in choosing a tab |
-| D5 | The list is with History, Downloads and the Archive | It is a list about the browser, opened now and then. A fourth place for one more list would be one more thing to find | A window of its own on the Mac; a command in the menu only |
+| D5 | The list waits for the Library (W3), and is one of its parts | It is a list about the browser, opened now and then, as History, Downloads, Permissions and the Archive are. Their sheet's switch has no room for a fifth name (§5), and is to be replaced by the Library in any case | Now, in that sheet, with its top on two lines on the Mac as it is on an iPhone, and the sheet wider. Or now, apart from it: a command in the Mac's Window menu and a row in a phone's menu, opening the list alone |
 | D6 | It is called "Awake", and its button "Sleep All Others" | It lists what is awake, and "Memory" promises figures it does not have (D4) | "Memory", as the plan has it |
 | D7 | A tab cannot be put to sleep by itself from the list yet | One command first. A row's own button needs its own rule: what of its reasons? | Each row has "Sleep", which sleeps it whatever its reasons, the person having pressed it |
 
