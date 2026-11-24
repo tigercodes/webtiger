@@ -99,6 +99,7 @@ Nothing a person typed, played or was asked crosses the contract by this: three 
 - **Sound and typing come from a script of the adapter's,** in every page and every frame, in a world of the adapter's own: a page's scripts cannot see it, call what it calls, or say anything in its name (tested: the page finds no such thing to call).
 - **Typing** is a key the person pressed going into a line, a larger field, or a part of the page that can be edited: an event the engine made. A box that is ticked, a slider and a button are not typing; nor is what a page's own script puts in a field, whatever the script then says happened.
 - **Sound** is a player of the page (a sound or a film) that is playing and is neither turned off nor all the way down. The script hears it begin, stop, end, and its loudness change; a frame that goes takes its sound with it.
+- **On an iPhone a page cannot turn its own sound down:** the loudness there is the device's. A page that sets it changes nothing that is heard, WebKit says no change happened, and the sound is a sound still. The gate's first run over this found it: the suite had held the iPhone to what a Mac does. It now holds each to its own.
 - **Each frame says for itself,** by a name it makes up, all it knows as it now is. The page plays sound while any of its frames does, and was typed into once any of them was.
 - **Of the page:** the adapter begins again at each commit, and tells the core only what has changed. A camera the new page holds already is said.
 

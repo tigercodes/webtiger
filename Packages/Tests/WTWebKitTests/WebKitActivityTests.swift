@@ -165,12 +165,18 @@ final class WebKitActivityTests: AdapterTestCase {
         await run("document.getElementById('tune').muted = false", in: 1)
         await awaitDoings(1, 1)
         XCTAssertEqual(doings(1), ["sound"])
-        // All the way down: not a sound any more; and up again.
+        // All the way down: not a sound any more; and up again. On a Mac. On an iPhone the
+        // loudness is the device's and never the page's: a page that sets it changes nothing
+        // that is heard, WebKit says no change happened, and the sound is a sound still.
         await run("document.getElementById('tune').volume = 0", in: 1)
-        await awaitDoings(1, 2)
-        await run("document.getElementById('tune').volume = 0.5", in: 1)
-        await awaitDoings(1, 3)
-        XCTAssertEqual(doings(1), ["sound", "", "sound"])
+        #if os(iOS)
+            await nothingMore(1, than: 1)
+        #else
+            await awaitDoings(1, 2)
+            await run("document.getElementById('tune').volume = 0.5", in: 1)
+            await awaitDoings(1, 3)
+            XCTAssertEqual(doings(1), ["sound", "", "sound"])
+        #endif
     }
 
     func testASoundGoesWithItsPage() async {
