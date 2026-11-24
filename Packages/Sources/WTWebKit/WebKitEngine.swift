@@ -196,9 +196,7 @@ public final class WebKitEngine: HostServices {
             return trusted ? .ack(WTAck()) : failure("certificate.unknown")
         case let .webViewFetchIcon(fetch): return fetchIcon(fetch)
         case let .webViewSaveState(save): return state(of: save.webViewID)
-        // This adapter takes no state yet (051): the address is loaded, which is what the
-        // contract has a shell do with a state its engine will not take.
-        case let .webViewRestore(restore): return load(restore.url, in: restore.webViewID)
+        case let .webViewRestore(restore): return self.restore(restore)
         }
     }
 
@@ -210,11 +208,21 @@ public final class WebKitEngine: HostServices {
         return .ack(WTAck())
     }
 
-    /// A web view's own state (051). This adapter gives none yet: its tab wakes at its
-    /// address, as before there were states.
+    /// A web view's own state (051): WebKit's `interactionState`, which is data (the adapter
+    /// suite holds it to that). None, should WebKit give none or something that is not data:
+    /// the tab then wakes at its address.
     private func state(of webViewID: UInt64) -> WTHostResponse.OneOf_Kind {
-        guard pages[webViewID] != nil else { return failure("webview.unknown") }
-        return .webViewState(WTWebViewState())
+        guard let page = pages[webViewID] else { return failure("webview.unknown") }
+        var state = WTWebViewState()
+        state.state = page.webView.interactionState as? Data ?? Data()
+        return .webViewState(state)
+    }
+
+    /// Makes a web view what a state says (051), and where WebKit will not take the state
+    /// loads the address that came with it: the tab wakes either way.
+    private func restore(_ restore: WTWebViewRestore) -> WTHostResponse.OneOf_Kind {
+        guard let page = pages[restore.webViewID] else { return failure("webview.unknown") }
+        return page.restore(restore.state) ? .ack(WTAck()) : load(restore.url, in: restore.webViewID)
     }
 
     /// The core asked for a page's icon (046 §5a): answered at once, whatever comes of it.

@@ -21,7 +21,7 @@ Until now a new window was always one empty tab: everything open was lost with t
 **Not in, each with where it goes:**
 
 - **Several windows.** The session is one window's: the first opened in a run. Another window opened beside it starts empty and is not saved. Windows in the plural are W2.
-- **Each tab's back and forward, its scroll position and what was typed in a form.** The engines can save those (001 §11.3, Q5), through a host request that does not exist yet. A restored tab loads its address afresh. That is W3's sleeping tabs, which this is the first step towards.
+- **Each tab's back and forward, its scroll position and what was typed in a form.** The engines can save those (001 §11.3, Q5), through a host request that does not exist yet. A restored tab loads its address afresh. That is W3's sleeping tabs, which this is the first step towards. (Since [051](051-a-tabs-kept-state.md): a tab that had left the front is made from its engine's state where its shell gives one, and comes back with its back and forward and its scroll position.)
 - **A way to say "do not bring them back".** With settings.
 - **Private windows** (W2): nothing of one is ever written.
 

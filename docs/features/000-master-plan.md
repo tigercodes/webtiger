@@ -717,7 +717,7 @@ Spaces with their login sets, colours and icons; shared logins; the tree with dr
 
 The lifecycle of §5.7; snapshots; keep-awake reasons; live-tab limits; pressure handling; tidying and the Archive; the Memory view; every §7 budget as a failing test; the published run.
 
-**Where W3 stands (2026-11-24).** Built: tidying and the Archive (049, with W2). In the core: what a sleeping tab keeps ([051](051-a-tabs-kept-state.md)): a tab's state is asked for when it leaves the front, kept in the store, dropped when the tab goes elsewhere or its history is forgotten, and handed back when the tab wakes. Not built: an engine's state in either shell (051's next two parts); what keeps a tab awake; the sleep time and the limit of live tabs; pressure; pictures of pages; the Memory view; the budgets as tests; the published run.
+**Where W3 stands (2026-11-24).** Built: tidying and the Archive (049, with W2). In the core and Apple's shell: what a sleeping tab keeps ([051](051-a-tabs-kept-state.md)): a tab's state is asked for when it leaves the front, kept in the store, dropped when the tab goes elsewhere or its history is forgotten, and handed back when the tab wakes. On Apple's systems a tab that left the front wakes as it was, from WebKit's own state. Not built: Android's engine's state (051's last part); what keeps a tab awake; the sleep time and the limit of live tabs; pressure; pictures of pages; the Memory view; the budgets as tests; the published run.
 
 ### W4 — Guard (large)
 
@@ -920,7 +920,7 @@ Four features of W2 are built on the recommendations of their own documents, the
 4. In the chip the icon takes the place of the initial; beside a name it stands before it.
 5. The chip is said to a screen reader by the Space's name, not its icon.
 
-**What a sleeping tab keeps** ([051](051-a-tabs-kept-state.md) §6, put on 2026-11-23, the sixth on 2026-11-24; built in the core, where no shell gives a state yet; the first of W3):
+**What a sleeping tab keeps** ([051](051-a-tabs-kept-state.md) §6, put on 2026-11-23, the sixth on 2026-11-24; built in the core and on Apple's systems; Android's shell gives no state yet; the first of W3):
 
 1. A tab's state is asked for when it leaves the front, and before its web view is destroyed.
 2. It is kept in the store, with the session.

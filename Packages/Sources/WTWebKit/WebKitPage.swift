@@ -60,6 +60,18 @@ final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
         }
     }
 
+    /// Makes the web view what a state says (051): the list it goes back and forward through,
+    /// at the page it was at, which WebKit then loads as it loads any page. False when WebKit
+    /// would not take the state (it is not WebKit's, or is damaged, or says no page): the web
+    /// view is as it was. WebKit says nothing either way; a state it took is seen by the place
+    /// in its list, which is then another.
+    func restore(_ state: Data) -> Bool {
+        let before = webView.backForwardList.currentItem
+        webView.interactionState = state
+        let now = webView.backForwardList.currentItem
+        return now != nil && now !== before
+    }
+
     func close() {
         observations.removeAll()
         webView.navigationDelegate = nil
@@ -111,7 +123,8 @@ final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
     /// WebKit's `url` changed. It changes for many reasons, and only one of them is the page
     /// on screen changing its own address (a fragment, or the History API):
     ///
-    /// - `load()` sets it to the address asked for, at once;
+    /// - `load()` sets it to the address asked for, at once, and a state that is restored
+    ///   (051) to the page the state is at;
     /// - a load that starts, or is redirected, sets it to where the load is heading;
     /// - a load that fails sets it back.
     ///

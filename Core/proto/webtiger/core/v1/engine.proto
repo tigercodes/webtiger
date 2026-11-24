@@ -13,6 +13,14 @@
 //     (wt_nav_check) is reported as NavigationFailed "net.cancelled" by the
 //     shell itself when its engine then reports nothing, so a tab the user
 //     sent there does not wait for ever.
+//
+// And a third, because the core ends what a page asks when another page
+// commits:
+//   - What a page asks of the person (PermissionRequested, DialogRequested)
+//     is reported after the NavigationCommitted of the page that asks. An
+//     engine that says the two by different ways (the System WebView: one by
+//     a message to the app's thread, the other at once) is put in order by
+//     its adapter (014 §6).
 syntax = "proto3";
 
 package webtiger.core.v1;
