@@ -214,6 +214,10 @@ class AdapterTestCase: XCTestCase {
             case .searchRequested: "search"
             // An engine that hands over a page's icon (046). WebKit hands none.
             case .iconReceived: "icon"
+            // What the page is doing that keeps its tab awake (052).
+            case let .pageActivityChanged(doing):
+                "doing(" + [doing.playsSound ? "sound" : nil, doing.captures ? "capture" : nil, doing.typedInto ? "typed" : nil]
+                    .compactMap(\.self).joined(separator: ",") + ")"
             // At the engine's own pace, like a page's progress; and which icons a page
             // names (046 §5a), which the page is asked once it has loaded.
             case .progressChanged, .downloadProgress, .iconNamed: nil

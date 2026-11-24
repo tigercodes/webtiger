@@ -10,9 +10,9 @@ use wt_core::{
 };
 use wt_proto::v1::{
     AddressView, DialogKind, DialogPrompt, DownloadPrompt, EngineKind, FindView, GroupSummary,
-    IconNamed, Layout, LoadState, NavigationFailed, PermissionKind, PermissionPrompt, PromptView,
-    SignInPrompt, TabSummary, TabView, WindowSnapshot, ZoomView, address_view, engine_event,
-    prompt_view,
+    IconNamed, KeepAwake, Layout, LoadState, NavigationFailed, PermissionKind, PermissionPrompt,
+    PromptView, SignInPrompt, TabSummary, TabView, WindowSnapshot, ZoomView, address_view,
+    engine_event, prompt_view,
 };
 use wt_store::{SavedGroup, SavedTab, Space};
 
@@ -265,6 +265,11 @@ pub(crate) struct Tab {
     /// What the person would not let this page use: it is not asked for the
     /// same again until another page has committed.
     refused: Vec<PermissionKind>,
+    /// What the engine's adapter last said the page is doing that would keep
+    /// the tab awake (052). Of the page: it goes when another commits.
+    activity: PageActivity,
+    /// A download that this tab's web view started is coming (052).
+    downloading: bool,
     /// The person sent the tab somewhere, and no page has come of it yet: a
     /// download that comes of it is what they asked for (015). Good for
     /// one.
@@ -320,6 +325,18 @@ pub(crate) struct Tab {
     withheld: Option<WebViewId>,
 }
 
+/// What a page is doing that would keep its tab awake, as far as an engine's
+/// adapter can know (052).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+struct PageActivity {
+    /// An element of the page is playing something that can be heard.
+    sound: bool,
+    /// The page holds the camera or the microphone.
+    capture: bool,
+    /// The person typed into the page.
+    typed: bool,
+}
+
 /// What makes a tab a Site (039): where its home is, and what it is called
 /// while it is asleep. Both are what the page was when the tab was kept.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -373,6 +390,8 @@ impl Tab {
             zoom: ACTUAL_SIZE,
             prompts: VecDeque::new(),
             refused: Vec::new(),
+            activity: PageActivity::default(),
+            downloading: false,
             own_load: false,
             passable: None,
             spoke: false,
@@ -632,6 +651,9 @@ impl Tab {
                 // still asking is ended by the app, which tells the shell.)
                 self.find = None;
                 self.refused.clear();
+                // Nor is the new page doing what the one before was (052): the
+                // adapter says when it is.
+                self.activity = PageActivity::default();
                 // A page came of what the person asked for: what the page
                 // then starts is the page's.
                 self.own_load = false;
@@ -694,7 +716,18 @@ impl Tab {
                 self.can_go_back = changed.can_go_back;
                 self.can_go_forward = changed.can_go_forward;
             }
-            Kind::RendererGone(_) => self.fail("page.renderer_gone"),
+            Kind::RendererGone(_) => {
+                self.fail("page.renderer_gone");
+                // The page is gone, and what it was doing with it (052).
+                self.activity = PageActivity::default();
+            }
+            Kind::PageActivityChanged(changed) => {
+                self.activity = PageActivity {
+                    sound: changed.plays_sound,
+                    capture: changed.captures,
+                    typed: changed.typed_into,
+                };
+            }
             // About windows, not about this tab's page: `State::apply` has
             // dealt with them. And an address for the system changes nothing
             // of the page that asked for it: the app has dealt with that.
@@ -756,6 +789,7 @@ impl Tab {
             site_name: self.site_name(),
             group_id: self.group.map_or(0, GroupId::get),
             favourite: self.favourite,
+            keeps_awake: self.keeps_awake(),
             // Which way a step would move it is the row's to say (045),
             // and which icon it has is the icons' (046).
             steps_back: false,
@@ -805,7 +839,26 @@ impl Tab {
             away: self.away_from().is_some(),
             site_name: self.site_name(),
             favourite: self.favourite,
+            keeps_awake: self.keeps_awake(),
         }
+    }
+
+    /// Why the tab would not be put to sleep (052), in the order of the
+    /// kinds: what its page is doing, as the adapter says; a download its web
+    /// view started; a question that waits in it; a load on its way. (A tab
+    /// that is asleep has none: it is made with no page to be doing anything.)
+    fn keeps_awake(&self) -> Vec<i32> {
+        [
+            (self.activity.sound, KeepAwake::Sound),
+            (self.activity.capture, KeepAwake::Capture),
+            (self.activity.typed, KeepAwake::Typed),
+            (self.downloading, KeepAwake::Download),
+            (!self.prompts.is_empty(), KeepAwake::Question),
+            (self.load == Load::Loading, KeepAwake::Loading),
+        ]
+        .into_iter()
+        .filter_map(|(holds, reason)| holds.then_some(reason as i32))
+        .collect()
     }
 
     /// The site of the page that owns the web view (012). `None` with no
@@ -3061,6 +3114,18 @@ impl State {
         );
         self.dirty.insert(window_id);
         Some(tab)
+    }
+
+    /// These web views have a download coming, each one that it started
+    /// (052): their tabs are kept awake by it, and the others by none. (The
+    /// windows are told by the count of their login set's downloads, which
+    /// changes whenever this does.)
+    pub(crate) fn set_downloading(&mut self, web_views: &[WebViewId]) {
+        for tab in self.tabs.values_mut() {
+            tab.downloading = tab
+                .web_view
+                .is_some_and(|web_view| web_views.contains(&web_view));
+        }
     }
 
     /// So many downloads of a login set are coming now: the snapshots of

@@ -169,6 +169,73 @@ public nonisolated enum WTRowStep: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
+/// Since 1.45. A reason a tab is kept awake (052).
+public nonisolated enum WTKeepAwake: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+
+  /// Its page is playing something that can be heard.
+  case sound // = 1
+
+  /// Its page holds the camera or the microphone.
+  case capture // = 2
+
+  /// The person typed into its page.
+  case typed // = 3
+
+  /// A download its page started is coming.
+  case download // = 4
+
+  /// It is asking the person something: a prompt waits in it.
+  case question // = 5
+
+  /// It is on its way somewhere.
+  case loading // = 6
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .sound
+    case 2: self = .capture
+    case 3: self = .typed
+    case 4: self = .download
+    case 5: self = .question
+    case 6: self = .loading
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .sound: return 1
+    case .capture: return 2
+    case .typed: return 3
+    case .download: return 4
+    case .question: return 5
+    case .loading: return 6
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [WTKeepAwake] = [
+    .unspecified,
+    .sound,
+    .capture,
+    .typed,
+    .download,
+    .question,
+    .loading,
+  ]
+
+}
+
 public nonisolated enum WTLoadState: SwiftProtobuf.Enum, Swift.CaseIterable {
   public typealias RawValue = Int
   case unspecified // = 0
@@ -991,6 +1058,11 @@ public nonisolated struct WTTabSummary: Sendable {
   /// it has not got (QueryIcons), once, and keeps them.
   public var iconID: UInt64 = 0
 
+  /// Since 1.45. Why the tab would not be put to sleep (052), in the order of
+  /// the kinds; empty when nothing would keep it awake, and for a tab that is
+  /// asleep. A shell with no mark for a kind shows none.
+  public var keepsAwake: [WTKeepAwake] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1135,6 +1207,12 @@ public nonisolated struct WTTabView: @unchecked Sendable {
   public var favourite: Bool {
     get {_storage._favourite}
     set {_uniqueStorage()._favourite = newValue}
+  }
+
+  /// Since 1.45. As TabSummary's: why the tab would not be put to sleep.
+  public var keepsAwake: [WTKeepAwake] {
+    get {_storage._keepsAwake}
+    set {_uniqueStorage()._keepsAwake = newValue}
   }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -2546,6 +2624,10 @@ nonisolated extension WTRowStep: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0ROW_STEP_UNSPECIFIED\0\u{1}ROW_STEP_BACK\0\u{1}ROW_STEP_FORWARD\0")
 }
 
+nonisolated extension WTKeepAwake: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0KEEP_AWAKE_UNSPECIFIED\0\u{1}KEEP_AWAKE_SOUND\0\u{1}KEEP_AWAKE_CAPTURE\0\u{1}KEEP_AWAKE_TYPED\0\u{1}KEEP_AWAKE_DOWNLOAD\0\u{1}KEEP_AWAKE_QUESTION\0\u{1}KEEP_AWAKE_LOADING\0")
+}
+
 nonisolated extension WTLoadState: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0LOAD_STATE_UNSPECIFIED\0\u{1}LOAD_STATE_IDLE\0\u{1}LOAD_STATE_LOADING\0\u{1}LOAD_STATE_FAILED\0")
 }
@@ -3660,7 +3742,7 @@ nonisolated extension WTWindowSnapshot: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TabSummary"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{1}title\0\u{1}host\0\u{1}loading\0\u{1}kept\0\u{1}asleep\0\u{1}away\0\u{3}site_name\0\u{3}group_id\0\u{1}favourite\0\u{3}steps_back\0\u{3}steps_forward\0\u{3}icon_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{1}title\0\u{1}host\0\u{1}loading\0\u{1}kept\0\u{1}asleep\0\u{1}away\0\u{3}site_name\0\u{3}group_id\0\u{1}favourite\0\u{3}steps_back\0\u{3}steps_forward\0\u{3}icon_id\0\u{3}keeps_awake\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3681,6 +3763,7 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
       case 11: try { try decoder.decodeSingularBoolField(value: &self.stepsBack) }()
       case 12: try { try decoder.decodeSingularBoolField(value: &self.stepsForward) }()
       case 13: try { try decoder.decodeSingularUInt64Field(value: &self.iconID) }()
+      case 14: try { try decoder.decodeRepeatedEnumField(value: &self.keepsAwake) }()
       default: break
       }
     }
@@ -3726,6 +3809,9 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if self.iconID != 0 {
       try visitor.visitSingularUInt64Field(value: self.iconID, fieldNumber: 13)
     }
+    if !self.keepsAwake.isEmpty {
+      try visitor.visitPackedEnumField(value: self.keepsAwake, fieldNumber: 14)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3743,6 +3829,7 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs.stepsBack != rhs.stepsBack {return false}
     if lhs.stepsForward != rhs.stepsForward {return false}
     if lhs.iconID != rhs.iconID {return false}
+    if lhs.keepsAwake != rhs.keepsAwake {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3750,7 +3837,7 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TabView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}web_view_id\0\u{1}address\0\u{1}title\0\u{3}load_state\0\u{1}progress\0\u{3}can_go_back\0\u{3}can_go_forward\0\u{3}error_code\0\u{1}engine\0\u{3}login_set_id\0\u{1}find\0\u{1}zoom\0\u{1}prompt\0\u{3}certificate_passable\0\u{3}certificate_host\0\u{1}kept\0\u{1}away\0\u{3}site_name\0\u{1}favourite\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}web_view_id\0\u{1}address\0\u{1}title\0\u{3}load_state\0\u{1}progress\0\u{3}can_go_back\0\u{3}can_go_forward\0\u{3}error_code\0\u{1}engine\0\u{3}login_set_id\0\u{1}find\0\u{1}zoom\0\u{1}prompt\0\u{3}certificate_passable\0\u{3}certificate_host\0\u{1}kept\0\u{1}away\0\u{3}site_name\0\u{1}favourite\0\u{3}keeps_awake\0")
 
   fileprivate class _StorageClass {
     var _tabID: UInt64 = 0
@@ -3773,6 +3860,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _away: Bool = false
     var _siteName: String = String()
     var _favourite: Bool = false
+    var _keepsAwake: [WTKeepAwake] = []
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3803,6 +3891,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _away = source._away
       _siteName = source._siteName
       _favourite = source._favourite
+      _keepsAwake = source._keepsAwake
     }
   }
 
@@ -3841,6 +3930,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 18: try { try decoder.decodeSingularBoolField(value: &_storage._away) }()
         case 19: try { try decoder.decodeSingularStringField(value: &_storage._siteName) }()
         case 20: try { try decoder.decodeSingularBoolField(value: &_storage._favourite) }()
+        case 21: try { try decoder.decodeRepeatedEnumField(value: &_storage._keepsAwake) }()
         default: break
         }
       }
@@ -3913,6 +4003,9 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       if _storage._favourite != false {
         try visitor.visitSingularBoolField(value: _storage._favourite, fieldNumber: 20)
       }
+      if !_storage._keepsAwake.isEmpty {
+        try visitor.visitPackedEnumField(value: _storage._keepsAwake, fieldNumber: 21)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -3942,6 +4035,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._away != rhs_storage._away {return false}
         if _storage._siteName != rhs_storage._siteName {return false}
         if _storage._favourite != rhs_storage._favourite {return false}
+        if _storage._keepsAwake != rhs_storage._keepsAwake {return false}
         return true
       }
       if !storagesAreEqual {return false}

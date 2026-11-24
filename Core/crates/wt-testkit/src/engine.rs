@@ -9,9 +9,10 @@ use wt_proto::v1::{
     DownloadFinished, DownloadProgress, DownloadRequested, EngineEvent, EngineKind, Error,
     FindResult, HistoryChanged, HostPong, IconNamed, IconReceived, LinkOpenRequested, NamedIcon,
     NavigationCommand, NavigationCommitted, NavigationFailed, NavigationFinished,
-    NavigationStarted, NewWindowRequested, OutsideLinkRequested, PermissionKind,
-    PermissionRequested, PermissionWithdrawn, ProgressChanged, RendererGone, SearchRequested,
-    SignInRequested, TitleChanged, WebViewState, engine_event, host_request, host_response,
+    NavigationStarted, NewWindowRequested, OutsideLinkRequested, PageActivityChanged,
+    PermissionKind, PermissionRequested, PermissionWithdrawn, ProgressChanged, RendererGone,
+    SearchRequested, SignInRequested, TitleChanged, WebViewState, engine_event, host_request,
+    host_response,
 };
 
 /// A page of the scripted web.
@@ -731,6 +732,26 @@ impl FakeEngine {
         )];
         events.extend(self.arrive(id, &url, title));
         events
+    }
+
+    /// What the adapter knows of a web view's page that would keep its tab
+    /// awake (052), all of it as it now is: that it plays sound, holds the
+    /// camera or the microphone, and was typed into.
+    #[must_use]
+    pub fn page_activity(
+        id: u64,
+        plays_sound: bool,
+        captures: bool,
+        typed_into: bool,
+    ) -> EngineEvent {
+        event(
+            id,
+            engine_event::Kind::PageActivityChanged(PageActivityChanged {
+                plays_sound,
+                captures,
+                typed_into,
+            }),
+        )
     }
 
     /// A web view's page asks to use something of the device's (014): the

@@ -600,6 +600,11 @@ pub struct TabSummary {
     /// it has not got (QueryIcons), once, and keeps them.
     #[prost(uint64, tag = "13")]
     pub icon_id: u64,
+    /// Since 1.45. Why the tab would not be put to sleep (052), in the order of
+    /// the kinds; empty when nothing would keep it awake, and for a tab that is
+    /// asleep. A shell with no mark for a kind shows none.
+    #[prost(enumeration = "KeepAwake", repeated, tag = "14")]
+    pub keeps_awake: ::prost::alloc::vec::Vec<i32>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TabView {
@@ -663,6 +668,9 @@ pub struct TabView {
     /// Since 1.32. The tab is one of its row's Favourites (042).
     #[prost(bool, tag = "20")]
     pub favourite: bool,
+    /// Since 1.45. As TabSummary's: why the tab would not be put to sleep.
+    #[prost(enumeration = "KeepAwake", repeated, tag = "21")]
+    pub keeps_awake: ::prost::alloc::vec::Vec<i32>,
 }
 /// What the address field shows. The core builds it so that every shell shows
 /// the same thing and none can be made to lie: a page-initiated load does not
@@ -1692,6 +1700,54 @@ impl RowStep {
         }
     }
 }
+/// Since 1.45. A reason a tab is kept awake (052).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum KeepAwake {
+    Unspecified = 0,
+    /// Its page is playing something that can be heard.
+    Sound = 1,
+    /// Its page holds the camera or the microphone.
+    Capture = 2,
+    /// The person typed into its page.
+    Typed = 3,
+    /// A download its page started is coming.
+    Download = 4,
+    /// It is asking the person something: a prompt waits in it.
+    Question = 5,
+    /// It is on its way somewhere.
+    Loading = 6,
+}
+impl KeepAwake {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "KEEP_AWAKE_UNSPECIFIED",
+            Self::Sound => "KEEP_AWAKE_SOUND",
+            Self::Capture => "KEEP_AWAKE_CAPTURE",
+            Self::Typed => "KEEP_AWAKE_TYPED",
+            Self::Download => "KEEP_AWAKE_DOWNLOAD",
+            Self::Question => "KEEP_AWAKE_QUESTION",
+            Self::Loading => "KEEP_AWAKE_LOADING",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "KEEP_AWAKE_UNSPECIFIED" => Some(Self::Unspecified),
+            "KEEP_AWAKE_SOUND" => Some(Self::Sound),
+            "KEEP_AWAKE_CAPTURE" => Some(Self::Capture),
+            "KEEP_AWAKE_TYPED" => Some(Self::Typed),
+            "KEEP_AWAKE_DOWNLOAD" => Some(Self::Download),
+            "KEEP_AWAKE_QUESTION" => Some(Self::Question),
+            "KEEP_AWAKE_LOADING" => Some(Self::Loading),
+            _ => None,
+        }
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum LoadState {
@@ -1929,7 +1985,7 @@ pub struct EngineEvent {
     pub web_view_id: u64,
     #[prost(
         oneof = "engine_event::Kind",
-        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26"
+        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27"
     )]
     pub kind: ::core::option::Option<engine_event::Kind>,
 }
@@ -1998,7 +2054,28 @@ pub mod engine_event {
         /// Since 1.39
         #[prost(message, tag = "26")]
         IconNamed(super::IconNamed),
+        /// Since 1.45
+        #[prost(message, tag = "27")]
+        PageActivityChanged(super::PageActivityChanged),
     }
+}
+/// Since 1.45. What the adapter knows of the page that would keep its tab
+/// awake (052): sent when any of it changes, with all of it as it now is. A
+/// page that has just committed has none of it until the adapter says
+/// otherwise: the core takes a commit as the end of what the page before
+/// was doing. An adapter says only what its engine lets it know, and says
+/// nothing of what was played, captured or typed.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct PageActivityChanged {
+    /// An element of the page is playing something that can be heard.
+    #[prost(bool, tag = "1")]
+    pub plays_sound: bool,
+    /// The page holds the camera or the microphone.
+    #[prost(bool, tag = "2")]
+    pub captures: bool,
+    /// The person has typed into the page, and it is still that page.
+    #[prost(bool, tag = "3")]
+    pub typed_into: bool,
 }
 /// A load began. The page it asks for does not own the web view yet.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]

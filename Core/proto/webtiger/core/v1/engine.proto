@@ -71,7 +71,24 @@ message EngineEvent {
     IconReceived icon_received = 25;
     // Since 1.39
     IconNamed icon_named = 26;
+    // Since 1.45
+    PageActivityChanged page_activity_changed = 27;
   }
+}
+
+// Since 1.45. What the adapter knows of the page that would keep its tab
+// awake (052): sent when any of it changes, with all of it as it now is. A
+// page that has just committed has none of it until the adapter says
+// otherwise: the core takes a commit as the end of what the page before
+// was doing. An adapter says only what its engine lets it know, and says
+// nothing of what was played, captured or typed.
+message PageActivityChanged {
+  // An element of the page is playing something that can be heard.
+  bool plays_sound = 1;
+  // The page holds the camera or the microphone.
+  bool captures = 2;
+  // The person has typed into the page, and it is still that page.
+  bool typed_into = 3;
 }
 
 // A load began. The page it asks for does not own the web view yet.

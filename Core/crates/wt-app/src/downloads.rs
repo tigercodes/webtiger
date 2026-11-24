@@ -51,6 +51,9 @@ pub(crate) struct Wanted {
 #[derive(Clone, Debug)]
 pub(crate) struct Downloading {
     record: i64,
+    /// The web view whose page started it: its tab is kept awake while the
+    /// download comes (052).
+    web_view: WebViewId,
     login_set: LoginSetId,
     received: u64,
     /// 0 while the size is not known.
@@ -211,12 +214,12 @@ impl App {
     /// fetch it under the core's name.
     fn start_download(&self, shell_id: u64, wanted: Wanted) {
         let Wanted {
+            web_view,
             login_set,
             url,
             name,
             mime_type,
             expected,
-            ..
         } = wanted;
         let total = (expected > 0).then_some(expected);
         let written = self.store_of(login_set).borrow_mut().add_download(
@@ -236,6 +239,7 @@ impl App {
             shell_id,
             Downloading {
                 record,
+                web_view,
                 login_set,
                 received: 0,
                 expected,
@@ -324,9 +328,18 @@ impl App {
             .values()
             .filter(|download| download.login_set == login_set)
             .count();
-        self.state
-            .borrow_mut()
-            .set_downloads_active(login_set, u32::try_from(coming).unwrap_or(u32::MAX));
+        // Each tab whose page started one is kept awake by it (052): said
+        // before the windows are told how many are coming, so that they are
+        // told both at once.
+        let starters: Vec<WebViewId> = self
+            .downloads
+            .borrow()
+            .values()
+            .map(|download| download.web_view)
+            .collect();
+        let mut state = self.state.borrow_mut();
+        state.set_downloading(&starters);
+        state.set_downloads_active(login_set, u32::try_from(coming).unwrap_or(u32::MAX));
     }
 
     /// The shell's name for a download that is coming, by its record's id.

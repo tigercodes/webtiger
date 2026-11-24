@@ -404,6 +404,27 @@ message TabSummary {
   // one picture for as long as the core runs: a shell asks for the pictures
   // it has not got (QueryIcons), once, and keeps them.
   uint64 icon_id = 13;
+  // Since 1.45. Why the tab would not be put to sleep (052), in the order of
+  // the kinds; empty when nothing would keep it awake, and for a tab that is
+  // asleep. A shell with no mark for a kind shows none.
+  repeated KeepAwake keeps_awake = 14;
+}
+
+// Since 1.45. A reason a tab is kept awake (052).
+enum KeepAwake {
+  KEEP_AWAKE_UNSPECIFIED = 0;
+  // Its page is playing something that can be heard.
+  KEEP_AWAKE_SOUND = 1;
+  // Its page holds the camera or the microphone.
+  KEEP_AWAKE_CAPTURE = 2;
+  // The person typed into its page.
+  KEEP_AWAKE_TYPED = 3;
+  // A download its page started is coming.
+  KEEP_AWAKE_DOWNLOAD = 4;
+  // It is asking the person something: a prompt waits in it.
+  KEEP_AWAKE_QUESTION = 5;
+  // It is on its way somewhere.
+  KEEP_AWAKE_LOADING = 6;
 }
 
 message TabView {
@@ -447,6 +468,8 @@ message TabView {
   string site_name = 19 [(wt.redact) = true];
   // Since 1.32. The tab is one of its row's Favourites (042).
   bool favourite = 20;
+  // Since 1.45. As TabSummary's: why the tab would not be put to sleep.
+  repeated KeepAwake keeps_awake = 21;
 }
 
 enum LoadState {
