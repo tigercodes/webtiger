@@ -130,6 +130,6 @@ Nothing is asked of a shell that it does not do already: a tab that is put to sl
 ## 9. Done checklist
 
 - [ ] The owner's word on §6.
-- [x] The core and the contract.
+- [x] The core and the contract. They were in the gate of 2026-11-24 with [055](055-the-system-short-of-memory.md): every stage green, the core's suite at 740.
 - [ ] The shells.
-- [ ] The gate.
+- [ ] The gate, with the shells.
