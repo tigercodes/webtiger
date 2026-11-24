@@ -137,7 +137,8 @@ public struct AwakeView: View {
         .frame(maxWidth: .infinity, minHeight: BrowserWindowView.hitSize, alignment: .leading)
         .padding(.horizontal, Tokens.Space.m)
         .padding(.vertical, Tokens.Space.xs)
-        // One thing to a screen reader: the tab, where it is, and why it is awake.
+        // One thing to a screen reader: the tab, where it is, and why it is awake. Put
+        // together from its lines, as a download's row and a permission's are.
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("awake-tab")
     }

@@ -30,24 +30,32 @@ final class AwakeListTests: AppTestCase {
         XCTAssertTrue(app.buttons["awake-done"].waitForExistence(timeout: 30), "what is awake", line: line)
     }
 
+    /// The words of a line of text, or of a row put together from its lines: an iPhone says
+    /// them as its label, a Mac as its value.
+    private func words(of text: XCUIElement) -> String {
+        text.label.isEmpty ? text.value as? String ?? "" : text.label
+    }
+
     func testTheLibraryListsWhatIsAwakeAndSleepAllOthersPutsTheRestToSleep() {
         let app = launch(start: site.url("/"))
         XCTAssertTrue(pageShows("Home", in: app), "the first tab's page loaded")
         go(to: "/landed", titled: "Landed", in: app)
-        openTab(at: "/whoami", titled: "who=none", in: app)
         openTab(at: "/tall", titled: "Tall", in: app)
+        // The page in front is one with nothing of its own for the audit to look at: the
+        // audit sees through the sheet to the page under it.
+        openTab(at: "/whoami", titled: "who=none", in: app)
 
         // The three are listed in their row's order, each with why it is awake: the two
         // behind are only waiting for their time, and the third is on screen.
         openAwake(in: app)
         let rows = app.descendants(matching: .any).matching(identifier: "awake-tab")
         expect(rows, toCount: 3, "three tabs are awake")
-        let first = rows.element(boundBy: 0).label
-        let third = rows.element(boundBy: 2).label
+        let first = words(of: rows.element(boundBy: 0))
+        let third = words(of: rows.element(boundBy: 2))
         XCTAssertTrue(first.contains("Landed") && first.contains("Will sleep by itself"), "the first: \(first)")
-        XCTAssertTrue(rows.element(boundBy: 1).label.contains("who=none"), "the second is the second of the row")
-        XCTAssertTrue(third.contains("Tall") && third.contains("On screen"), "the third: \(third)")
-        XCTAssertEqual(app.staticTexts["awake-asleep"].label, "Asleep: 0")
+        XCTAssertTrue(words(of: rows.element(boundBy: 1)).contains("Tall"), "the second is the second of the row")
+        XCTAssertTrue(third.contains("who=none") && third.contains("On screen"), "the third: \(third)")
+        XCTAssertEqual(words(of: app.staticTexts["awake-asleep"]), "Asleep: 0")
         let others = app.buttons["awake-sleep-others"]
         XCTAssertTrue(others.isEnabled, "there are others to put to sleep")
         #if os(macOS)
@@ -62,13 +70,15 @@ final class AwakeListTests: AppTestCase {
         // Sleep All Others: the two behind sleep, and leave the list; the one on screen stays.
         press(others)
         expect(rows, toCount: 1, "one tab is left awake")
-        let left = rows.element(boundBy: 0).label
-        XCTAssertTrue(left.contains("Tall") && left.contains("On screen"), "the one left: \(left)")
+        let left = words(of: rows.element(boundBy: 0))
+        XCTAssertTrue(left.contains("who=none") && left.contains("On screen"), "the one left: \(left)")
         let asleep = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "label == %@", "Asleep: 2"),
+            predicate: NSPredicate(format: "label == %@ OR value == %@", "Asleep: 2", "Asleep: 2"),
             object: app.staticTexts["awake-asleep"]
         )
-        XCTAssertEqual(XCTWaiter.wait(for: [asleep], timeout: 30), .completed, "two are counted asleep")
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [asleep], timeout: 30), .completed, "two are counted asleep: \(words(of: app.staticTexts["awake-asleep"]))"
+        )
         XCTAssertFalse(others.isEnabled, "there are no others now")
         press(app.buttons["awake-done"])
 
@@ -77,6 +87,6 @@ final class AwakeListTests: AppTestCase {
         expect(tabs.element(boundBy: 0), toSay: "Asleep", "the first is asleep in its row")
         expect(tabs.element(boundBy: 1), toSay: "Asleep", "and the second")
         expect(tabs.element(boundBy: 2), toSay: "", "the tab on screen is awake")
-        XCTAssertTrue(pageShows("Tall", in: app))
+        XCTAssertTrue(pageShows("who=none", in: app))
     }
 }
