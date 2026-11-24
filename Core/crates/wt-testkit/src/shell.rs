@@ -36,6 +36,11 @@ pub struct FakeShell {
     /// `release_states`: a shell whose engine is slow to say.
     pub hold_states: bool,
     held_states: VecDeque<(u64, host_request::Kind)>,
+    /// A web view's state is said when it is asked for, and is slow to
+    /// arrive (053): the answer is what the web view was then, and reaches
+    /// the core at `release_states`.
+    pub slow_states: bool,
+    slow_answers: VecDeque<(u64, host_response::Kind)>,
     /// How many times a web view's state was asked for.
     states_asked: usize,
     /// Answer the next host request with this instead of the engine's answer.
@@ -151,6 +156,8 @@ impl FakeShell {
             held: VecDeque::new(),
             hold_states: false,
             held_states: VecDeque::new(),
+            slow_states: false,
+            slow_answers: VecDeque::new(),
             states_asked: 0,
             answer_next_with: None,
             host_requests: Vec::new(),
@@ -254,6 +261,9 @@ impl FakeShell {
                         );
                         if self.hold_states {
                             self.held_states.push_back((envelope.id, kind));
+                        } else if self.slow_states {
+                            let (answer, _) = self.engine.answer(kind);
+                            self.slow_answers.push_back((envelope.id, answer));
                         } else {
                             self.answer_state(envelope.id, kind);
                         }
@@ -308,6 +318,15 @@ impl FakeShell {
         self.hold_states = false;
         while let Some((id, kind)) = self.held_states.pop_front() {
             self.answer_state(id, kind);
+        }
+        self.slow_states = false;
+        while let Some((id, answer)) = self.slow_answers.pop_front() {
+            self.dispatcher.accept(Envelope {
+                id,
+                body: Some(envelope::Body::HostResponse(HostResponse {
+                    kind: Some(answer),
+                })),
+            });
         }
     }
 
@@ -539,17 +558,21 @@ impl FakeShell {
     /// for it here: what a look changes, the look publishes.
     pub async fn a_minute_passes(&mut self) {
         // A minute by the clock on the wall, and not by the core's own word for how often it
-        // looks: a core that looked less often would be found out.
-        tokio::time::sleep(Duration::from_secs(61)).await;
-        let mut idle_rounds = 0;
-        while idle_rounds < 2 {
-            let worked = self.drain();
-            tokio::task::yield_now().await;
-            idle_rounds = if worked || !self.inbox.borrow().is_empty() {
-                0
-            } else {
-                idle_rounds + 1
-            };
+        // looks: a core that looked less often would be found out. A second at a time: what
+        // the core asks of the shell in that minute is answered within the second, as a
+        // shell that is there answers, and not when the minute is over.
+        for _ in 0..61 {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+            let mut idle_rounds = 0;
+            while idle_rounds < 2 {
+                let worked = self.drain();
+                tokio::task::yield_now().await;
+                idle_rounds = if worked || !self.inbox.borrow().is_empty() {
+                    0
+                } else {
+                    idle_rounds + 1
+                };
+            }
         }
     }
 

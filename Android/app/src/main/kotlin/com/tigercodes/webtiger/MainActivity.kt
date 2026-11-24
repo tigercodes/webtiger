@@ -177,6 +177,12 @@ class MainActivity : ComponentActivity() {
          */
         const val EXTRA_FAKE_CLOCK_STEP = "webtiger.fake.clock_step"
 
+        /**
+         * `--ei webtiger.fake.sleep_after 5`: in fake mode, how long a tab is out of sight
+         * before the core puts it to sleep, in seconds, to see one sleep (053).
+         */
+        const val EXTRA_FAKE_SLEEP_AFTER = "webtiger.fake.sleep_after"
+
         /** The words of [ACTION_SEARCH_WORDS]. */
         const val EXTRA_WORDS = "webtiger.search.words"
 
@@ -250,6 +256,7 @@ class MainActivity : ComponentActivity() {
                 catalogue = catalogue,
                 firstRun = intent.getBooleanExtra(EXTRA_FAKE_FIRST_RUN, false),
                 clockStep = intent.getIntExtra(EXTRA_FAKE_CLOCK_STEP, 0).coerceAtLeast(0),
+                sleepAfter = intent.getIntExtra(EXTRA_FAKE_SLEEP_AFTER, 0).coerceAtLeast(0),
             )
         }
     }

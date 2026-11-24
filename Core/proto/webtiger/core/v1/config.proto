@@ -65,6 +65,11 @@ message FakeOptions {
   // day: the core's own rules are then the ones that run, at their own
   // times, and only the clock is quicker.
   uint32 seconds_a_read = 3;
+  // Since 1.46. How long a tab is out of sight before it is put to sleep
+  // (053), in seconds, for a suite that must see one sleep: the core then
+  // looks every second. 0: the usual time, half an hour, looked for every
+  // minute.
+  uint32 sleep_after_seconds = 4;
 }
 
 // One engine a shell offers.

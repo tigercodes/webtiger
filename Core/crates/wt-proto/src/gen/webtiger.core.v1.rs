@@ -1896,6 +1896,12 @@ pub struct FakeOptions {
     /// times, and only the clock is quicker.
     #[prost(uint32, tag = "3")]
     pub seconds_a_read: u32,
+    /// Since 1.46. How long a tab is out of sight before it is put to sleep
+    /// (053), in seconds, for a suite that must see one sleep: the core then
+    /// looks every second. 0: the usual time, half an hour, looked for every
+    /// minute.
+    #[prost(uint32, tag = "4")]
+    pub sleep_after_seconds: u32,
 }
 /// One engine a shell offers.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]

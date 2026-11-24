@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | **Designed, not built.** The choices of §6 are recommendations, put to the owner and not yet answered |
+| **Status** | **Built and tested, on the recommendations of §6, which are provisional:** they are put to the owner and not yet answered. A tab that has been out of sight for half an hour, with no reason to be awake, is put to sleep by the browser on every system, keeps what [051](051-a-tabs-kept-state.md) has it keep, and wakes as it was. The limit of live tabs and the system's shortage of memory are not built |
 | **Phase** | W3 of [000](000-master-plan.md) §9. 000 §5.7: "A tab goes to sleep when any of these holds: it has been in the background past the sleep time (30 minutes by default on desktop); the system reports memory pressure; the number of live tabs passes the device's limit". The third of W3: the first of those three, the sleep time |
-| **Contract** | 1.46, to be added (§4): only what a suite needs to see a tab sleep without waiting half an hour |
+| **Contract** | 1.46 (§4): only what a suite needs to see a tab sleep without waiting half an hour |
 | **Builds on** | [051](051-a-tabs-kept-state.md): what a tab that sleeps keeps, and how it wakes. [052](052-what-keeps-a-tab-awake.md): the reasons a tab is not put to sleep. [039](039-sites.md): a Site sleeps at its home. [049](049-tidying-temporary-tabs.md): the core's look, once a minute |
 | **Last updated** | 2026-11-24 |
 
@@ -45,7 +45,7 @@ I have forty tabs open. Most of them I have not looked at since this morning, an
 
 **Why the core.** When a tab has been out of sight, why it is kept awake, and what it keeps are the model's. A shell does what it does already: hands over a state, lets a web view go, makes one when a tab wakes.
 
-## 4. The contract (1.46), to be added
+## 4. The contract (1.46)
 
 Nothing a shell does is new. One thing is added for suites:
 
@@ -56,10 +56,22 @@ Nothing a shell does is new. One thing is added for suites:
 uint32 sleep_after_seconds = 4;
 ```
 
+A shell hands it on from what it was started with: `WEBTIGER_FAKE_SLEEP_AFTER=<seconds>` on Apple's systems, `--ei webtiger.fake.sleep_after <seconds>` on Android.
+
+**As built, where the design did not say:**
+
+- **A tab's time begins again when it leaves the front,** however long it was out of sight before it was last seen: a tab that was in front between two looks has been looked at. (The first tests found a tab asleep twenty minutes after it was last in front.)
+- **The state is asked for only of a tab at rest on its page.** One whose load failed, or that is on its way, sleeps without one, and wakes where it was going. One that is on its way is not put to sleep at all while it is (052).
+- **A tab whose history was forgotten sleeps without being asked** (051 D6): its web view's list holds what was forgotten. Once it has slept and woken it has another web view, and is asked as any tab is.
+- **A tab that shows no page of the web's** (one a page opened, in which nothing has arrived) is left as it is: it has nowhere to wake.
+- **What an engine says late of a web view that was let go** is nothing of the tab's: the tab has no page to be doing anything, and nobody is told.
+- **A state that is slower than the core waits for a shell** (half a minute) is no state: the one the tab had stays.
+- **The look goes only while some tab is out of sight with a web view,** and stops when none is: an app with one tab in each window wakes for nothing.
+
 ## 5. In what order
 
-1. **The core:** the count, what stops it, putting a tab to sleep and its state arriving after, a Site, a private window. Against the scripted engine, with the minutes passed by the test.
-2. **The apps:** nothing to build; a UI test on each system, with a sleep time of seconds: a tab behind is seen to sleep, and pressed it wakes where it was, with its way back.
+1. **The core:** the count, what stops it, putting a tab to sleep and its state arriving after, a Site, a private window. Against the scripted engine, with the minutes passed by the test. **Built.**
+2. **The apps:** nothing to build but handing the suite's seconds on; a test on each system, with a sleep time of seconds: a tab behind is seen to sleep, and pressed it wakes where it was, with its way back. **Built:** in the apps on Apple's systems; through the real core under Android's shell on the JVM (Android's device tests share one core, started once, with the usual half hour).
 
 ## 6. Decisions
 
@@ -75,17 +87,26 @@ uint32 sleep_after_seconds = 4;
 
 ## 7. Tests
 
-To be filled in as built.
+| Where | What |
+|---|---|
+| The core, through the contract (`sleeping.rs`, 17), against the scripted engine, the minutes passed by the test | **The time:** a tab behind is awake at twenty-nine minutes and asleep at thirty: its state asked for once more and then its web view let go, in that order, the tab where it was in its row with the name and the address it had, and nothing an engine says late of that web view is the tab's. The tab in front is awake however long. A tab that comes in front, even between two looks, starts its time again. **Waking:** made from its state with its address to fall back on, where it was, with the list it had; and the tab it was woken over sleeps in its turn. **Reasons:** a tab that plays a sound, or was typed into, is passed over for hours; twenty minutes out of sight before the sound are not counted when it stops; a question that waits, a camera that is held, and a load on its way each keep a tab awake, and it sleeps half an hour after it arrives. **A Space no window shows:** its tabs sleep, the one in front of its row among them, and that one wakes when the Space is shown. **A Site** sleeps at its home, asked for no state, where it is in its row, and wakes by being loaded there. **A private window's tabs** stay awake beside an ordinary window's that sleep. **Without a state:** a tab whose load failed, which wakes where it was going; a tab whose history was forgotten, which is asked again once it has woken; and a tab a page opened, with nowhere to wake, is left as it is. **The state:** a tab whose page went on behind has only the one asked for as it sleeps, and wakes from it; one that arrives after the tab is asleep is kept; one that arrives for a tab already woken is not; with none to give, or one too large, the one the tab had is its still. **Over a start:** asleep, with the state it slept with in the place of the one from leaving the front. **A suite's seconds:** asleep after three looks of a second, and not after two |
+| The core broken, a part at a time | 23 parts, 23 caught. The first run caught 17, and the six it did not are why the tests are as they are: a private window is now tried beside an ordinary one (alone, the look never ran); a reason now begins twenty minutes into the count; a late state is now one that was said in time and arrived late; a state too large is now one that arrives; a tab with nowhere to wake is now tried; and one part had been broken in a way that broke nothing |
+| The scripted shell | It answers what the core asks within the second while a minute passes, as a shell that is there does: it had answered when the minute was over, and after thirty minutes that was later than the core waits for a shell. It can also say a state at once and deliver it late |
+| The apps, in fake mode, with the real core and the real engine and a sleep time of four seconds (`SleepTests`, 1, on the Mac and the iPhone simulator) | A tab goes to a second page and another tab comes in front of it; seconds later the first says it is asleep, by the name it had; the tab in front is awake six seconds on; the first, pressed, wakes at the page it was at, says it is awake, has Back offered, and Back goes to the page before; and the tab it was woken over sleeps in its turn |
+| Android, through the real core (`ThroughTheCoreTest`, +2, on the JVM) | The suite's seconds are handed on, and are nothing outside fake mode. With two seconds: the tab left behind is asked for its state as it leaves the front and once more as the core puts it to sleep, its page is let go, the window says it is asleep by the name it had, and the tab in front is awake; brought in front, it has a web view made from the state it gave, and nothing loaded beside it. The shell timed nothing |
 
 ## 8. What is not verified
 
-To be filled in as built. Known before a line is written:
-
+- **The choices of §6** are the recommendations, not the owner's word.
+- **Half an hour.** No test waits one: the core's are passed their minutes by the test, and the apps' are given seconds. That a look happens once a minute by the runtime's own time is the core's test; that the app's runtime keeps that time while a machine is awake, and does not count the hours it is asleep, was not watched.
+- **On Android, in the app on a device.** Its device tests share one core with the usual half hour (§5): the app's part is the JVM's test through the real core, and 051's by hand.
+- **Memory.** That a tab put to sleep gives its memory back was not measured: the web view is let go, as it is when a tab is closed. The budgets are later in W3.
+- **A phone.** Android's part ran on the JVM and an emulator.
 - **A page that is doing something the browser cannot see** (waiting for a message, counting down, sending a file) has no reason to be kept awake by 052, and sleeps with the rest. What it was doing stops. This is the cost every browser that sleeps tabs has, and the Site marked "keep awake" is the plan's answer to it; it is not built.
 
 ## 9. Done checklist
 
 - [ ] The owner's word on §6.
-- [ ] The core and the contract.
-- [ ] The apps' tests.
+- [x] The core and the contract.
+- [x] The apps' tests.
 - [ ] The gate.

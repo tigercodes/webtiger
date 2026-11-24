@@ -186,6 +186,12 @@ public nonisolated struct WTFakeOptions: Sendable {
   /// times, and only the clock is quicker.
   public var secondsARead: UInt32 = 0
 
+  /// Since 1.46. How long a tab is out of sight before it is put to sleep
+  /// (053), in seconds, for a suite that must see one sleep: the core then
+  /// looks every second. 0: the usual time, half an hour, looked for every
+  /// minute.
+  public var sleepAfterSeconds: UInt32 = 0
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -296,7 +302,7 @@ nonisolated extension WTCoreConfig: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".FakeOptions"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}start_address\0\u{3}first_run\0\u{3}seconds_a_read\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}start_address\0\u{3}first_run\0\u{3}seconds_a_read\0\u{3}sleep_after_seconds\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -307,6 +313,7 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
       case 1: try { try decoder.decodeSingularStringField(value: &self.startAddress) }()
       case 2: try { try decoder.decodeSingularBoolField(value: &self.firstRun) }()
       case 3: try { try decoder.decodeSingularUInt32Field(value: &self.secondsARead) }()
+      case 4: try { try decoder.decodeSingularUInt32Field(value: &self.sleepAfterSeconds) }()
       default: break
       }
     }
@@ -322,6 +329,9 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if self.secondsARead != 0 {
       try visitor.visitSingularUInt32Field(value: self.secondsARead, fieldNumber: 3)
     }
+    if self.sleepAfterSeconds != 0 {
+      try visitor.visitSingularUInt32Field(value: self.sleepAfterSeconds, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -329,6 +339,7 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if lhs.startAddress != rhs.startAddress {return false}
     if lhs.firstRun != rhs.firstRun {return false}
     if lhs.secondsARead != rhs.secondsARead {return false}
+    if lhs.sleepAfterSeconds != rhs.sleepAfterSeconds {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

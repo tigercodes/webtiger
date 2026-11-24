@@ -71,6 +71,9 @@ public final class BrowserSession {
                 // How far the core's clock moves each time it is read, in seconds, for a suite
                 // that must see a day pass (049). Without it: a second.
                 config.fake.secondsARead = UInt32(environment["WEBTIGER_FAKE_CLOCK_STEP"] ?? "") ?? 0
+                // How long a tab is out of sight before the core puts it to sleep, in seconds,
+                // for a suite that must see one sleep (053). Without it: the usual half hour.
+                config.fake.sleepAfterSeconds = UInt32(environment["WEBTIGER_FAKE_SLEEP_AFTER"] ?? "") ?? 0
                 opener = .nothing
                 downloads = nil
             } else {

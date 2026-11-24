@@ -78,6 +78,10 @@ pub struct AppOptions {
     /// Whether a window's tabs are kept between runs (009). Not in fake
     /// mode, where every window opens the same way.
     pub session: bool,
+    /// Fake mode: how long a tab is out of sight before it is put to sleep
+    /// (053), in seconds, looked for every second. 0: the usual time,
+    /// looked for every minute.
+    pub sleep_after_seconds: u32,
     /// Gives a login set nobody has had, for a Space that is made with
     /// logins of its own (024); `None` when there is none to give. Fake
     /// mode gives the same ones in the same order every run.
@@ -103,6 +107,9 @@ pub struct App {
     /// window is opened then.
     pub(crate) private_store: Option<Rc<RefCell<Store>>>,
     pub(crate) clock: Rc<dyn Clock>,
+    /// How many of the core's looks a tab is out of sight for before it is
+    /// put to sleep (053), and how often the core looks.
+    pub(crate) sleep: (u32, std::time::Duration),
     pub(crate) new_login_set: Rc<dyn Fn() -> Option<Uuid>>,
     /// The session as the store has it: written again only where it
     /// differs.
@@ -167,6 +174,7 @@ impl App {
                 .ok()
                 .map(|store| Rc::new(RefCell::new(store))),
             clock: options.clock,
+            sleep: crate::states::sleep_time(options.sleep_after_seconds),
             downloads: Rc::new(RefCell::new(BTreeMap::new())),
             downloaded: Rc::new(RefCell::new(BTreeMap::new())),
             waiting: Rc::new(RefCell::new(BTreeMap::new())),

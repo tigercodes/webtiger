@@ -22,11 +22,18 @@ class AppTestCase: XCTestCase {
     /// with nobody signed in anywhere, whatever the test before it did.
     ///
     /// With `clockStep`, the core's clock moves that many seconds each time it is read, and
-    /// not one: for a test that must see a day pass (049).
-    func launch(start: String?, firstRun: Bool = false, icons: Bool = false, clockStep: Int = 0) -> XCUIApplication {
+    /// not one: for a test that must see a day pass (049). With `sleepAfter`, a tab that has
+    /// been out of sight for that many seconds is put to sleep, and not after half an hour:
+    /// for a test that must see one sleep (053).
+    func launch(
+        start: String?, firstRun: Bool = false, icons: Bool = false, clockStep: Int = 0, sleepAfter: Int = 0
+    ) -> XCUIApplication {
         let app = inFakeMode(start: start, firstRun: firstRun)
         if clockStep > 0 {
             app.launchEnvironment["WEBTIGER_FAKE_CLOCK_STEP"] = String(clockStep)
+        }
+        if sleepAfter > 0 {
+            app.launchEnvironment["WEBTIGER_FAKE_SLEEP_AFTER"] = String(sleepAfter)
         }
         if icons {
             // In fake mode the app asks for no page's icon (046 §5a) unless a suite says so;

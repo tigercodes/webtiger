@@ -2,8 +2,10 @@
 //! for when its tab leaves the front, kept in the store, and handed back
 //! when the tab wakes. To the core it is bytes: it never reads them.
 
+use std::time::Duration;
+
 use wt_core::{TabId, WebViewId};
-use wt_proto::v1::{WebViewSaveState, host_request, host_response};
+use wt_proto::v1::{WebViewDestroy, WebViewSaveState, host_request, host_response};
 
 use crate::app::App;
 
@@ -11,7 +13,95 @@ use crate::app::App;
 /// kept: its tab wakes at its address.
 pub(crate) const MOST_STATE: usize = 512 * 1024;
 
+/// How long a tab is out of sight before it is put to sleep (053 D1): thirty
+/// of the core's looks, one a minute.
+const SLEEP_AFTER_LOOKS: u32 = 30;
+const SLEEP_LOOK_EVERY: Duration = Duration::from_secs(60);
+
+/// The sleep time as the app counts it: so many looks, so far apart. With a
+/// time in seconds (fake mode, for a suite that must see a tab sleep), a
+/// look a second, and as many looks as seconds.
+pub(crate) fn sleep_time(fake_seconds: u32) -> (u32, Duration) {
+    if fake_seconds == 0 {
+        (SLEEP_AFTER_LOOKS, SLEEP_LOOK_EVERY)
+    } else {
+        (fake_seconds, Duration::from_secs(1))
+    }
+}
+
 impl App {
+    /// Whether some tab is out of sight with a web view (053): there is
+    /// something for the look to count.
+    #[must_use]
+    pub fn could_sleep(&self) -> bool {
+        self.state.borrow().could_sleep()
+    }
+
+    /// How often the app looks for tabs to put to sleep.
+    #[must_use]
+    pub fn sleep_look_every(&self) -> Duration {
+        self.sleep.1
+    }
+
+    /// A look for tabs to put to sleep (053): each tab that has been out of
+    /// sight for the time, with no reason to be awake, is asleep when this
+    /// returns. Its web view's state is asked for, where it has one worth
+    /// asking for, and then the web view is let go: the two are asked
+    /// together, in that order. The state is the tab's when it arrives.
+    pub fn sleep_idle_tabs(&self) {
+        let due = self.state.borrow_mut().sleepers(self.sleep.0);
+        for sleeper in due {
+            if sleeper.ask_state {
+                let asking =
+                    self.host
+                        .request(host_request::Kind::WebViewSaveState(WebViewSaveState {
+                            web_view_id: sleeper.web_view.get(),
+                        }));
+                let app = self.clone();
+                tokio::task::spawn_local(async move {
+                    // A shell that has none to give, or will not say, gives none.
+                    let state = match asking.await {
+                        Ok(host_response::Kind::WebViewState(answer)) => answer.state,
+                        _ => Vec::new(),
+                    };
+                    app.sleeper_answered(sleeper.tab, sleeper.web_view, sleeper.engine, &state);
+                });
+            }
+            let destroying =
+                self.host
+                    .request(host_request::Kind::WebViewDestroy(WebViewDestroy {
+                        web_view_id: sleeper.web_view.get(),
+                    }));
+            // Asked already; this only waits for the answer. A shell that
+            // fails to destroy a web view keeps a leak, not a tab.
+            tokio::task::spawn_local(async move {
+                let _ = destroying.await;
+            });
+        }
+    }
+
+    /// The shell has said the state of a web view whose tab was put to
+    /// sleep. It is kept when there is one and it is not too large, and is
+    /// then the tab's, in the place of the one it had; with none, the one it
+    /// had stays.
+    fn sleeper_answered(&self, tab: TabId, web_view: WebViewId, engine: i32, state: &[u8]) {
+        let keep = !state.is_empty() && state.len() <= MOST_STATE;
+        let id = if keep {
+            self.store.borrow_mut().keep_state(engine, state).ok()
+        } else {
+            None
+        };
+        let unwanted = self
+            .state
+            .borrow_mut()
+            .sleeper_state_kept(tab, web_view, id);
+        for id in unwanted {
+            let _ = self.store.borrow_mut().drop_state(id);
+        }
+        // The session names the state: it is written with it.
+        self.persist();
+    }
+
     /// Asks for the state of every tab that has left the front since this
     /// was last called, and drops from the store the states whose tabs are
     /// gone. The asking is done before this returns; what comes of each is

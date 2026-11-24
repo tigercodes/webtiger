@@ -268,6 +268,13 @@ pub(crate) struct Tab {
     /// What the engine's adapter last said the page is doing that would keep
     /// the tab awake (052). Of the page: it goes when another commits.
     activity: PageActivity,
+    /// How many of the core's looks the tab has been out of sight for, with
+    /// no reason to be awake (053): at so many, it is put to sleep.
+    idle: u32,
+    /// The web view the tab was put to sleep out of, while the state that
+    /// was asked of it has not arrived (053): the state is the tab's when it
+    /// does, unless the tab was woken first.
+    sleeping_with: Option<WebViewId>,
     /// A download that this tab's web view started is coming (052).
     downloading: bool,
     /// The person sent the tab somewhere, and no page has come of it yet: a
@@ -337,6 +344,17 @@ struct PageActivity {
     typed: bool,
 }
 
+/// A tab that has just been put to sleep (053): the web view to let go, and
+/// whether its state is to be asked for first.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Sleeper {
+    pub(crate) tab: TabId,
+    pub(crate) web_view: WebViewId,
+    pub(crate) ask_state: bool,
+    /// The engine the state will be of.
+    pub(crate) engine: i32,
+}
+
 /// What makes a tab a Site (039): where its home is, and what it is called
 /// while it is asleep. Both are what the page was when the tab was kept.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -391,6 +409,8 @@ impl Tab {
             prompts: VecDeque::new(),
             refused: Vec::new(),
             activity: PageActivity::default(),
+            idle: 0,
+            sleeping_with: None,
             downloading: false,
             own_load: false,
             passable: None,
@@ -457,6 +477,27 @@ impl Tab {
         tab.pending = Some(address);
         tab.asleep = true;
         tab
+    }
+
+    /// The tab asleep where it is (053): with no web view and no page, saying
+    /// the address and the title it had, as a tab that came back at a start
+    /// does; a Site, at its home (039). `None` for a tab that shows no page
+    /// of the web's: it has nowhere to wake.
+    fn asleep_here(&mut self) -> Option<Tab> {
+        if let Some(site) = self.site.clone() {
+            return Some(self.asleep_at(&site));
+        }
+        let saved = self.saved(false);
+        if saved.url.is_empty() {
+            return None;
+        }
+        Some(Tab::restored(
+            self.window,
+            self.space,
+            self.engine,
+            self.login_set,
+            &saved,
+        ))
     }
 
     /// The tab as a Site that is asleep at its home (039): no page, no web
@@ -1530,10 +1571,21 @@ impl State {
             .filter_map(|(id, window)| window.shown().map(|row| (*id, row.front)))
             .collect();
         let before = std::mem::replace(&mut self.was_front, now);
-        before
+        let left: Vec<TabId> = before
             .into_iter()
             .filter(|(window, tab)| self.was_front.get(window) != Some(tab))
-            .filter_map(|(_, id)| {
+            .map(|(_, id)| id)
+            .collect();
+        // Its time out of sight begins now (053), however long it was out of
+        // sight before it was last seen: a tab that was in front between two
+        // looks has been looked at.
+        for id in &left {
+            if let Some(tab) = self.tabs.get_mut(id) {
+                tab.idle = 0;
+            }
+        }
+        left.into_iter()
+            .filter_map(|id| {
                 let tab = self.tabs.get(&id)?;
                 let web = tab
                     .committed
@@ -1551,6 +1603,111 @@ impl State {
                 kept.then_some((id, tab.web_view?, tab.commits, tab.engine as i32))
             })
             .collect()
+    }
+
+    /// Whether a look for tabs to put to sleep has anything to look at
+    /// (053): a tab with a web view that is out of sight, and of no private
+    /// window.
+    pub(crate) fn could_sleep(&self) -> bool {
+        let in_sight = self.in_sight();
+        self.tabs.iter().any(|(id, tab)| {
+            tab.web_view.is_some() && !in_sight.contains(id) && !self.is_private(tab.login_set)
+        })
+    }
+
+    /// The tabs that are in sight: each the one in front of the row its
+    /// window shows.
+    fn in_sight(&self) -> BTreeSet<TabId> {
+        self.windows
+            .values()
+            .filter_map(|window| window.shown().map(|row| row.front))
+            .collect()
+    }
+
+    /// A look for tabs to put to sleep (053). A tab that is out of sight,
+    /// has a web view and no reason to be awake (052), and is of no private
+    /// window (037), has been so a look longer; one that is in sight, or has
+    /// a reason, starts again. At `after` looks it is put to sleep: it has
+    /// no web view from now, and says the address and the title it had. The
+    /// web views to let go, each with whether its state is to be asked for
+    /// first: of a tab at rest on its page, that is no Site and has nothing
+    /// forgotten in its list.
+    pub(crate) fn sleepers(&mut self, after: u32) -> Vec<Sleeper> {
+        let in_sight = self.in_sight();
+        let ids: Vec<TabId> = self.tabs.keys().copied().collect();
+        let mut due = Vec::new();
+        for id in ids {
+            let Some(tab) = self.tabs.get(&id) else {
+                continue;
+            };
+            let Some(web_view) = tab.web_view else {
+                continue;
+            };
+            let stays = in_sight.contains(&id)
+                || !tab.keeps_awake().is_empty()
+                || self.is_private(tab.login_set);
+            let Some(tab) = self.tabs.get_mut(&id) else {
+                continue;
+            };
+            if stays {
+                tab.idle = 0;
+                continue;
+            }
+            tab.idle = tab.idle.saturating_add(1);
+            if tab.idle < after {
+                continue;
+            }
+            let at_rest = tab.pending.is_none()
+                && tab
+                    .committed
+                    .as_ref()
+                    .is_some_and(|at| matches!(at.scheme(), "http" | "https"));
+            let ask_state = tab.site.is_none() && at_rest && !tab.is_withheld();
+            let Some(mut asleep) = tab.asleep_here() else {
+                // Nothing of the web's to wake to: it is left as it is.
+                tab.idle = 0;
+                continue;
+            };
+            asleep.sleeping_with = ask_state.then_some(web_view);
+            let (window, engine) = (tab.window, tab.engine as i32);
+            self.web_views.remove(&web_view);
+            self.tabs.insert(id, asleep);
+            self.dirty.insert(window);
+            due.push(Sleeper {
+                tab: id,
+                web_view,
+                ask_state,
+                engine,
+            });
+        }
+        due
+    }
+
+    /// The state of a tab that was put to sleep has arrived (053), kept in
+    /// the store as `id`; or, with `None`, the shell had none to give. It is
+    /// the tab's while the tab is asleep still, out of that web view. What
+    /// is to be dropped from the store: the state the tab had; or the new
+    /// one, when the tab was woken before it came.
+    pub(crate) fn sleeper_state_kept(
+        &mut self,
+        tab: TabId,
+        web_view: WebViewId,
+        id: Option<i64>,
+    ) -> Vec<i64> {
+        let waiting = self
+            .tabs
+            .get_mut(&tab)
+            .filter(|tab| tab.asleep && tab.sleeping_with == Some(web_view));
+        let Some(tab) = waiting else {
+            return id.into_iter().collect();
+        };
+        tab.sleeping_with = None;
+        match id {
+            Some(id) => tab.kept.replace(id).into_iter().collect(),
+            // The one it had from when it left the front is of the same
+            // page: with none given now, it is the tab's still.
+            None => Vec::new(),
+        }
     }
 
     /// A tab's state was kept in the store as `id`; or, with `None`, there

@@ -717,7 +717,7 @@ Spaces with their login sets, colours and icons; shared logins; the tree with dr
 
 The lifecycle of §5.7; snapshots; keep-awake reasons; live-tab limits; pressure handling; tidying and the Archive; the Memory view; every §7 budget as a failing test; the published run.
 
-**Where W3 stands (2026-11-24).** Built: tidying and the Archive (049, with W2). What a sleeping tab keeps ([051](051-a-tabs-kept-state.md)), in the core and both shells: a tab's state is asked for when it leaves the front, kept in the store, dropped when the tab goes elsewhere or its history is forgotten, and handed back when the tab wakes, so that a tab that left the front wakes as it was, from its engine's own state. What keeps a tab awake ([052](052-what-keeps-a-tab-awake.md)), in the core and both shells: sound, the camera or the microphone, typed text, a download, a question, a load. Designed: the sleep time ([053](053-a-tab-sleeps-by-itself.md)). Not built: the sleep time and the limit of live tabs; pressure; pictures of pages; the Memory view; the budgets as tests; the published run.
+**Where W3 stands (2026-11-24).** Built: tidying and the Archive (049, with W2). What a sleeping tab keeps ([051](051-a-tabs-kept-state.md)), in the core and both shells: a tab's state is asked for when it leaves the front, kept in the store, dropped when the tab goes elsewhere or its history is forgotten, and handed back when the tab wakes, so that a tab that left the front wakes as it was, from its engine's own state. What keeps a tab awake ([052](052-what-keeps-a-tab-awake.md)), in the core and both shells: sound, the camera or the microphone, typed text, a download, a question, a load. The sleep time ([053](053-a-tab-sleeps-by-itself.md)): a tab out of sight for half an hour, with no reason to be awake, is put to sleep and wakes as it was. Not built: the limit of live tabs; pressure; pictures of pages; the Memory view; the budgets as tests; the published run.
 
 ### W4 — Guard (large)
 
@@ -937,7 +937,7 @@ Four features of W2 are built on the recommendations of their own documents, the
 4. A tab with a question waiting, or on its way somewhere, is kept awake.
 5. The marks are for later: this step tells the shells the reasons and draws nothing.
 
-**A tab sleeps by itself** ([053](053-a-tab-sleeps-by-itself.md) §6, put on 2026-11-24; designed, not built; the third of W3):
+**A tab sleeps by itself** ([053](053-a-tab-sleeps-by-itself.md) §6, put on 2026-11-24; built; the third of W3):
 
 1. Half an hour out of sight, on every system, with no setting yet.
 2. The time is counted in the app's own minutes, not by the clock.

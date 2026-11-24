@@ -338,6 +338,60 @@ class ThroughTheCoreTest {
         assertNull("and outside fake mode there is no such thing", config(LaunchOptions(clockStep = 86_400)).fake)
     }
 
+    /** A launch that says nothing of the sleep time leaves it the usual one; one that does is handed on. */
+    @Test
+    fun fakeModesSleepTimeIsWhatTheLaunchAskedFor() {
+        assertEquals(0, config(LaunchOptions(fake = true)).fake?.sleep_after_seconds)
+        assertEquals(5, config(LaunchOptions(fake = true, sleepAfter = 5)).fake?.sleep_after_seconds)
+        assertNull("and outside fake mode there is no such thing", config(LaunchOptions(sleepAfter = 5)).fake)
+    }
+
+    /**
+     * A tab sleeps by itself (053), through the real core, with the app's own engine over pages
+     * that have no WebView, and a sleep time of seconds: the tab that is left behind is asked
+     * for its state and its web view let go, by the core, with nothing timed by the shell; the
+     * window says it is asleep; brought in front, its web view is made from the state it gave.
+     */
+    @Test
+    fun aTabLeftBehindIsPutToSleepByTheCoreAndWakesFromItsState() =
+        runBlocking {
+            val model = BrowserModel(session(LaunchOptions(fake = true, sleepAfter = 2)))
+            onMain { model.open() }
+            await("the window's first snapshot") { model.tab.tab_id != 0L }
+            val firstTab = onMain { model.tab.tab_id }
+            onMain {
+                model.isEditingAddress = true
+                model.addressText = "example.com"
+                model.submit()
+            }
+            await("the first load") { pages.made.size == 1 && pages.made[0].loaded.isNotEmpty() }
+            arrive(pages.made[0], "https://example.com/", "Example Domain")
+            await("the first page named") { model.tab.title == "Example Domain" }
+            pages.made[0].hasState = "the first tab's state".toByteArray()
+
+            // Another tab in front: the first is out of sight, and is asked for its state once.
+            onMain { model.openFromOutside("https://example.org/story") }
+            await("the second load") { pages.made.size == 2 && pages.made[1].loaded.isNotEmpty() }
+            arrive(pages.made[1], "https://example.org/story", "A Story")
+            await("two tabs, the second in front") { model.tabs.size == 2 && model.tab.title == "A Story" }
+            await("asked as it left the front") { pages.made[0].statesAsked == 1 }
+            assertFalse(onMain { pages.made[0].closed })
+
+            // Two seconds on, by the core's own look: asked once more, and let go; asleep.
+            await("the tab behind put to sleep") { pages.made[0].closed && model.tabs.first().asleep }
+            assertEquals(2, onMain { pages.made[0].statesAsked })
+            assertFalse("the tab in front is awake", onMain { pages.made[1].closed })
+            assertEquals("Example Domain", onMain { model.tabs.first().title })
+
+            // Brought in front, it has a web view made from the state it gave.
+            onMain { model.activate(firstTab) }
+            await("a web view for the tab that wakes") { pages.made.size == 3 && pages.made[2].restored.isNotEmpty() }
+            onMain {
+                assertEquals(listOf("the first tab's state" to "https://example.com/"), pages.made[2].restored)
+                assertTrue("and not loaded beside it", pages.made[2].loaded.isEmpty())
+            }
+        }
+
     @Test
     fun aPageCannotPutAnAddressInTheFieldItHasNotBecome() =
         runBlocking {

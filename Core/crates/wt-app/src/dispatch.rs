@@ -109,6 +109,8 @@ pub struct Dispatcher {
     /// The look for tabs to tidy (049) is going round: once a minute while
     /// some Space is tidied.
     tidying: std::cell::Cell<bool>,
+    /// The look for tabs to put to sleep (053) is going.
+    sleeping: std::cell::Cell<bool>,
 }
 
 impl Dispatcher {
@@ -201,6 +203,11 @@ impl Dispatcher {
                 .filter(|start| fake && !start.is_empty()),
             clock,
             session: !fake,
+            sleep_after_seconds: config
+                .fake
+                .as_ref()
+                .filter(|_| fake)
+                .map_or(0, |options| options.sleep_after_seconds),
             new_login_set: if fake {
                 // The same ones in the same order every run: each a step
                 // on from the app's own.
@@ -230,6 +237,7 @@ impl Dispatcher {
             next_subscription: std::cell::Cell::new(1),
             fake,
             tidying: std::cell::Cell::new(false),
+            sleeping: std::cell::Cell::new(false),
         });
         dispatcher.send_event(event::Kind::Status(CoreStatus {
             state: core_status::State::Ready as i32,
@@ -253,6 +261,36 @@ impl Dispatcher {
             )
             | None => {}
         }
+        // Whatever it was may have put a tab out of sight (053): the look
+        // for tabs to put to sleep is set going when there is one.
+        self.watch_for_sleepers();
+    }
+
+    /// Sets the look for tabs to put to sleep going (053), when some tab is
+    /// out of sight and it is not going already: as often as the app looks,
+    /// by the runtime's own time and no clock. It stops when no tab is out
+    /// of sight any longer, and with the core.
+    fn watch_for_sleepers(self: &Rc<Self>) {
+        if self.sleeping.get() || !self.app.could_sleep() {
+            return;
+        }
+        self.sleeping.set(true);
+        let core = Rc::downgrade(self);
+        let every = self.app.sleep_look_every();
+        tokio::task::spawn_local(async move {
+            loop {
+                tokio::time::sleep(every).await;
+                let Some(core) = core.upgrade() else {
+                    break;
+                };
+                if !core.app.could_sleep() {
+                    core.sleeping.set(false);
+                    break;
+                }
+                core.app.sleep_idle_tabs();
+                core.flush();
+            }
+        });
     }
 
     /// Publishes a snapshot of every subscribed model that changed since the

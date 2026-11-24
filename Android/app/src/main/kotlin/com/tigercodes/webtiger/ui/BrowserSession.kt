@@ -46,6 +46,11 @@ data class LaunchOptions(
      * that must see a day pass (049). 0: a second.
      */
     val clockStep: Int = 0,
+    /**
+     * Fake mode: how long a tab is out of sight before the core puts it to sleep, in seconds,
+     * for a suite that must see one sleep (053). 0: the usual half hour.
+     */
+    val sleepAfter: Int = 0,
 )
 
 /**
@@ -192,7 +197,7 @@ class BrowserSession(
                 app_version = appVersion,
                 engines = listOf(engine),
                 test_mode = if (launch.fake) TestMode.TEST_MODE_FAKE else TestMode.TEST_MODE_LIVE,
-                fake = if (launch.fake) FakeOptions(start_address = launch.fakeStart, first_run = launch.firstRun, seconds_a_read = launch.clockStep) else null,
+                fake = if (launch.fake) FakeOptions(start_address = launch.fakeStart, first_run = launch.firstRun, seconds_a_read = launch.clockStep, sleep_after_seconds = launch.sleepAfter) else null,
                 data_dir = if (launch.fake) "" else dataDir,
             )
     }
