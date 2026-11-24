@@ -1523,6 +1523,9 @@ pub struct ArchiveEntry {
     /// When it was tidied, in milliseconds since 1970.
     #[prost(int64, tag = "4")]
     pub tidied_at: i64,
+    /// Since 1.42. The address as the address field shows it.
+    #[prost(string, tag = "5")]
+    pub display: ::prost::alloc::string::String,
 }
 /// Brings a tidied tab back, in the window whose Space's Archive lists it:
 /// a tab again, the last of the row's tabs that are no Sites, in front,
@@ -1799,6 +1802,12 @@ pub struct FakeOptions {
     /// in as chosen: its store is in memory, and every run would be a first.
     #[prost(bool, tag = "2")]
     pub first_run: bool,
+    /// Since 1.42. How far fake mode's clock moves each time it is read, in
+    /// seconds. 0: one second. A suite that must see a day pass (049) says a
+    /// day: the core's own rules are then the ones that run, at their own
+    /// times, and only the clock is quicker.
+    #[prost(uint32, tag = "3")]
+    pub seconds_a_read: u32,
 }
 /// One engine a shell offers.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]

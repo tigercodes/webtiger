@@ -1,6 +1,7 @@
 // What the button beside the tabs opens: the History list (008) and, beside it, the Downloads
-// list (013) and the Permissions list (014), with a switch between them. The Library (W3) will
-// be their home; until then they share a sheet, so that the row of tabs gains no button.
+// list (013), the Permissions list (014) and the Archive (049), with a switch between them. The
+// Library (W3) will be their home; until then they share a sheet, so that the row of tabs
+// gains no button.
 import SwiftUI
 import WTContract
 import WTDesign
@@ -10,21 +11,27 @@ struct LibraryView: View {
         case history
         case downloads
         case permissions
+        case archive
     }
 
     @State private var part: Part
     private let history: HistoryModel
     private let downloads: DownloadsModel
     private let permissions: PermissionsModel
+    /// The Archive of the window's Space (049). None: the window has none (a private one),
+    /// and the switch has no part for it.
+    private let archive: ArchiveModel?
     private let open: (WTHistoryEntry) -> Void
     private let done: () -> Void
 
-    /// `open` is called with a visit a person chose; `done` when they are finished.
+    /// `open` is called with a visit a person chose; `done` when they are finished, and when
+    /// a tab they chose in the Archive is a tab again.
     init(
         showing part: Part = .history,
         history: HistoryModel,
         downloads: DownloadsModel,
         permissions: PermissionsModel,
+        archive: ArchiveModel? = nil,
         open: @escaping (WTHistoryEntry) -> Void,
         done: @escaping () -> Void
     ) {
@@ -32,6 +39,7 @@ struct LibraryView: View {
         self.history = history
         self.downloads = downloads
         self.permissions = permissions
+        self.archive = archive
         self.open = open
         self.done = done
     }
@@ -41,16 +49,38 @@ struct LibraryView: View {
         case .history: HistoryView(model: history, switcher: AnyView(switcher), open: open, done: done)
         case .downloads: DownloadsView(model: downloads, switcher: AnyView(switcher), done: done)
         case .permissions: PermissionsView(model: permissions, switcher: AnyView(switcher), done: done)
+        case .archive:
+            if let archive {
+                ArchiveView(model: archive, switcher: AnyView(switcher), broughtBack: done, done: done)
+            }
         }
     }
 
     /// A button for each list, of which the one for the list that is shown is marked: where a
-    /// list's title would be.
-    private var switcher: some View {
+    /// list's title would be. On a phone the four names are more than a row is wide: the row
+    /// is moved sideways to reach its end, so that no name is cut short or broken; and it
+    /// opens with the name of the list that is shown in sight.
+    @ViewBuilder private var switcher: some View {
+        #if os(iOS)
+            ScrollViewReader { row in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    choices
+                }
+                .onAppear { row.scrollTo(part, anchor: .trailing) }
+            }
+        #else
+            choices
+        #endif
+    }
+
+    private var choices: some View {
         HStack(spacing: Tokens.Space.xs) {
             choice(Words.historyTitle, .history, identifier: "library-history")
             choice(Words.downloadsTitle, .downloads, identifier: "library-downloads")
             choice(Words.permissionsTitle, .permissions, identifier: "library-permissions")
+            if archive != nil {
+                choice(Words.archiveTitle, .archive, identifier: "library-archive")
+            }
         }
     }
 
@@ -72,6 +102,8 @@ struct LibraryView: View {
         .buttonStyle(.plain)
         .accessibilityAddTraits(part == which ? [.isSelected, .isHeader] : [])
         .accessibilityIdentifier(identifier)
+        // What the row is moved to on a phone, to have the one shown in sight.
+        .id(which)
     }
 }
 

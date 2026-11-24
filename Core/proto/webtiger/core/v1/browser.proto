@@ -1106,6 +1106,8 @@ message ArchiveEntry {
   string title = 3 [(wt.redact) = true];
   // When it was tidied, in milliseconds since 1970.
   int64 tidied_at = 4;
+  // Since 1.42. The address as the address field shows it.
+  string display = 5 [(wt.redact) = true];
 }
 
 // Brings a tidied tab back, in the window whose Space's Archive lists it:

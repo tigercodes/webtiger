@@ -159,10 +159,12 @@ internal fun Spaces(
     refusal: String?,
     onShow: (Long) -> Unit,
     onMake: (String, Long?, String) -> Unit,
-    onEdit: (String?, String?) -> Unit,
+    onEdit: (String?, String?, Int?) -> Unit,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
     colours: List<String> = emptyList(),
+    /** The times a Space's tidying can have, in seconds, as the core lists them (049). */
+    tidyTimes: List<Int> = emptyList(),
     /** The way to the private window (037), on a phone: the list's last row. None: no row. */
     private: PrivateWindows? = null,
     making: Boolean = false,
@@ -207,7 +209,8 @@ internal fun Spaces(
                     named = all.firstOrNull { it.space_id == shownId }?.name.orEmpty(),
                     coloured = all.firstOrNull { it.space_id == shownId }?.colour.orEmpty(),
                     colours = colours,
-                    takesKeyboard = !pictured,
+                    tidied = all.firstOrNull { it.space_id == shownId }?.tidy_after_seconds ?: 0,
+                    tidyTimes = tidyTimes,
                     refusal = refusal,
                     onSave = onEdit,
                     onBack = { page = SpacesPage.LIST },
@@ -432,28 +435,31 @@ private fun Refusal(code: String?, unknown: Int) {
 }
 
 /**
- * The page that edits the Space the window shows (024 §6.3, 025): a field that holds the name
- * it has, and its colour among the colours there are. What is saved is what changed: the name,
- * when one is typed that is not the one it has; the colour, when it is another. A Space nobody
- * named may keep no name; one that has a name is not given none.
+ * The page that edits the Space the window shows (024 §6.3, 025, 049): a field that holds the
+ * name it has, its colour among the colours there are, and after how long out of sight its
+ * tabs are tidied, among the times there are. What is saved is what changed: the name, when one
+ * is typed that is not the one it has; the colour, when it is another; and so the time. A Space
+ * nobody named may keep no name; one that has a name is not given none.
  */
 @Composable
 private fun SpaceRename(
     named: String,
     coloured: String,
     colours: List<String>,
-    takesKeyboard: Boolean,
+    tidied: Int,
+    tidyTimes: List<Int>,
     refusal: String?,
-    onSave: (String?, String?) -> Unit,
+    onSave: (String?, String?, Int?) -> Unit,
     onBack: () -> Unit,
 ) {
-    val nameField = remember { FocusRequester() }
-    LaunchedEffect(Unit) { if (takesKeyboard) nameField.requestFocus() }
+    // The keyboard waits until the name is pressed: raised by itself it would cover the times
+    // (049). (The page that makes a Space asks for the name first, and has it at once.)
     var name by rememberSaveable { mutableStateOf(named) }
     var colour by rememberSaveable { mutableStateOf(coloured) }
+    var tidyAfter by rememberSaveable { mutableStateOf(tidied) }
     val mayBeSaved = name.isNotBlank() || named.isEmpty()
     val submit = {
-        if (mayBeSaved) onSave(name.takeIf { it.isNotBlank() && it != named }, colour.takeIf { it != coloured })
+        if (mayBeSaved) onSave(name.takeIf { it.isNotBlank() && it != named }, colour.takeIf { it != coloured }, tidyAfter.takeIf { it != tidied })
     }
     Column(modifier = Modifier.padding(horizontal = Tokens.Space.l), verticalArrangement = Arrangement.spacedBy(Tokens.Space.m)) {
         Text(
@@ -469,10 +475,12 @@ private fun SpaceRename(
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { submit() }),
-            modifier = Modifier.fillMaxWidth().focusRequester(nameField).testTag("space-name"),
+            modifier = Modifier.fillMaxWidth().testTag("space-name"),
         )
     }
     SpaceSwatches(colours, offersNone = true, chosen = colour, onChoose = { colour = it }, modifier = Modifier.padding(horizontal = Tokens.Space.l, vertical = Tokens.Space.s))
+    // After how long out of sight its tabs are tidied, or never (049).
+    SpaceTidyTimes(tidyTimes, chosen = tidyAfter, onChoose = { tidyAfter = it }, modifier = Modifier.padding(vertical = Tokens.Space.s))
     Refusal(refusal, R.string.error_space_rename_failed)
     Row(modifier = Modifier.padding(horizontal = Tokens.Space.l, vertical = Tokens.Space.s), horizontalArrangement = Arrangement.spacedBy(Tokens.Space.s)) {
         TextButton(onClick = onBack, modifier = Modifier.testTag("space-back")) { Text(stringResource(R.string.space_new_back)) }

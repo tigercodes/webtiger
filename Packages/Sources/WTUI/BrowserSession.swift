@@ -68,6 +68,9 @@ public final class BrowserSession {
                 config.fake.startAddress = environment["WEBTIGER_FAKE_START"] ?? ""
                 // A first run, in which nobody has chosen where searches go (020).
                 config.fake.firstRun = environment["WEBTIGER_FAKE_FIRST_RUN"] == "1"
+                // How far the core's clock moves each time it is read, in seconds, for a suite
+                // that must see a day pass (049). Without it: a second.
+                config.fake.secondsARead = UInt32(environment["WEBTIGER_FAKE_CLOCK_STEP"] ?? "") ?? 0
                 opener = .nothing
                 downloads = nil
             } else {

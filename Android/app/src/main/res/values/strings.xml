@@ -11,6 +11,30 @@
     <string name="address_secure">Secure connection</string>
     <!-- The app's name. Not translated. -->
     <string name="app_name">WebTiger</string>
+    <!-- Button in the Archive that asks whether to forget every tab in it. -->
+    <string name="archive_clear">Forget All…</string>
+    <!-- Choice: leave the Archive as it is. -->
+    <string name="archive_clear_cancel">Cancel</string>
+    <!-- Under the question of whether to forget every tab in the Archive. -->
+    <string name="archive_clear_detail">Tabs that are forgotten can’t be brought back.</string>
+    <!-- Choice: forget every tab in the Archive. -->
+    <string name="archive_clear_everything">Forget All</string>
+    <!-- Question asked by the Forget All button of the Archive. -->
+    <string name="archive_clear_title">Forget every tab in this Archive?</string>
+    <!-- Button that closes the Archive. -->
+    <string name="archive_done">Done</string>
+    <!-- Shown in the Archive when it lists nothing. -->
+    <string name="archive_empty">Tabs that are tidied away will be listed here.</string>
+    <!-- Under the words of an Archive that lists nothing: how a Space comes to be tidied. -->
+    <string name="archive_empty_detail">Nothing is tidied until you say so. To have this Space’s tabs tidied by themselves, edit the Space and choose after how long.</string>
+    <!-- Accessibility label of the button beside a tab in the Archive that removes it for good. -->
+    <string name="archive_forget">Forget This Tab</string>
+    <!-- Button at the end of the Archive that shows the next, older page of tidied tabs. -->
+    <string name="archive_older">Show Older Tabs</string>
+    <!-- Under a tab in the Archive: when it was tidied away. %@ is a date and a time, such as '1 Jan 2026 at 12:00'. -->
+    <string name="archive_tidied">Tidied %s</string>
+    <!-- Title of the list of tabs that were tidied away, and the name of its part of the switch beside History, Downloads and Permissions. -->
+    <string name="archive_title">Archive</string>
     <!-- Design catalogue: heading of the colour tokens. -->
     <string name="catalogue_colours">Colours</string>
     <!-- Design catalogue: heading of the corner-radius tokens. -->
@@ -21,6 +45,10 @@
     <string name="catalogue_space">Space</string>
     <!-- Design catalogue: heading of what is shown instead of a window when the core refuses to start. -->
     <string name="catalogue_start_failed">The core would not start</string>
+    <!-- Design catalogue: the Library with the Archive shown, before anything has been tidied. -->
+    <string name="catalogue_state_archive_empty">The Archive, nothing tidied</string>
+    <!-- Design catalogue: the Library with the Archive shown, with tidied tabs in it. -->
+    <string name="catalogue_state_archive_list">The Archive</string>
     <!-- Design catalogue: a state of the Downloads list. -->
     <string name="catalogue_state_downloads_empty">Downloads: none</string>
     <!-- Design catalogue: a state of the Downloads list. -->
@@ -221,6 +249,8 @@
     <string name="error_start_title">WebTiger couldn’t start</string>
     <!-- Under a download in the list, after a person pressed it to open its file: no app on the device opens files of its kind. -->
     <string name="error_system_no_handler">Nothing on this device opens this kind of file.</string>
+    <!-- Said on the page that edits a Space when the app does not know the time that was chosen. -->
+    <string name="error_tidy_time_unknown">That isn’t a time tabs can be tidied after.</string>
     <!-- Heading shown over a page that failed to load. -->
     <string name="error_title">This page didn’t load</string>
     <!-- Command in a tab's own menu (on a Mac in the File menu, for the tab in front): the tab becomes one of the row's Favourites, the small tiles at its beginning. A tab that is no Site is kept as one by it. Grey when the row has as many Favourites as it can. -->
@@ -489,6 +519,20 @@
     <string name="space_rename_save">Save</string>
     <!-- Heading of the page that gives a Space another name or colour. -->
     <string name="space_rename_title">Edit Space</string>
+    <!-- Heading over the choices of when a Space's tabs are tidied away, on the page that edits a Space. -->
+    <string name="space_tidy">Tidy tabs away</string>
+    <!-- A choice of when a Space's tabs are tidied away, on the page that edits a Space. Also what the Space is said to have. -->
+    <string name="space_tidy_0">Never</string>
+    <!-- A choice of when a Space's tabs are tidied away, on the page that edits a Space. Also what the Space is said to have. -->
+    <string name="space_tidy_2592000">After 30 days</string>
+    <!-- A choice of when a Space's tabs are tidied away, on the page that edits a Space. Also what the Space is said to have. -->
+    <string name="space_tidy_43200">After 12 hours</string>
+    <!-- A choice of when a Space's tabs are tidied away, on the page that edits a Space. Also what the Space is said to have. -->
+    <string name="space_tidy_604800">After a week</string>
+    <!-- A choice of when a Space's tabs are tidied away, on the page that edits a Space. Also what the Space is said to have. -->
+    <string name="space_tidy_86400">After a day</string>
+    <!-- Under the heading of the choices of when a Space's tabs are tidied away. -->
+    <string name="space_tidy_detail">Tabs you haven’t looked at for this long go to this Space’s Archive, where you can get them back. Sites and Favourites always stay.</string>
     <!-- Under the heading of the list of Spaces. -->
     <string name="spaces_detail">A Space keeps its tabs apart from the others. Choose one to show it in this window.</string>
     <!-- Button that closes the list of Spaces without changing which is shown. -->

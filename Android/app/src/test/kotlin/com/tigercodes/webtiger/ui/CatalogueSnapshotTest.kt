@@ -128,6 +128,15 @@ class CatalogueSnapshotTest {
         }
     }
 
+    private fun archiveLists(theme: String) {
+        var state by mutableStateOf(CatalogueArchive.LIST)
+        show { key(state) { CatalogueArchiveList(state, Modifier.fillMaxSize()) } }
+        for (next in CatalogueArchive.entries) {
+            state = next
+            verify("archive-${next.name.lowercase().replace('_', '-')}-$theme")
+        }
+    }
+
     private fun spacesLists(theme: String) {
         var state by mutableStateOf(CatalogueSpaces.LIST)
         show { key(state) { CatalogueSpacesList(state, Modifier.fillMaxSize()) } }
@@ -223,6 +232,13 @@ class CatalogueSnapshotTest {
 
     @Test @Config(qualifiers = "w720dp-h560dp-night-xhdpi")
     fun aWindowWithItsTabsAtTheSideInTheDarkTheme() = sidebar("dark")
+
+    // The Archive (049), under the switch's four names.
+    @Test @Config(qualifiers = LIST_LIGHT)
+    fun everyStateOfTheArchiveInTheLightTheme() = archiveLists("light")
+
+    @Test @Config(qualifiers = LIST_DARK)
+    fun everyStateOfTheArchiveInTheDarkTheme() = archiveLists("dark")
 
     // Taller than a list's picture: the page that makes a Space has its name, its logins, the
     // Spaces to share them with, its colour and what was refused.

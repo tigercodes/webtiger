@@ -24,6 +24,22 @@ final class PrivateTests: AppTestCase {
         press(element)
     }
 
+    /// A private window's Library has no Archive (049): nothing of it is tidied, or written.
+    /// The other lists are there, and the Archive's name is not among them.
+    private func expectALibraryWithNoArchive(in app: XCUIApplication, line: UInt = #line) {
+        #if os(macOS)
+            // Two windows, and a button in each: the menu's item goes to the one in front.
+            let history = app.menuBars.menuBarItems["History"]
+            history.click()
+            pressWhenThere(history.menuItems["History and Downloads"], "the History menu opens the lists", line: line)
+        #else
+            press(app.buttons["history"])
+        #endif
+        XCTAssertTrue(app.buttons["library-permissions"].waitForExistence(timeout: 30), "the Library's lists", line: line)
+        XCTAssertFalse(app.buttons["library-archive"].exists, "a private window has no Archive", line: line)
+        press(app.buttons["history-done"])
+    }
+
     #if os(macOS)
         /// How many of the app's windows show a page with this title.
         private func windows(titled title: String, in app: XCUIApplication) -> Int {
@@ -55,6 +71,7 @@ final class PrivateTests: AppTestCase {
             XCTAssertTrue(pageShows("Set", in: app))
             go(to: "/whoami", in: app)
             XCTAssertTrue(pageShows("who=ada", in: app), "signed in, in the private window")
+            expectALibraryWithNoArchive(in: app)
 
             // The other window is not signed in.
             bringForward("Home", in: app)
@@ -102,6 +119,7 @@ final class PrivateTests: AppTestCase {
             XCTAssertTrue(pageShows("Set", in: app))
             go(to: "/whoami", in: app)
             XCTAssertTrue(pageShows("who=ada", in: app), "signed in, in the private window")
+            expectALibraryWithNoArchive(in: app)
 
             // Left open, and the other window shown: it is not signed in.
             press(app.buttons["private-chip"])

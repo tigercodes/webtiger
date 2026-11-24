@@ -180,6 +180,12 @@ public nonisolated struct WTFakeOptions: Sendable {
   /// in as chosen: its store is in memory, and every run would be a first.
   public var firstRun: Bool = false
 
+  /// Since 1.42. How far fake mode's clock moves each time it is read, in
+  /// seconds. 0: one second. A suite that must see a day pass (049) says a
+  /// day: the core's own rules are then the ones that run, at their own
+  /// times, and only the clock is quicker.
+  public var secondsARead: UInt32 = 0
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -290,7 +296,7 @@ nonisolated extension WTCoreConfig: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".FakeOptions"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}start_address\0\u{3}first_run\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}start_address\0\u{3}first_run\0\u{3}seconds_a_read\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -300,6 +306,7 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.startAddress) }()
       case 2: try { try decoder.decodeSingularBoolField(value: &self.firstRun) }()
+      case 3: try { try decoder.decodeSingularUInt32Field(value: &self.secondsARead) }()
       default: break
       }
     }
@@ -312,12 +319,16 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if self.firstRun != false {
       try visitor.visitSingularBoolField(value: self.firstRun, fieldNumber: 2)
     }
+    if self.secondsARead != 0 {
+      try visitor.visitSingularUInt32Field(value: self.secondsARead, fieldNumber: 3)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: WTFakeOptions, rhs: WTFakeOptions) -> Bool {
     if lhs.startAddress != rhs.startAddress {return false}
     if lhs.firstRun != rhs.firstRun {return false}
+    if lhs.secondsARead != rhs.secondsARead {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

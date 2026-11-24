@@ -41,6 +41,11 @@ data class LaunchOptions(
     val catalogue: Boolean = false,
     /** Fake mode: the run is to be a first run, in which nobody has chosen where searches go (020). */
     val firstRun: Boolean = false,
+    /**
+     * Fake mode: how far the core's clock moves each time it is read, in seconds, for a suite
+     * that must see a day pass (049). 0: a second.
+     */
+    val clockStep: Int = 0,
 )
 
 /**
@@ -187,7 +192,7 @@ class BrowserSession(
                 app_version = appVersion,
                 engines = listOf(engine),
                 test_mode = if (launch.fake) TestMode.TEST_MODE_FAKE else TestMode.TEST_MODE_LIVE,
-                fake = if (launch.fake) FakeOptions(start_address = launch.fakeStart, first_run = launch.firstRun) else null,
+                fake = if (launch.fake) FakeOptions(start_address = launch.fakeStart, first_run = launch.firstRun, seconds_a_read = launch.clockStep) else null,
                 data_dir = if (launch.fake) "" else dataDir,
             )
     }

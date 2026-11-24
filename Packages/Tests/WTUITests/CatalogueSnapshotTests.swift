@@ -23,6 +23,15 @@ final class CatalogueSnapshotTests: XCTestCase {
     private static let wideStates: Set<CatalogueState> = [.sidebar]
     /// For a page over the window that is longer than any window's picture.
     private static let pageSize = CGSize(width: 480, height: 700)
+    /// For the page that edits a Space, which is the longest of the pages (049).
+    private static let editPageSize = CGSize(width: 480, height: 800)
+    // For the Library with its switch (049): as narrow as its sheet is let be on a Mac, and
+    // as narrow as a phone, so that the picture has the four names as a person has them.
+    #if os(macOS)
+        private static let librarySize = CGSize(width: 580, height: CatalogueWindow.height)
+    #else
+        private static let librarySize = CGSize(width: 390, height: CatalogueWindow.height)
+    #endif
 
     private func verify(_ view: some View, size: CGSize, named name: String, file: StaticString = #filePath, line: UInt = #line) async {
         for dark in [false, true] {
@@ -75,6 +84,14 @@ final class CatalogueSnapshotTests: XCTestCase {
         }
     }
 
+    /// The Archive (049), in the Library: the switch has its four names.
+    func testEveryStateOfTheArchive() async throws {
+        try skipWithoutPictures()
+        for state in CatalogueArchive.allCases {
+            await verify(CatalogueArchiveList(state: state), size: Self.librarySize, named: "archive-\(state.rawValue)")
+        }
+    }
+
     func testEveryStateOfTheSearchEngines() async throws {
         try skipWithoutPictures()
         for state in CatalogueSearch.allCases {
@@ -88,7 +105,10 @@ final class CatalogueSnapshotTests: XCTestCase {
         for state in CatalogueSpaces.allCases {
             // Taller than a window's picture, so that the whole list, or page, is seen: the
             // page that makes a Space has its name, its logins, its colour and what was refused.
-            await verify(CatalogueSpacesList(state: state), size: Self.pageSize, named: "spaces-\(state.rawValue)")
+            // And the page that edits one is taller still, with the times its tabs are tidied
+            // after (049): its buttons are under them.
+            let size = state == .rename ? Self.editPageSize : Self.pageSize
+            await verify(CatalogueSpacesList(state: state), size: size, named: "spaces-\(state.rawValue)")
         }
     }
 

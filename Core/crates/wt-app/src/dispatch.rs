@@ -48,13 +48,26 @@ const FAKE_NOW: Timestamp = Timestamp(1_767_268_800_000);
 
 /// Fake mode's clock: it starts at [`FAKE_NOW`] and moves on a second each
 /// time it is read, so what a run writes down has the same times on every
-/// run, and in the order it was written.
-struct FakeClock(ManualClock);
+/// run, and in the order it was written. A suite that must see a day pass
+/// says how far it moves instead (`FakeOptions.seconds_a_read`, 049).
+struct FakeClock {
+    clock: ManualClock,
+    step_ms: i64,
+}
+
+impl FakeClock {
+    fn new(seconds_a_read: u32) -> FakeClock {
+        FakeClock {
+            clock: ManualClock::new(FAKE_NOW),
+            step_ms: i64::from(seconds_a_read.max(1)).saturating_mul(1_000),
+        }
+    }
+}
 
 impl Clock for FakeClock {
     fn now(&self) -> Timestamp {
-        let now = self.0.now();
-        self.0.advance_millis(1_000);
+        let now = self.clock.now();
+        self.clock.advance_millis(self.step_ms);
         now
     }
 }
@@ -162,7 +175,12 @@ impl Dispatcher {
             .map_err(|e| StartError::new(e.code()))?;
         let clock: Rc<dyn Clock> = match clock {
             Some(chosen) => chosen,
-            None if fake => Rc::new(FakeClock(ManualClock::new(FAKE_NOW))),
+            None if fake => Rc::new(FakeClock::new(
+                config
+                    .fake
+                    .as_ref()
+                    .map_or(0, |options| options.seconds_a_read),
+            )),
             None => Rc::new(SystemClock),
         };
 

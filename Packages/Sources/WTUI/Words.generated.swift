@@ -28,6 +28,66 @@ enum Words {
     /// The app's name. Not translated.
     static let appName = Word(key: "app.name")
 
+    /// Forget All…
+    ///
+    /// Button in the Archive that asks whether to forget every tab in it.
+    static let archiveClear = Word(key: "archive.clear")
+
+    /// Cancel
+    ///
+    /// Choice: leave the Archive as it is.
+    static let archiveClearCancel = Word(key: "archive.clear.cancel")
+
+    /// Tabs that are forgotten can’t be brought back.
+    ///
+    /// Under the question of whether to forget every tab in the Archive.
+    static let archiveClearDetail = Word(key: "archive.clear.detail")
+
+    /// Forget All
+    ///
+    /// Choice: forget every tab in the Archive.
+    static let archiveClearEverything = Word(key: "archive.clear.everything")
+
+    /// Forget every tab in this Archive?
+    ///
+    /// Question asked by the Forget All button of the Archive.
+    static let archiveClearTitle = Word(key: "archive.clear.title")
+
+    /// Done
+    ///
+    /// Button that closes the Archive.
+    static let archiveDone = Word(key: "archive.done")
+
+    /// Tabs that are tidied away will be listed here.
+    ///
+    /// Shown in the Archive when it lists nothing.
+    static let archiveEmpty = Word(key: "archive.empty")
+
+    /// Nothing is tidied until you say so. To have this Space’s tabs tidied by themselves, edit the Space and choose after how long.
+    ///
+    /// Under the words of an Archive that lists nothing: how a Space comes to be tidied.
+    static let archiveEmptyDetail = Word(key: "archive.empty.detail")
+
+    /// Forget This Tab
+    ///
+    /// Accessibility label of the button beside a tab in the Archive that removes it for good.
+    static let archiveForget = Word(key: "archive.forget")
+
+    /// Show Older Tabs
+    ///
+    /// Button at the end of the Archive that shows the next, older page of tidied tabs.
+    static let archiveOlder = Word(key: "archive.older")
+
+    /// Tidied %@
+    ///
+    /// Under a tab in the Archive: when it was tidied away. %@ is a date and a time, such as '1 Jan 2026 at 12:00'.
+    static let archiveTidied = Word(key: "archive.tidied")
+
+    /// Archive
+    ///
+    /// Title of the list of tabs that were tidied away, and the name of its part of the switch beside History, Downloads and Permissions.
+    static let archiveTitle = Word(key: "archive.title")
+
     /// Colours
     ///
     /// Design catalogue: heading of the colour tokens.
@@ -52,6 +112,16 @@ enum Words {
     ///
     /// Design catalogue: heading of what is shown instead of a window when the core refuses to start.
     static let catalogueStartFailed = Word(key: "catalogue.start_failed")
+
+    /// The Archive, nothing tidied
+    ///
+    /// Design catalogue: the Library with the Archive shown, before anything has been tidied.
+    static let catalogueStateArchiveEmpty = Word(key: "catalogue.state.archive_empty")
+
+    /// The Archive
+    ///
+    /// Design catalogue: the Library with the Archive shown, with tidied tabs in it.
+    static let catalogueStateArchiveList = Word(key: "catalogue.state.archive_list")
 
     /// Downloads: none
     ///
@@ -552,6 +622,11 @@ enum Words {
     ///
     /// Under a download in the list, after a person pressed it to open its file: no app on the device opens files of its kind.
     static let errorSystemNoHandler = Word(key: "error.system.no_handler")
+
+    /// That isn’t a time tabs can be tidied after.
+    ///
+    /// Said on the page that edits a Space when the app does not know the time that was chosen.
+    static let errorTidyTimeUnknown = Word(key: "error.tidy.time_unknown")
 
     /// This page didn’t load
     ///
@@ -1223,6 +1298,41 @@ enum Words {
     /// Heading of the page that gives a Space another name or colour.
     static let spaceRenameTitle = Word(key: "space.rename.title")
 
+    /// Tidy tabs away
+    ///
+    /// Heading over the choices of when a Space's tabs are tidied away, on the page that edits a Space.
+    static let spaceTidy = Word(key: "space.tidy")
+
+    /// Never
+    ///
+    /// A choice of when a Space's tabs are tidied away, on the page that edits a Space. Also what the Space is said to have.
+    static let spaceTidy0 = Word(key: "space.tidy.0")
+
+    /// After 30 days
+    ///
+    /// A choice of when a Space's tabs are tidied away, on the page that edits a Space. Also what the Space is said to have.
+    static let spaceTidy2592000 = Word(key: "space.tidy.2592000")
+
+    /// After 12 hours
+    ///
+    /// A choice of when a Space's tabs are tidied away, on the page that edits a Space. Also what the Space is said to have.
+    static let spaceTidy43200 = Word(key: "space.tidy.43200")
+
+    /// After a week
+    ///
+    /// A choice of when a Space's tabs are tidied away, on the page that edits a Space. Also what the Space is said to have.
+    static let spaceTidy604800 = Word(key: "space.tidy.604800")
+
+    /// After a day
+    ///
+    /// A choice of when a Space's tabs are tidied away, on the page that edits a Space. Also what the Space is said to have.
+    static let spaceTidy86400 = Word(key: "space.tidy.86400")
+
+    /// Tabs you haven’t looked at for this long go to this Space’s Archive, where you can get them back. Sites and Favourites always stay.
+    ///
+    /// Under the heading of the choices of when a Space's tabs are tidied away.
+    static let spaceTidyDetail = Word(key: "space.tidy.detail")
+
     /// A Space keeps its tabs apart from the others. Choose one to show it in this window.
     ///
     /// Under the heading of the list of Spaces.
@@ -1482,11 +1592,25 @@ extension Word {
         "address.placeholder",
         "address.secure",
         "app.name",
+        "archive.clear",
+        "archive.clear.cancel",
+        "archive.clear.detail",
+        "archive.clear.everything",
+        "archive.clear.title",
+        "archive.done",
+        "archive.empty",
+        "archive.empty.detail",
+        "archive.forget",
+        "archive.older",
+        "archive.tidied",
+        "archive.title",
         "catalogue.colours",
         "catalogue.radius",
         "catalogue.size",
         "catalogue.space",
         "catalogue.start_failed",
+        "catalogue.state.archive_empty",
+        "catalogue.state.archive_list",
         "catalogue.state.downloads_empty",
         "catalogue.state.downloads_list",
         "catalogue.state.empty",
@@ -1587,6 +1711,7 @@ extension Word {
         "error.start.detail",
         "error.start.title",
         "error.system.no_handler",
+        "error.tidy.time_unknown",
         "error.title",
         "favourites.add",
         "favourites.favourite",
@@ -1721,6 +1846,13 @@ extension Word {
         "space.no_colour",
         "space.rename.save",
         "space.rename.title",
+        "space.tidy",
+        "space.tidy.0",
+        "space.tidy.2592000",
+        "space.tidy.43200",
+        "space.tidy.604800",
+        "space.tidy.86400",
+        "space.tidy.detail",
         "spaces.detail",
         "spaces.done",
         "spaces.new",

@@ -7,7 +7,7 @@
 
 use std::time::Duration;
 
-use wt_core::{SpaceId, WindowId};
+use wt_core::{Address, SpaceId, WindowId};
 use wt_proto::v1::{
     Ack, ArchiveEntry, ArchivePage, ForgetArchived, OpenTab, QueryArchive, RestoreArchived,
     SetSpaceTidying, WebViewDestroy, forget_archived, host_request, response,
@@ -148,6 +148,10 @@ impl App {
                 .into_iter()
                 .map(|entry| ArchiveEntry {
                     id: entry.id,
+                    // The address as the field shows it; one the parser no
+                    // longer takes is shown whole.
+                    display: Address::parse(&entry.url)
+                        .map_or_else(|_| entry.url.clone(), |address| address.display()),
                     url: entry.url,
                     title: entry.title,
                     tidied_at: entry.tidied_at,

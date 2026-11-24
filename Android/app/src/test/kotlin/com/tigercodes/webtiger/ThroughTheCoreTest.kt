@@ -18,6 +18,7 @@ import com.tigercodes.webtiger.core.v1.QuerySpaces
 import com.tigercodes.webtiger.core.v1.Request
 import com.tigercodes.webtiger.design.Tokens
 import com.tigercodes.webtiger.core.v1.TestMode
+import com.tigercodes.webtiger.ui.ArchiveModel
 import com.tigercodes.webtiger.ui.BrowserModel
 import com.tigercodes.webtiger.ui.BrowserSession
 import com.tigercodes.webtiger.ui.LaunchOptions
@@ -230,6 +231,84 @@ class ThroughTheCoreTest {
             assertEquals("the others opened nothing", 3, onMain { model.tabs.size })
             assertEquals(2, pages.made.size)
         }
+
+    /**
+     * Tidying (049), through the real core, with its clock at a day a read: the window's model
+     * gives the Space twelve hours; at the core's next look (a window that opens is one) the
+     * tab that was not in front is tidied, and its web view destroyed; the Archive's model
+     * lists it by its name and its address as the address field shows one; brought back, it is
+     * a tab again, in front, loading its address. The shell timed nothing.
+     */
+    @Test
+    fun aTabOutOfSightIsTidiedByTheCoreAndBroughtBackFromItsArchive() =
+        runBlocking {
+            val session = session(LaunchOptions(fake = true, clockStep = 86_400))
+            val model = BrowserModel(session)
+            onMain { model.open() }
+            await("the window's first snapshot") { model.tab.tab_id != 0L && model.spaceId != 0L }
+            // The times there are, as the real core lists them, never first; and a Space is
+            // made with none. (Their words are the strings': `SpaceTidyingTest`.)
+            val listed = session.core.request(Request(query_spaces = QuerySpaces())).spaces_page!!
+            assertEquals(listOf(0, 43_200, 86_400, 604_800, 2_592_000), listed.tidy_times)
+            assertEquals(0, listed.spaces.first().tidy_after_seconds)
+
+            // Two tabs with pages: the first, and one a link from another app opened, in front.
+            onMain {
+                model.isEditingAddress = true
+                model.addressText = "example.com"
+                model.submit()
+            }
+            await("the first load") { pages.made.size == 1 && pages.made[0].loaded.isNotEmpty() }
+            arrive(pages.made[0], "https://example.com/", "Example Domain")
+            await("the first page named") { model.tab.title == "Example Domain" }
+            onMain { model.openFromOutside("https://example.org/story") }
+            await("the second load") { pages.made.size == 2 && pages.made[1].loaded.isNotEmpty() }
+            arrive(pages.made[1], "https://example.org/story", "A Story")
+            await("two tabs, the second in front") { model.tabs.size == 2 && model.tab.title == "A Story" }
+
+            // Twelve hours, for the Space the window shows: nothing goes when it is given.
+            onMain { model.editSpace(null, null, 43_200) }
+            withTimeout(10_000) {
+                while (session.core.request(Request(query_spaces = QuerySpaces())).spaces_page?.spaces?.first()?.tidy_after_seconds != 43_200) delay(5)
+            }
+            assertEquals(2, onMain { model.tabs.size })
+
+            // A look: the core looks when a window opens (and once a minute, which this test
+            // does not wait for). By its clock days have gone.
+            val other = BrowserModel(session)
+            onMain { other.open() }
+            await("the tab out of sight tidied") { model.tabs.size == 1 }
+            assertEquals("the one in front stays", "A Story", onMain { model.tab.title })
+            await("its web view destroyed") { pages.made[0].closed }
+            assertFalse(pages.made[1].closed)
+
+            val archive = ArchiveModel(session, onMain { model.windowId!! })
+            onMain { archive.reload() }
+            await("the Archive listed") { archive.loaded }
+            onMain {
+                assertEquals(listOf("Example Domain"), archive.entries.map { it.title })
+                assertEquals(listOf("https://example.com/"), archive.entries.map { it.url })
+                assertEquals("as the address field shows it", listOf("example.com"), archive.entries.map { it.display })
+            }
+
+            var back = 0
+            onMain { archive.bringBack(archive.entries.first()) { back += 1 } }
+            await("a tab again, the last of the row, in front") {
+                back == 1 && model.tabs.size == 2 && model.tab.tab_id == model.tabs.last().tab_id && model.address.url == "https://example.com/"
+            }
+            await("its address asked of a new web view") { pages.made.size == 3 && pages.made[2].loaded == listOf("https://example.com/") }
+            assertEquals("and the Archive has it no longer", 0, onMain { archive.entries.size })
+            onMain { archive.reload() }
+            await("asked again") { archive.loaded && archive.entries.isEmpty() }
+        }
+
+    /** A launch that says nothing of the clock leaves it as fake mode has it; one that does is handed on. */
+    @Test
+    fun fakeModesClockMovesAsTheLaunchAskedFor() {
+        assertEquals(0, config(LaunchOptions(fake = true)).fake?.seconds_a_read)
+        assertEquals(86_400, config(LaunchOptions(fake = true, clockStep = 86_400)).fake?.seconds_a_read)
+        assertNull("and outside fake mode there is no such thing", config(LaunchOptions(clockStep = 86_400)).fake)
+    }
 
     @Test
     fun aPageCannotPutAnAddressInTheFieldItHasNotBecome() =

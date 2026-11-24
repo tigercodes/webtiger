@@ -140,6 +140,14 @@ fn a_tab_that_has_not_been_in_front_for_its_spaces_time_is_tidied_into_the_archi
             [("News", NEWS), ("Home", HOME)],
             "newest first: the row's order, the last of it first"
         );
+        // Each with its address as the address field would show it.
+        assert_eq!(
+            entries
+                .iter()
+                .map(|entry| entry.display.as_str())
+                .collect::<Vec<_>>(),
+            ["news.example.com", "example.com"]
+        );
         assert!(entries.iter().all(|entry| entry.tidied_at == clock.now().0));
         assert!(entries[0].id > entries[1].id);
 
@@ -578,5 +586,46 @@ fn the_clock_is_looked_at_once_a_minute_and_only_while_some_space_is_tidied() {
             shell.a_minute_passes().await;
         }
         assert_eq!(counting.read.load(Ordering::SeqCst), stopped);
+    });
+}
+
+#[test]
+fn in_fake_mode_a_suite_can_have_a_day_pass_each_time_the_clock_is_read() {
+    run(async {
+        // Fake mode as it is: a second a read. A minute on, nothing is near its time.
+        let mut shell = FakeShell::fake();
+        web(&mut shell);
+        let (window, _, subscription) = three_tabs(&mut shell).await;
+        let space = shell.window(subscription).space_id;
+        acked(&shell.set_tidying(space, HALF_A_DAY).await);
+        shell.a_minute_passes().await;
+        shell.a_minute_passes().await;
+        assert_eq!(row(&shell, subscription), ["Home", "News", "Mail"]);
+        assert_eq!(archived(&mut shell, window).await, [] as [&str; 0]);
+
+        // With a day a read, the look after the Space is given its time finds the tabs a
+        // day older: the rule is the same one, and only the clock is quicker.
+        let mut config = FakeShell::config(wt_proto::v1::EngineKind::Webkit);
+        config.fake = Some(wt_proto::v1::FakeOptions {
+            seconds_a_read: 86_400,
+            ..Default::default()
+        });
+        let mut shell = FakeShell::start(&config).unwrap();
+        web(&mut shell);
+        let (window, _, subscription) = three_tabs(&mut shell).await;
+        let space = shell.window(subscription).space_id;
+        acked(&shell.set_tidying(space, HALF_A_DAY).await);
+        assert_eq!(row(&shell, subscription), ["Home", "News", "Mail"]);
+        shell.a_minute_passes().await;
+        assert_eq!(row(&shell, subscription), ["Mail"]);
+        let (entries, _) = shell.archive(window, 0, 0).await;
+        assert_eq!(entries.len(), 2);
+        // Whole days after fake mode's "now".
+        assert!(
+            entries
+                .iter()
+                .all(|entry| entry.tidied_at > 1_767_268_800_000
+                    && (entry.tidied_at - 1_767_268_800_000) % 86_400_000 == 0)
+        );
     });
 }

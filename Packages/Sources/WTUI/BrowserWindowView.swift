@@ -196,13 +196,15 @@ public struct BrowserWindowView: View {
         }
     }
 
-    /// The History list, the Downloads list (013) and the Permissions list (014), over the
-    /// window. A visit chosen loads in the tab in front.
+    /// The History list, the Downloads list (013), the Permissions list (014) and the Archive
+    /// (049), over the window. A visit chosen loads in the tab in front. A private window has
+    /// no Archive: nothing of it is tidied, or written.
     private var history: some View {
         LibraryView(
             history: HistoryModel(core: session.core, windowID: model.windowID ?? 0),
             downloads: DownloadsModel(core: session.core, windowID: model.windowID ?? 0),
             permissions: PermissionsModel(core: session.core, windowID: model.windowID ?? 0),
+            archive: model.isPrivate ? nil : ArchiveModel(core: session.core, windowID: model.windowID ?? 0),
             open: { entry in
                 showingHistory = false
                 model.load(entry.url)
@@ -210,8 +212,8 @@ public struct BrowserWindowView: View {
             done: { showingHistory = false }
         )
         #if os(macOS)
-        // Wide enough for the switch's three names on one line beside the list's buttons.
-        .frame(minWidth: 480, idealWidth: 520, minHeight: 420, idealHeight: 560)
+        // Wide enough for the switch's four names on one line beside the list's buttons.
+        .frame(minWidth: 580, idealWidth: 620, minHeight: 420, idealHeight: 560)
         #else
         // A downloaded file a person opened (030): the system's own preview, over the list.
         // It is there while the session's opener has a file to show, and takes the file

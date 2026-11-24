@@ -266,6 +266,7 @@ private fun Window(session: BrowserSession, model: BrowserModel, private: Privat
                 onEdit = model::editSpace,
                 onDone = model::closeSpaces,
                 colours = model.spaceColours,
+                tidyTimes = model.spaceTidyTimes,
                 // The way to the private window (037): chosen, the list closes behind it.
                 private =
                     private?.let { ways ->
@@ -305,11 +306,15 @@ private fun Window(session: BrowserSession, model: BrowserModel, private: Privat
             val history = remember(windowId) { HistoryModel(session, windowId) }
             val downloads = remember(windowId) { DownloadsModel(session, windowId) }
             val permissions = remember(windowId) { PermissionsModel(session, windowId) }
+            // The Archive of the window's Space (049). A private window has none: nothing of
+            // it is tidied, or written.
+            val archive = remember(windowId) { ArchiveModel(session, windowId) }
             BackHandler { showingHistory = false }
             Library(
                 history = history,
                 downloads = downloads,
                 permissions = permissions,
+                archive = archive.takeUnless { model.isPrivate },
                 onOpen = { visit ->
                     showingHistory = false
                     model.load(visit.url)

@@ -61,6 +61,150 @@
         }
       }
     },
+    "archive.clear": {
+      "comment": "Button in the Archive that asks whether to forget every tab in it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forget All…"
+          }
+        }
+      }
+    },
+    "archive.clear.cancel": {
+      "comment": "Choice: leave the Archive as it is.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        }
+      }
+    },
+    "archive.clear.detail": {
+      "comment": "Under the question of whether to forget every tab in the Archive.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tabs that are forgotten can’t be brought back."
+          }
+        }
+      }
+    },
+    "archive.clear.everything": {
+      "comment": "Choice: forget every tab in the Archive.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forget All"
+          }
+        }
+      }
+    },
+    "archive.clear.title": {
+      "comment": "Question asked by the Forget All button of the Archive.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forget every tab in this Archive?"
+          }
+        }
+      }
+    },
+    "archive.done": {
+      "comment": "Button that closes the Archive.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        }
+      }
+    },
+    "archive.empty": {
+      "comment": "Shown in the Archive when it lists nothing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tabs that are tidied away will be listed here."
+          }
+        }
+      }
+    },
+    "archive.empty.detail": {
+      "comment": "Under the words of an Archive that lists nothing: how a Space comes to be tidied.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing is tidied until you say so. To have this Space’s tabs tidied by themselves, edit the Space and choose after how long."
+          }
+        }
+      }
+    },
+    "archive.forget": {
+      "comment": "Accessibility label of the button beside a tab in the Archive that removes it for good.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forget This Tab"
+          }
+        }
+      }
+    },
+    "archive.older": {
+      "comment": "Button at the end of the Archive that shows the next, older page of tidied tabs.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Older Tabs"
+          }
+        }
+      }
+    },
+    "archive.tidied": {
+      "comment": "Under a tab in the Archive: when it was tidied away. %@ is a date and a time, such as '1 Jan 2026 at 12:00'.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidied %@"
+          }
+        }
+      }
+    },
+    "archive.title": {
+      "comment": "Title of the list of tabs that were tidied away, and the name of its part of the switch beside History, Downloads and Permissions.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archive"
+          }
+        }
+      }
+    },
     "catalogue.colours": {
       "comment": "Design catalogue: heading of the colour tokens.",
       "extractionState": "manual",
@@ -117,6 +261,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "The core would not start"
+          }
+        }
+      }
+    },
+    "catalogue.state.archive_empty": {
+      "comment": "Design catalogue: the Library with the Archive shown, before anything has been tidied.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Archive, nothing tidied"
+          }
+        }
+      }
+    },
+    "catalogue.state.archive_list": {
+      "comment": "Design catalogue: the Library with the Archive shown, with tidied tabs in it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Archive"
           }
         }
       }
@@ -1317,6 +1485,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nothing on this device opens this kind of file."
+          }
+        }
+      }
+    },
+    "error.tidy.time_unknown": {
+      "comment": "Said on the page that edits a Space when the app does not know the time that was chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That isn’t a time tabs can be tidied after."
           }
         }
       }
@@ -2925,6 +3105,90 @@
           "stringUnit": {
             "state": "translated",
             "value": "Edit Space"
+          }
+        }
+      }
+    },
+    "space.tidy": {
+      "comment": "Heading over the choices of when a Space's tabs are tidied away, on the page that edits a Space.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidy tabs away"
+          }
+        }
+      }
+    },
+    "space.tidy.0": {
+      "comment": "A choice of when a Space's tabs are tidied away, on the page that edits a Space. Also what the Space is said to have.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Never"
+          }
+        }
+      }
+    },
+    "space.tidy.2592000": {
+      "comment": "A choice of when a Space's tabs are tidied away, on the page that edits a Space. Also what the Space is said to have.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "After 30 days"
+          }
+        }
+      }
+    },
+    "space.tidy.43200": {
+      "comment": "A choice of when a Space's tabs are tidied away, on the page that edits a Space. Also what the Space is said to have.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "After 12 hours"
+          }
+        }
+      }
+    },
+    "space.tidy.604800": {
+      "comment": "A choice of when a Space's tabs are tidied away, on the page that edits a Space. Also what the Space is said to have.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "After a week"
+          }
+        }
+      }
+    },
+    "space.tidy.86400": {
+      "comment": "A choice of when a Space's tabs are tidied away, on the page that edits a Space. Also what the Space is said to have.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "After a day"
+          }
+        }
+      }
+    },
+    "space.tidy.detail": {
+      "comment": "Under the heading of the choices of when a Space's tabs are tidied away.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tabs you haven’t looked at for this long go to this Space’s Archive, where you can get them back. Sites and Favourites always stay."
           }
         }
       }

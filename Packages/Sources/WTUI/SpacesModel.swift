@@ -15,6 +15,8 @@ public extension BrowserModel {
             self?.spaces = page.spaces
             // The colours a Space can have (025), as the core lists them.
             self?.spaceColours = page.colours
+            // And the times a Space's tidying can have (049).
+            self?.spaceTidyTimes = page.tidyTimes
         }
     }
 
@@ -107,13 +109,17 @@ public extension BrowserModel {
         return false
     }
 
-    /// What the page that edits a Space asked for (024 §6.3, 025): a name, a colour, or both.
-    /// The name first; a name the core will not take leaves the colour as it was.
+    /// What the page that edits a Space asked for (024 §6.3, 025, 049): a name, a colour, a
+    /// time, or any of them. The name first; what the core will not take leaves what follows
+    /// it as it was.
     func editSpace(_ edit: SpaceEdit) async -> Bool {
         if let name = edit.name, await !renameSpace(to: name) {
             return false
         }
         if let colour = edit.colour, await !colourSpace(colour) {
+            return false
+        }
+        if let tidyAfter = edit.tidyAfter, await !tidySpace(after: tidyAfter) {
             return false
         }
         return true
@@ -128,14 +134,17 @@ public extension BrowserModel {
 }
 
 /// What the page that edits a Space asks for: a name, when one was typed that is not the one
-/// the Space has; a colour, when another was chosen. What is `nil` stays as it is.
+/// the Space has; a colour, when another was chosen; a time after which its tabs are tidied
+/// (049), in seconds, when another was. What is `nil` stays as it is.
 public struct SpaceEdit: Equatable, Sendable {
     public var name: String?
     public var colour: String?
+    public var tidyAfter: UInt32?
 
-    public init(name: String? = nil, colour: String? = nil) {
+    public init(name: String? = nil, colour: String? = nil, tidyAfter: UInt32? = nil) {
         self.name = name
         self.colour = colour
+        self.tidyAfter = tidyAfter
     }
 }
 

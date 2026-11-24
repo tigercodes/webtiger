@@ -171,6 +171,12 @@ class MainActivity : ComponentActivity() {
         /** `--ez webtiger.fake.first_run true`: in fake mode, nobody has chosen where searches go yet (020). */
         const val EXTRA_FAKE_FIRST_RUN = "webtiger.fake.first_run"
 
+        /**
+         * `--ei webtiger.fake.clock_step 86400`: in fake mode, how far the core's clock moves
+         * each time it is read, in seconds, to see a day pass (049).
+         */
+        const val EXTRA_FAKE_CLOCK_STEP = "webtiger.fake.clock_step"
+
         /** The words of [ACTION_SEARCH_WORDS]. */
         const val EXTRA_WORDS = "webtiger.search.words"
 
@@ -243,6 +249,7 @@ class MainActivity : ComponentActivity() {
                 fakeStart = intent.getStringExtra(EXTRA_FAKE_START).orEmpty(),
                 catalogue = catalogue,
                 firstRun = intent.getBooleanExtra(EXTRA_FAKE_FIRST_RUN, false),
+                clockStep = intent.getIntExtra(EXTRA_FAKE_CLOCK_STEP, 0).coerceAtLeast(0),
             )
         }
     }

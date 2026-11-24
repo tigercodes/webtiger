@@ -625,6 +625,12 @@ fun CatalogueScreen() {
                     CataloguePermissionsList(state, Modifier.fillMaxWidth().height(CatalogueWindowHeight).framed())
                 }
             }
+            for (state in CatalogueArchive.entries) {
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.Space.s)) {
+                    Text(text = stringResource(state.title), style = MaterialTheme.typography.titleMedium)
+                    CatalogueArchiveList(state, Modifier.fillMaxWidth().height(CatalogueWindowHeight).framed())
+                }
+            }
             for (state in CatalogueSpaces.entries) {
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.Space.s)) {
                     Text(text = stringResource(state.title), style = MaterialTheme.typography.titleMedium)
@@ -757,13 +763,16 @@ internal enum class CatalogueSpaces(@StringRes val title: Int) {
         val spaces =
             listOf(
                 SpaceSummary(space_id = 1, name = "", logins = 1),
-                SpaceSummary(space_id = 2, name = "Work", logins = 2, colour = "blue"),
+                SpaceSummary(space_id = 2, name = "Work", logins = 2, colour = "blue", tidy_after_seconds = 86_400),
                 SpaceSummary(space_id = 3, name = "Project Tiger", logins = 2, colour = "green"),
                 SpaceSummary(space_id = 4, name = "A Space with a name that is as long as a name is let be", logins = 4, colour = "pink"),
             )
 
         /** The colours a core lists (025), in its order. */
         val colours = listOf("red", "orange", "yellow", "green", "teal", "blue", "purple", "pink", "grey")
+
+        /** The times a core lists (049), in its order: never, twelve hours, a day, a week, thirty days. */
+        val tidyTimes = listOf(0, 43_200, 86_400, 604_800, 2_592_000)
     }
 }
 
@@ -780,9 +789,10 @@ internal fun CatalogueSpacesList(state: CatalogueSpaces, modifier: Modifier = Mo
                 refusal = "space.too_many".takeIf { state == CatalogueSpaces.REFUSED },
                 onShow = {},
                 onMake = { _, _, _ -> },
-                onEdit = { _, _ -> },
+                onEdit = { _, _, _ -> },
                 onDone = {},
                 colours = CatalogueSpaces.colours,
+                tidyTimes = CatalogueSpaces.tidyTimes,
                 making = state in setOf(CatalogueSpaces.NEW, CatalogueSpaces.NEW_SHARED, CatalogueSpaces.REFUSED),
                 name = "Travel",
                 sharingWith = 2L.takeIf { state == CatalogueSpaces.NEW_SHARED },

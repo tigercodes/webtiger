@@ -44,6 +44,7 @@ import com.tigercodes.webtiger.core.v1.SearchWords
 import com.tigercodes.webtiger.core.v1.SendSiteHome
 import com.tigercodes.webtiger.core.v1.SetFavourite
 import com.tigercodes.webtiger.core.v1.SetLayout
+import com.tigercodes.webtiger.core.v1.SetSpaceTidying
 import com.tigercodes.webtiger.core.v1.SpaceSummary
 import com.tigercodes.webtiger.core.v1.SubmitAddress
 import com.tigercodes.webtiger.core.v1.SuggestAddresses
@@ -792,6 +793,10 @@ class BrowserModel(
     var spaceColours by mutableStateOf<List<String>>(emptyList())
         private set
 
+    /** The times a Space's tidying can have (049), in seconds, as the core lists them with the Spaces: never, which is 0, first. */
+    var spaceTidyTimes by mutableStateOf<List<Int>>(emptyList())
+        private set
+
     /** The Spaces as the core last listed them: asked for when the list is opened. Null until it has answered. */
     var spaces by mutableStateOf<List<SpaceSummary>?>(null)
         private set
@@ -805,12 +810,13 @@ class BrowserModel(
         private set
 
     /**
-     * Gives the Space the window shows another name, another colour, or both (024 §6.3, 025),
-     * and closes the list: what is null stays as it is. The name goes as it was typed. What the
-     * core will not take leaves the list open, with the core's code in [spaceRefusal]; the chip
-     * says what is new when the core's snapshot does.
+     * Gives the Space the window shows another name, another colour, another time after which
+     * its tabs are tidied (049), or any of them (024 §6.3, 025), and closes the list: what is
+     * null stays as it is. The name goes as it was typed. What the core will not take leaves
+     * the list open, with the core's code in [spaceRefusal]; the chip says what is new when the
+     * core's snapshot does.
      */
-    fun editSpace(name: String?, colour: String?) {
+    fun editSpace(name: String?, colour: String?, tidyAfter: Int? = null) {
         val shown = spaceId.takeIf { it != 0L } ?: return
         spaceRefusal = null
         session.scope.launch {
@@ -818,6 +824,8 @@ class BrowserModel(
                 // The name first: a name the core will not take leaves the colour as it was.
                 if (name != null) session.core.request(Request(rename_space = RenameSpace(space_id = shown, name = name)))
                 if (colour != null) session.core.request(Request(colour_space = ColourSpace(space_id = shown, colour = colour)))
+                // And the time last: one of the core's, in seconds, or 0 for never.
+                if (tidyAfter != null) session.core.request(Request(set_space_tidying = SetSpaceTidying(space_id = shown, after_seconds = tidyAfter)))
             } catch (refused: CoreError.Refused) {
                 spaceRefusal = refused.code
                 return@launch
@@ -848,6 +856,7 @@ class BrowserModel(
             if (answer != null) {
                 spaces = answer.spaces
                 spaceColours = answer.colours
+                spaceTidyTimes = answer.tidy_times
             }
         }
     }

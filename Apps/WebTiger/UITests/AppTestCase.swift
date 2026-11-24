@@ -20,8 +20,14 @@ class AppTestCase: XCTestCase {
     /// Nothing a page keeps outlives the app in fake mode (a cookie with an expiry, storage):
     /// the engine keeps it in memory there, as the core keeps its store. Each test starts
     /// with nobody signed in anywhere, whatever the test before it did.
-    func launch(start: String?, firstRun: Bool = false, icons: Bool = false) -> XCUIApplication {
+    ///
+    /// With `clockStep`, the core's clock moves that many seconds each time it is read, and
+    /// not one: for a test that must see a day pass (049).
+    func launch(start: String?, firstRun: Bool = false, icons: Bool = false, clockStep: Int = 0) -> XCUIApplication {
         let app = inFakeMode(start: start, firstRun: firstRun)
+        if clockStep > 0 {
+            app.launchEnvironment["WEBTIGER_FAKE_CLOCK_STEP"] = String(clockStep)
+        }
         if icons {
             // In fake mode the app asks for no page's icon (046 §5a) unless a suite says so;
             // and then of this device only, where the suite's site is.
@@ -247,6 +253,11 @@ class AppTestCase: XCTestCase {
             // A visit's address in the History list may be any length: it is cut to
             // two lines, in the middle, and is read out whole.
             if issue.auditType == .textClipped, element?.identifier == "history-address" {
+                return true
+            }
+            // And so a tidied tab's address in the Archive (049): the same line, cut
+            // the same way.
+            if issue.auditType == .textClipped, element?.identifier == "archive-address" {
                 return true
             }
             // The same of a place offered under the address field (011): its address

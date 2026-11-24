@@ -2426,6 +2426,9 @@ public nonisolated struct WTArchiveEntry: Sendable {
   /// When it was tidied, in milliseconds since 1970.
   public var tidiedAt: Int64 = 0
 
+  /// Since 1.42. The address as the address field shows it.
+  public var display: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -5961,7 +5964,7 @@ nonisolated extension WTArchivePage: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 nonisolated extension WTArchiveEntry: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ArchiveEntry"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}url\0\u{1}title\0\u{3}tidied_at\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}url\0\u{1}title\0\u{3}tidied_at\0\u{1}display\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5973,6 +5976,7 @@ nonisolated extension WTArchiveEntry: SwiftProtobuf.Message, SwiftProtobuf._Mess
       case 2: try { try decoder.decodeSingularStringField(value: &self.url) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.title) }()
       case 4: try { try decoder.decodeSingularInt64Field(value: &self.tidiedAt) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.display) }()
       default: break
       }
     }
@@ -5991,6 +5995,9 @@ nonisolated extension WTArchiveEntry: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if self.tidiedAt != 0 {
       try visitor.visitSingularInt64Field(value: self.tidiedAt, fieldNumber: 4)
     }
+    if !self.display.isEmpty {
+      try visitor.visitSingularStringField(value: self.display, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -5999,6 +6006,7 @@ nonisolated extension WTArchiveEntry: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if lhs.url != rhs.url {return false}
     if lhs.title != rhs.title {return false}
     if lhs.tidiedAt != rhs.tidiedAt {return false}
+    if lhs.display != rhs.display {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

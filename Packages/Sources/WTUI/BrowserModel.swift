@@ -41,6 +41,9 @@ public final class BrowserModel {
     public private(set) var spaceColour = ""
     /// The colours a Space can have, as the core lists them with the Spaces.
     public internal(set) var spaceColours: [String] = []
+    /// The times a Space's tidying can have (049), in seconds, as the core lists them with
+    /// the Spaces: never, which is 0, first.
+    public internal(set) var spaceTidyTimes: [UInt32] = []
     /// The Spaces as the core last listed them: asked for when the list is opened. `nil`
     /// until it has answered.
     public internal(set) var spaces: [WTSpaceSummary]?

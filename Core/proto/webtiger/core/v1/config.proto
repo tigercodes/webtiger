@@ -60,6 +60,11 @@ message FakeOptions {
   // so, and a shell asks. Without it fake mode takes the engine that stands
   // in as chosen: its store is in memory, and every run would be a first.
   bool first_run = 2;
+  // Since 1.42. How far fake mode's clock moves each time it is read, in
+  // seconds. 0: one second. A suite that must see a day pass (049) says a
+  // day: the core's own rules are then the ones that run, at their own
+  // times, and only the clock is quicker.
+  uint32 seconds_a_read = 3;
 }
 
 // One engine a shell offers.

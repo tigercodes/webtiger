@@ -75,7 +75,8 @@ struct SpacesSheet: ViewModifier {
         content
             .sheet(isPresented: $isShown) {
                 SpacesView(
-                    spaces: model.spaces, shownID: model.spaceID, colours: model.spaceColours, refusal: model.spaceRefusal,
+                    spaces: model.spaces, shownID: model.spaceID, colours: model.spaceColours,
+                    tidyTimes: model.spaceTidyTimes, refusal: model.spaceRefusal,
                     show: { space in
                         model.showSpace(space)
                         isShown = false
@@ -132,6 +133,8 @@ struct SpacesView: View {
     let shownID: UInt64
     /// The colours a Space can have, as the core lists them (025).
     let colours: [String]
+    /// The times a Space's tidying can have, in seconds, as the core lists them (049).
+    let tidyTimes: [UInt32]
     /// Why the core would not make a Space, by its code. `nil` when it has refused nothing.
     let refusal: String?
     /// A Space was pressed: the window is to show it.
@@ -149,6 +152,8 @@ struct SpacesView: View {
     @State private var name: String
     /// The colour chosen on a page, by the core's name for it; empty for none.
     @State private var colour: String
+    /// The time chosen on the page that edits a Space, in seconds; 0 for never (049).
+    @State private var tidyAfter: UInt32
     @State private var shares: Bool
     @State private var shareWith: UInt64
     @FocusState private var nameFocused: Bool
@@ -163,6 +168,7 @@ struct SpacesView: View {
         spaces: [WTSpaceSummary]?,
         shownID: UInt64,
         colours: [String] = [],
+        tidyTimes: [UInt32] = [],
         refusal: String? = nil,
         making: Bool = false,
         name: String = "",
@@ -178,6 +184,7 @@ struct SpacesView: View {
         self.privateDoor = privateDoor
         self.shownID = shownID
         self.colours = colours
+        self.tidyTimes = tidyTimes
         self.refusal = refusal
         self.show = show
         self.make = make
@@ -188,6 +195,7 @@ struct SpacesView: View {
         _page = State(initialValue: making ? .new : renaming ? .rename : .list)
         _name = State(initialValue: renaming ? shown?.name ?? "" : name)
         _colour = State(initialValue: renaming ? shown?.colour ?? "" : "")
+        _tidyAfter = State(initialValue: renaming ? shown?.tidyAfterSeconds ?? 0 : 0)
         _shares = State(initialValue: sharingWith != nil)
         // Whose logins it would share, should that be chosen: those of the Space shown.
         _shareWith = State(initialValue: sharingWith ?? Self.owner(of: shownID, among: spaces ?? []))
@@ -245,6 +253,7 @@ struct SpacesView: View {
                     // named it. The shell's word for that one is not a name it was given.
                     name = shown?.name ?? ""
                     colour = shown?.colour ?? ""
+                    tidyAfter = shown?.tidyAfterSeconds ?? 0
                     page = .rename
                 } label: {
                     Text(Words.spacesRename)
@@ -348,6 +357,9 @@ struct SpacesView: View {
                     .textFieldStyle(.roundedBorder)
                     .focused($nameFocused)
                     .onSubmit(submit)
+                    // Named for a screen reader also while it is empty: what is written in
+                    // an empty field is no name for it.
+                    .accessibilityLabel(Text(Words.spaceNewName))
                     .accessibilityIdentifier("space-name")
             }
             VStack(alignment: .leading, spacing: Tokens.Space.s) {
@@ -446,9 +458,12 @@ struct SpacesView: View {
                     .textFieldStyle(.roundedBorder)
                     .focused($nameFocused)
                     .onSubmit(save)
+                    .accessibilityLabel(Text(Words.spaceNewName))
                     .accessibilityIdentifier("space-name")
             }
             SpaceSwatches(colours: colours, offersNone: true, chosen: $colour)
+            // After how long out of sight its tabs are tidied, or never (049).
+            SpaceTidyTimes(times: tidyTimes, chosen: $tidyAfter)
             buttons(
                 Words.spaceRenameSave, identifier: "space-save", unknown: Words.errorSpaceRenameFailed,
                 needsName: shown?.name.isEmpty == false,
@@ -457,11 +472,16 @@ struct SpacesView: View {
         }
         .padding(Tokens.Space.l)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .onAppear {
-            if !isPicture {
-                nameFocused = true
+        #if os(macOS)
+            // On a Mac the keyboard is there already, and the name is the first thing on the
+            // page. On a phone it waits until the name is pressed: raised by itself it would
+            // cover the times a Space's tabs are tidied after (049).
+            .onAppear {
+                if !isPicture {
+                    nameFocused = true
+                }
             }
-        }
+        #endif
     }
 
     /// The name of the Space a new one would share logins with.
@@ -475,14 +495,15 @@ struct SpacesView: View {
     }
 
     /// What the page that edits a Space asks for: the name, when one is typed that is not the
-    /// one the Space has; the colour, when it is another. A Space nobody named may keep no
-    /// name; one that has a name is not given none.
+    /// one the Space has; the colour, when it is another; and so its time. A Space nobody
+    /// named may keep no name; one that has a name is not given none.
     private func save() {
         let typed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !typed.isEmpty || shown?.name.isEmpty != false else { return }
         edit(SpaceEdit(
             name: typed.isEmpty || name == shown?.name ? nil : name,
-            colour: colour == (shown?.colour ?? "") ? nil : colour
+            colour: colour == (shown?.colour ?? "") ? nil : colour,
+            tidyAfter: tidyAfter == (shown?.tidyAfterSeconds ?? 0) ? nil : tidyAfter
         ))
     }
 
