@@ -717,7 +717,7 @@ Spaces with their login sets, colours and icons; shared logins; the tree with dr
 
 The lifecycle of §5.7; snapshots; keep-awake reasons; live-tab limits; pressure handling; tidying and the Archive; the Memory view; every §7 budget as a failing test; the published run.
 
-**Where W3 stands (2026-11-24).** Built: tidying and the Archive (049, with W2). What a sleeping tab keeps ([051](051-a-tabs-kept-state.md)), in the core and both shells: a tab's state is asked for when it leaves the front, kept in the store, dropped when the tab goes elsewhere or its history is forgotten, and handed back when the tab wakes, so that a tab that left the front wakes as it was, from its engine's own state. Not built: what keeps a tab awake; the sleep time and the limit of live tabs; pressure; pictures of pages; the Memory view; the budgets as tests; the published run.
+**Where W3 stands (2026-11-24).** Built: tidying and the Archive (049, with W2). What a sleeping tab keeps ([051](051-a-tabs-kept-state.md)), in the core and both shells: a tab's state is asked for when it leaves the front, kept in the store, dropped when the tab goes elsewhere or its history is forgotten, and handed back when the tab wakes, so that a tab that left the front wakes as it was, from its engine's own state. Designed: what keeps a tab awake ([052](052-what-keeps-a-tab-awake.md)). Not built: what keeps a tab awake; the sleep time and the limit of live tabs; pressure; pictures of pages; the Memory view; the budgets as tests; the published run.
 
 ### W4 — Guard (large)
 
@@ -928,6 +928,14 @@ Four features of W2 are built on the recommendations of their own documents, the
 4. A Site sleeps at its home, with no state.
 5. The tab in front at a quit wakes at its address.
 6. Forgetting history drops the states of the tabs with those logins, and a tab that is open is asked for none until it has another web view.
+
+**What keeps a tab awake** ([052](052-what-keeps-a-tab-awake.md) §6, put on 2026-11-24; designed, not built; the second of W3, before any tab is put to sleep by the browser itself):
+
+1. Typed text keeps a tab awake from the first key until the page goes, whatever became of the text.
+2. The adapter learns of typing and of sound from a small script of the browser's own in the page, which says yes or no and nothing else.
+3. A download keeps awake the tab whose page started it.
+4. A tab with a question waiting, or on its way somewhere, is kept awake.
+5. The marks are for later: this step tells the shells the reasons and draws nothing.
 
 Also the owner's to say, from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
 
