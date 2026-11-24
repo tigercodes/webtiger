@@ -109,4 +109,4 @@ A shell hands it on from what it was started with: `WEBTIGER_FAKE_SLEEP_AFTER=<s
 - [ ] The owner's word on §6.
 - [x] The core and the contract.
 - [x] The apps' tests.
-- [ ] The gate.
+- [x] The gate: `Tools/test.sh all` green, and `android-device`, on 2026-11-24: `lint`, `core` (701, and the strings tool's 24), `unit` (370 on the Mac), `build`, the Mac's UI suite (60), `ios` (352 on the iPhone simulator), the iPhone's UI suite (47), `android` (486 and 32 on the JVM) and `android-device` (188 on the emulator).
