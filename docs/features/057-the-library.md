@@ -85,4 +85,4 @@ None. `QueryAwake` and `SleepOthers` are 056's (1.49).
 - [ ] The owner's word on §6 (used as suggested, on the word of 2026-11-24).
 - [x] Apple's shell.
 - [x] Android's shell.
-- [ ] The gate.
+- [x] The gate: every stage of `Tools/test.sh all` green, and `android-device`, on 2026-11-24: `lint`, `core` (740, and the strings tool's 24), `unit` (385 on the Mac), `build`, the Mac's UI suite (63), `ios` (369 on the iPhone simulator), the iPhone's UI suite (52), `android` (516 and 32 on the JVM) and `android-device` (193 on the emulator).

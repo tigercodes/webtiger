@@ -149,4 +149,4 @@ Nothing is asked of a shell that it does not do already: a tab that is put to sl
 - [ ] The owner's word on §6 (used as suggested, on the word of 2026-11-24).
 - [x] The core and the contract. They were in the gate of 2026-11-24 with [055](055-the-system-short-of-memory.md): every stage green, the core's suite at 740.
 - [x] The shells.
-- [ ] The gate, with the shells.
+- [x] The gate, with the shells: every stage of `Tools/test.sh all` green, and `android-device`, on 2026-11-24: `lint`, `core` (740, and the strings tool's 24), `unit` (385 on the Mac), `build`, the Mac's UI suite (63), `ios` (369 on the iPhone simulator), the iPhone's UI suite (52), `android` (516 and 32 on the JVM) and `android-device` (193 on the emulator).
