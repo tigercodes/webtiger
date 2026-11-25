@@ -507,7 +507,7 @@ internal class WebViewPage(
         override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) {
             if (view !== webView) return
             topUrl = url
-            val newPage = tracker.committed(url, view.canGoBack(), view.canGoForward())
+            val newPage = tracker.committed(url, view.canGoBack(), view.canGoForward(), view.title)
             if (newPage) {
                 // The page before's doings went with it (052).
                 doing.committed()

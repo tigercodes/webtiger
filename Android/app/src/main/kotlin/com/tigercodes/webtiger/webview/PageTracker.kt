@@ -66,6 +66,18 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
     /** A load to this address ended without committing; should it commit after all, it is a new document. */
     private var lateCommit: String? = null
 
+    /**
+     * The last title the engine said while a new document was on its way, before its commit.
+     * The core takes a title to be the page's that has committed, and a page that has just
+     * committed has said nothing: a title said early is lost. And the WebView says a page's
+     * title early when it has it already, and not again afterwards: of a page it makes from a
+     * state (051) it says it twice before the commit (as observed), so that a tab that woke
+     * was named by its address. It is said again after the commit when the engine then calls
+     * the page that committed by that very title. A title the page before set as it left is
+     * not the new page's, the engine does not call the new page so, and it is not said.
+     */
+    private var earlyTitle: String? = null
+
     /** The load to this address was reported as failed. What the engine does next is its error page. */
     private var failedUrl: String? = null
 
@@ -208,20 +220,26 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
 
     /**
      * `doUpdateVisitedHistory`: a main-frame navigation committed at `url`. True when it is a
-     * new page, and not the page changing its own address.
+     * new page, and not the page changing its own address. `titled` is what the engine calls
+     * the page that has committed, when the adapter can say.
      */
-    fun committed(url: String, canGoBack: Boolean, canGoForward: Boolean): Boolean {
+    fun committed(url: String, canGoBack: Boolean, canGoForward: Boolean, titled: String? = null): Boolean {
         hear("commit")
         // A commit is the engine's word about the load the adapter began; but not while an
         // error page is owed, whose commit this may be.
         if (!errorPageOwed) unannounced = false
         val newDocument = awaitingCommit || url == lateCommit
+        val early = earlyTitle
+        earlyTitle = null
         awaitingCommit = false
         lateCommit = null
         heading = null
         refusedUrl = null
         if (newDocument) {
             emit(EngineEvent(web_view_id = webViewId, navigation_committed = NavigationCommitted(url = url)))
+            // The title the engine said of this page before it committed, said again now that
+            // the page is the core's to name: but only the one the engine calls this page by.
+            if (!early.isNullOrEmpty() && early == titled) emit(EngineEvent(web_view_id = webViewId, title_changed = TitleChanged(title = early)))
         } else if (url != pageUrl) {
             emit(EngineEvent(web_view_id = webViewId, address_changed = AddressChanged(url = url)))
         }
@@ -280,6 +298,8 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
         // The error page's title is the engine's words, not the page's.
         if (failedUrl != null) return
         if (unannounced && errorPageOwed) return
+        // Said while a new page is on its way, it may be that page's: see `earlyTitle`.
+        if (awaitingCommit) earlyTitle = title
         emit(EngineEvent(web_view_id = webViewId, title_changed = TitleChanged(title = title)))
     }
 
@@ -295,6 +315,8 @@ internal class PageTracker(private val webViewId: Long, private val report: (Eng
         loading = false
         unannounced = false
         errorPageOwed = true
+        // What comes next is the engine's error page, which is no page's title to keep.
+        earlyTitle = null
         // The error page's commit, if one comes, is a new document's.
         lateCommit = url
         emit(EngineEvent(web_view_id = webViewId, navigation_failed = NavigationFailed(code = code, url = url, certificate_held = held)))

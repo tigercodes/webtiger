@@ -95,6 +95,18 @@ A shell hands it on from what it was started with: `WEBTIGER_FAKE_SLEEP_AFTER=<s
 | The apps, in fake mode, with the real core and the real engine and a sleep time of four seconds (`SleepTests`, 1, on the Mac and the iPhone simulator) | A tab goes to a second page and another tab comes in front of it; seconds later the first says it is asleep, by the name it had; the tab in front is awake six seconds on; the first, pressed, wakes at the page it was at, says it is awake, has Back offered, and Back goes to the page before; and the tab it was woken over sleeps in its turn |
 | Android, through the real core (`ThroughTheCoreTest`, +2, on the JVM) | The suite's seconds are handed on, and are nothing outside fake mode. With two seconds: the tab left behind is asked for its state as it leaves the front and once more as the core puts it to sleep, its page is let go, the window says it is asleep by the name it had, and the tab in front is awake; brought in front, it has a web view made from the state it gave, and nothing loaded beside it. The shell timed nothing |
 
+## 7a. Found afterwards: on Android a tab that woke had lost its name
+
+Found on 2026-11-24, while a sleeping tab's picture ([059](059-a-sleeping-tabs-picture.md)) was tried in the app on an emulator: a tab that had slept and was woken was named in the strip by its address's host, and not by its page.
+
+The core takes a title to be the page's that has committed, and a page that has just committed has said nothing: a title said before the commit is lost. Android's WebView says the title of a page it makes from a state (051) before that page commits, twice, and not again after ("title, started, title, committed, finished", where a page that is loaded says "started, committed, title, finished"). WebKit says it after.
+
+The adapter now keeps the last title the WebView says while a new page is on its way, and says it again after that page's commit when the WebView then calls the committed page by that very title. A title the page before set as it left is not the new page's: the WebView does not call the new page so, and it is not handed on. Nor does an early title outlive its load, or name the error page of a load that failed.
+
+Tests: the tracker's on the JVM (`PageTrackerTest`, +3); the adapter suite on an emulator (`SystemWebViewStateTest`, +1: the last thing a web view made from a state says of its name is after its commit); and the app on an emulator, where a tab that slept and woke is named by its page (`AppPagePictureTest`). The tracker's part broken a part at a time: 7 parts, 7 caught (among 059's Android parts).
+
+Not verified: a phone; and whether the WebView ever says a page's title early for a page it loads, which was not seen.
+
 ## 8. What is not verified
 
 - **The choices of §6** are the recommendations, not the owner's word.

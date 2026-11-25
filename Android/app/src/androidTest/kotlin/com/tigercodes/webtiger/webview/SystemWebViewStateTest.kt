@@ -61,6 +61,33 @@ internal class SystemWebViewStateTest : AdapterTestCase() {
 
     // A state given and taken
 
+    /**
+     * A web view made from a state names its page after the page has committed: the core takes
+     * a title to be the committed page's, and one said before the commit is lost. (The WebView
+     * says the title of a page it makes from a state before that page commits, twice, and not
+     * after: the adapter says it again.) A tab that woke was named by its address.
+     */
+    @Test
+    fun aWebViewMadeFromAStateNamesItsPageAfterThePageHasCommitted() {
+        val loginSet = newLoginSet()
+        goToTheTallPage(loginSet)
+        val kept = checkNotNull(state(1)) { "a state is answered with a state" }
+        destroy(1)
+
+        createShown(2, loginSet)
+        assertNotNull("a restore is acknowledged", restore(2, kept, site.url("/tall")).ack)
+        await(2, "the page it was at") { finished(it) && hasTitle("Tall")(it) }
+        val said = names(reports(2)).filter { it in setOf("committed", "title") }
+        assertEquals("one page committed", 1, said.count { it == "committed" })
+        assertEquals("and the last thing said of its name is after it: $said", "title", said.last())
+        assertEquals("Tall", lastTitle(2))
+        // A page that is loaded names itself after its commit, as it did.
+        createShown(3, loginSet)
+        load(3, site.url("/landed"))
+        await(3, "the page") { finished(it) && hasTitle("Landed")(it) }
+        assertEquals(listOf("committed", "title"), names(reports(3)).filter { it in setOf("committed", "title") })
+    }
+
     @Test
     fun aWebViewMadeFromAStateIsWhereTheOtherWasWithItsListAndItsScroll() {
         val loginSet = newLoginSet()

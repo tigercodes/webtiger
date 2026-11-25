@@ -50,6 +50,85 @@ class PageTrackerTest {
         events.clear()
     }
 
+    /** As observed: a WebView made from a state says its page's title twice before the page commits, and not after. */
+    @Test
+    fun aTitleSaidBeforeItsPagesCommitIsSaidAgainAfterItWhenTheEngineCallsThePageSo() {
+        tracker.willLoad(A)
+        tracker.title("Tall")
+        tracker.pageStarted(A)
+        tracker.title("Tall")
+        assertEquals(listOf("started $A", "title Tall", "title Tall"), told())
+        tracker.committed(A, canGoBack = true, canGoForward = false, titled = "Tall")
+        assertEquals("the page is named after it has committed", listOf("committed $A", "title Tall", "history true false"), told())
+        // Once: what the engine calls the page later is nothing to say again.
+        tracker.progress(100)
+        tracker.pageFinished(A)
+        assertEquals(listOf("progress 1.0", "finished"), told())
+    }
+
+    @Test
+    fun aTitleSaidEarlyIsNotThePagesWhenTheEngineDoesNotCallItSo() {
+        // The page before sets its title as it leaves; the page that commits is called by its
+        // address, as a page that has said nothing is. The title is not handed on to it.
+        load(A)
+        tracker.willLoad(B)
+        tracker.title("Your bank")
+        tracker.pageStarted(B)
+        told()
+        tracker.committed(B, canGoBack = true, canGoForward = false, titled = "www.example.com/home")
+        assertEquals(listOf("committed $B", "history true false"), told())
+        // Nor when the adapter cannot say what the engine calls the page; nor an empty one.
+        tracker.willLoad(X)
+        tracker.title("Early")
+        told()
+        tracker.committed(X, canGoBack = true, canGoForward = false)
+        assertEquals(listOf("committed $X", "history true false"), told())
+        tracker.willLoad(A)
+        tracker.title("")
+        told()
+        tracker.committed(A, canGoBack = true, canGoForward = false, titled = "")
+        assertEquals(listOf("committed $A", "history true false"), told())
+    }
+
+    @Test
+    fun aTitleSaidEarlyDoesNotOutliveItsLoad() {
+        // Said of a load that committed: not said again at the next page's commit, though the
+        // engine calls that one the same.
+        tracker.willLoad(A)
+        tracker.title("Same")
+        tracker.committed(A, canGoBack = false, canGoForward = false, titled = "Same")
+        tracker.progress(100)
+        tracker.pageFinished(A)
+        told()
+        tracker.willLoad(B)
+        tracker.pageStarted(B)
+        told()
+        tracker.committed(B, canGoBack = true, canGoForward = false, titled = "Same")
+        assertEquals(listOf("committed $B", "history true false"), told())
+        // A title said after a page has committed is the page's, as it was: said once.
+        tracker.title("Late")
+        assertEquals(listOf("title Late"), told())
+        tracker.progress(100)
+        tracker.pageFinished(B)
+        // And is not a title said early: the next page is not named by it, whatever the engine calls it.
+        tracker.willLoad(A)
+        tracker.pageStarted(A)
+        told()
+        tracker.committed(A, canGoBack = true, canGoForward = false, titled = "Late")
+        assertEquals(listOf("committed $A", "history true false"), told())
+        tracker.progress(100)
+        tracker.pageFinished(A)
+        // Said of a load that failed: what commits next is the engine's error page, which is
+        // not named by it.
+        tracker.willLoad(X)
+        tracker.title("Before it failed")
+        tracker.failed("net.dns", X)
+        told()
+        tracker.pageStarted(X)
+        tracker.committed(X, canGoBack = true, canGoForward = false, titled = "Before it failed")
+        assertFalse("the error page is not named by the title of the load that failed", told().contains("title Before it failed"))
+    }
+
     @Test
     fun aLoadTheUserAskedFor() {
         tracker.willLoad(A)
