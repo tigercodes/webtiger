@@ -108,4 +108,4 @@ A site I need is broken, and I suspect my browser's blocker. I want to turn the 
 - [x] The store.
 - [x] The core.
 - [x] The fast path.
-- [ ] The gate.
+- [x] The gate: every stage of `Tools/test.sh all` green, and `android-device`, on 2026-11-25: `lint`, `core` (825, and the strings tool's 24), `unit` (407 on the Mac), `build`, the Mac's UI suite (67), `ios` (391 on the iPhone simulator), the iPhone's UI suite (56), `android` (542 and 34 on the JVM) and `android-device` (201 on the emulator).
