@@ -144,4 +144,5 @@ And, apart from the budget: **a long row's line is large** (near 19 MB for two t
 - [x] The core's wake-ups, and the idle test.
 - [x] The timed ones, for the core's part.
 - [ ] The app's, scripted for the Mac.
-- [ ] The gate.
+- [x] The gate over the first five steps: every stage of `Tools/test.sh all` green, and `android-device`, on 2026-11-25: `lint`, `core` (768, and the strings tool's 24), `unit` (400 on the Mac), `build`, the Mac's UI suite (65), `ios` (384 on the iPhone simulator), the iPhone's UI suite (54), `android` (536 and 32 on the JVM) and `android-device` (200 on the emulator).
+- [ ] The gate over the rest.
