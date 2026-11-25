@@ -85,6 +85,19 @@ class LaunchOptionsTest {
             ),
         )
         assertEquals(LaunchOptions(), MainActivity.launchOptions(list, debuggable = false))
+        // And rules for Guard, as they were written (064).
+        assertEquals(
+            LaunchOptions(fake = true, guardRules = "||ads.example.net^\n@@||ads.example.net/ok.js"),
+            MainActivity.launchOptions(
+                fake().putExtra(MainActivity.EXTRA_FAKE_GUARD, "||ads.example.net^\n@@||ads.example.net/ok.js"),
+                debuggable = true,
+            ),
+        )
+        assertEquals(
+            "without fake mode there are no rules of a launch's",
+            LaunchOptions(),
+            MainActivity.launchOptions(Intent(Intent.ACTION_MAIN).putExtra(MainActivity.EXTRA_FAKE_GUARD, "||ads.example.net^"), debuggable = true),
+        )
         // And the device's own limit of live tabs, for a run of the app as it is (063).
         assertEquals(
             LaunchOptions(fake = true, deviceLimits = true),

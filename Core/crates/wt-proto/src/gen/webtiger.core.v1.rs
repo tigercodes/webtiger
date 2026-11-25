@@ -2100,6 +2100,12 @@ pub struct FakeOptions {
     /// the app as it is (063). A limit a suite gives (`live_tabs`) comes first.
     #[prost(bool, tag = "10")]
     pub device_limits: bool,
+    /// Since 1.53. Rules for Guard, in the syntax the public lists are written
+    /// in, a rule to a line: fake mode's blocker is made of them as the core
+    /// starts (064). For a suite that must see a request refused, with rules of
+    /// its own. Empty: Guard has no rules, and allows everything.
+    #[prost(string, tag = "11")]
+    pub guard_rules: ::prost::alloc::string::String,
 }
 /// One engine a shell offers.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]

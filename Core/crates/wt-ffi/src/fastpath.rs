@@ -1,20 +1,21 @@
 //! The fast path (000 §5.5): the two questions an engine asks on its own
-//! threads and waits for. Synchronous, lock-free, allocation-free.
+//! threads and waits for. Synchronous: neither queues behind the core's own
+//! thread, waits for the store, or waits for a shell.
 //!
 //! - [`wt_nav_check`]: may this web view make this navigation? Android's
-//!   `shouldOverrideUrlLoading` must answer before it returns.
+//!   `shouldOverrideUrlLoading` must answer before it returns. Lock-free and
+//!   allocation-free: the policy is `wt-core`'s, and depends on the address
+//!   alone.
 //! - [`wt_guard_check`]: may this page make this request? Asked for every
-//!   request on the engines that have a request callback. Guard arrives in
-//!   W4; until then the answer is always "allow", and the call exists so each
-//!   shell wires and measures its callback from the first build.
-//!
-//! The rules both will read are an immutable snapshot the core swaps when
-//! they change. W0 has no rules that change, so there is no snapshot yet:
-//! the navigation policy is `wt-core`'s, which depends on the address alone.
+//!   request on the engines that have a request callback, and answered by
+//!   the core's blocker (064), which is made as the core starts. It parses
+//!   the two addresses and looks rules up: it allocates, and the blocker
+//!   makes its decisions one at a time behind a lock of its own.
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use wt_core::{NavigationAction, check_navigation};
+use wt_guard::{Kind, Verdict};
 
 use crate::{Status, registry};
 
@@ -82,9 +83,9 @@ pub unsafe extern "C" fn wt_guard_check(
     if request.is_null() {
         return Status::NullArgument as i32;
     }
-    let status = catch_unwind(AssertUnwindSafe(|| {
+    let decided = catch_unwind(AssertUnwindSafe(|| {
         if !registry::is_running(core) {
-            return Status::UnknownCore;
+            return (Status::UnknownCore, WT_VERDICT_ALLOW);
         }
         // SAFETY: `request` is non-NULL and, by the caller's contract, a
         // valid `wt_request` for this call.
@@ -96,12 +97,21 @@ pub unsafe extern "C" fn wt_guard_check(
                 borrow_text(request.source_url, request.source_url_len),
             )
         };
-        match addresses {
-            (Some(_), Some(_)) => Status::Ok,
-            _ => Status::BadArgument,
+        let (Some(url), Some(source_url)) = addresses else {
+            return (Status::BadArgument, WT_VERDICT_ALLOW);
+        };
+        let kind = Kind::from_code(request.resource_type);
+        match registry::decide(core, url, source_url, kind) {
+            Some(Verdict::Block) => (Status::Ok, WT_VERDICT_BLOCK),
+            Some(Verdict::Allow) => (Status::Ok, WT_VERDICT_ALLOW),
+            // The core stopped between the two looks.
+            None => (Status::UnknownCore, WT_VERDICT_ALLOW),
         }
     }));
-    status.unwrap_or(Status::Panic) as i32
+    let (status, action) = decided.unwrap_or((Status::Panic, WT_VERDICT_ALLOW));
+    // SAFETY: `out` is non-NULL and, by the caller's contract, writable.
+    unsafe { (*out).action = action };
+    status as i32
 }
 
 /// Whether a web view may make a navigation; see webtiger_core.h.

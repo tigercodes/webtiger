@@ -99,6 +99,8 @@ run_budgets() {
   (cd Core && cargo test --release --locked -p wt-store -- --ignored --nocapture measure_offering)
   step "budgets: a row of 200 told, and a sleeping tab woken (a release build)"
   (cd Core && cargo test --release --locked -p wt-app --test timed_budgets -- --ignored --nocapture)
+  step "budgets: a Guard decision (a release build)"
+  (cd Core && cargo test --release --locked -p wt-guard --test timed_budgets -- --ignored --nocapture)
 }
 
 run_unit() {

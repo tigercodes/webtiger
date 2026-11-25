@@ -32,7 +32,7 @@ extern "C" {
  * as (major << 16) | minor; a shell refuses to start on a major mismatch, and
  * puts its own in CoreConfig. */
 #define WT_CONTRACT_MAJOR 1u
-#define WT_CONTRACT_MINOR 52u
+#define WT_CONTRACT_MINOR 53u
 
 /* What wt_core_send, wt_core_stop and the fast path return. */
 #define WT_OK 0
@@ -85,10 +85,14 @@ int32_t wt_core_send(uint64_t core, const uint8_t *envelope, size_t len);
 int32_t wt_core_stop(uint64_t core);
 
 /*
- * The fast path (000 §5.5): synchronous, lock-free, callable from any thread,
- * including an engine's own network and navigation threads. Both calls read an
- * immutable snapshot the core swaps when its rules change. They never queue,
- * lock or allocate.
+ * The fast path (000 §5.5): synchronous, and callable from any thread,
+ * including an engine's own network and navigation threads. Neither call
+ * queues behind the core's own thread, waits for the store, or waits for a
+ * shell: each answers from what the core holds for it. The navigation check
+ * neither locks nor allocates. Guard's check (064) parses the two addresses
+ * and looks rules up: it allocates, and decisions are made one at a time
+ * behind a lock of the blocker's own, held for the fraction of a microsecond
+ * one takes.
  */
 
 /* What a request is for, as far as the engine says. */
@@ -123,10 +127,10 @@ typedef struct wt_verdict {
     uint32_t action;
 } wt_verdict;
 
-/* Guard's decision for one request. Until Guard arrives (W4) every request is
- * allowed; the call is here so each shell's request callback is wired, and
- * measured, from the first build. On any error the verdict written is ALLOW:
- * a blocker that fails must not break the page. */
+/* Guard's decision for one request (064): by the core's rules, may the page
+ * at `source_url` fetch `url`? With no rules every request is allowed, as is
+ * the top frame's own document whatever the rules. On any error the verdict
+ * written is ALLOW: a blocker that fails must not break the page. */
 int32_t wt_guard_check(uint64_t core, const wt_request *request, wt_verdict *out);
 
 #define WT_NAV_MAIN_FRAME 1u

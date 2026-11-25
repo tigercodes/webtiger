@@ -721,6 +721,8 @@ class ThroughTheCoreTest {
             assertNull("outside fake mode there is no such thing", config(LaunchOptions(open = list, openEvery = 1)).fake)
             assertEquals(true, config(LaunchOptions(fake = true, deviceLimits = true)).fake?.device_limits)
             assertEquals(false, config(LaunchOptions(fake = true)).fake?.device_limits)
+            assertEquals("||ads.example.net^", config(LaunchOptions(fake = true, guardRules = "||ads.example.net^")).fake?.guard_rules)
+            assertEquals("", config(LaunchOptions(fake = true)).fake?.guard_rules)
 
             val model = BrowserModel(session(LaunchOptions(fake = true, open = list, openEvery = 1)))
             onMain { model.open() }

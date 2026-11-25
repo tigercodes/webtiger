@@ -119,6 +119,11 @@ message FakeOptions {
   // fake mode (054), where fake mode has none: for a run that is to be of
   // the app as it is (063). A limit a suite gives (`live_tabs`) comes first.
   bool device_limits = 10;
+  // Since 1.53. Rules for Guard, in the syntax the public lists are written
+  // in, a rule to a line: fake mode's blocker is made of them as the core
+  // starts (064). For a suite that must see a request refused, with rules of
+  // its own. Empty: Guard has no rules, and allows everything.
+  string guard_rules = 11;
 }
 
 // One engine a shell offers.

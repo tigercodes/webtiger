@@ -434,7 +434,7 @@ fn a_stopped_core_answers_no_fast_path_call() {
 }
 
 #[test]
-fn guard_allows_everything_until_it_exists_and_fails_open() {
+fn guard_with_no_rules_allows_everything_and_fails_open() {
     let shell = TestShell::fake();
     let url = b"https://tracker.example/pixel.gif";
     let source = b"https://example.com/";
@@ -472,6 +472,209 @@ fn guard_allows_everything_until_it_exists_and_fails_open() {
         (status, verdict.action),
         (Status::NullArgument as i32, WT_VERDICT_ALLOW)
     );
+}
+
+/// Guard's answer for a request, through the C function: the status, and
+/// the verdict written.
+fn guard(handle: u64, url: &[u8], source: &[u8], resource_type: u32) -> (i32, u32) {
+    let request = WtRequest {
+        url: url.as_ptr(),
+        url_len: url.len(),
+        source_url: source.as_ptr(),
+        source_url_len: source.len(),
+        web_view_id: 1,
+        resource_type,
+    };
+    let mut verdict = WtVerdict {
+        action: WT_VERDICT_BLOCK,
+    };
+    // SAFETY: both structures are live, and each address covers its length.
+    let status = unsafe { wt_guard_check(handle, &raw const request, &raw mut verdict) };
+    (status, verdict.action)
+}
+
+/// A core in fake mode whose suite gave Guard these rules (064).
+fn with_rules(rules: &str) -> TestShell {
+    let mut config = fake_config();
+    config.fake = Some(wt_proto::v1::FakeOptions {
+        guard_rules: rules.to_owned(),
+        ..wt_proto::v1::FakeOptions::default()
+    });
+    TestShell::start(&config)
+}
+
+const PAGE: &[u8] = b"https://news.example.com/story";
+const RULES: &str = "||ads.tracker.example.net^\n@@||ads.tracker.example.net/consent.js$script\n||metrics.example.org^$script,third-party\n";
+const SCRIPT: u32 = 3;
+const IMAGE: u32 = 5;
+const DOCUMENT: u32 = 1;
+
+#[test]
+fn guard_answers_by_a_suites_rules_and_each_core_by_its_own() {
+    let mut ruled = with_rules(RULES);
+    let plain = TestShell::fake();
+    let blocked = (0, WT_VERDICT_BLOCK);
+    let allowed = (0, WT_VERDICT_ALLOW);
+
+    // By the rules: a blocked host, whatever it is for; an exception; a rule for scripts
+    // of another site alone; and what no rule names.
+    let show = b"https://ads.tracker.example.net/show.js";
+    assert_eq!(guard(ruled.handle, show, PAGE, SCRIPT), blocked);
+    assert_eq!(
+        guard(
+            ruled.handle,
+            b"https://ads.tracker.example.net/pixel.gif",
+            PAGE,
+            IMAGE
+        ),
+        blocked
+    );
+    assert_eq!(
+        guard(
+            ruled.handle,
+            b"https://ads.tracker.example.net/consent.js",
+            PAGE,
+            SCRIPT
+        ),
+        allowed
+    );
+    assert_eq!(
+        guard(
+            ruled.handle,
+            b"https://metrics.example.org/collect.js",
+            PAGE,
+            SCRIPT
+        ),
+        blocked
+    );
+    assert_eq!(
+        guard(
+            ruled.handle,
+            b"https://metrics.example.org/collect.js",
+            PAGE,
+            IMAGE
+        ),
+        allowed
+    );
+    assert_eq!(
+        guard(
+            ruled.handle,
+            b"https://metrics.example.org/collect.js",
+            b"https://www.example.org/",
+            SCRIPT
+        ),
+        allowed,
+        "its own site's script"
+    );
+    assert_eq!(
+        guard(
+            ruled.handle,
+            b"https://cdn.example.org/app.js",
+            PAGE,
+            SCRIPT
+        ),
+        allowed
+    );
+    // The top frame's own document is allowed whatever the rules; a kind this core has
+    // not heard of is asked about as one it cannot name.
+    assert_eq!(
+        guard(
+            ruled.handle,
+            b"https://ads.tracker.example.net/landing",
+            PAGE,
+            DOCUMENT
+        ),
+        allowed
+    );
+    assert_eq!(guard(ruled.handle, show, PAGE, 99), blocked);
+    // What is no address is allowed, and so is what is not text: a blocker that cannot
+    // make sense of a request must not break the page.
+    assert_eq!(
+        guard(ruled.handle, b"not an address", PAGE, SCRIPT),
+        allowed
+    );
+    assert_eq!(
+        guard(ruled.handle, &[0xff, 0xfe, 0xfd], PAGE, SCRIPT),
+        (Status::BadArgument as i32, WT_VERDICT_ALLOW)
+    );
+    // A page that is no address is nobody's site: what it asks for is the third party's.
+    assert_eq!(
+        guard(
+            ruled.handle,
+            b"https://metrics.example.org/collect.js",
+            b"",
+            SCRIPT
+        ),
+        blocked
+    );
+
+    // Another core, with no rules, allows the same: each core has its own blocker.
+    assert_eq!(guard(plain.handle, show, PAGE, SCRIPT), allowed);
+
+    // A core that has stopped answers nothing, and the request is allowed.
+    let handle = ruled.handle;
+    ruled.stop();
+    assert_eq!(
+        guard(handle, show, PAGE, SCRIPT),
+        (Status::UnknownCore as i32, WT_VERDICT_ALLOW)
+    );
+}
+
+#[test]
+fn guard_has_a_suites_rules_in_fake_mode_alone() {
+    // Outside fake mode a suite's rules are nothing: a person's own app is not given
+    // rules by what started it.
+    let folder = tempfile::tempdir().unwrap();
+    let mut config = fake_config();
+    config.test_mode = wt_proto::v1::TestMode::Live as i32;
+    config.data_dir = folder.path().to_str().unwrap().to_owned();
+    config.fake = Some(wt_proto::v1::FakeOptions {
+        guard_rules: RULES.to_owned(),
+        ..wt_proto::v1::FakeOptions::default()
+    });
+    let shell = TestShell::start(&config);
+    assert_eq!(
+        guard(
+            shell.handle,
+            b"https://ads.tracker.example.net/show.js",
+            PAGE,
+            SCRIPT
+        ),
+        (0, WT_VERDICT_ALLOW)
+    );
+}
+
+#[test]
+fn guard_is_asked_from_many_threads_at_once() {
+    let shell = with_rules(RULES);
+    let handle = shell.handle;
+    let threads: Vec<_> = (0..8)
+        .map(|thread| {
+            std::thread::spawn(move || {
+                let mut wrong = 0;
+                for round in 0..2_000 {
+                    let (url, expected): (String, u32) = if (round + thread) % 2 == 0 {
+                        (
+                            format!("https://ads.tracker.example.net/show.js?n={round}"),
+                            WT_VERDICT_BLOCK,
+                        )
+                    } else {
+                        (
+                            format!("https://cdn{round}.example.org/app.js"),
+                            WT_VERDICT_ALLOW,
+                        )
+                    };
+                    if guard(handle, url.as_bytes(), PAGE, SCRIPT) != (0, expected) {
+                        wrong += 1;
+                    }
+                }
+                wrong
+            })
+        })
+        .collect();
+    for thread in threads {
+        assert_eq!(thread.join().unwrap(), 0);
+    }
 }
 
 #[test]

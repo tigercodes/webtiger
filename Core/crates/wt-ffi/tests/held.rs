@@ -26,6 +26,14 @@ const A_HUNDRED_SLEEPING_TABS: isize = 5 * 1024 * 1024;
 const A_SPACE_WITH_NOTHING_LIVE: isize = 100 * 1024;
 const THE_CORES_SHARE: isize = 30 * 1024 * 1024;
 
+/// This crate's own ceiling for Guard's blocker (064): 100,000 rules made up
+/// for the measure, of the shapes the public lists have. The plan's number is
+/// for the public lists (000 §5.8: some 15 MB within the core's share), which
+/// are not here: this holds the blocker to what it was measured at with the
+/// rules there are, so that one that takes more than its rules for requests
+/// fails.
+const A_BLOCKER_OF_100_000_RULES: isize = 6 * 1024 * 1024;
+
 /// This crate's own ceilings for a row's line of things to undo (062): the
 /// plan has no budget for the line by itself. For a row of forty Sites and
 /// for one of two thousand, each with eight Groups: fifty moves of a Site,
@@ -458,4 +466,97 @@ fn a_rows_line_of_things_to_undo_holds_what_changed_and_not_the_row() {
             }
         }
     });
+}
+
+/// So many made-up rules for requests, of five ordinary shapes (064).
+fn made_up_rules(count: usize) -> String {
+    use std::fmt::Write as _;
+    let mut text = String::new();
+    for n in 0..count {
+        match n % 5 {
+            0 => writeln!(text, "||ads{n}.tracker{}.example.com^", n % 977),
+            1 => writeln!(text, "/banner/{n}/*$image,third-party"),
+            2 => writeln!(text, "||metrics{n}.example.net^$script,third-party"),
+            3 => writeln!(text, "@@||good{n}.example.com^$script"),
+            _ => writeln!(text, "-ad-unit-{n}."),
+        }
+        .unwrap();
+    }
+    text
+}
+
+#[test]
+fn guards_blocker_holds_what_its_rules_for_requests_take_and_gives_it_back() {
+    let rules = made_up_rules(100_000);
+    let before = held();
+    let guard = wt_guard::Guard::with_rules([rules.as_str()]);
+    let with = held() - before;
+    println!("a blocker of 100,000 made-up rules holds {with} bytes");
+    let first_line = held() - before - with;
+    assert!(
+        with <= A_BLOCKER_OF_100_000_RULES,
+        "a blocker of 100,000 made-up rules holds {with} bytes, and may hold {A_BLOCKER_OF_100_000_RULES}"
+    );
+    assert!(with >= 1_000_000, "100,000 rules cannot be {with} bytes");
+    // Decisions leave nothing held but what the blocker keeps of having made them once:
+    // the same asked again add nothing.
+    let decide_all = || {
+        for n in 0..200 {
+            let url = format!(
+                "https://ads{}.tracker{}.example.com/pixel.gif",
+                n * 5,
+                (n * 5) % 977
+            );
+            assert_eq!(
+                guard.decide(
+                    &url,
+                    "https://news.example.com/story",
+                    wt_guard::Kind::Image
+                ),
+                wt_guard::Verdict::Block
+            );
+        }
+    };
+    decide_all();
+    let asked_once = held();
+    decide_all();
+    decide_all();
+    let asked_again = held();
+    // (Said after both were read: what a test prints is kept, on its own thread, until
+    // the test ends, and would be counted between them.)
+    println!(
+        "two hundred decisions add {} bytes the first time they are made, and {} when asked again",
+        asked_once - before - with - first_line,
+        asked_again - asked_once
+    );
+    assert_eq!(
+        asked_again, asked_once,
+        "asked again, they leave nothing more held"
+    );
+    let printed = held() - asked_again;
+    drop(guard);
+    // Less what this test has printed so far, which is held with it.
+    let left = held() - before - printed - first_line;
+    println!("and {left} bytes are left when it has gone");
+    assert!(
+        left <= 64 * 1024,
+        "a blocker that has gone leaves {left} bytes held"
+    );
+
+    // As many rules again that hide what is in a page: they are not Guard's yet (064 §2),
+    // and a blocker holds nothing for them.
+    use std::fmt::Write as _;
+    let mut both = rules;
+    for n in 0..100_000 {
+        writeln!(both, "site{n}.example.com##.ad-banner-{n}").unwrap();
+    }
+    let before = held();
+    let guard = wt_guard::Guard::with_rules([both.as_str()]);
+    let with_hiding = held() - before;
+    println!("with 100,000 rules more that hide a page's content: {with_hiding} bytes");
+    assert!(
+        with_hiding <= with + with / 20,
+        "rules that hide a page's content are held: {with_hiding} bytes, where {with} are the rules for requests"
+    );
+    drop(guard);
 }

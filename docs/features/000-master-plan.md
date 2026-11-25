@@ -725,6 +725,8 @@ The request engine and fast path; lists and the daily bundle; the WebKit compile
 
 **Exit:** the corpus passes at its targets on every engine; a site's switch takes effect in one reload.
 
+**Where W4 stands (2026-11-25).** Built: the request engine and the fast path ([064](064-guards-request-engine.md)): the core holds the blocker (`wt-guard`), answers for a request whether a page may fetch it, and the fast path asks it from any thread; a corpus of this repository's own rules holds the answers, and a decision is a microsecond on this Mac where the phone's budget is 25 (contract 1.53, for a suite's rules). Android's adapter asks it for every request, and a request it refuses is not made. **There are no lists, so Guard blocks nothing yet outside a suite.** Not built: the lists and the daily bundle (which public lists may be checked in is the owner's to say first); the WebKit compiler, without which nothing blocks on Apple's systems; page fixes; the switches; the panel; link cleaning; HTTPS first; third-party cookies; Global Privacy Control.
+
 ### W5 — Split view, tablets, foldables, iPhone Duo (medium)
 
 Split view; Android postures and continuity; multi-window and drag and drop; iPad windows; the Duo on both displays and in every pose; Windows snap layouts, touch and pen. Runs alongside W6, which touches a different shell.
@@ -1036,7 +1038,7 @@ And one that the measuring raised (060 §8): a Space whose row was arranged in t
 5. The script measures this app and no other.
 6. The list of sites is a file the run is given; the repository has no list of public sites until the owner has chosen one.
 
-**Guard's request engine** ([064](064-guards-request-engine.md) §6, put on 2026-11-25; the first of W4; to be built on these, on the owner's word of 2026-11-24 to use what is suggested):
+**Guard's request engine** ([064](064-guards-request-engine.md) §6, put on 2026-11-25; the first of W4; built on these, on the owner's word of 2026-11-24 to use what is suggested):
 
 1. The blocker is `adblock` (Brave's), as 000 WT-D10 chose, at one exact version.
 2. The core's own registrable domains are handed to the blocker with each request; the blocker's own resolver is left out of the build.

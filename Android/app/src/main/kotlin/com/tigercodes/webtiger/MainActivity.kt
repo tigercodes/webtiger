@@ -238,6 +238,13 @@ class MainActivity : ComponentActivity() {
          */
         const val EXTRA_FAKE_DEVICE_LIMITS = "webtiger.fake.device_limits"
 
+        /**
+         * `--es webtiger.fake.guard "<rule>\n<rule>"`: in fake mode, rules for Guard, in the
+         * syntax the public lists are written in, a rule to a line: for a run that must see a
+         * request refused before there are lists (064). Without it Guard allows everything.
+         */
+        const val EXTRA_FAKE_GUARD = "webtiger.fake.guard"
+
         /** The words of [ACTION_SEARCH_WORDS]. */
         const val EXTRA_WORDS = "webtiger.search.words"
 
@@ -323,6 +330,7 @@ class MainActivity : ComponentActivity() {
                         .filter { it.isNotEmpty() },
                 openEvery = intent.getIntExtra(EXTRA_FAKE_OPEN_EVERY, 0).coerceAtLeast(0),
                 deviceLimits = intent.getBooleanExtra(EXTRA_FAKE_DEVICE_LIMITS, false),
+                guardRules = intent.getStringExtra(EXTRA_FAKE_GUARD).orEmpty(),
             )
         }
     }

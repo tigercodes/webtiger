@@ -1,0 +1,16 @@
+[package]
+name = "wt-guard"
+description = "Guard: whether a page may fetch a thing, by the rules of the public lists"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+adblock.workspace = true
+# Whose site a request goes to, and whose page asks: the app's one answer.
+wt-core.workspace = true
+
+[lints]
+workspace = true

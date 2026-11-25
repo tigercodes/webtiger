@@ -1,0 +1,28 @@
+! Rules for Guard's corpus (064), written in this repository in the syntax the public
+! lists use, for hosts of the corpus's own. They are nobody's list: they say that the
+! blocker and the ways it is asked work, and nothing about what the public lists block.
+! Title: WebTiger's corpus
+!
+! A host, and everything under it.
+||ads.tracker.example.net^
+! A host, for scripts alone, and only from another site.
+||metrics.example.org^$script,third-party
+! A path, for pictures alone.
+/banners/*$image
+! A piece of an address.
+-ad-unit-
+! A host, but not from one site.
+||widgets.example.net^$domain=~partner.example.com
+! An exception: one thing under a blocked host.
+@@||ads.tracker.example.net/consent.js$script
+! A rule no exception undoes, and an exception that would.
+||beacon.example.net^$important
+@@||beacon.example.net^
+! Frames from a host.
+||frames.example.net^$subdocument
+! A rule for the top frame's own document: not acted on (064 D5).
+||blocked-whole.example.net^$document
+! A rule for a web socket.
+||live.tracker.example.net^$websocket
+! What is no rule is ignored.
+this is not a rule ##

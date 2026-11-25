@@ -79,6 +79,11 @@ data class LaunchOptions(
      * where fake mode has none.
      */
     val deviceLimits: Boolean = false,
+    /**
+     * Fake mode: rules for Guard, a rule to a line, in the public lists' syntax (064). Empty:
+     * Guard has no rules.
+     */
+    val guardRules: String = "",
 )
 
 /**
@@ -269,6 +274,7 @@ class BrowserSession(
                 open_addresses = launch.open,
                 open_every_seconds = launch.openEvery,
                 device_limits = launch.deviceLimits,
+                guard_rules = launch.guardRules,
             )
     }
 }

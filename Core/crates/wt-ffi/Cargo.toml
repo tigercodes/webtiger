@@ -23,6 +23,8 @@ prost.workspace = true
 tokio = { workspace = true, features = ["rt", "sync", "time"] }
 wt-app.workspace = true
 wt-core.workspace = true
+# The fast path's second question: Guard's decision for a request (064).
+wt-guard.workspace = true
 wt-proto.workspace = true
 # The Android glue (the `jni` feature): Kotlin's NativeCore over the C ABI.
 jni = { workspace = true, optional = true }

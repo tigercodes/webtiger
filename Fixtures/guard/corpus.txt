@@ -1,0 +1,61 @@
+# Guard's corpus (064): requests, each with the answer expected, against Fixtures/guard/rules.txt.
+# One to a line: the answer (allow or block), what the request is for (the C header's kinds,
+# by name), the page that asks, the address asked for; then, after a #, why. The same file is
+# for every way of deciding there is: the blocker in the core now, WebKit's rule lists later.
+
+# A host, and everything under it.
+block  script       https://news.example.com/story        https://ads.tracker.example.net/show.js         # a blocked host
+block  image        https://news.example.com/story        https://ads.tracker.example.net/pixel.gif?id=7  # whatever it is for
+block  xhr          https://news.example.com/story        https://cdn.ads.tracker.example.net/api          # and a host under it
+block  stylesheet   https://news.example.com/story        https://ads.tracker.example.net/style.css       # a stylesheet
+block  font         https://news.example.com/story        https://ads.tracker.example.net/face.woff2      # a font
+block  media        https://news.example.com/story        https://ads.tracker.example.net/clip.mp4        # a film
+block  other        https://news.example.com/story        https://ads.tracker.example.net/thing           # what the engine cannot name
+allow  script       https://news.example.com/story        https://tracker.example.net/lib.js               # not the host above it
+allow  script       https://news.example.com/story        https://ads.tracker.example.net.example.com/a.js # nor a host that only begins like it
+
+# For scripts alone, and only from another site.
+block  script       https://news.example.com/story        https://metrics.example.org/collect.js           # a script, from another site
+allow  image        https://news.example.com/story        https://metrics.example.org/logo.png             # not a script
+allow  script       https://www.example.org/              https://metrics.example.org/collect.js           # its own site's script
+allow  script       https://shop.example.org/basket       https://metrics.example.org/collect.js           # the same site, another host
+
+# A path, for pictures alone.
+block  image        https://news.example.com/story        https://static.example.com/banners/top.png       # a picture, of the page's own site
+allow  script       https://news.example.com/story        https://static.example.com/banners/top.js        # not a picture
+
+# A piece of an address.
+block  script       https://news.example.com/story        https://cdn.example.org/js/main-ad-unit-3.js     # anywhere in the address
+allow  script       https://news.example.com/story        https://cdn.example.org/js/main.js               # not there
+
+# A host, but not from one site.
+block  script       https://news.example.com/story        https://widgets.example.net/embed.js             # from any site
+allow  script       https://partner.example.com/page      https://widgets.example.net/embed.js             # but the one
+allow  script       https://www.partner.example.com/page  https://widgets.example.net/embed.js             # and its other hosts
+
+# An exception.
+allow  script       https://news.example.com/story        https://ads.tracker.example.net/consent.js       # excepted
+block  image        https://news.example.com/story        https://ads.tracker.example.net/consent.js       # for scripts alone
+
+# A rule no exception undoes.
+block  ping         https://news.example.com/story        https://beacon.example.net/b                     # important
+
+# Frames.
+block  subdocument  https://news.example.com/story        https://frames.example.net/ad.html               # a frame
+allow  script       https://news.example.com/story        https://frames.example.net/ad.js                 # not a frame
+
+# The top frame's own document is always allowed.
+allow  document     https://news.example.com/story        https://blocked-whole.example.net/               # 064 D5
+allow  document     https://news.example.com/story        https://ads.tracker.example.net/landing          # even of a blocked host
+
+# A web socket.
+block  websocket    https://news.example.com/story        wss://live.tracker.example.net/feed              # by its kind
+allow  websocket    https://news.example.com/story        wss://live.example.com/feed                      # no rule
+
+# A page that is nobody's site asks as a third party.
+block  script       about:blank                           https://metrics.example.org/collect.js           # no site of its own
+
+# What has no host is allowed, and what is no address.
+allow  image        https://news.example.com/story        data:image/gif;base64,R0lGODlhAQABAAAAACw=       # no host
+allow  script       https://news.example.com/story        blob:https://news.example.com/5f3c               # no host of its own
+allow  other        https://news.example.com/story        not an address                                    # fails open

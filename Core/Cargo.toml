@@ -17,6 +17,7 @@ publish = false
 wt-app = { path = "crates/wt-app" }
 wt-core = { path = "crates/wt-core" }
 wt-ffi = { path = "crates/wt-ffi" }
+wt-guard = { path = "crates/wt-guard" }
 wt-import = { path = "crates/wt-import" }
 wt-proto = { path = "crates/wt-proto" }
 wt-store = { path = "crates/wt-store" }
@@ -40,6 +41,14 @@ rusqlite = { version = "0.41", features = ["bundled"] }
 tokio = "1"
 # wt-ffi: the fast path's immutable snapshot, swapped without a lock (§5.5).
 arc-swap = "1.9"
+# wt-guard: the blocker (000 §5.8, WT-D10; 064): Brave's adblock-rust, which
+# decides whether a page may fetch a thing by the rules of the public lists.
+# One exact version: what it saves, and what it converts for WebKit, are a
+# version's own. Not built for one thread: the fast path asks from an
+# engine's own threads, and the blocker is shared between them. Without its
+# own resolver of domains: wt-core's registrable domain is the app's one
+# answer to "is this the same site", handed over with each request.
+adblock = { version = "=0.13.6", default-features = false, features = ["full-regex-handling"] }
 # wt-ffi's Android glue: the JNI exports Kotlin's NativeCore calls (the `jni`
 # feature).
 jni = "0.22.4"

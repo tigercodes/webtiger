@@ -315,6 +315,12 @@ public nonisolated struct WTFakeOptions: Sendable {
   /// the app as it is (063). A limit a suite gives (`live_tabs`) comes first.
   public var deviceLimits: Bool = false
 
+  /// Since 1.53. Rules for Guard, in the syntax the public lists are written
+  /// in, a rule to a line: fake mode's blocker is made of them as the core
+  /// starts (064). For a suite that must see a request refused, with rules of
+  /// its own. Empty: Guard has no rules, and allows everything.
+  public var guardRules: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -495,7 +501,7 @@ nonisolated extension WTCoreConfig: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".FakeOptions"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}start_address\0\u{3}first_run\0\u{3}seconds_a_read\0\u{3}sleep_after_seconds\0\u{3}live_tabs\0\u{3}memory_short_every_seconds\0\u{3}standard_session\0\u{3}open_addresses\0\u{3}open_every_seconds\0\u{3}device_limits\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}start_address\0\u{3}first_run\0\u{3}seconds_a_read\0\u{3}sleep_after_seconds\0\u{3}live_tabs\0\u{3}memory_short_every_seconds\0\u{3}standard_session\0\u{3}open_addresses\0\u{3}open_every_seconds\0\u{3}device_limits\0\u{3}guard_rules\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -513,6 +519,7 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
       case 8: try { try decoder.decodeRepeatedStringField(value: &self.openAddresses) }()
       case 9: try { try decoder.decodeSingularUInt32Field(value: &self.openEverySeconds) }()
       case 10: try { try decoder.decodeSingularBoolField(value: &self.deviceLimits) }()
+      case 11: try { try decoder.decodeSingularStringField(value: &self.guardRules) }()
       default: break
       }
     }
@@ -549,6 +556,9 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if self.deviceLimits != false {
       try visitor.visitSingularBoolField(value: self.deviceLimits, fieldNumber: 10)
     }
+    if !self.guardRules.isEmpty {
+      try visitor.visitSingularStringField(value: self.guardRules, fieldNumber: 11)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -563,6 +573,7 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if lhs.openAddresses != rhs.openAddresses {return false}
     if lhs.openEverySeconds != rhs.openEverySeconds {return false}
     if lhs.deviceLimits != rhs.deviceLimits {return false}
+    if lhs.guardRules != rhs.guardRules {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

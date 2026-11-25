@@ -7,7 +7,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use arc_swap::ArcSwapOption;
-use wt_proto::v1::CoreConfig;
+use wt_guard::{Guard, Kind, Verdict};
+use wt_proto::v1::{CoreConfig, TestMode};
 
 use crate::core::Core;
 use crate::{SinkTarget, Status};
@@ -19,6 +20,23 @@ pub const MAX_CORES: usize = 64;
 struct Entry {
     handle: u64,
     core: Core,
+    /// The core's blocker (064): what the fast path asks, on whatever thread
+    /// an engine calls. Made as the core starts, and not changed after.
+    guard: Guard,
+}
+
+/// The blocker a core starts with. Until there are lists (W4) the only rules
+/// there are are a suite's own, in fake mode (064): otherwise it has none,
+/// and allows everything.
+fn guard_of(config: &CoreConfig) -> Guard {
+    match &config.fake {
+        Some(options)
+            if config.test_mode() == TestMode::Fake && !options.guard_rules.is_empty() =>
+        {
+            Guard::with_rules([options.guard_rules.as_str()])
+        }
+        _ => Guard::default(),
+    }
 }
 
 static SLOTS: [ArcSwapOption<Entry>; MAX_CORES] =
@@ -35,8 +53,13 @@ pub(crate) fn start(config: CoreConfig, target: SinkTarget) -> Result<u64, &'sta
         return Err("start.too_many_cores");
     }
     let handle = NEXT_HANDLE.fetch_add(1, Ordering::Relaxed);
+    let guard = guard_of(&config);
     let core = Core::start(config, target)?;
-    let entry = Arc::new(Entry { handle, core });
+    let entry = Arc::new(Entry {
+        handle,
+        core,
+        guard,
+    });
     for slot in &SLOTS {
         let empty: Option<Arc<Entry>> = None;
         let previous = slot.compare_and_swap(&empty, Some(Arc::clone(&entry)));
@@ -66,6 +89,19 @@ pub(crate) fn is_running(handle: u64) -> bool {
                 .as_ref()
                 .is_some_and(|entry| entry.handle == handle)
         })
+}
+
+/// Guard's decision for a request, by the blocker of the core with this
+/// handle (064): the fast path's lookup. `None` when no such core runs.
+pub(crate) fn decide(handle: u64, url: &str, source_url: &str, kind: Kind) -> Option<Verdict> {
+    if handle == 0 {
+        return None;
+    }
+    SLOTS.iter().find_map(|slot| {
+        let entry = slot.load();
+        let entry = entry.as_ref().filter(|entry| entry.handle == handle)?;
+        Some(entry.guard.decide(url, source_url, kind))
+    })
 }
 
 /// Stops the core with a handle and frees its slot.

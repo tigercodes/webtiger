@@ -422,12 +422,37 @@ class NativeCoreTest {
     }
 
     @Test
-    fun guardAllowsEveryRequestUntilItExists() {
+    fun guardWithNoRulesAllowsEveryRequest() {
         val core = start()
         assertEquals(
             RequestVerdict.ALLOW,
             core.requestVerdict("https://tracker.example.com/pixel.gif", "https://example.com/", webViewId = 1, resource = ResourceType.IMAGE),
         )
+    }
+
+    /**
+     * Guard's answer by a suite's rules (064), through the core's library: a blocked host,
+     * an exception, a rule for the third party alone; the page itself is always allowed; and
+     * what the WebView can say of a request, which is only whether it is the page (OTHER).
+     */
+    @Test
+    fun guardAnswersByTheRulesFakeModeWasGiven() {
+        val rules = "||ads.tracker.example.net^\n@@||ads.tracker.example.net/consent.js\n||metrics.example.org^\$third-party\n"
+        val core = start(fakeConfig().copy(fake = FakeOptions(guard_rules = rules)))
+        val page = "https://news.example.com/story"
+
+        fun verdict(url: String, source: String = page, resource: ResourceType = ResourceType.OTHER) =
+            core.requestVerdict(url, source, webViewId = 1, resource = resource)
+        assertEquals(RequestVerdict.BLOCK, verdict("https://ads.tracker.example.net/show.js"))
+        assertEquals(RequestVerdict.BLOCK, verdict("https://ads.tracker.example.net/pixel.gif", resource = ResourceType.IMAGE))
+        assertEquals(RequestVerdict.ALLOW, verdict("https://ads.tracker.example.net/consent.js"))
+        assertEquals(RequestVerdict.BLOCK, verdict("https://metrics.example.org/collect.js"))
+        assertEquals(RequestVerdict.ALLOW, verdict("https://metrics.example.org/collect.js", source = "https://www.example.org/"))
+        assertEquals(RequestVerdict.ALLOW, verdict("https://cdn.example.org/app.js"))
+        assertEquals(RequestVerdict.ALLOW, verdict("https://ads.tracker.example.net/landing", resource = ResourceType.DOCUMENT))
+        assertEquals(RequestVerdict.ALLOW, verdict("not an address"))
+        // Another core, with no rules, allows what this one blocks.
+        assertEquals(RequestVerdict.ALLOW, start().requestVerdict("https://ads.tracker.example.net/show.js", page, 1, ResourceType.OTHER))
     }
 
     @Test
