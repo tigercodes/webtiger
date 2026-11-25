@@ -361,6 +361,12 @@ impl FakeShell {
         }
     }
 
+    /// How many times one of the core's own timers has woken it (060).
+    #[must_use]
+    pub fn wakeups(&self) -> u64 {
+        self.dispatcher.wakeups()
+    }
+
     /// Forgets what the core has said so far: every event, host request,
     /// label and unclaimed answer this shell wrote down, and what its engine
     /// noted of what it was asked. For a test that measures what the core

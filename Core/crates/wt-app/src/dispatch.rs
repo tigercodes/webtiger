@@ -116,6 +116,11 @@ pub struct Dispatcher {
     /// had been told the system is short of memory. `None` when it does
     /// not, and once that has been set going.
     short_every: std::cell::Cell<Option<Duration>>,
+    /// How many times one of the core's own timers has woken it (060): the
+    /// look for tabs to put to sleep, the look for tabs to tidy, and fake
+    /// mode's word that memory is short. A core with nothing to look for
+    /// has none of them going, and this stands still.
+    wakeups: std::cell::Cell<u64>,
 }
 
 impl Dispatcher {
@@ -244,6 +249,7 @@ impl Dispatcher {
             fake,
             tidying: std::cell::Cell::new(false),
             sleeping: std::cell::Cell::new(false),
+            wakeups: std::cell::Cell::new(0),
             short_every: std::cell::Cell::new(
                 config
                     .fake
@@ -282,6 +288,18 @@ impl Dispatcher {
         self.say_memory_is_short();
     }
 
+    /// How many times one of the core's own timers has woken it since it
+    /// started (060): what "idle, with no timers" is counted by.
+    #[must_use]
+    pub fn wakeups(&self) -> u64 {
+        self.wakeups.get()
+    }
+
+    /// One of the core's own timers has woken it.
+    fn woken(&self) {
+        self.wakeups.set(self.wakeups.get().saturating_add(1));
+    }
+
     /// Fake mode, for a suite that must see what follows (055): from the
     /// first thing a shell sends, the core acts every so often as though it
     /// had been told the system is short of memory, by the runtime's own
@@ -297,6 +315,7 @@ impl Dispatcher {
                 let Some(core) = core.upgrade() else {
                     break;
                 };
+                core.woken();
                 core.app.memory_short(MemoryLevel::Short as i32);
                 core.flush();
             }
@@ -320,6 +339,7 @@ impl Dispatcher {
                 let Some(core) = core.upgrade() else {
                     break;
                 };
+                core.woken();
                 if !core.app.could_sleep() {
                     core.sleeping.set(false);
                     break;
@@ -415,6 +435,7 @@ impl Dispatcher {
                 let Some(core) = core.upgrade() else {
                     break;
                 };
+                core.woken();
                 if !core.app.tidies() {
                     core.tidying.set(false);
                     break;

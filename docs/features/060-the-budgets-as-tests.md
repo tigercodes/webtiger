@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | **Its first three steps are built, in the core: what the core holds was measured, the standard session is a thing a test can ask for, and six counted budgets are tests that fail at the budget.** One budget is not met, and its test is written and set aside (§8). On the recommendations of §6, used on the owner's word of 2026-11-24 (to use what is suggested where something waits on a choice, and to go on); they stay the owner's to change. Not built: the core's wake-ups, the timed budgets, the app's |
+| **Status** | **Its first four steps are built, in the core: what the core holds was measured, the standard session is a thing a test can ask for, the core counts its own timers' wake-ups, and seven counted budgets are tests that fail at the budget.** One budget is not met, and its test is written and set aside (§8). On the recommendations of §6, used on the owner's word of 2026-11-24 (to use what is suggested where something waits on a choice, and to go on); they stay the owner's to change. Not built: the timed budgets, the app's |
 | **Phase** | W3 of [000](000-master-plan.md) §9: "every §7 budget as a failing test". The tenth of W3 |
 | **Contract** | None |
 | **Builds on** | [000](000-master-plan.md) §7: the budgets. [001](001-foundations.md) §11: the first measurements. [011](011-suggestions.md) §7 and [043](043-the-sidebar.md) §7: two budgets measured by hand. [051](051-a-tabs-kept-state.md), [053](053-a-tab-sleeps-by-itself.md), [059](059-a-sleeping-tabs-picture.md): what a sleeping tab keeps |
-| **Last updated** | 2026-11-24 |
+| **Last updated** | 2026-11-25 |
 
 ## 1. User story
 
@@ -63,7 +63,7 @@ A budget is one of four kinds, and its kind says where its test is.
 1. **Measure first.** What the core holds for a sleeping tab, for a Space with nothing live, and for the standard session, with an allocator that counts: before any of them is a test, so that a test is not written to a number that was never true. **Done, 2026-11-24** (§5.1).
 2. **The standard session,** as a fixture. **Built:** the test kit makes it through the contract, as a person would: five Spaces, each with forty Sites (four Favourites, sixteen in two Groups, twenty in none) and eight tabs; the first Space shown, one page alive.
 3. **The counted budgets,** in the core's suite. **Built,** but for the timers (step 4).
-4. **The core's wake-ups,** counted, and the idle test.
+4. **The core's wake-ups,** counted, and the idle test. **Built:** the core has three timers of its own (the look for tabs to put to sleep, the look for tabs to tidy, and fake mode's word that memory is short); each counts when it wakes the core, and each stops when it has nothing to look for.
 5. **The timed ones,** as measurements with ceilings, and their command.
 6. **The app's,** scripted for the Mac.
 
@@ -105,6 +105,9 @@ Counted by an allocator that counts what the core's thread has asked for and not
 | The core, through the contract (`budgets`, 3) | **The standard session is what the plan says:** five Spaces, two hundred Sites, forty tabs, one live page; as the window is told it, and as the store keeps it (each Space's forty-eight rows, its two Groups, its four Favourites). **A start loads exactly one page:** the app started again on the standard session and its window opened, the shell is asked for one web view and one load, and for no more in the hour and a half after. **A sleeping tab is no more than 250 KB on disk:** twenty tabs asleep, each with a state and a picture a byte under the most the core keeps, add 235,724 bytes each to the store's files |
 | The core's memory (`wt-ffi`, `held`, 4, and 1 set aside) | The allocator counts what is held and what is given back. **A sleeping tab is no more than 4 KB,** in rows of 100, 200, 400 and 600, and not so little that something else was counted; **a hundred add no more than 5 MB.** **A start on the standard session is within the core's share** (30 MB), and **a Space that is not shown is no more than 100 KB.** **A Space that was shown and left, with nothing of it alive, is no more than 100 KB.** Set aside, because it fails: the same of a Space whose row was arranged in this run (§8) |
 
+| The core's timers (`budgets`, +4) | **Idle with every tab asleep, no timer is going:** the standard session at a start, with one page alive in front, no tab that could sleep and no Space tidied: in an hour none of the core's timers wakes it, and nothing is asked of the shell. A tab that could sleep wakes the core once a minute until it sleeps, and then no more. A Space that is tidied wakes it once a minute (a sixtieth of the one a second it may have), and when none is tidied, no more. Fake mode's word that memory is short is counted as the others are |
+| The counting and the looks' ends broken, a part at a time | 8 parts, 8 caught |
+
 The test of the core's memory is in the crate of the C functions and not with the core's others: an allocator is unsafe code, which is that crate's alone.
 
 The rest is to be filled in as built.
@@ -133,7 +136,7 @@ And, apart from the budget: **a long row's line is large** (near 19 MB for two t
 - [x] What the core holds, measured (§5.1).
 - [x] The standard session.
 - [x] The counted budgets: on disk, at a start, in the core's memory. One is not met (§8).
-- [ ] The core's wake-ups, and the idle test.
+- [x] The core's wake-ups, and the idle test.
 - [ ] The timed ones.
 - [ ] The app's, scripted for the Mac.
 - [ ] The gate.

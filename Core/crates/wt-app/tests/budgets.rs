@@ -213,3 +213,128 @@ fn a_sleeping_tab_is_no_more_than_250_kb_on_disk() {
         );
     });
 }
+
+/// "Idle with every tab asleep: no timers; at most one wake-up a second"
+/// (000 §7). The core counts each time one of its own timers wakes it.
+#[test]
+fn idle_with_every_tab_asleep_the_core_has_no_timer_going() {
+    run(async {
+        // The standard session at a start: one page alive, in front; every other tab asleep;
+        // no Space tidied. Nothing could sleep, and nothing could be tidied.
+        let folder = tempfile::tempdir().unwrap();
+        let mut shell = FakeShell::live(folder.path());
+        standard_session(&mut shell).await;
+        drop(shell);
+        let mut shell = FakeShell::live(folder.path());
+        standard_pages(&mut shell, SPACES);
+        shell.open_window().await;
+        shell.settle().await;
+        let at_rest = shell.wakeups();
+        shell.seconds_pass(3_600).await;
+        assert_eq!(
+            shell.wakeups(),
+            at_rest,
+            "in an hour, none of the core's timers woke it"
+        );
+        assert_eq!(
+            asked(&shell),
+            (1, 1, 0),
+            "and it asked nothing of the shell"
+        );
+    });
+}
+
+#[test]
+fn a_tab_that_could_sleep_wakes_the_core_once_a_minute_until_it_sleeps_and_then_no_more() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        for address in ["https://example.com/", "https://news.example.com/"] {
+            shell.engine.page(address, "A page");
+        }
+        let (window, first, subscription) = shell.open_window().await;
+        shell.submit(first, "https://example.com/").await;
+        assert_eq!(shell.wakeups(), 0, "one tab, in front: nothing to look for");
+        // A second tab in front: the first is out of sight and awake, and the core looks
+        // once a minute for whether it is time for it to sleep.
+        shell.open_tab(window, "https://news.example.com/").await;
+        shell.seconds_pass(600).await;
+        let ten_minutes = shell.wakeups();
+        assert!(
+            (9..=10).contains(&ten_minutes),
+            "once a minute: {ten_minutes} in ten minutes"
+        );
+        // Half an hour from when it left the front it sleeps, and the look ends: one wake-up
+        // more at most, which finds nothing left to look for.
+        shell.seconds_pass(1_500).await;
+        assert_eq!(
+            shell
+                .window(subscription)
+                .tabs
+                .iter()
+                .map(|tab| tab.asleep)
+                .collect::<Vec<_>>(),
+            [true, false]
+        );
+        let asleep = shell.wakeups();
+        assert!((30..=32).contains(&asleep), "{asleep} by the time it slept");
+        shell.seconds_pass(3_600).await;
+        assert!(
+            shell.wakeups() <= asleep + 1,
+            "and in the hour after: none, or the last one"
+        );
+        let ended = shell.wakeups();
+        shell.seconds_pass(3_600).await;
+        assert_eq!(shell.wakeups(), ended);
+    });
+}
+
+#[test]
+fn a_space_that_is_tidied_wakes_the_core_once_a_minute_and_stops_when_none_is() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        shell.engine.page("https://example.com/", "A page");
+        let (_, first, subscription) = shell.open_window().await;
+        shell.submit(first, "https://example.com/").await;
+        let space = shell.window(subscription).space_id;
+        // A Space whose tabs are tidied after a day: the core looks once a minute. That is
+        // a sixtieth of the one wake-up a second it may have.
+        shell.set_tidying(space, 86_400).await;
+        let before = shell.wakeups();
+        shell.seconds_pass(3_600).await;
+        let in_an_hour = shell.wakeups() - before;
+        assert!(
+            (59..=60).contains(&in_an_hour),
+            "once a minute: {in_an_hour} in an hour"
+        );
+        // No Space tidied any longer: the look ends, with one wake-up more at most.
+        shell.set_tidying(space, 0).await;
+        shell.seconds_pass(120).await;
+        let ended = shell.wakeups();
+        shell.seconds_pass(3_600).await;
+        assert_eq!(shell.wakeups(), ended, "and then none");
+    });
+}
+
+#[test]
+fn fake_modes_word_that_memory_is_short_is_counted_as_a_wake_up_too() {
+    run(async {
+        // A suite's knob (055): every five seconds the core acts as though the system had
+        // said memory is short. Each time is one of the core's own timers waking it.
+        let mut config = FakeShell::config(wt_proto::v1::EngineKind::Webkit);
+        config.fake = Some(wt_proto::v1::FakeOptions {
+            memory_short_every_seconds: 5,
+            ..wt_proto::v1::FakeOptions::default()
+        });
+        let mut shell = FakeShell::start(&config).unwrap();
+        shell.engine.page("https://example.com/", "A page");
+        let (_, first, _) = shell.open_window().await;
+        shell.submit(first, "https://example.com/").await;
+        let before = shell.wakeups();
+        shell.seconds_pass(60).await;
+        let in_a_minute = shell.wakeups() - before;
+        assert!(
+            (11..=12).contains(&in_a_minute),
+            "every five seconds: {in_a_minute} in a minute"
+        );
+    });
+}
