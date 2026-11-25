@@ -1056,6 +1056,15 @@ And one that the measuring raised (060 §8): a Space whose row was arranged in t
 3. What cannot be told or guessed is asked about as a kind that cannot be named: a wrong block breaks a page, a missed one is where every request is today.
 4. The guess is used only where the engine could not name the kind.
 
+**A person's own rules for Guard** ([066](066-a-persons-own-rules.md) §6, put on 2026-11-25; to be built on these, in the core alone: where a person writes rules is a shell's design, and is not made):
+
+1. A person's rules are one text, kept whole as they wrote it.
+2. They are for everywhere: every Space, every site.
+3. They are in force at once, without a reload.
+4. The new blocker is made on the core's own thread: a person's rules are few. (The public lists will need a thread of their own.)
+5. A limit of 256 KB of text.
+6. Private windows are under the same rules.
+
 And one that measuring the Mac app raised (060 §5.2, §8): its start is about 200 ms, but the first start after it was built was 395 ms once and 673 ms once, against the 500 allowed. Whether a cold start (after the Mac is turned on) is within the budget is not known: it cannot be measured here without the owner, since emptying the system's memory of files asks for a password. Recommended: the owner runs `Tools/perf/mac.sh` once after turning the Mac on, and the first line it prints is the number.
 
 Also the owner's to say, from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
