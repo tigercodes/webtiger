@@ -106,4 +106,4 @@ To come with each step. Foreseen: nothing for the first two (the core cleans wha
 - [x] What the core loads by itself.
 - [ ] Copy clean link.
 - [ ] A page's own navigation.
-- [ ] The gate over the first two steps.
+- [x] The gate over the first two steps: every stage of `Tools/test.sh all` green, and `android-device`, on 2026-11-25: `lint`, `core` (831, and the strings tool's 24), `unit` (407 on the Mac), `build`, the Mac's UI suite (67), `ios` (391 on the iPhone simulator), the iPhone's UI suite (56), `android` (542 and 34 on the JVM) and `android-device` (201 on the emulator).
