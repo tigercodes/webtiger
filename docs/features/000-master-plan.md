@@ -725,7 +725,7 @@ The request engine and fast path; lists and the daily bundle; the WebKit compile
 
 **Exit:** the corpus passes at its targets on every engine; a site's switch takes effect in one reload.
 
-**Where W4 stands (2026-11-25).** Built: the request engine and the fast path ([064](064-guards-request-engine.md)): the core holds the blocker (`wt-guard`), answers for a request whether a page may fetch it, and the fast path asks it from any thread; a corpus of this repository's own rules holds the answers, and a decision is a microsecond on this Mac where the phone's budget is 25 (contract 1.53, for a suite's rules). Android's adapter asks it for every request, and a request it refuses is not made. **There are no lists, so Guard blocks nothing yet outside a suite.** Not built: the lists and the daily bundle (which public lists may be checked in is the owner's to say first); the WebKit compiler, without which nothing blocks on Apple's systems; page fixes; the switches; the panel; link cleaning; HTTPS first; third-party cookies; Global Privacy Control.
+**Where W4 stands (2026-11-25).** Built: the request engine and the fast path ([064](064-guards-request-engine.md)): the core holds the blocker (`wt-guard`), answers for a request whether a page may fetch it, and the fast path asks it from any thread; a corpus of this repository's own rules holds the answers, and a decision is a microsecond on this Mac where the phone's budget is 25 (contract 1.53, for a suite's rules). Android's adapter asks it for every request, with what the request is for as far as the WebView tells and the core can guess from the address ([065](065-a-requests-kind-on-android.md)), and a request it refuses is not made. **There are no lists, so Guard blocks nothing yet outside a suite.** Not built: the lists and the daily bundle (which public lists may be checked in is the owner's to say first); the WebKit compiler, without which nothing blocks on Apple's systems; page fixes; the switches; the panel; link cleaning; HTTPS first; third-party cookies; Global Privacy Control.
 
 ### W5 — Split view, tablets, foldables, iPhone Duo (medium)
 
@@ -1049,9 +1049,9 @@ And one that the measuring raised (060 §8): a Space whose row was arranged in t
 7. Fake mode can be given rules by a suite.
 8. The C header says what the fast path keeps to, and no longer that it never allocates.
 
-**What a request is for, on Android** ([065](065-a-requests-kind-on-android.md) §6, put on 2026-11-25; to be built on these):
+**What a request is for, on Android** ([065](065-a-requests-kind-on-android.md) §6, put on 2026-11-25; built on these):
 
-1. The adapter tells what the WebView's own headers tell of a request (a frame's page, a picture, a stylesheet), and no more.
+1. The adapter tells what the WebView's own headers tell of a request (a frame's page, a picture, a stylesheet; and, as it turned out, a film), and no more.
 2. The core guesses the rest from the address's ending (a script, a font, a film), for any engine that cannot say.
 3. What cannot be told or guessed is asked about as a kind that cannot be named: a wrong block breaks a page, a missed one is where every request is today.
 4. The guess is used only where the engine could not name the kind.

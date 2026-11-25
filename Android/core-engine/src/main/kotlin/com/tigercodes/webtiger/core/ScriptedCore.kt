@@ -23,6 +23,7 @@ class ScriptedCore(private val script: (Request) -> Response = { Response(ack = 
     private val reported = ArrayList<EngineEvent>()
     private val navigationVerdicts = HashMap<String, NavigationVerdict>()
     private val requestVerdicts = HashMap<String, RequestVerdict>()
+    private val asked = ArrayList<Pair<String, ResourceType>>()
     private var stopped = false
     private val channel = Channel<Event>(Channel.UNLIMITED)
 
@@ -33,6 +34,9 @@ class ScriptedCore(private val script: (Request) -> Response = { Response(ack = 
 
     /** Every report made, in order. */
     val reports: List<EngineEvent> get() = synchronized(lock) { reported.toList() }
+
+    /** Every request a page made that was put to Guard, in order: its address, and what it was said to be for. */
+    val guarded: List<Pair<String, ResourceType>> get() = synchronized(lock) { asked.toList() }
 
     val isStopped: Boolean get() = synchronized(lock) { stopped }
 
@@ -76,7 +80,10 @@ class ScriptedCore(private val script: (Request) -> Response = { Response(ack = 
         synchronized(lock) { navigationVerdicts[url] } ?: NavigationVerdict.ALLOW
 
     override fun requestVerdict(url: String, sourceUrl: String, webViewId: Long, resource: ResourceType): RequestVerdict =
-        synchronized(lock) { requestVerdicts[url] } ?: RequestVerdict.ALLOW
+        synchronized(lock) {
+            asked.add(url to resource)
+            requestVerdicts[url]
+        } ?: RequestVerdict.ALLOW
 
     override fun stop() {
         synchronized(lock) { stopped = true }

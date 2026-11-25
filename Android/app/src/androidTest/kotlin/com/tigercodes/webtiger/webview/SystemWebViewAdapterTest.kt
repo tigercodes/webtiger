@@ -8,6 +8,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.tigercodes.webtiger.TestSite
 import com.tigercodes.webtiger.core.NavigationVerdict
 import com.tigercodes.webtiger.core.RequestVerdict
+import com.tigercodes.webtiger.core.ResourceType
 import com.tigercodes.webtiger.core.v1.EngineKind
 import com.tigercodes.webtiger.core.v1.HostPing
 import com.tigercodes.webtiger.core.v1.HostRequest
@@ -214,6 +215,31 @@ internal class SystemWebViewAdapterTest : AdapterTestCase() {
         load(2, site.url("/tracked"))
         await(2, "the page") { finished(it) }
         assertEquals("a request the core blocks never leaves the device", before, site.requests.count { it == "/pixel" })
+    }
+
+    /**
+     * What each request is for (065): the WebView does not say, and the adapter tells what it
+     * can from what the request says of itself. A page that fetches one of each kind, from
+     * addresses none of which ends as its kind's do.
+     */
+    @Test
+    fun aRequestIsPutToTheCoreWithWhatItIsForAsFarAsTheWebViewTells() {
+        create(1)
+        load(1, site.url("/kinds"))
+        await(1, "the page") { finished(it) }
+        val film = site.url("/kinds/film")
+        val deadline = System.currentTimeMillis() + 10_000
+        while (core.guarded.none { it.first == film } && System.currentTimeMillis() < deadline) Thread.sleep(50)
+        val kinds = core.guarded.toMap()
+        assertEquals(ResourceType.DOCUMENT, kinds[site.url("/kinds")])
+        assertEquals(ResourceType.STYLESHEET, kinds[site.url("/kinds/style")])
+        assertEquals(ResourceType.IMAGE, kinds[site.url("/kinds/picture")])
+        assertEquals(ResourceType.SUBDOCUMENT, kinds[site.url("/kinds/frame")])
+        assertEquals(ResourceType.MEDIA, kinds[film])
+        // A script, a fetch and a font accept anything: the WebView does not tell them apart.
+        assertEquals(ResourceType.OTHER, kinds[site.url("/kinds/script")])
+        assertEquals(ResourceType.OTHER, kinds[site.url("/kinds/data")])
+        assertEquals(ResourceType.OTHER, kinds[site.url("/kinds/face")])
     }
 
     // A renderer that dies

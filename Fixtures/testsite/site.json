@@ -582,6 +582,56 @@
       "title": "Doing in a frame",
       "body": "<iframe id=\"inner\" src=\"/doing\" width=\"400\" height=\"300\"></iframe>",
       "note": "The page of /doing in a frame of this one, of the same origin: what a frame is doing keeps the tab awake as what the page does."
+    },
+    {
+      "path": "/kinds",
+      "title": "Kinds",
+      "body": [
+        "<link rel=\"stylesheet\" href=\"/kinds/style\">",
+        "<style>@font-face { font-family: Kinds; src: url('/kinds/face'); } p { font-family: Kinds, serif; }</style>",
+        "<p>One of each kind.</p>",
+        "<img src=\"/kinds/picture\" alt=\"\" width=\"1\" height=\"1\">",
+        "<iframe src=\"/kinds/frame\" width=\"60\" height=\"20\"></iframe>",
+        "<video src=\"/kinds/film\" preload=\"auto\" muted width=\"1\" height=\"1\"></video>",
+        "<script src=\"/kinds/script\"></script>",
+        "<script>fetch('/kinds/data').catch(function () {});</script>"
+      ],
+      "note": "Fetches one thing of each kind from addresses of its own, none of which ends as its kind's addresses do: for what an engine says a request is for (065)."
+    },
+    {
+      "path": "/kinds/style",
+      "type": "text/css",
+      "content": "p { margin: 0; }"
+    },
+    {
+      "path": "/kinds/face",
+      "type": "font/woff2",
+      "content": "not a font",
+      "note": "What /kinds names as its font. It is none: the request is what matters."
+    },
+    {
+      "path": "/kinds/picture",
+      "type": "image/svg+xml",
+      "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>"
+    },
+    {
+      "path": "/kinds/frame",
+      "title": "A frame"
+    },
+    {
+      "path": "/kinds/film",
+      "type": "video/mp4",
+      "content": "not a film"
+    },
+    {
+      "path": "/kinds/script",
+      "type": "text/javascript",
+      "content": "window.kinds = true;"
+    },
+    {
+      "path": "/kinds/data",
+      "type": "application/json",
+      "content": "{}"
     }
   ],
   "not_found": {

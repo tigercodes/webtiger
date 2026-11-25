@@ -178,3 +178,102 @@ fn a_rule_that_asks_for_a_stand_in_blocks_and_one_that_mends_an_address_does_not
         Verdict::Allow
     );
 }
+
+#[test]
+fn a_kind_the_engine_could_not_name_is_guessed_from_how_the_address_ends() {
+    // A rule for each kind alone, at one host; a request of no named kind is blocked by
+    // the rule for the kind its address ends as, and by no other.
+    let endings = [
+        ("js", "script"),
+        ("mjs", "script"),
+        ("css", "stylesheet"),
+        ("png", "image"),
+        ("jpg", "image"),
+        ("jpeg", "image"),
+        ("gif", "image"),
+        ("webp", "image"),
+        ("avif", "image"),
+        ("svg", "image"),
+        ("ico", "image"),
+        ("bmp", "image"),
+        ("woff2", "font"),
+        ("woff", "font"),
+        ("ttf", "font"),
+        ("otf", "font"),
+        ("eot", "font"),
+        ("mp4", "media"),
+        ("m4v", "media"),
+        ("webm", "media"),
+        ("mp3", "media"),
+        ("m4a", "media"),
+        ("ogg", "media"),
+        ("wav", "media"),
+    ];
+    for named in ["script", "stylesheet", "image", "font", "media", "other"] {
+        let guard = Guard::with_rules([format!("||things.example.net^${named}").as_str()]);
+        for (ending, kind) in endings {
+            let url = format!("https://things.example.net/a/thing.{ending}?x=1.txt#y.html");
+            let expected = if kind == named {
+                Verdict::Block
+            } else {
+                Verdict::Allow
+            };
+            assert_eq!(
+                guard.decide(&url, PAGE, Kind::Other),
+                expected,
+                "a rule for {named}, an address that ends .{ending}"
+            );
+        }
+        // An ending that names no kind, no ending, and a dot elsewhere in the address: a
+        // kind that cannot be named, which only the rule for such matches.
+        for url in [
+            "https://things.example.net/a/thing.json",
+            "https://things.example.net/a/thing",
+            "https://things.example.net/a.js/thing",
+            "https://things.example.net/",
+            "https://things.example.net/thing.",
+        ] {
+            let expected = if named == "other" {
+                Verdict::Block
+            } else {
+                Verdict::Allow
+            };
+            assert_eq!(
+                guard.decide(url, PAGE, Kind::Other),
+                expected,
+                "a rule for {named}, {url}"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_kind_the_engine_named_is_never_guessed_at() {
+    let guard = Guard::with_rules(["||things.example.net^$script"]);
+    // The engine says a picture: an address that ends as a script's does not make it one.
+    for named in [
+        Kind::Image,
+        Kind::Xhr,
+        Kind::Font,
+        Kind::Media,
+        Kind::Stylesheet,
+        Kind::Subdocument,
+        Kind::Ping,
+        Kind::Websocket,
+    ] {
+        assert_eq!(
+            guard.decide("https://things.example.net/lib.js", PAGE, named),
+            Verdict::Allow,
+            "{named:?}"
+        );
+    }
+    assert_eq!(
+        guard.decide("https://things.example.net/lib.js", PAGE, Kind::Script),
+        Verdict::Block
+    );
+    // And a script whose address ends as a picture's is a script.
+    assert_eq!(
+        guard.decide("https://things.example.net/lib.png", PAGE, Kind::Script),
+        Verdict::Block
+    );
+}

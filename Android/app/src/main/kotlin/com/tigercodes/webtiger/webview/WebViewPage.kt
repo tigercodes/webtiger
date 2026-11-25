@@ -43,7 +43,6 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.tigercodes.webtiger.core.NavigationVerdict
 import com.tigercodes.webtiger.core.RequestVerdict
-import com.tigercodes.webtiger.core.ResourceType
 import com.tigercodes.webtiger.core.v1.CloseRequested
 import com.tigercodes.webtiger.core.v1.DialogKind
 import com.tigercodes.webtiger.core.v1.EngineEvent
@@ -576,14 +575,16 @@ internal class WebViewPage(
         /**
          * Guard's check, for every request the page makes: called on the WebView's own
          * threads, so nothing of the web view is touched here. The WebView does not say what
-         * a request is for beyond whether it is the page itself.
+         * a request is for: it is told, as far as it can be, from what the request says of
+         * itself ([RequestKind], 065).
          */
         override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
             val url = request.url.toString()
             val mainFrame = request.isForMainFrame
-            val verdict = host.requestVerdict(url, if (mainFrame) url else topUrl, id, if (mainFrame) ResourceType.DOCUMENT else ResourceType.OTHER)
-            // Until Guard exists (W4) nothing is blocked, and how a blocked request should look
-            // to its page is settled then. For now: an empty answer that says "forbidden".
+            val kind = RequestKind.of(mainFrame, request.requestHeaders.orEmpty())
+            val verdict = host.requestVerdict(url, if (mainFrame) url else topUrl, id, kind)
+            // A request Guard refuses (064) is answered here, with nothing, as forbidden: it
+            // never leaves the device.
             return if (verdict == RequestVerdict.BLOCK) {
                 WebResourceResponse("text/plain", "utf-8", 403, "Blocked", emptyMap(), ByteArrayInputStream(ByteArray(0)))
             } else {

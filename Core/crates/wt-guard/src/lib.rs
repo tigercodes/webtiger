@@ -74,6 +74,27 @@ impl Kind {
             Kind::Ping => "ping",
         }
     }
+
+    /// What a request is most likely for, by how its address's path ends:
+    /// for an engine that could not say (065). The endings everybody uses
+    /// for a script, a stylesheet, a picture, a font, a film or a sound,
+    /// whatever their case; `Other` for anything else, and for a path with
+    /// no ending. A guess: an address that ends like a picture and is
+    /// fetched as a script is taken for a picture.
+    fn guessed_from(path: &str) -> Kind {
+        // (What follows the path's last dot: with a `/` in it, it is no ending.)
+        let Some((_, ending)) = path.rsplit_once('.') else {
+            return Kind::Other;
+        };
+        match ending.to_ascii_lowercase().as_str() {
+            "js" | "mjs" => Kind::Script,
+            "css" => Kind::Stylesheet,
+            "png" | "jpg" | "jpeg" | "gif" | "webp" | "avif" | "svg" | "ico" | "bmp" => Kind::Image,
+            "woff2" | "woff" | "ttf" | "otf" | "eot" => Kind::Font,
+            "mp4" | "m4v" | "webm" | "mp3" | "m4a" | "ogg" | "wav" => Kind::Media,
+            _ => Kind::Other,
+        }
+    }
 }
 
 /// Guard's answer for one request.
@@ -127,6 +148,11 @@ impl Guard {
     /// whose address is none, or has no host (`data:`, `blob:`, `about:`).
     /// A page whose own address is none, or has no host, is nobody's site:
     /// what it asks for is the third party's.
+    ///
+    /// A request of a kind the engine could not name (`Kind::Other`) is
+    /// asked about as what its address's ending says it most likely is
+    /// (065); one whose ending says nothing, as a kind that cannot be named.
+    /// What the engine did name is never guessed at.
     #[must_use]
     pub fn decide(&self, url: &str, source_url: &str, kind: Kind) -> Verdict {
         let Some(blocker) = &self.blocker else {
@@ -146,6 +172,10 @@ impl Guard {
         let third_party = match page.as_ref().and_then(Address::site) {
             Some(site) => asked.site() != Some(site),
             None => true,
+        };
+        let kind = match kind {
+            Kind::Other => Kind::guessed_from(asked.path()),
+            named => named,
         };
         // (The method is not known to the fast path: a rule for one method
         // alone is read as a rule for a GET.)

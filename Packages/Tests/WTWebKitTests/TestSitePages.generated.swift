@@ -593,6 +593,86 @@ enum TestSitePages {
             delayMilliseconds: 0,
             authorization: ""
         ),
+        TestSitePage(
+            path: "/kinds",
+            status: "200 OK",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("<!doctype html><title>Kinds</title><h1>Kinds</h1><link rel=\"stylesheet\" href=\"/kinds/style\">\n<style>@font-face { font-family: Kinds; src: url('/kinds/face'); } p { font-family: Kinds, serif; }</style>\n<p>One of each kind.</p>\n<img src=\"/kinds/picture\" alt=\"\" width=\"1\" height=\"1\">\n<iframe src=\"/kinds/frame\" width=\"60\" height=\"20\"></iframe>\n<video src=\"/kinds/film\" preload=\"auto\" muted width=\"1\" height=\"1\"></video>\n<script src=\"/kinds/script\"></script>\n<script>fetch('/kinds/data').catch(function () {});</script>")],
+            bytes: "",
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
+        TestSitePage(
+            path: "/kinds/style",
+            status: "200 OK",
+            type: "text/css",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("p { margin: 0; }")],
+            bytes: "",
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
+        TestSitePage(
+            path: "/kinds/face",
+            status: "200 OK",
+            type: "font/woff2",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("not a font")],
+            bytes: "",
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
+        TestSitePage(
+            path: "/kinds/picture",
+            status: "200 OK",
+            type: "image/svg+xml",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>")],
+            bytes: "",
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
+        TestSitePage(
+            path: "/kinds/frame",
+            status: "200 OK",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("<!doctype html><title>A frame</title><h1>A frame</h1>")],
+            bytes: "",
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
+        TestSitePage(
+            path: "/kinds/film",
+            status: "200 OK",
+            type: "video/mp4",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("not a film")],
+            bytes: "",
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
+        TestSitePage(
+            path: "/kinds/script",
+            status: "200 OK",
+            type: "text/javascript",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("window.kinds = true;")],
+            bytes: "",
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
+        TestSitePage(
+            path: "/kinds/data",
+            status: "200 OK",
+            type: "application/json",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("{}")],
+            bytes: "",
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
     ]
 
     /// What every other path is answered with.

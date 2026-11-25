@@ -55,6 +55,15 @@ allow  websocket    https://news.example.com/story        wss://live.example.com
 # A page that is nobody's site asks as a third party.
 block  script       about:blank                           https://metrics.example.org/collect.js           # no site of its own
 
+# A kind the engine could not name is asked about by its address's ending (065).
+block  other        https://news.example.com/story        https://metrics.example.org/collect.js           # ends as a script: a rule for scripts
+block  other        https://news.example.com/story        https://metrics.example.org/Collect.MJS?v=2      # whatever its case, and before a query
+allow  other        https://news.example.com/story        https://metrics.example.org/collect              # no ending: no kind, and the rule is for scripts
+allow  other        https://news.example.com/story        https://metrics.example.org/collect.js/data      # the ending is the path's last part's
+block  other        https://news.example.com/story        https://static.example.com/banners/top.png       # ends as a picture: a rule for pictures
+allow  other        https://news.example.com/story        https://static.example.com/banners/top.json      # an ending that names no kind
+allow  image        https://news.example.com/story        https://metrics.example.org/collect.js           # what the engine named is not guessed at
+
 # What has no host is allowed, and what is no address.
 allow  image        https://news.example.com/story        data:image/gif;base64,R0lGODlhAQABAAAAACw=       # no host
 allow  script       https://news.example.com/story        blob:https://news.example.com/5f3c               # no host of its own
