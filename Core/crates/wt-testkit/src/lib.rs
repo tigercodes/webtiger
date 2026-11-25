@@ -20,11 +20,16 @@
 
 mod engine;
 mod shell;
+mod standard;
 
 use std::future::Future;
 
 pub use engine::{FakeEngine, FakePage, FakeWebView, picture_of};
 pub use shell::FakeShell;
+pub use standard::{
+    SITES_A_SPACE, SPACES, StandardSession, TABS_A_SPACE, standard_pages, standard_session,
+    standard_session_of,
+};
 
 /// The first bytes of a PNG, as an icon is handed over (046): its header,
 /// which says it is this many pixels each way, and a mark that tells one

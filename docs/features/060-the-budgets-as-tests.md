@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Designed, not built.** The choices of §6 are recommendations, to be used on the owner's word of 2026-11-24 (to use what is suggested where something waits on a choice, and to go on); they stay the owner's to change. Its first step is to measure what the core holds for a sleeping tab, before any number is made a test |
+| **Status** | **Its first three steps are built, in the core: what the core holds was measured, the standard session is a thing a test can ask for, and six counted budgets are tests that fail at the budget.** One budget is not met, and its test is written and set aside (§8). On the recommendations of §6, used on the owner's word of 2026-11-24 (to use what is suggested where something waits on a choice, and to go on); they stay the owner's to change. Not built: the core's wake-ups, the timed budgets, the app's |
 | **Phase** | W3 of [000](000-master-plan.md) §9: "every §7 budget as a failing test". The tenth of W3 |
 | **Contract** | None |
 | **Builds on** | [000](000-master-plan.md) §7: the budgets. [001](001-foundations.md) §11: the first measurements. [011](011-suggestions.md) §7 and [043](043-the-sidebar.md) §7: two budgets measured by hand. [051](051-a-tabs-kept-state.md), [053](053-a-tab-sleeps-by-itself.md), [059](059-a-sleeping-tabs-picture.md): what a sleeping tab keeps |
@@ -60,12 +60,30 @@ A budget is one of four kinds, and its kind says where its test is.
 
 ## 5. In what order
 
-1. **Measure first.** What the core holds for a sleeping tab, for a Space with nothing live, and for the standard session, with an allocator that counts: before any of them is a test, so that a test is not written to a number that was never true.
-2. **The standard session,** as a fixture.
-3. **The counted budgets,** in the core's suite.
+1. **Measure first.** What the core holds for a sleeping tab, for a Space with nothing live, and for the standard session, with an allocator that counts: before any of them is a test, so that a test is not written to a number that was never true. **Done, 2026-11-24** (§5.1).
+2. **The standard session,** as a fixture. **Built:** the test kit makes it through the contract, as a person would: five Spaces, each with forty Sites (four Favourites, sixteen in two Groups, twenty in none) and eight tabs; the first Space shown, one page alive.
+3. **The counted budgets,** in the core's suite. **Built,** but for the timers (step 4).
 4. **The core's wake-ups,** counted, and the idle test.
 5. **The timed ones,** as measurements with ceilings, and their command.
 6. **The app's,** scripted for the Mac.
+
+### 5.1 What the core holds, measured
+
+Counted by an allocator that counts what the core's thread has asked for and not given back, with the core driven in process by the test kit's shell and the shell's own notes thrown away before each reading. Counted: everything Rust allocates there. Not counted: what SQLite allocates for itself (its page cache), which is C's and has its own limit. The numbers are bytes, and are the same on every run.
+
+| What | As it was found | As it is now | The budget |
+|---|---|---|---|
+| A tab that sleeps, in a row of 100, 200, 400 and 600 | 2,672 to 2,899 | 1,981 to 2,157 | 4,096 |
+| A hundred sleeping tabs | 267,250 | 198,130 | 5 MB |
+| A start on nothing: one window, one empty tab | 25,944 | 16,752 | |
+| A start on the standard session | 317,023 | 280,607 | 30 MB, with Guard's lists, which are not built |
+| A Space that has not been shown since the start: forty Sites and eight tabs, as the session keeps them | 39,388 | 39,388 | 102,400 |
+| A Space that was shown and left, nothing of it alive, its row not arranged in this run | about 134,000 (worked out from the tab's size; not read) | 99,293 | 102,400 |
+| The same, its row arranged in this run fifty times or more | 585,174 | 548,758 | 102,400: **not met** |
+
+**What was changed on the way.** A tab is 928 bytes as the core's model has it, before its address and its name. The model kept its tabs in a map that holds the things themselves, and such a map keeps room for more than it has: about a third as much again. Each tab is now in a place of its own and the map holds where. That took 700 to 800 bytes off every tab, sleeping or not, and brought a Space that was shown and left from over its budget to under it. Nothing a person can see changed.
+
+**What was found and not changed.** A row keeps what it was before each of the last fifty things done to arrange it (044): that is fifty copies of the row, each tab with its Site's home and name. For a Space of forty-eight tabs it is 450 KB, four times what its tabs are; for a row of two thousand it would be near 19 MB. It is the one thing that takes a Space over its budget, and it is §8's.
 
 ## 6. Decisions
 
@@ -82,22 +100,39 @@ A budget is one of four kinds, and its kind says where its test is.
 
 ## 7. Tests
 
-To be filled in as built.
+| Where | What |
+|---|---|
+| The core, through the contract (`budgets`, 3) | **The standard session is what the plan says:** five Spaces, two hundred Sites, forty tabs, one live page; as the window is told it, and as the store keeps it (each Space's forty-eight rows, its two Groups, its four Favourites). **A start loads exactly one page:** the app started again on the standard session and its window opened, the shell is asked for one web view and one load, and for no more in the hour and a half after. **A sleeping tab is no more than 250 KB on disk:** twenty tabs asleep, each with a state and a picture a byte under the most the core keeps, add 235,724 bytes each to the store's files |
+| The core's memory (`wt-ffi`, `held`, 4, and 1 set aside) | The allocator counts what is held and what is given back. **A sleeping tab is no more than 4 KB,** in rows of 100, 200, 400 and 600, and not so little that something else was counted; **a hundred add no more than 5 MB.** **A start on the standard session is within the core's share** (30 MB), and **a Space that is not shown is no more than 100 KB.** **A Space that was shown and left, with nothing of it alive, is no more than 100 KB.** Set aside, because it fails: the same of a Space whose row was arranged in this run (§8) |
 
-## 8. What is not verified
+The test of the core's memory is in the crate of the C functions and not with the core's others: an allocator is unsafe code, which is that crate's alone.
 
-To be filled in as built. Known already:
+The rest is to be filled in as built.
 
-- **The reference devices.** None is here (§2).
+## 8. What is not met, and what is not verified
+
+**Not met: a Space whose row was arranged in this run, shown and left with nothing live, holds 549 KB, and may hold 100.** Its tabs are 99 KB of that. The rest is the row's line of things to undo (§5.1). Its test is written, fails, and is set aside by name with the reason; it is to be put back among the others when it passes. Two ways to meet it, which are a choice (D3 says the number is not to be moved to fit):
+
+1. **A Space that no window shows, and that has nothing alive, is put away:** the core keeps of it what the session keeps, as it does of a Space that has not been shown since a start (39 KB), and its line of things to undo goes with it. Coming back to it after its tabs have all slept, there is nothing of its arrangement to undo. *Recommended:* it meets the budget whatever a row has been through, and it is what a start already does.
+2. **The line kept, and made small:** each step keeping only what it changed. It keeps undo for a Space that was left; it does not by itself bring such a Space under the budget, whose tabs alone are 99 KB of the 100.
+
+And, apart from the budget: **a long row's line is large** (near 19 MB for two thousand tabs). Making each step keep only what it changed is worth doing for that alone, whichever of the two is chosen.
+
+**Not verified:**
+
+- **The reference devices.** None is here (§2). What is counted in bytes is the same on any 64-bit machine; a 32-bit one was not counted.
 - **A shell's own memory for a sleeping tab** (D2).
 - **The default lists' share** of the core's 30 MB: they are W4's.
+- **What SQLite holds.** Its page cache is not Rust's and is not counted (§5.1).
+- **The app's own processes,** cold start, frames: steps 5 and 6, and §2.
+- **A margin.** A Space that was shown and left is 99,293 bytes against 102,400: a tab that grows by seventy bytes fails the test. That is what the test is for; it is said here so that whoever meets it knows the number was this near.
 
 ## 9. Done checklist
 
 - [ ] The owner's word on §6 (to be used as suggested, on the word of 2026-11-24).
-- [ ] What the core holds, measured (§5.1).
-- [ ] The standard session.
-- [ ] The counted budgets.
+- [x] What the core holds, measured (§5.1).
+- [x] The standard session.
+- [x] The counted budgets: on disk, at a start, in the core's memory. One is not met (§8).
 - [ ] The core's wake-ups, and the idle test.
 - [ ] The timed ones.
 - [ ] The app's, scripted for the Mac.

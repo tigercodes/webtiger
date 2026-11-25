@@ -1064,6 +1064,12 @@ struct Group {
 /// The most Groups a row has.
 const MOST_GROUPS: usize = 64;
 
+/// The tabs there are, each by its number. Each is kept in a place of its
+/// own, and the map holds where: a tab is some nine hundred bytes, and a map
+/// that held the tabs themselves would keep room for more of them than it
+/// has, a third as much again for every tab that sleeps (060).
+type Tabs = BTreeMap<TabId, Box<Tab>>;
+
 /// A part of a row (041, 042), in the order a row has its parts: the
 /// Favourites; the Sites that are in no Group; each Group's Sites, Group by
 /// Group; the tabs that are no Sites.
@@ -1077,7 +1083,7 @@ enum Part {
 }
 
 /// The part of its row a tab is of.
-fn part_of(tabs: &BTreeMap<TabId, Tab>, row: &Row, id: TabId) -> Part {
+fn part_of(tabs: &Tabs, row: &Row, id: TabId) -> Part {
     match tabs.get(&id) {
         // (Only a Site is a Favourite: where the mark is set sees to it.)
         Some(tab) if tab.favourite => Part::Favourites,
@@ -1091,7 +1097,7 @@ fn part_of(tabs: &BTreeMap<TabId, Tab>, row: &Row, id: TabId) -> Part {
 
 /// Puts a row's tabs in the order a row has (041, 042): part by part. Within
 /// each, the tabs stay in the order they were in.
-fn arrange(tabs: &BTreeMap<TabId, Tab>, row: &mut Row) {
+fn arrange(tabs: &Tabs, row: &mut Row) {
     let parts: BTreeMap<TabId, Part> = row
         .tabs
         .iter()
@@ -1125,7 +1131,7 @@ const MOST_FAVOURITES: usize = 12;
 
 /// Whether a tab is out of the way (041): a Site of a Group that is shut,
 /// unless it is the tab in front, which is always shown.
-fn is_hidden(tabs: &BTreeMap<TabId, Tab>, row: &Row, id: TabId) -> bool {
+fn is_hidden(tabs: &Tabs, row: &Row, id: TabId) -> bool {
     id != row.front
         && tabs
             .get(&id)
@@ -1134,7 +1140,7 @@ fn is_hidden(tabs: &BTreeMap<TabId, Tab>, row: &Row, id: TabId) -> bool {
 }
 
 /// The tabs of a row that are shown, in order: all but those out of the way.
-fn shown_tabs(tabs: &BTreeMap<TabId, Tab>, row: &Row) -> Vec<TabId> {
+fn shown_tabs(tabs: &Tabs, row: &Row) -> Vec<TabId> {
     row.tabs
         .iter()
         .copied()
@@ -1144,7 +1150,7 @@ fn shown_tabs(tabs: &BTreeMap<TabId, Tab>, row: &Row) -> Vec<TabId> {
 
 /// How many of a row's tabs are Sites (039): they are the first of it, and
 /// no other tab is put among them.
-fn sites_in(tabs: &BTreeMap<TabId, Tab>, row: &Row) -> usize {
+fn sites_in(tabs: &Tabs, row: &Row) -> usize {
     row.tabs
         .iter()
         .filter(|id| tabs.get(*id).is_some_and(|tab| tab.site.is_some()))
@@ -1217,7 +1223,7 @@ pub(crate) struct State {
     /// equals an id of another.
     ids: IdMint,
     windows: BTreeMap<WindowId, Window>,
-    tabs: BTreeMap<TabId, Tab>,
+    tabs: Tabs,
     web_views: BTreeMap<WebViewId, TabId>,
     /// Windows whose snapshot may have changed since the last publish.
     dirty: BTreeSet<WindowId>,
@@ -1409,7 +1415,7 @@ impl State {
             if tab.favourite {
                 tab.group = None;
             }
-            self.tabs.insert(id, tab);
+            self.tabs.insert(id, Box::new(tab));
             if saved.front {
                 front = Some(id);
             }
@@ -1420,8 +1426,10 @@ impl State {
             Some(first) => *first,
             None => {
                 let id = TabId(self.ids.mint());
-                self.tabs
-                    .insert(id, Tab::new(window, space, self.engine, login_set));
+                self.tabs.insert(
+                    id,
+                    Box::new(Tab::new(window, space, self.engine, login_set)),
+                );
                 tabs.push(id);
                 id
             }
@@ -1745,7 +1753,7 @@ impl State {
         asleep.sleeping_with = ask_state.then_some(web_view);
         let (window, engine) = (tab.window, tab.engine as i32);
         self.web_views.remove(&web_view);
-        self.tabs.insert(id, asleep);
+        self.tabs.insert(id, Box::new(asleep));
         self.dirty.insert(window);
         Some(Sleeper {
             tab: id,
@@ -2130,8 +2138,10 @@ impl State {
         if !background {
             row.front = tab;
         }
-        self.tabs
-            .insert(tab, Tab::new(window_id, space, self.engine, login_set));
+        self.tabs.insert(
+            tab,
+            Box::new(Tab::new(window_id, space, self.engine, login_set)),
+        );
         self.dirty.insert(window_id);
         Some(tab)
     }
@@ -2163,7 +2173,7 @@ impl State {
                 let fresh = TabId(self.ids.mint());
                 let mut stand_in = Tab::new(tab.window, tab.space, self.engine, tab.login_set);
                 stand_in.stands_in = true;
-                self.tabs.insert(fresh, stand_in);
+                self.tabs.insert(fresh, Box::new(stand_in));
                 row.tabs.push(fresh);
                 row.front = fresh;
             } else if row.front == tab_id {
@@ -2193,7 +2203,7 @@ impl State {
                         let fresh = TabId(self.ids.mint());
                         self.tabs.insert(
                             fresh,
-                            Tab::new(tab.window, tab.space, self.engine, tab.login_set),
+                            Box::new(Tab::new(tab.window, tab.space, self.engine, tab.login_set)),
                         );
                         row.tabs.push(fresh);
                         row.front = fresh;
@@ -2222,7 +2232,7 @@ impl State {
         if let Some(web_view) = web_view {
             self.web_views.remove(&web_view);
         }
-        self.tabs.insert(tab_id, asleep);
+        self.tabs.insert(tab_id, Box::new(asleep));
         let row = self.windows.get(&window)?.rows.get(&space)?;
         if row.front == tab_id {
             let index = row.tabs.iter().position(|id| *id == tab_id).unwrap_or(0);
@@ -2241,8 +2251,10 @@ impl State {
                 .copied();
             let next = next.unwrap_or_else(|| {
                 let fresh = TabId(self.ids.mint());
-                self.tabs
-                    .insert(fresh, Tab::new(window, space, self.engine, login_set));
+                self.tabs.insert(
+                    fresh,
+                    Box::new(Tab::new(window, space, self.engine, login_set)),
+                );
                 fresh
             });
             let row = self.windows.get_mut(&window)?.rows.get_mut(&space)?;
@@ -3525,7 +3537,13 @@ impl State {
         row.front = tab;
         self.tabs.insert(
             tab,
-            Tab::restored(window_id, space, self.engine, login_set, saved),
+            Box::new(Tab::restored(
+                window_id,
+                space,
+                self.engine,
+                login_set,
+                saved,
+            )),
         );
         self.dirty.insert(window_id);
         Some(tab)
@@ -3653,7 +3671,7 @@ impl State {
         if !background {
             row.front = tab_id;
         }
-        self.tabs.insert(tab_id, tab);
+        self.tabs.insert(tab_id, Box::new(tab));
         self.dirty.insert(window_id);
         Some(tab_id)
     }
@@ -3704,7 +3722,7 @@ impl State {
             .max(sites_in(&self.tabs, row));
         row.tabs.insert(place, tab_id);
         row.front = tab_id;
-        self.tabs.insert(tab_id, tab);
+        self.tabs.insert(tab_id, Box::new(tab));
         self.web_views.insert(new, tab_id);
         self.dirty.insert(window_id);
         None
@@ -3735,12 +3753,14 @@ impl State {
         self.web_views
             .get(&web_view)
             .and_then(|tab_id| self.tabs.get(tab_id))
+            .map(|tab| &**tab)
     }
 
     fn tab_of_mut(&mut self, web_view: WebViewId) -> Option<&mut Tab> {
         self.web_views
             .get(&web_view)
             .and_then(|tab_id| self.tabs.get_mut(tab_id))
+            .map(|tab| &mut **tab)
     }
 
     /// Where a tab's failed load may be gone on to (026 §3): its web view,

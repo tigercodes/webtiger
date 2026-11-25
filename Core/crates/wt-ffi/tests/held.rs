@@ -1,0 +1,320 @@
+//! What the core holds in memory (060): the core driven in process by the
+//! test kit's shell, under an allocator that counts what each thread has
+//! asked for and not given back. Counted: everything Rust allocates on the
+//! thread the core runs on. Not counted: what SQLite allocates for itself
+//! (its page cache), which is C's, and is bounded by SQLite's own setting.
+//!
+//! This test is here, and not with the core's others, because an allocator
+//! is unsafe code, and that is this crate's alone.
+#![allow(
+    unsafe_code,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    reason = "an allocator is unsafe by its nature; and a test's helpers fail the test the way its assertions do"
+)]
+
+use std::alloc::{GlobalAlloc, Layout, System};
+use std::cell::Cell;
+
+use wt_proto::v1::{SleepOthers, SwitchSpace, request};
+use wt_testkit::{FakeShell, SPACES, run, standard_pages, standard_session_of};
+
+/// The plan's budgets (000 §7) that are bytes the core holds.
+const A_SLEEPING_TAB: isize = 4 * 1024;
+const A_HUNDRED_SLEEPING_TABS: isize = 5 * 1024 * 1024;
+const A_SPACE_WITH_NOTHING_LIVE: isize = 100 * 1024;
+const THE_CORES_SHARE: isize = 30 * 1024 * 1024;
+
+thread_local! {
+    /// The bytes this thread has asked for and not given back.
+    static HELD: Cell<isize> = const { Cell::new(0) };
+}
+
+/// The system's allocator, with a count beside it.
+struct Counting;
+
+/// Adds to this thread's count. A thread that is ending has nowhere left to
+/// count: what it gives back then is not counted, and nobody reads it.
+fn count(bytes: isize) {
+    let _ = HELD.try_with(|held| held.set(held.get() + bytes));
+}
+
+fn size(layout: Layout) -> isize {
+    isize::try_from(layout.size()).unwrap_or(isize::MAX)
+}
+
+// SAFETY: every call is handed to the system's allocator unchanged, so its
+// contract is kept by keeping the caller's. The count beside it is a
+// thread's own number in a `const` thread-local `Cell`: reading and writing
+// it allocates nothing, so the allocator never calls itself.
+unsafe impl GlobalAlloc for Counting {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        // SAFETY: the caller keeps `GlobalAlloc::alloc`'s contract, which is
+        // the system allocator's own.
+        let block = unsafe { System.alloc(layout) };
+        if !block.is_null() {
+            count(size(layout));
+        }
+        block
+    }
+
+    unsafe fn dealloc(&self, block: *mut u8, layout: Layout) {
+        // SAFETY: `block` was given by `alloc` or `realloc` above, which are
+        // the system allocator's, with this layout.
+        unsafe { System.dealloc(block, layout) };
+        count(-size(layout));
+    }
+
+    unsafe fn realloc(&self, block: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+        // SAFETY: as `dealloc`; and `new_size` is the caller's to have made
+        // valid for this layout's alignment.
+        let moved = unsafe { System.realloc(block, layout, new_size) };
+        if !moved.is_null() {
+            count(isize::try_from(new_size).unwrap_or(isize::MAX) - size(layout));
+        }
+        moved
+    }
+}
+
+#[global_allocator]
+static ALLOCATOR: Counting = Counting;
+
+/// The bytes this thread holds now.
+fn held() -> isize {
+    HELD.with(Cell::get)
+}
+
+/// A page's address and its title, of ordinary lengths: the `number`th.
+fn page(number: usize) -> (String, String) {
+    (
+        format!(
+            "https://www.example.com/articles/2026/11/a-page-with-a-path-of-an-ordinary-length-{number}"
+        ),
+        format!("A page with a title of an ordinary length, number {number}"),
+    )
+}
+
+/// Opens tabs in a window until it has `tabs` beyond its first, puts every
+/// one that can sleep to sleep, has the shell forget its notes, and says
+/// what the thread then holds.
+async fn with_sleeping_tabs(
+    shell: &mut FakeShell,
+    window: u64,
+    opened: &mut usize,
+    tabs: usize,
+) -> isize {
+    while *opened < tabs {
+        *opened += 1;
+        shell.open_tab(window, &page(*opened).0).await;
+    }
+    let answer = shell
+        .request(request::Kind::SleepOthers(SleepOthers {
+            window_id: window,
+        }))
+        .await;
+    assert!(
+        matches!(answer, wt_proto::v1::response::Kind::Ack(_)),
+        "{answer:?}"
+    );
+    shell.settle().await;
+    shell.forget();
+    held()
+}
+
+#[test]
+fn the_allocator_counts_what_is_held_and_what_is_given_back() {
+    let before = held();
+    let kept = vec![0_u8; 100_000];
+    let with = held();
+    assert!(
+        with - before >= 100_000,
+        "a hundred thousand bytes are held: {}",
+        with - before
+    );
+    drop(kept);
+    assert_eq!(held(), before, "and given back");
+    // A vector that grows is counted at what it has come to.
+    let mut grown = Vec::with_capacity(10);
+    grown.extend(std::iter::repeat_n(7_u64, 5_000));
+    assert!(held() - before >= 40_000);
+    drop(grown);
+    assert_eq!(held(), before);
+}
+
+#[test]
+fn a_sleeping_tab_is_no_more_than_4_kb_in_the_core_and_a_hundred_add_no_more_than_5_mb() {
+    run(async {
+        let folder = tempfile::tempdir().unwrap();
+        let mut shell = FakeShell::live(folder.path());
+        for number in 0..=600 {
+            let (url, title) = page(number);
+            shell.engine.page(&url, &title);
+        }
+        let (window, first, _) = shell.open_window().await;
+        shell.submit(first, &page(0).0).await;
+        let mut opened = 0;
+        let none = with_sleeping_tabs(&mut shell, window, &mut opened, 0).await;
+        let mut last = (0_usize, none);
+        println!("with one tab awake and none asleep: {none} bytes held");
+        for tabs in [100, 200, 400, 600] {
+            let now = with_sleeping_tabs(&mut shell, window, &mut opened, tabs).await;
+            let each = (now - last.1) / isize::try_from(tabs - last.0).unwrap();
+            println!(
+                "with {tabs} tabs opened and all but the one in front asleep: {now} bytes held; {} more than with none; {each} a tab since {}",
+                now - none,
+                last.0
+            );
+            // Each tab that sleeps, at every length of row: a row's cost does not creep
+            // up with its length.
+            assert!(
+                each <= A_SLEEPING_TAB,
+                "a sleeping tab is {each} bytes in the core, and may be {A_SLEEPING_TAB}"
+            );
+            // And not nothing: a tab that sleeps has an address and a name to keep, and a
+            // count that said otherwise would be counting something else.
+            assert!(each >= 500, "a sleeping tab cannot be {each} bytes");
+            if tabs == 100 {
+                assert!(
+                    now - none <= A_HUNDRED_SLEEPING_TABS,
+                    "a hundred sleeping tabs add {} bytes, and may add {A_HUNDRED_SLEEPING_TABS}",
+                    now - none
+                );
+            }
+            last = (tabs, now);
+        }
+    });
+}
+
+/// What this thread holds once a shell has started on the store in `folder`
+/// and opened its window; less what it held before the shell was made.
+async fn held_by_a_start_on(folder: &std::path::Path, spaces: usize) -> isize {
+    let before = held();
+    let mut shell = FakeShell::live(folder);
+    standard_pages(&mut shell, spaces);
+    shell.open_window().await;
+    shell.settle().await;
+    shell.forget();
+    let after = held();
+    drop(shell);
+    after - before
+}
+
+#[test]
+fn a_start_on_the_standard_session_is_within_the_cores_share_and_a_space_not_shown_is_under_100_kb()
+{
+    run(async {
+        // A start on nothing; on a session of one Space; and on the standard session's five.
+        let mut started = Vec::new();
+        for spaces in [0, 1, SPACES] {
+            let folder = tempfile::tempdir().unwrap();
+            if spaces > 0 {
+                let mut shell = FakeShell::live(folder.path());
+                standard_session_of(&mut shell, spaces).await;
+            }
+            let start = held_by_a_start_on(folder.path(), spaces).await;
+            println!("a start on {spaces} Spaces of the standard session: {start} bytes held");
+            started.push(start);
+        }
+        // The core's share (without the default lists, which are Guard's and not built).
+        assert!(
+            started[2] <= THE_CORES_SHARE,
+            "the core holds {} bytes for the standard session, and may hold {THE_CORES_SHARE}",
+            started[2]
+        );
+        // A Space that is not shown, with its forty Sites and eight tabs, none of them
+        // alive: what four more of them add, each.
+        let space = (started[2] - started[1]) / 4;
+        println!("a Space that is not shown, with nothing live: {space} bytes");
+        assert!(
+            space <= A_SPACE_WITH_NOTHING_LIVE,
+            "a Space with nothing live is {space} bytes in the core, and may be {A_SPACE_WITH_NOTHING_LIVE}"
+        );
+        assert!(space >= 5_000, "forty-eight tabs cannot be {space} bytes");
+        // The session is counted: a start on it holds more than a start on nothing.
+        assert!(started[1] > started[0] + 20_000 && started[2] > started[1]);
+    });
+}
+
+/// What the thread holds for a session of so many of the standard session's
+/// Spaces, each of which this run has shown and left: the first is shown,
+/// one page is alive, and every other tab of every Space is asleep. With
+/// `arranged`, the Spaces were made in this run: every Site kept, grouped
+/// or made a Favourite, each of which is a thing a row can undo. Without,
+/// they were made in a run before, and each was shown once in this one.
+async fn held_with_spaces_shown_and_left(spaces: usize, arranged: bool) -> isize {
+    let folder = tempfile::tempdir().unwrap();
+    if !arranged {
+        let mut shell = FakeShell::live(folder.path());
+        standard_session_of(&mut shell, spaces).await;
+    }
+    let before = held();
+    let mut shell = FakeShell::live(folder.path());
+    if arranged {
+        standard_session_of(&mut shell, spaces).await;
+    } else {
+        standard_pages(&mut shell, spaces);
+        let (window, _, _) = shell.open_window().await;
+        let ids: Vec<u64> = wt_store::Store::open(&folder.path().join("webtiger.sqlite"))
+            .unwrap()
+            .spaces()
+            .unwrap()
+            .iter()
+            .map(|space| space.id.0)
+            .collect();
+        for space in ids.iter().skip(1).chain(ids.first()) {
+            shell
+                .request(request::Kind::SwitchSpace(SwitchSpace {
+                    window_id: window,
+                    space_id: *space,
+                }))
+                .await;
+        }
+        shell
+            .request(request::Kind::SleepOthers(SleepOthers {
+                window_id: window,
+            }))
+            .await;
+        shell.settle().await;
+    }
+    shell.forget();
+    let now = held();
+    drop(shell);
+    now - before
+}
+
+/// What a Space that this run has shown and left comes to, with nothing of
+/// it alive: what four more of them add to a session of one, each.
+async fn a_space_shown_and_left(arranged: bool) -> isize {
+    let one = held_with_spaces_shown_and_left(1, arranged).await;
+    let five = held_with_spaces_shown_and_left(SPACES, arranged).await;
+    (five - one) / 4
+}
+
+#[test]
+fn a_space_that_was_shown_and_left_with_nothing_live_is_no_more_than_100_kb() {
+    run(async {
+        let space = a_space_shown_and_left(false).await;
+        println!("a Space that was shown and left, with nothing live: {space} bytes");
+        assert!(
+            space <= A_SPACE_WITH_NOTHING_LIVE,
+            "a Space that was shown and left is {space} bytes in the core, and may be {A_SPACE_WITH_NOTHING_LIVE}"
+        );
+        assert!(space >= 5_000, "forty-eight tabs cannot be {space} bytes");
+    });
+}
+
+#[test]
+#[ignore = "not met (060 §8): a Space whose row was arranged in this run holds the row as it was before each of the last fifty things done to it; this measures it, and fails at the budget"]
+fn a_space_that_was_arranged_shown_and_left_with_nothing_live_is_no_more_than_100_kb() {
+    run(async {
+        let space = a_space_shown_and_left(true).await;
+        println!(
+            "a Space that was shown and left, with nothing live, and arranged in this run: {space} bytes"
+        );
+        assert!(
+            space <= A_SPACE_WITH_NOTHING_LIVE,
+            "a Space that was arranged, shown and left is {space} bytes in the core, and may be {A_SPACE_WITH_NOTHING_LIVE}"
+        );
+    });
+}

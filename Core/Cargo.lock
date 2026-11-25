@@ -877,6 +877,8 @@ dependencies = [
  "wt-app",
  "wt-core",
  "wt-proto",
+ "wt-store",
+ "wt-testkit",
 ]
 
 [[package]]

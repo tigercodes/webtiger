@@ -34,6 +34,11 @@ jni = ["dep:jni"]
 
 [dev-dependencies]
 tempfile.workspace = true
+# What the core holds in memory (tests/held.rs, 060): the core driven in
+# process, under an allocator that counts. The allocator is unsafe code,
+# which is this crate's alone.
+wt-store.workspace = true
+wt-testkit.workspace = true
 
 [lints]
 workspace = true

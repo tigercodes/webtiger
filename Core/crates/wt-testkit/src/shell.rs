@@ -361,6 +361,22 @@ impl FakeShell {
         }
     }
 
+    /// Forgets what the core has said so far: every event, host request,
+    /// label and unclaimed answer this shell wrote down, and what its engine
+    /// noted of what it was asked. For a test that measures what the core
+    /// holds (060), and must not count the notes of the shell that watches
+    /// it. (`window` has nothing to say until the next snapshot.)
+    pub fn forget(&mut self) {
+        self.events = Vec::new();
+        self.host_requests = Vec::new();
+        self.order = Vec::new();
+        self.responses = BTreeMap::new();
+        *self.inbox.borrow_mut() = VecDeque::new();
+        self.engine.states_asked = Vec::new();
+        self.engine.pictures_asked = Vec::new();
+        self.engine.restores = Vec::new();
+    }
+
     /// Says the pictures held back while `hold_pictures` was set, each as
     /// its web view was when it was asked for, and stops holding.
     pub fn release_pictures(&mut self) {
