@@ -1084,6 +1084,13 @@ And one that the measuring raised (060 §8): a Space whose row was arranged in t
 5. Nothing says that an address was cleaned.
 6. A page's own navigation to another site is the last step: it needs each engine's adapter.
 
+**Global Privacy Control** ([069](069-global-privacy-control.md) §6, put on 2026-11-25; to be built on these):
+
+1. On, for everybody, from the first run.
+2. The header only where a shell can add it (the loads the browser itself begins), and the property to scripts everywhere.
+3. The core says whether, for each web view: a switch later is then the core's alone.
+4. Not under Guard's switches: the signal blocks nothing and breaks nothing.
+
 And one that measuring the Mac app raised (060 §5.2, §8): its start is about 200 ms, but the first start after it was built was 395 ms once and 673 ms once, against the 500 allowed. Whether a cold start (after the Mac is turned on) is within the budget is not known: it cannot be measured here without the owner, since emptying the system's memory of files asks for a password. Recommended: the owner runs `Tools/perf/mac.sh` once after turning the Mac on, and the first line it prints is the number.
 
 Also the owner's to say, from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
