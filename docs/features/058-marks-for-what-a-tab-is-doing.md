@@ -88,4 +88,4 @@ None. `TabSummary.keeps_awake` (1.45).
 - [ ] The owner's word on §6 (used as suggested, on the word of 2026-11-24).
 - [x] Apple's shell.
 - [x] Android's shell.
-- [ ] The gate.
+- [x] The gate: every stage of `Tools/test.sh all` green, and `android-device`, on 2026-11-24: `lint`, `core` (740, and the strings tool's 24), `unit` (390 on the Mac), `build`, the Mac's UI suite (64), `ios` (374 on the iPhone simulator), the iPhone's UI suite (53), `android` (520 and 32 on the JVM) and `android-device` (194 on the emulator).
