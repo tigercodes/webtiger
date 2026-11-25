@@ -111,4 +111,4 @@ What is left for a long row is the order, eight bytes a tab, fifty times (D2). A
 - [x] The measure before.
 - [x] The core.
 - [x] The measure after, as a test.
-- [ ] The gate.
+- [x] The gate: every stage of `Tools/test.sh all` green, and `android-device`, on 2026-11-25: `lint`, `core` (780, and the strings tool's 24), `unit` (407 on the Mac), `build`, the Mac's UI suite (66), `ios` (391 on the iPhone simulator), the iPhone's UI suite (55), `android` (537 and 32 on the JVM) and `android-device` (200 on the emulator).
