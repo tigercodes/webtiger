@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | **Designed, on the recommendations of §6, for the core alone.** The owner's word of 2026-11-24 was to use what is suggested where something waits on a choice, and to go on: they are to be built on, and stay the owner's to change. Not built. Where a person writes their rules is a shell's design, and is not designed here |
+| **Status** | **Built and tested, in the core, on the recommendations of §6.** The owner's word of 2026-11-24 was to use what is suggested where something waits on a choice, and to go on: they are built on, and stay the owner's to change. The core keeps a person's own rules as the text they wrote, says them when asked, and puts them in force the moment they are set: a new blocker in the old one's place, on every thread that asks, with nothing reloaded; and after a start. **No shell has a place to write rules yet,** so nobody can set any outside a test: where a person writes them is a shell's design, and is not designed here |
 | **Phase** | W4 of [000](000-master-plan.md) §9. 000 §5.8: "The user can add lists and write rules." |
-| **Contract** | To come: a request that sets a person's rules, and one that asks for them |
+| **Contract** | 1.54: `SetGuardRules`, `QueryGuardRules`, answered with `GuardRules` |
 | **Builds on** | [064](064-guards-request-engine.md): the blocker, made from rules and never changed after; its §3, "rules change by a new blocker", which nothing does yet. 000 §5.6: `custom_rule`, the user's own rules |
 | **Last updated** | 2026-11-25 |
 
@@ -42,18 +42,25 @@ A site I use shows me the same box every day, fetched from one address. I know t
 
 ## 4. The contract
 
-The next minor. Two requests:
+1.54. Two requests:
 
-- **Set the rules:** the whole text, which replaces what there was. Answered when the rules are kept and the new blocker is in force. Refused, with the code that says so, when the text is over the limit.
-- **Ask for the rules:** answered with the text as it was set.
+- **`SetGuardRules { text }`:** the whole text, which replaces what there was. Answered with `Ack` when the rules are kept and the new blocker is in force. Refused with `guard.rules_too_long`, naming `text`, when the text is over 262,144 bytes; what there was then stays.
+- **`QueryGuardRules {}`:** answered with `GuardRules { text }`, the text as it was set; empty when there are none.
 
-Both are for an ordinary window's settings; neither names a window, a Space or a site.
+Both are for an ordinary window's settings; neither names a window, a Space or a site. The text is marked as what a person typed is: never in a log or an error.
+
+**As built, where the design did not say:**
+
+- **Who holds the blocker is told by the core, and the core does not hold it.** The blocker is the fast path's (064), on the side of the core that engines' threads reach; the models and the store are on the core's own thread. The core's own thread tells that side the text each time it changes, and at once when it begins to listen, which is as the core starts: the blocker of the start's rules is in place before a shell is told the core has started. The telling is done inside the request, before it is answered.
+- **No rules is no blocker.** A text that is empty, or only blank lines, makes a blocker that looks nothing up (064 §4), however it is said.
+- **A store that refuses** keeps nothing: the rules hold for the run all the same, and the ones before come back at the next start. As where searches go (020).
+- **The refusal has no words yet:** no screen shows it.
 
 ## 5. In what order
 
-1. **The core:** the rules kept in the store; the two requests; the blocker a core starts with.
-2. **The fast path:** the blocker put in the old one's place at a stroke when the rules are set; many threads asking while they change.
-3. **The shells:** nothing, until there is a place to write rules.
+1. **The core:** the rules kept in the store; the two requests; the blocker a core starts with. **Built.**
+2. **The fast path:** the blocker put in the old one's place at a stroke when the rules are set; many threads asking while they change. **Built.**
+3. **The shells:** nothing, until there is a place to write rules. Android's client knows the new answer by its name (003).
 
 ## 6. Decisions
 
@@ -70,23 +77,27 @@ Both are for an ordinary window's settings; neither names a window, a Space or a
 
 ## 7. Tests
 
-To be filled in as built. Planned:
-
 | Where | What |
 |---|---|
-| The core, through the contract | Set and asked for again, as written; kept across a start; over the limit refused, with what there was unchanged; fake mode's suite rules as the start, and replaced by the request |
-| The fast path, through the C functions | A request allowed before a rule is set and refused after, with no start between; a rule taken away, and the request allowed again; eight threads asking while the rules are set and unset: every answer is the old rules' or the new, and none is an error |
-| The core broken, a part at a time | Each part of keeping, limiting and swapping, left out |
+| The core, through the contract (`guard_rules`, 5) | **As they were written:** none at first; a text with comments, a blank line, a comment that is not ASCII and a line that is no rule is asked for again whole; another text is in its place; none is none. **Kept across a start,** and whoever holds the blocker is told them before anything is asked; taken away, they are gone at the next start too. **Over the limit:** a text of just 262,144 bytes is taken, one byte more is refused by its code, naming the text; what there was stays, and the holder of the blocker was not told of the text that was refused. **The holder is told at once and before the answer:** as it begins to listen, the start's rules; when rules are sent and not yet answered, the new ones already; once for each setting; and asking for the rules tells nobody anything. **In fake mode a suite's rules stand where a person's would,** are what is asked for, and are replaced like them; outside fake mode a suite's rules are nothing |
+| The fast path, through the C functions (`wt-ffi`, `core`, +2) | A core on a store on disk: a request allowed; rules set, and the very next thing asked is refused, with nothing started again, and the exception among them allowed; other rules in their place, and what the first blocked is allowed and the new holds; taken away, everything allowed; set, and the core stopped and started: in force with nothing asked. **Eight threads asking while the rules are set and taken away three hundred times:** every answer is "ok" with one verdict or the other, what no rule names is always allowed, both verdicts were seen, and the last rules set are the ones in force |
+| What a blocker of no rules holds (`wt-ffi`, `held`, in the test there was) | Nothing, in each of the three ways there are to have none |
+| The core broken, a part at a time | 11 parts, 11 caught, at the first run |
+| Android's client (`NativeCoreTest`, as it was) | It knows every kind of answer the contract has by its name, the new one among them |
+| Every other test of the core | 802 before this, and all pass with it |
 
 ## 8. What is not verified
 
-To be filled in as built.
-
-- **The choices of §6** are the recommendations; the owner has not looked at them.
+- **The choices of §6** are the recommendations, used on the owner's word; the owner has not looked at them.
+- **In an app.** No shell sets or shows rules: nothing here was seen in an app, on any system. On Apple's systems nothing asks the fast path at all (064).
+- **A store that refuses** (§4): written, and not tried; no test makes a store refuse.
+- **How long a new blocker takes to make** for a text at the limit, on the core's own thread, during which the core answers nothing else: 064 §5.1 measured 40 ms for 100,000 made-up rules, which is some four megabytes of text, so a quarter megabyte should be a few milliseconds. Not measured.
+- **Which of a person's lines are rules.** A line that is no rule is ignored, silently: a person is not told that what they wrote does nothing. For the page where rules are written.
+- **Rules that hide or mend a page's content** are kept as written and do nothing (§2).
 
 ## 9. Done checklist
 
 - [ ] The owner's word on §6.
-- [ ] The core: kept, asked for, the start.
-- [ ] The fast path: swapped at a stroke.
+- [x] The core: kept, asked for, the start.
+- [x] The fast path: swapped at a stroke.
 - [ ] The gate.

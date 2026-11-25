@@ -1281,3 +1281,22 @@ message PagePicture {
   uint32 width = 3;
   uint32 height = 4;
 }
+
+// Since 1.54. A person's own rules for Guard (066): the whole text, in the
+// syntax the public lists are written in, a rule to a line, as the person
+// wrote it. It replaces what there was, is kept for the next start, and is in
+// force when this is answered: on every thread that asks the fast path, with
+// nothing reloaded. Answered with Ack; or "guard.rules_too_long" for a text
+// of more than 262,144 bytes, which changes nothing.
+message SetGuardRules {
+  string text = 1 [(wt.redact) = true];
+}
+
+// Since 1.54. Asks for a person's own rules for Guard (066). Answered with
+// GuardRules.
+message QueryGuardRules {}
+
+message GuardRules {
+  // The text as it was set; empty when there are none.
+  string text = 1 [(wt.redact) = true];
+}

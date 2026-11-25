@@ -725,7 +725,7 @@ The request engine and fast path; lists and the daily bundle; the WebKit compile
 
 **Exit:** the corpus passes at its targets on every engine; a site's switch takes effect in one reload.
 
-**Where W4 stands (2026-11-25).** Built: the request engine and the fast path ([064](064-guards-request-engine.md)): the core holds the blocker (`wt-guard`), answers for a request whether a page may fetch it, and the fast path asks it from any thread; a corpus of this repository's own rules holds the answers, and a decision is a microsecond on this Mac where the phone's budget is 25 (contract 1.53, for a suite's rules). Android's adapter asks it for every request, with what the request is for as far as the WebView tells and the core can guess from the address ([065](065-a-requests-kind-on-android.md)), and a request it refuses is not made. **There are no lists, so Guard blocks nothing yet outside a suite.** Not built: the lists and the daily bundle (which public lists may be checked in is the owner's to say first); the WebKit compiler, without which nothing blocks on Apple's systems; page fixes; the switches; the panel; link cleaning; HTTPS first; third-party cookies; Global Privacy Control.
+**Where W4 stands (2026-11-25).** Built: the request engine and the fast path ([064](064-guards-request-engine.md)): the core holds the blocker (`wt-guard`), answers for a request whether a page may fetch it, and the fast path asks it from any thread; a corpus of this repository's own rules holds the answers, and a decision is a microsecond on this Mac where the phone's budget is 25 (contract 1.53, for a suite's rules). Android's adapter asks it for every request, with what the request is for as far as the WebView tells and the core can guess from the address ([065](065-a-requests-kind-on-android.md)), and a request it refuses is not made. The core keeps a person's own rules and puts them in force the moment they are set ([066](066-a-persons-own-rules.md), contract 1.54), though no shell has a place to write them yet. **There are no lists, and no place to write rules, so Guard blocks nothing yet outside a suite.** Not built: the lists and the daily bundle (which public lists may be checked in is the owner's to say first); the WebKit compiler, without which nothing blocks on Apple's systems; page fixes; the switches; the panel; link cleaning; HTTPS first; third-party cookies; Global Privacy Control.
 
 ### W5 — Split view, tablets, foldables, iPhone Duo (medium)
 
@@ -1056,7 +1056,7 @@ And one that the measuring raised (060 §8): a Space whose row was arranged in t
 3. What cannot be told or guessed is asked about as a kind that cannot be named: a wrong block breaks a page, a missed one is where every request is today.
 4. The guess is used only where the engine could not name the kind.
 
-**A person's own rules for Guard** ([066](066-a-persons-own-rules.md) §6, put on 2026-11-25; to be built on these, in the core alone: where a person writes rules is a shell's design, and is not made):
+**A person's own rules for Guard** ([066](066-a-persons-own-rules.md) §6, put on 2026-11-25; built on these, in the core alone: where a person writes rules is a shell's design, and is not made):
 
 1. A person's rules are one text, kept whole as they wrote it.
 2. They are for everywhere: every Space, every site.

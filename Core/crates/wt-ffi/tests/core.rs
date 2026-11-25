@@ -677,6 +677,136 @@ fn guard_is_asked_from_many_threads_at_once() {
     }
 }
 
+/// Sets a person's own rules for Guard (066), through the contract.
+fn set_rules(shell: &mut TestShell, text: &str) {
+    let answer = shell.request(request::Kind::SetGuardRules(wt_proto::v1::SetGuardRules {
+        text: text.to_owned(),
+    }));
+    assert!(matches!(answer, response::Kind::Ack(_)), "{answer:?}");
+}
+
+#[test]
+fn a_persons_rules_are_in_force_the_moment_they_are_set_and_after_a_start() {
+    let folder = tempfile::tempdir().unwrap();
+    let mut config = fake_config();
+    config.test_mode = wt_proto::v1::TestMode::Live as i32;
+    config.data_dir = folder.path().to_str().unwrap().to_owned();
+    let show = b"https://ads.tracker.example.net/show.js";
+    let blocked = (0, WT_VERDICT_BLOCK);
+    let allowed = (0, WT_VERDICT_ALLOW);
+
+    let mut shell = TestShell::start(&config);
+    assert_eq!(
+        guard(shell.handle, show, PAGE, SCRIPT),
+        allowed,
+        "no rules yet"
+    );
+    // Set: the very next thing asked is decided by them. Nothing was started again.
+    set_rules(&mut shell, RULES);
+    assert_eq!(guard(shell.handle, show, PAGE, SCRIPT), blocked);
+    assert_eq!(
+        guard(
+            shell.handle,
+            b"https://ads.tracker.example.net/consent.js",
+            PAGE,
+            SCRIPT
+        ),
+        allowed,
+        "the exception among them"
+    );
+    // Other rules in their place: what the first blocked is allowed, and the new holds.
+    set_rules(&mut shell, "||other.example.net^");
+    assert_eq!(guard(shell.handle, show, PAGE, SCRIPT), allowed);
+    assert_eq!(
+        guard(
+            shell.handle,
+            b"https://other.example.net/a.js",
+            PAGE,
+            SCRIPT
+        ),
+        blocked
+    );
+    // Taken away: everything is allowed again.
+    set_rules(&mut shell, "");
+    assert_eq!(
+        guard(
+            shell.handle,
+            b"https://other.example.net/a.js",
+            PAGE,
+            SCRIPT
+        ),
+        allowed
+    );
+
+    // Set, and the core stopped and started: they are in force with nothing asked.
+    set_rules(&mut shell, RULES);
+    shell.stop();
+    let shell = TestShell::start(&config);
+    assert_eq!(guard(shell.handle, show, PAGE, SCRIPT), blocked);
+}
+
+#[test]
+fn guard_is_asked_from_many_threads_while_its_rules_change() {
+    let mut shell = with_rules(RULES);
+    let handle = shell.handle;
+    let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let threads: Vec<_> = (0..8)
+        .map(|_| {
+            let stop = std::sync::Arc::clone(&stop);
+            std::thread::spawn(move || {
+                // Each answer is the old rules' or the new: never an error, and never
+                // anything else.
+                let (mut blocked, mut allowed, mut wrong) = (0_u32, 0_u32, 0_u32);
+                while !stop.load(std::sync::atomic::Ordering::Relaxed) {
+                    match guard(
+                        handle,
+                        b"https://ads.tracker.example.net/show.js",
+                        PAGE,
+                        SCRIPT,
+                    ) {
+                        (0, WT_VERDICT_BLOCK) => blocked += 1,
+                        (0, WT_VERDICT_ALLOW) => allowed += 1,
+                        _ => wrong += 1,
+                    }
+                    // What no rule ever names is allowed under both.
+                    if guard(handle, b"https://cdn.example.org/app.js", PAGE, SCRIPT)
+                        != (0, WT_VERDICT_ALLOW)
+                    {
+                        wrong += 1;
+                    }
+                }
+                (blocked, allowed, wrong)
+            })
+        })
+        .collect();
+    for _ in 0..150 {
+        set_rules(&mut shell, "");
+        set_rules(&mut shell, RULES);
+    }
+    stop.store(true, std::sync::atomic::Ordering::Relaxed);
+    let (mut blocked, mut allowed) = (0, 0);
+    for thread in threads {
+        let (was_blocked, was_allowed, wrong) = thread.join().unwrap();
+        assert_eq!(wrong, 0);
+        blocked += was_blocked;
+        allowed += was_allowed;
+    }
+    assert!(
+        blocked > 0 && allowed > 0,
+        "both rules were seen: {blocked} blocked, {allowed} allowed"
+    );
+    // The last rules set are the ones in force.
+    assert_eq!(
+        guard(
+            handle,
+            b"https://ads.tracker.example.net/show.js",
+            PAGE,
+            SCRIPT
+        ),
+        (0, WT_VERDICT_BLOCK)
+    );
+}
+
 #[test]
 fn several_cores_run_side_by_side() {
     let mut shells: Vec<TestShell> = (0..6).map(|_| TestShell::fake()).collect();

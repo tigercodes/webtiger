@@ -1,6 +1,6 @@
 // WebTiger Core ↔ shell contract (docs/features/000-master-plan.md §5.5,
 // docs/features/001-foundations.md §4).
-// Contract version: 1.53 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
+// Contract version: 1.54 (WT_CONTRACT_MAJOR / WT_CONTRACT_MINOR in webtiger_core.h)
 //   1.1  Tabs: OpenTab, CloseTab, ActivateTab, TabOpened; WindowSnapshot.tabs.
 //   1.2  A page that asks for a new window: NewWindowRequested, CloseRequested;
 //        web view ids with their top bit set are the shell's.
@@ -167,6 +167,9 @@ message Request {
     SleepOthers sleep_others = 58;
     // Since 1.50
     QueryPictures query_pictures = 59;
+    // Since 1.54
+    SetGuardRules set_guard_rules = 60;
+    QueryGuardRules query_guard_rules = 61;
   }
 }
 
@@ -203,6 +206,8 @@ message Response {
     AwakePage awake_page = 17;
     // Since 1.50
     PicturesPage pictures_page = 18;
+    // Since 1.54
+    GuardRules guard_rules = 19;
   }
 }
 

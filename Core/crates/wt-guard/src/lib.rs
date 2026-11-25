@@ -132,7 +132,8 @@ impl Guard {
             ..ParseOptions::default()
         };
         for list in lists {
-            any = true;
+            // (A list of nothing is no list: with none, nothing is looked up.)
+            any = any || !list.trim().is_empty();
             rules.add_filter_list(list.to_owned(), requests_only);
         }
         Guard {

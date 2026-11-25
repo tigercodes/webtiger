@@ -543,6 +543,15 @@ fn guards_blocker_holds_what_its_rules_for_requests_take_and_gives_it_back() {
         "a blocker that has gone leaves {left} bytes held"
     );
 
+    // A blocker of no rules is nothing at all, however the having of none is said: with
+    // none, nothing is looked up, which is how every app is until there are rules.
+    for none in [vec![], vec![""], vec!["", "  \n\n"]] {
+        let before = held();
+        let guard = wt_guard::Guard::with_rules(none.iter().copied());
+        assert_eq!(held(), before, "a blocker of no rules holds something");
+        drop(guard);
+    }
+
     // As many rules again that hide what is in a page: they are not Guard's yet (064 §2),
     // and a blocker holds nothing for them.
     use std::fmt::Write as _;

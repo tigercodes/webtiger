@@ -6,9 +6,9 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use arc_swap::ArcSwapOption;
+use arc_swap::{ArcSwap, ArcSwapOption};
 use wt_guard::{Guard, Kind, Verdict};
-use wt_proto::v1::{CoreConfig, TestMode};
+use wt_proto::v1::CoreConfig;
 
 use crate::core::Core;
 use crate::{SinkTarget, Status};
@@ -21,22 +21,10 @@ struct Entry {
     handle: u64,
     core: Core,
     /// The core's blocker (064): what the fast path asks, on whatever thread
-    /// an engine calls. Made as the core starts, and not changed after.
-    guard: Guard,
-}
-
-/// The blocker a core starts with. Until there are lists (W4) the only rules
-/// there are are a suite's own, in fake mode (064): otherwise it has none,
-/// and allows everything.
-fn guard_of(config: &CoreConfig) -> Guard {
-    match &config.fake {
-        Some(options)
-            if config.test_mode() == TestMode::Fake && !options.guard_rules.is_empty() =>
-        {
-            Guard::with_rules([options.guard_rules.as_str()])
-        }
-        _ => Guard::default(),
-    }
+    /// an engine calls. The core's own thread puts a new one in its place,
+    /// at a stroke, when the rules change (066): a decision that is being
+    /// made is made on the one it began with.
+    guard: Arc<ArcSwap<Guard>>,
 }
 
 static SLOTS: [ArcSwapOption<Entry>; MAX_CORES] =
@@ -53,8 +41,10 @@ pub(crate) fn start(config: CoreConfig, target: SinkTarget) -> Result<u64, &'sta
         return Err("start.too_many_cores");
     }
     let handle = NEXT_HANDLE.fetch_add(1, Ordering::Relaxed);
-    let guard = guard_of(&config);
-    let core = Core::start(config, target)?;
+    // With no rules until the core's thread has said what its rules are,
+    // which it has by the time `Core::start` returns.
+    let guard = Arc::new(ArcSwap::from_pointee(Guard::default()));
+    let core = Core::start(config, target, Arc::clone(&guard))?;
     let entry = Arc::new(Entry {
         handle,
         core,
@@ -100,7 +90,7 @@ pub(crate) fn decide(handle: u64, url: &str, source_url: &str, kind: Kind) -> Op
     SLOTS.iter().find_map(|slot| {
         let entry = slot.load();
         let entry = entry.as_ref().filter(|entry| entry.handle == handle)?;
-        Some(entry.guard.decide(url, source_url, kind))
+        Some(entry.guard.load().decide(url, source_url, kind))
     })
 }
 

@@ -89,6 +89,9 @@ pub struct AppOptions {
     /// logins of its own (024); `None` when there is none to give. Fake
     /// mode gives the same ones in the same order every run.
     pub new_login_set: Rc<dyn Fn() -> Option<Uuid>>,
+    /// Fake mode: a suite's rules for Guard (064), which stand where a
+    /// person's would at the start (066). `None`: what the store has kept.
+    pub guard_rules: Option<String>,
 }
 
 /// The models and what changes them.
@@ -98,6 +101,10 @@ pub struct App {
     pub(crate) host: Rc<dyn Host>,
     /// Where searches go (020), and whether the person chose it.
     pub(crate) search: Rc<Cell<(&'static SearchEngine, bool)>>,
+    /// A person's own rules for Guard (066), as they were set; and who is
+    /// told when they change.
+    pub(crate) guard_rules: Rc<RefCell<Rc<str>>>,
+    pub(crate) guard_sink: Rc<RefCell<Option<crate::guard::RulesSink>>>,
     fake_start: Option<Rc<str>>,
     /// When each web view last had an address handed to the system, for
     /// those that had one within [`OUTSIDE_LINK_INTERVAL`].
@@ -153,6 +160,12 @@ impl App {
         }
         // Where searches go (020): what the store has of a choice, if any.
         let search = crate::search::kept(&store.borrow(), options.search_settled);
+        // A person's own rules for Guard (066): what the store has kept; or,
+        // in fake mode, a suite's.
+        let guard_rules: Rc<str> = match options.guard_rules {
+            Some(given) => given.into(),
+            None => crate::guard::kept(&store.borrow()),
+        };
         // What the journal has of each Space's closed tabs (033): what was
         // closed before the app was, can be brought back after.
         let closed: Vec<_> = kept
@@ -172,6 +185,8 @@ impl App {
             new_login_set: options.new_login_set,
             host,
             search: Rc::new(Cell::new(search)),
+            guard_rules: Rc::new(RefCell::new(guard_rules)),
+            guard_sink: Rc::new(RefCell::new(None)),
             fake_start: options.fake_start.map(Into::into),
             outside: Rc::new(RefCell::new(BTreeMap::new())),
             store,
@@ -277,6 +292,8 @@ impl App {
             request::Kind::QueryAwake(query) => answer(self.query_awake(&query)),
             request::Kind::SleepOthers(asked) => answer(self.sleep_others(&asked)),
             request::Kind::QueryPictures(query) => answer(Ok(self.query_pictures(&query))),
+            request::Kind::SetGuardRules(set) => answer(self.set_guard_rules(&set)),
+            request::Kind::QueryGuardRules(_) => answer(Ok(self.query_guard_rules())),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
             | request::Kind::Unsubscribe(_)

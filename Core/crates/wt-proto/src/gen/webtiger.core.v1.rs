@@ -1717,6 +1717,27 @@ pub struct PagePicture {
     #[prost(uint32, tag = "4")]
     pub height: u32,
 }
+/// Since 1.54. A person's own rules for Guard (066): the whole text, in the
+/// syntax the public lists are written in, a rule to a line, as the person
+/// wrote it. It replaces what there was, is kept for the next start, and is in
+/// force when this is answered: on every thread that asks the fast path, with
+/// nothing reloaded. Answered with Ack; or "guard.rules_too_long" for a text
+/// of more than 262,144 bytes, which changes nothing.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SetGuardRules {
+    #[prost(string, tag = "1")]
+    pub text: ::prost::alloc::string::String,
+}
+/// Since 1.54. Asks for a person's own rules for Guard (066). Answered with
+/// GuardRules.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct QueryGuardRules {}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GuardRules {
+    /// The text as it was set; empty when there are none.
+    #[prost(string, tag = "1")]
+    pub text: ::prost::alloc::string::String,
+}
 /// The layout of a window (043). Since 1.33.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -3080,7 +3101,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -3237,6 +3258,11 @@ pub mod request {
         /// Since 1.50
         #[prost(message, tag = "59")]
         QueryPictures(super::QueryPictures),
+        /// Since 1.54
+        #[prost(message, tag = "60")]
+        SetGuardRules(super::SetGuardRules),
+        #[prost(message, tag = "61")]
+        QueryGuardRules(super::QueryGuardRules),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.
@@ -3244,7 +3270,7 @@ pub mod request {
 pub struct Response {
     #[prost(
         oneof = "response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19"
     )]
     pub kind: ::core::option::Option<response::Kind>,
 }
@@ -3300,6 +3326,9 @@ pub mod response {
         /// Since 1.50
         #[prost(message, tag = "18")]
         PicturesPage(super::PicturesPage),
+        /// Since 1.54
+        #[prost(message, tag = "19")]
+        GuardRules(super::GuardRules),
     }
 }
 /// Core → shell, unasked.

@@ -367,6 +367,19 @@ impl FakeShell {
         self.dispatcher.wakeups()
     }
 
+    /// Stands where the holder of Guard's blocker stands (066): what it is
+    /// told the rules in force are, each time it is told, in order. The
+    /// first is told as this is called.
+    #[must_use]
+    pub fn guard_rules_told(&self) -> Rc<RefCell<Vec<String>>> {
+        let told = Rc::new(RefCell::new(Vec::new()));
+        let noted = Rc::clone(&told);
+        self.dispatcher.on_guard_rules(Rc::new(move |rules: &str| {
+            noted.borrow_mut().push(rules.to_owned())
+        }));
+        told
+    }
+
     /// Forgets what the core has said so far: every event, host request,
     /// label and unclaimed answer this shell wrote down, and what its engine
     /// noted of what it was asked. For a test that measures what the core

@@ -6,12 +6,14 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::rc::Rc;
 use std::sync::mpsc::sync_channel;
-use std::sync::{Mutex, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::{JoinHandle, ThreadId};
 
+use arc_swap::ArcSwap;
 use prost::Message as _;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use wt_app::{Dispatcher, Outbox};
+use wt_guard::Guard;
 use wt_proto::v1::{CoreConfig, Envelope};
 
 use crate::{SinkTarget, Status};
@@ -29,15 +31,21 @@ pub(crate) struct Core {
 
 impl Core {
     /// Starts the core's thread and waits until the dispatcher is up or has
-    /// refused. A refusal's code is the caller's to deliver.
-    pub(crate) fn start(config: CoreConfig, target: SinkTarget) -> Result<Core, &'static str> {
+    /// refused. A refusal's code is the caller's to deliver. `guard` is
+    /// where the core's thread puts the blocker of the rules in force (066):
+    /// the one of the start's rules is there when this returns.
+    pub(crate) fn start(
+        config: CoreConfig,
+        target: SinkTarget,
+        guard: Arc<ArcSwap<Guard>>,
+    ) -> Result<Core, &'static str> {
         let (sender, receiver) = unbounded_channel();
         let (started, starting) = sync_channel::<Result<(), &'static str>>(1);
         let thread = std::thread::Builder::new()
             .name("wt-core".to_owned())
             .spawn(move || {
                 let ran = catch_unwind(AssertUnwindSafe(|| {
-                    run(&config, target, receiver, &started);
+                    run(&config, target, receiver, &started, guard);
                 }));
                 if ran.is_err() {
                     // Before the dispatcher was up: the starter hears of it.
@@ -99,6 +107,7 @@ fn run(
     target: SinkTarget,
     mut receiver: UnboundedReceiver<Message>,
     started: &std::sync::mpsc::SyncSender<Result<(), &'static str>>,
+    guard: Arc<ArcSwap<Guard>>,
 ) {
     let Ok(runtime) = tokio::runtime::Builder::new_current_thread()
         .enable_time()
@@ -117,6 +126,13 @@ fn run(
             return;
         }
     };
+    // The blocker of the rules in force (066): made here, on the core's own
+    // thread and off the fast path, and put in the old one's place at a
+    // stroke. Now, for the rules the core starts with; and each time they are
+    // set, before the request that set them is answered.
+    dispatcher.on_guard_rules(Rc::new(move |rules: &str| {
+        guard.store(Arc::new(Guard::with_rules([rules])));
+    }));
     let _ = started.send(Ok(()));
 
     let local = tokio::task::LocalSet::new();

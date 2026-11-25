@@ -20,6 +20,7 @@ mod dispatch;
 mod downloads;
 mod error;
 mod fence;
+mod guard;
 mod host;
 mod icons;
 mod layout;

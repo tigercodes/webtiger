@@ -236,6 +236,13 @@ impl Dispatcher {
                 .filter(|_| fake)
                 .map_or(0, |options| options.sleep_after_seconds),
             live_tabs: crate::states::live_tabs(config, fake),
+            // Fake mode's store is in memory and has kept nothing: a suite's
+            // rules, when it gave any, are the ones the core starts with.
+            guard_rules: config
+                .fake
+                .as_ref()
+                .filter(|_| fake)
+                .map(|options| options.guard_rules.clone()),
             new_login_set: if fake {
                 // The same ones in the same order every run: each a step
                 // on from the app's own.
@@ -316,6 +323,13 @@ impl Dispatcher {
         self.watch_for_sleepers();
         self.say_memory_is_short();
         self.open_the_addresses();
+    }
+
+    /// Has `sink` told the rules of a person's own that are in force for
+    /// Guard (066): now, and each time they are set, before the request that
+    /// set them is answered. For whoever holds the blocker.
+    pub fn on_guard_rules(&self, sink: Rc<dyn Fn(&str)>) {
+        self.app.on_guard_rules(sink);
     }
 
     /// How many times one of the core's own timers has woken it since it
