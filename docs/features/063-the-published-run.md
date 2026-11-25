@@ -122,4 +122,4 @@ The count of tabs alive and asleep at a measure cannot be had from outside the a
 - [x] The engine's processes, found and measured.
 - [x] Fake mode opens a list by itself (1.52).
 - [x] The run and its report, tried with the test site.
-- [ ] The gate.
+- [x] The gate: every stage of `Tools/test.sh all` green, and `android-device`, on 2026-11-25: `lint`, `core` (786, and the strings tool's 24), `unit` (407 on the Mac), `build`, the Mac's UI suite (67), `ios` (391 on the iPhone simulator), the iPhone's UI suite (56), `android` (538 and 32 on the JVM) and `android-device` (200 on the emulator).
