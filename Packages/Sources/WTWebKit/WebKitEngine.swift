@@ -14,6 +14,9 @@ public import WTCoreClient
 @MainActor
 public final class WebKitEngine: HostServices {
     private var pages: [UInt64: Page] = [:]
+    /// How many web views this engine has made: a window watches it, to show one that was
+    /// made after the window was told its number.
+    public let made = WebViewsMade()
     private var core: (any CoreClient)?
     /// The data stores of the login sets used so far, held here and not left to the web views.
     /// A sign-in for the session (a cookie with no expiry) lives in its store's memory and goes
@@ -131,6 +134,16 @@ public final class WebKitEngine: HostServices {
         pages.count
     }
 
+    /// A web view's picture (059) is begun in its turn, of the web view as it then is, and
+    /// answered when WebKit has drawn it: the requests after it are not held up. The first
+    /// of them lets the web view go, and WebKit draws its picture all the same (the adapter
+    /// suite holds it to that, on a Mac and an iPhone).
+    public func begin(_ request: WTHostRequest.OneOf_Kind) -> (@MainActor @Sendable () async -> WTHostResponse.OneOf_Kind)? {
+        guard case let .webViewSnapshot(asked) = request, let page = pages[asked.webViewID] else { return nil }
+        let flight = WebKitPictures.begin(of: page.webView, mostWide: Int(asked.maxWidth), mostBytes: Int(asked.maxBytes))
+        return { await .webViewPicture(flight.picture()) }
+    }
+
     public func answer(_ request: WTHostRequest.OneOf_Kind) async -> WTHostResponse.OneOf_Kind {
         switch request {
         case let .ping(ping):
@@ -158,6 +171,8 @@ public final class WebKitEngine: HostServices {
             icons.drop(webViewID: destroy.webViewID)
             certificates.dropped(destroy.webViewID)
             if let page = pages.removeValue(forKey: destroy.webViewID) {
+                // A web view whose picture is being drawn (059) is closed when it is drawn:
+                // it is the tab's no longer from now, and WebKit has it a moment more.
                 page.close()
                 if page.isPrivate, !pages.values.contains(where: { $0.isPrivate && $0.loginSet == page.loginSet }) {
                     // A private login set is kept in memory and nowhere else: with its last
@@ -334,6 +349,7 @@ public final class WebKitEngine: HostServices {
             isPrivate: create.loginSet.ephemeral,
             engine: self
         )
+        made.one()
         return .ack(WTAck())
     }
 
@@ -358,6 +374,7 @@ public final class WebKitEngine: HostServices {
             id: id, webView: Self.webView(configuration), loginSet: asking.loginSet, isPrivate: asking.isPrivate, engine: self
         )
         pages[id] = page
+        made.one()
         var asked = WTNewWindowRequested()
         asked.newWebViewID = id
         asked.url = url?.absoluteString ?? ""
@@ -428,5 +445,18 @@ public final class WebKitEngine: HostServices {
     func verdict(for url: URL?, webViewID: UInt64, mainFrame: Bool, userGesture: Bool) -> NavigationVerdict {
         guard let core, let url else { return .cancel }
         return core.navigationVerdict(for: url.absoluteString, webViewID: webViewID, mainFrame: mainFrame, userGesture: userGesture)
+    }
+}
+
+/// How many web views an engine has made. The core tells a window the number of its tab's web
+/// view as soon as it has asked the shell for one, and the shell makes it a moment later: a
+/// window that looked for it in between found none. It looks again when this changes.
+@MainActor
+@Observable
+public final class WebViewsMade {
+    public private(set) var count = 0
+
+    func one() {
+        count += 1
     }
 }

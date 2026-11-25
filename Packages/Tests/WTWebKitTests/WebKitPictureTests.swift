@@ -265,6 +265,74 @@ final class WebKitPictureTests: AdapterTestCase {
         XCTAssertEqual(WebKitPictures.steps.map(\.quality), [0.6, 0.4, 0.4, 0.4, 0.25])
     }
 
+    // A picture holds nothing up
+
+    func testAPictureIsBegunInItsTurnAndAWebViewLetGoMeanwhileIsDrawnAllTheSame() async throws {
+        _ = try await atThePictures(1)
+        weak let held = engine.webView(for: 1)
+        var asked = WTWebViewSnapshot()
+        asked.webViewID = 1
+        asked.maxWidth = 800
+        asked.maxBytes = 96 * 1024
+        // Begun now, of the web view as it is: what comes back is the wait for its answer.
+        let later = try XCTUnwrap(engine.begin(.webViewSnapshot(asked)), "a picture is begun, and answered later")
+
+        // As the core does next: the web view is let go. It is the tab's no longer at once.
+        await destroy(1)
+        XCTAssertNil(engine.webView(for: 1), "the engine has no such web view from now")
+        XCTAssertEqual(engine.webViewCount, 0)
+        // And what is asked after is answered meanwhile: another web view is made, and loads.
+        await create(2)
+        await load(2, site.url("/landed"))
+        await wait(2, "a page in another web view") { self.finished($0) }
+
+        // The picture comes all the same, and is of the page the web view had.
+        guard case let .webViewPicture(picture) = await later() else { return XCTFail("the wait ends in a picture") }
+        let image = try XCTUnwrap(decoded(picture.jpeg), "a JPEG of the web view that was let go")
+        XCTAssertEqual(picture.width, 800)
+        XCTAssertGreaterThan(inked(image), 0.005, "of its page, and not of nothing")
+        // And the web view was let go when it was asked to be: nobody held it for its picture.
+        for _ in 0 ..< 200 where held != nil {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertNil(held, "the web view is gone")
+    }
+
+    func testOnlyAPictureOfAWebViewThereIsBegunAndEveryOtherRequestIsAnsweredInItsTurn() async throws {
+        _ = try await atThePictures(1)
+        var asked = WTWebViewSnapshot()
+        asked.webViewID = 99
+        asked.maxWidth = 800
+        asked.maxBytes = 96 * 1024
+        XCTAssertNil(engine.begin(.webViewSnapshot(asked)), "a web view that is not there: answered in its turn, with its error")
+        var save = WTWebViewSaveState()
+        save.webViewID = 1
+        XCTAssertNil(engine.begin(.webViewSaveState(save)), "a state is answered in its turn")
+        var destroy = WTWebViewDestroy()
+        destroy.webViewID = 1
+        XCTAssertNil(engine.begin(.webViewDestroy(destroy)))
+        XCTAssertNotNil(engine.webView(for: 1), "and nothing was done by asking")
+        // A picture begun and waited for, with nothing between: as when it is asked for whole.
+        asked.webViewID = 1
+        let later = try XCTUnwrap(engine.begin(.webViewSnapshot(asked)))
+        guard case let .webViewPicture(picture) = await later() else { return XCTFail("a picture") }
+        XCTAssertNotNil(decoded(picture.jpeg))
+        XCTAssertNotNil(engine.webView(for: 1), "a web view that was not let go is there still")
+    }
+
+    func testTheEngineCountsTheWebViewsItMakes() async {
+        let before = engine.made.count
+        await create(1)
+        XCTAssertEqual(engine.made.count, before + 1)
+        await create(2)
+        XCTAssertEqual(engine.made.count, before + 2)
+        // One that could not be made is not counted: the same number again is refused.
+        guard case .error = await create(2) else { return XCTFail("a web view that is there already is refused") }
+        XCTAssertEqual(engine.made.count, before + 2)
+        await destroy(1)
+        XCTAssertEqual(engine.made.count, before + 2, "letting one go makes none")
+    }
+
     func testAWebViewWithNoSizeOrThatIsNotThereHasNoPicture() async throws {
         // As the adapter makes a web view: with no size, until a window gives it one. A tab
         // that was opened behind and never looked at has drawn nothing.

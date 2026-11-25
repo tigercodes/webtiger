@@ -12,6 +12,9 @@ import WTWebKit
     struct WebViewHost: NSViewRepresentable {
         let engine: WebKitEngine
         let webViewID: UInt64
+        /// How many web views the engine has made: when it changes, the web view the core
+        /// named is looked for again. It may not have been made when the window was told.
+        var made = 0
         /// The page waits for an answer to what it said.
         var pageWaits = false
 
@@ -49,6 +52,9 @@ import WTWebKit
     struct WebViewHost: UIViewRepresentable {
         let engine: WebKitEngine
         let webViewID: UInt64
+        /// How many web views the engine has made: when it changes, the web view the core
+        /// named is looked for again. It may not have been made when the window was told.
+        var made = 0
         /// The page waits for an answer to what it said.
         var pageWaits = false
 

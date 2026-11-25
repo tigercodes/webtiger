@@ -32,17 +32,44 @@ enum WebKitPictures {
     /// The picture of a web view as it is now, as the core asks for one: with no bytes when
     /// there is none to give, or none that small.
     static func picture(of webView: WKWebView, mostWide: Int, mostBytes: Int, within limit: Duration = patience) async -> WTWebViewPicture {
-        let none = WTWebViewPicture()
+        await begin(of: webView, mostWide: mostWide, mostBytes: mostBytes, within: limit).picture()
+    }
+
+    /// Begins a web view's picture, now: WebKit is asked for it before this returns, of the
+    /// web view as it is at this moment. What it gives back waits for the picture. The web
+    /// view may be let go meanwhile: WebKit draws what it was asked for.
+    static func begin(of webView: WKWebView, mostWide: Int, mostBytes: Int, within limit: Duration = patience) -> PictureInFlight {
+        let flight = PictureInFlight(mostWide: mostWide, mostBytes: mostBytes)
         let size = webView.bounds.size
         // A web view that was never given a size has drawn nothing.
-        guard mostWide > 0, size.width >= 1, size.height >= 1 else { return none }
+        guard mostWide > 0, size.width >= 1, size.height >= 1 else {
+            flight.end(with: nil)
+            return flight
+        }
         // WebKit draws as many pixels to a point as the screen has. Asked for fewer points it
         // draws the picture small itself, and no large one is made on the way.
-        let points = min(size.width, CGFloat(mostWide) / scale(of: webView))
-        guard let drawn = await bitmap(of: webView, points: points, within: limit), let whole = fitted(drawn, to: mostWide) else {
-            return none
+        let configuration = WKSnapshotConfiguration()
+        configuration.snapshotWidth = NSNumber(value: Double(min(size.width, CGFloat(mostWide) / scale(of: webView))))
+        flight.timer = Task { @MainActor in
+            try? await Task.sleep(for: limit)
+            flight.end(with: nil)
         }
-        return smallEnough(whole, mostBytes: mostBytes) ?? none
+        webView.takeSnapshot(with: configuration) { picture, _ in
+            MainActor.assumeIsolated {
+                #if canImport(AppKit)
+                    flight.end(with: picture?.cgImage(forProposedRect: nil, context: nil, hints: nil))
+                #else
+                    flight.end(with: picture?.cgImage)
+                #endif
+            }
+        }
+        return flight
+    }
+
+    /// What WebKit drew, as the core is answered: made to fit, and small enough.
+    fileprivate static func answer(_ drawn: CGImage?, mostWide: Int, mostBytes: Int) -> WTWebViewPicture {
+        guard let drawn, let whole = fitted(drawn, to: mostWide) else { return WTWebViewPicture() }
+        return smallEnough(whole, mostBytes: mostBytes) ?? WTWebViewPicture()
     }
 
     /// A picture as a JPEG of no more than so many bytes: as the first of the steps makes it
@@ -72,31 +99,6 @@ enum WebKitPictures {
         #endif
     }
 
-    /// What WebKit draws of the web view, so many points wide; or nothing, when WebKit has
-    /// none or does not say within the time.
-    private static func bitmap(of webView: WKWebView, points: CGFloat, within limit: Duration) async -> CGImage? {
-        let configuration = WKSnapshotConfiguration()
-        configuration.snapshotWidth = NSNumber(value: Double(points))
-        let waiting = Waiting()
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            waiting.continuation = continuation
-            waiting.timer = Task { @MainActor in
-                try? await Task.sleep(for: limit)
-                waiting.end(with: nil)
-            }
-            webView.takeSnapshot(with: configuration) { picture, _ in
-                MainActor.assumeIsolated {
-                    #if canImport(AppKit)
-                        waiting.end(with: picture?.cgImage(forProposedRect: nil, context: nil, hints: nil))
-                    #else
-                        waiting.end(with: picture?.cgImage)
-                    #endif
-                }
-            }
-        }
-        return waiting.image
-    }
-
     /// A picture no wider than so many pixels: itself, or drawn again smaller, in its shape.
     static func fitted(_ image: CGImage, to most: Int) -> CGImage? {
         guard image.width > most else { return image }
@@ -119,19 +121,38 @@ enum WebKitPictures {
     }
 }
 
-/// The wait for WebKit's picture: ended once, by the picture or by the time, whichever is
-/// first. What the other brings afterwards is nobody's.
+/// A web view's picture that WebKit has been asked for (059): ended once, by the picture or
+/// by the time, whichever is first. What the other brings afterwards is nobody's.
 @MainActor
-private final class Waiting {
-    var continuation: CheckedContinuation<Void, Never>?
-    var timer: Task<Void, Never>?
-    private(set) var image: CGImage?
+final class PictureInFlight {
+    private let mostWide: Int
+    private let mostBytes: Int
+    private var done = false
+    private var drawn: CGImage?
+    private var waiting: [CheckedContinuation<Void, Never>] = []
+    fileprivate var timer: Task<Void, Never>?
 
-    func end(with image: CGImage?) {
-        guard let continuation else { return }
-        self.continuation = nil
-        self.image = image
+    fileprivate init(mostWide: Int, mostBytes: Int) {
+        self.mostWide = mostWide
+        self.mostBytes = mostBytes
+    }
+
+    fileprivate func end(with image: CGImage?) {
+        guard !done else { return }
+        done = true
+        drawn = image
         timer?.cancel()
-        continuation.resume()
+        for continuation in waiting {
+            continuation.resume()
+        }
+        waiting = []
+    }
+
+    /// The picture, when it has come or the time is up: with no bytes when there is none.
+    func picture() async -> WTWebViewPicture {
+        if !done {
+            await withCheckedContinuation { waiting.append($0) }
+        }
+        return WebKitPictures.answer(drawn, mostWide: mostWide, mostBytes: mostBytes)
     }
 }

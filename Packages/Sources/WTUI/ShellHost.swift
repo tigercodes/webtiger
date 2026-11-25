@@ -146,6 +146,11 @@ public final class ShellHost: HostServices {
         self.files = files
     }
 
+    /// What takes its time is the engine's: a web view's picture (059).
+    public func begin(_ request: WTHostRequest.OneOf_Kind) -> (@MainActor @Sendable () async -> WTHostResponse.OneOf_Kind)? {
+        engine.begin(request)
+    }
+
     public func answer(_ request: WTHostRequest.OneOf_Kind) async -> WTHostResponse.OneOf_Kind {
         switch request {
         case let .openOutside(open):

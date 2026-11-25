@@ -103,6 +103,73 @@
             XCTAssertEqual(host.requests.count, 1)
         }
 
+        /// A host that takes its time over a ping that says "slow": it is begun when it is
+        /// asked, and answered when the test says. Every other ping is answered in its turn.
+        @MainActor
+        private final class SlowHost: HostServices {
+            /// What was asked, in order: "begun slow" for the one that takes its time.
+            private(set) var asked: [String] = []
+            private var waiting: CheckedContinuation<Void, Never>?
+            private var released = false
+
+            func answer(_ request: WTHostRequest.OneOf_Kind) async -> WTHostResponse.OneOf_Kind {
+                guard case let .ping(ping) = request else { return .ack(WTAck()) }
+                asked.append(String(bytes: ping.payload, encoding: .utf8) ?? "")
+                var pong = WTHostPong()
+                pong.payload = ping.payload
+                return .pong(pong)
+            }
+
+            func begin(_ request: WTHostRequest.OneOf_Kind) -> (@MainActor @Sendable () async -> WTHostResponse.OneOf_Kind)? {
+                guard case let .ping(ping) = request, ping.payload == Data("slow".utf8) else { return nil }
+                asked.append("begun slow")
+                return { [self] in
+                    if !released {
+                        await withCheckedContinuation { waiting = $0 }
+                    }
+                    asked.append("slow answered")
+                    var pong = WTHostPong()
+                    pong.payload = ping.payload
+                    return .pong(pong)
+                }
+            }
+
+            /// The slow one's answer may come.
+            func release() {
+                released = true
+                waiting?.resume()
+                waiting = nil
+            }
+        }
+
+        func testAHostRequestThatTakesItsTimeIsBegunInItsTurnAndHoldsUpNoneAfterIt() async throws {
+            let host = SlowHost()
+            let core = try NativeCore.start(config: fakeConfig(), host: host)
+            defer { core.stop() }
+            func ping(_ word: String) -> WTRequest.OneOf_Kind {
+                var ping = WTPing()
+                ping.payload = Data(word.utf8)
+                ping.viaHost = true
+                return .ping(ping)
+            }
+
+            // A ping round the host that takes its time, and two that do not, sent one after
+            // the other. The two are answered while the first is still on its way.
+            let slow = core.send(ping("slow"))
+            guard case let .pong(first) = try await core.request(ping("one")) else { return XCTFail("expected Pong") }
+            guard case let .pong(second) = try await core.request(ping("two")) else { return XCTFail("expected Pong") }
+            XCTAssertEqual([first.payload, second.payload], [Data("one".utf8), Data("two".utf8)])
+            // It was begun in its turn, before either of them was asked.
+            XCTAssertEqual(host.asked, ["begun slow", "one", "two"])
+
+            // Its own answer comes when it is ready, and is the answer to its own request.
+            host.release()
+            guard case let .pong(last) = try await slow.value else { return XCTFail("expected Pong") }
+            XCTAssertEqual(last.payload, Data("slow".utf8))
+            XCTAssertTrue(last.viaHost)
+            XCTAssertEqual(host.asked, ["begun slow", "one", "two", "slow answered"])
+        }
+
         func testAPageLoadsThroughTheContract() async throws {
             let host = RecordingHost()
             let core = try NativeCore.start(config: fakeConfig(), host: host)

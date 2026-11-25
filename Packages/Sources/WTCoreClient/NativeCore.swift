@@ -49,22 +49,34 @@
             self.receiver = receiver
             self.context = context
             // One task answers host requests, one after the other, so they are performed in the
-            // order the core made them.
+            // order the core made them. One that takes its time is begun in its turn, and
+            // answered when its answer comes: it holds up none of those after it.
             let requests = receiver.hostRequests
             Task { @MainActor in
                 for await (id, kind) in requests {
-                    var response = WTHostResponse()
-                    response.kind = await host.answer(kind)
-                    var envelope = WTEnvelope()
-                    envelope.id = id
-                    envelope.hostResponse = response
-                    _ = Self.send(envelope, to: handle)
+                    if let later = host.begin(kind) {
+                        Task { @MainActor in
+                            await Self.answer(id, with: later(), to: handle)
+                        }
+                    } else {
+                        await Self.answer(id, with: host.answer(kind), to: handle)
+                    }
                 }
             }
         }
 
         deinit {
             stop()
+        }
+
+        /// Sends the core the answer to one of its host requests.
+        private static func answer(_ id: UInt64, with kind: WTHostResponse.OneOf_Kind, to handle: UInt64) {
+            var response = WTHostResponse()
+            response.kind = kind
+            var envelope = WTEnvelope()
+            envelope.id = id
+            envelope.hostResponse = response
+            _ = Self.send(envelope, to: handle)
         }
 
         public func send(_ kind: WTRequest.OneOf_Kind) -> CoreAnswer {

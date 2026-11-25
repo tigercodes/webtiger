@@ -30,6 +30,20 @@ public protocol HostServices: AnyObject, Sendable {
     /// Answers one host request. Requests arrive, and are answered, in the order the core
     /// made them: a web view's creation always comes before its first load.
     @MainActor func answer(_ request: WTHostRequest.OneOf_Kind) async -> WTHostResponse.OneOf_Kind
+
+    /// Begins a host request that takes its time, now, in its turn, and gives back the wait
+    /// for its answer: the requests after it are answered meanwhile, and its own answer is
+    /// sent when it comes. `nil` for a request that is answered in its turn, which is every
+    /// one but a web view's picture (059): an engine may take seconds to draw one, and the
+    /// next request may be the web view of the tab a person has just opened.
+    @MainActor func begin(_ request: WTHostRequest.OneOf_Kind) -> (@MainActor @Sendable () async -> WTHostResponse.OneOf_Kind)?
+}
+
+public extension HostServices {
+    /// A host that takes its time over nothing.
+    @MainActor func begin(_: WTHostRequest.OneOf_Kind) -> (@MainActor @Sendable () async -> WTHostResponse.OneOf_Kind)? {
+        nil
+    }
 }
 
 /// The core. `NativeCore` is the real one; `ScriptedCore` stands in for it in tests.
