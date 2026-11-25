@@ -1049,6 +1049,13 @@ And one that the measuring raised (060 §8): a Space whose row was arranged in t
 7. Fake mode can be given rules by a suite.
 8. The C header says what the fast path keeps to, and no longer that it never allocates.
 
+**What a request is for, on Android** ([065](065-a-requests-kind-on-android.md) §6, put on 2026-11-25; to be built on these):
+
+1. The adapter tells what the WebView's own headers tell of a request (a frame's page, a picture, a stylesheet), and no more.
+2. The core guesses the rest from the address's ending (a script, a font, a film), for any engine that cannot say.
+3. What cannot be told or guessed is asked about as a kind that cannot be named: a wrong block breaks a page, a missed one is where every request is today.
+4. The guess is used only where the engine could not name the kind.
+
 And one that measuring the Mac app raised (060 §5.2, §8): its start is about 200 ms, but the first start after it was built was 395 ms once and 673 ms once, against the 500 allowed. Whether a cold start (after the Mac is turned on) is within the budget is not known: it cannot be measured here without the owner, since emptying the system's memory of files asks for a password. Recommended: the owner runs `Tools/perf/mac.sh` once after turning the Mac on, and the first line it prints is the number.
 
 Also the owner's to say, from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
