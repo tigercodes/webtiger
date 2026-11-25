@@ -1075,6 +1075,15 @@ And one that the measuring raised (060 §8): a Space whose row was arranged in t
 6. A private window is under everywhere's switch, and a site's switch set in it holds for the window's life.
 7. A window is told Guard's state for the tab in front in what it is already told of that tab.
 
+**Link cleaning** ([068](068-link-cleaning.md) §6, put on 2026-11-25; to be built on these):
+
+1. A short list of the core's own, of the names the big advertising and mailing systems add to links.
+2. Only across sites, and from outside the browser: never within one site.
+3. Never what a person typed or pasted.
+4. Under Guard's switches: where Guard is off, nothing is cleaned.
+5. Nothing says that an address was cleaned.
+6. A page's own navigation to another site is the last step: it needs each engine's adapter.
+
 And one that measuring the Mac app raised (060 §5.2, §8): its start is about 200 ms, but the first start after it was built was 395 ms once and 673 ms once, against the 500 allowed. Whether a cold start (after the Mac is turned on) is within the budget is not known: it cannot be measured here without the owner, since emptying the system's memory of files asks for a password. Recommended: the owner runs `Tools/perf/mac.sh` once after turning the Mac on, and the first line it prints is the number.
 
 Also the owner's to say, from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
