@@ -119,4 +119,4 @@ The System WebView 133, on an Android 16 emulator, 2026-11-25: the app's own ada
 - [x] The test site's page.
 - [x] The adapter.
 - [x] The core's guess, and the corpus.
-- [ ] The gate.
+- [x] The gate: every stage of `Tools/test.sh all` green, and `android-device`, on 2026-11-25: `lint`, `core` (802, and the strings tool's 24), `unit` (407 on the Mac), `build`, the Mac's UI suite (67), `ios` (391 on the iPhone simulator), the iPhone's UI suite (56), `android` (542 and 33 on the JVM) and `android-device` (201 on the emulator).
