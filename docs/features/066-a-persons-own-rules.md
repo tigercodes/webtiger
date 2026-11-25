@@ -100,4 +100,4 @@ Both are for an ordinary window's settings; neither names a window, a Space or a
 - [ ] The owner's word on §6.
 - [x] The core: kept, asked for, the start.
 - [x] The fast path: swapped at a stroke.
-- [ ] The gate.
+- [x] The gate: every stage of `Tools/test.sh all` green, and `android-device`, on 2026-11-25: `lint`, `core` (809, and the strings tool's 24), `unit` (407 on the Mac), `build`, the Mac's UI suite (67), `ios` (391 on the iPhone simulator), the iPhone's UI suite (56), `android` (542 and 33 on the JVM) and `android-device` (201 on the emulator).
