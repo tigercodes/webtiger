@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Designed, not built.** The choices of §6 are recommendations, put to the owner and not yet answered. Its first step is to try what each engine can do (§5): until then two of them are guesses, and are marked so |
+| **Status** | **Designed; its first step is done, and nothing else is built.** What each engine can do was tried (§5.1): both can picture a web view that is out of sight, so the picture can be taken as the tab is put to sleep. The choices of §6 are recommendations, put to the owner and not yet answered |
 | **Phase** | W3 of [000](000-master-plan.md) §9: "snapshots". 000 §5.7: "Asleep. The web view is gone. A snapshot, the saved state and the scroll position remain. Cost: a database row and a small image on disk." 000 §7: "Wake a sleeping tab: snapshot within 50 ms; the engine loading within 100 ms." The ninth of W3 |
 | **Contract** | 1.50, to be added (§4): a web view's picture asked of a shell, and a picture asked of the core. The store's schema would be 17 |
 | **Builds on** | [051](051-a-tabs-kept-state.md): a tab's kept state, which this follows in almost everything. [053](053-a-tab-sleeps-by-itself.md): putting a tab to sleep. [046](046-a-sites-icon.md): pictures that cross the contract by a number, asked for when wanted. [037](037-private-windows.md): what is never written |
@@ -29,7 +29,7 @@ I go back to a tab I left this morning. The browser had put it to sleep, and for
 
 **It is kept where the state is,** in the store, by a number the tab's place in the session names. And it is dropped when the state is: when the tab goes on to another page, is closed, becomes a Site, or history is forgotten for its logins (a picture of a page is as much a record of a visit as its address is).
 
-**It is small.** At most 800 points wide and as a JPEG, and no more than 96 KB: a state of at most 128 KB ([051](051-a-tabs-kept-state.md) D3) and a picture of at most 96 KB are inside the plan's budget of 250 KB on disk for a sleeping tab. A picture that comes out larger is taken again smaller by the shell; one that is still too large is not kept.
+**It is small.** At most 800 pixels wide and as a JPEG, and no more than 96 KB: a state of at most 128 KB ([051](051-a-tabs-kept-state.md) D3) and a picture of at most 96 KB are inside the plan's budget of 250 KB on disk for a sleeping tab. A picture that comes out larger is taken again smaller by the shell; one that is still too large is not kept.
 
 **It is shown while the tab wakes:** from the moment the tab is brought in front until its page has arrived (the first commit), or failed. The core says which picture, by its number, in what it tells the window of the tab in front; the shell asks for the bytes, as it asks for an icon's (046), and draws them where the page will be. When the page arrives the core says no picture, and the shell shows the page.
 
@@ -38,7 +38,7 @@ I go back to a tab I left this morning. The browser had put it to sleep, and for
 ## 4. The contract (1.50), to be added
 
 ```proto
-// Host request. A picture of what a web view shows, no wider than so many points, as a JPEG.
+// Host request. A picture of what a web view shows, no wider than so many pixels, as a JPEG.
 // Answered with WebViewPicture; with none when the engine cannot take one.
 message WebViewSnapshot {
   uint64 web_view_id = 1;
@@ -48,7 +48,7 @@ message WebViewSnapshot {
 
 message WebViewPicture {
   bytes jpeg = 1;          // empty: none
-  uint32 width = 2;        // in points, as it was drawn
+  uint32 width = 2;        // in pixels
   uint32 height = 3;
 }
 
@@ -64,7 +64,18 @@ message Picture { uint64 picture_id = 1; bytes jpeg = 2; uint32 width = 3; uint3
 
 ## 5. In what order
 
-1. **What each engine can do,** tried in the adapter suites against the suite's own pages: whether a web view that is **out of sight** can be pictured at all (a tab is put to sleep from behind); how long it takes; how large a JPEG of a full page of text and of a picture is at 800 points. On WebKit (a Mac, the iPhone simulator) and on Android's System WebView (the emulator). The design below this line bends to what is found: if an engine cannot picture a web view that is out of sight, its picture is taken as the tab **leaves the front** instead (as the state is, 051), and kept only if the tab then sleeps.
+1. **What each engine can do,** tried in the adapter suites against the suite's own pages: whether a web view that is **out of sight** can be pictured at all (a tab is put to sleep from behind); how long it takes; how large a JPEG is. On WebKit (a Mac, the iPhone simulator) and on Android's System WebView (the emulator). **Done, 2026-11-24:**
+
+   | Engine | A web view in no window | As the engine gives it | No wider than 800 pixels | Taken in |
+   |---|---|---|---|---|
+   | WebKit, on the Mac | Pictured, by WebKit's own way of taking one (`takeSnapshot`) | 800 by 600 pixels; 14 KB as a JPEG | The same | 4 to 5 ms |
+   | WebKit, on the iPhone simulator | Pictured, the same way | 2,400 by 1,800 pixels (three to a point); 89 KB | Drawn again smaller: 800 by 600; 15 KB | 115 and 262 ms, each the first of its run |
+   | Android's WebView, shown and then taken out of its window | Pictured, by drawing the view into a bitmap | 1,080 by 2,400 pixels; 21 KB | The view drawn smaller, in one go: 800 by 1,777; 14 KB | 10 to 25 ms |
+   | Android's WebView, never in a window, given a size | Pictured, the same way | 800 by 1,200 pixels; 11 KB | The same | 9 to 14 ms |
+
+   The page is the suite's page of pictures and words; a JPEG is made at six tenths of its best.
+
+   What follows from it. **A picture can be taken as the tab is put to sleep** (D1 is no guess now): neither engine needs the web view to be on the screen. **The limit is in pixels, not points** (D4): a phone draws three pixels to a point, and the same page is 15 KB at 800 pixels and 89 KB as WebKit gives it; a picture is made no wider than 800 pixels before it is a JPEG. **The sizes are of a simple page:** the suite has no page of photographs, and a photograph is many times a drawing; the limit of 96 KB is kept by the adapter, which makes a picture smaller until it is under it, and that is not tried yet.
 2. **The core and the store:** the request, the picture kept and dropped with the state, shown while the tab wakes. Against the scripted engine.
 3. **The adapters:** taking the picture.
 4. **The shells:** the picture drawn where the page will be, and gone when the page arrives.
@@ -75,26 +86,36 @@ message Picture { uint64 picture_id = 1; bytes jpeg = 2; uint32 width = 3; uint3
 
 | # | Recommendation | Why | Other ways |
 |---|---|---|---|
-| D1 | A picture is taken as the tab is put to sleep, not before | One picture for each tab that sleeps, and none for the tabs that never do. *A guess until §5.1 is done:* it needs an engine that can picture a web view that is out of sight | Whenever a tab leaves the front: always possible, and a picture taken for every tab switch, most of them thrown away |
+| D1 | A picture is taken as the tab is put to sleep, not before | One picture for each tab that sleeps, and none for the tabs that never do. Both engines can picture a web view that is out of sight (§5.1) | Whenever a tab leaves the front: a picture taken for every tab switch, most of them thrown away |
 | D2 | It is kept in the store, with the state, and crosses the contract as bytes | One place for what a sleeping tab keeps, one rule for when it goes, and a forgetting of history that forgets it for good (008, 051 D6) | Files of the shell's own, named by the core: no bytes across the contract, and a second place to forget, to count against the budget, and to find after a crash |
 | D3 | Only a tab that sleeps has a picture | It is what the plan asks for: something to show while a sleeping tab wakes | Also the tab in front when the app is quit, so that a start shows it at once: a picture taken at every quit |
-| D4 | At most 800 points wide, a JPEG, 96 KB | Enough to be recognised and to stand in for a second; inside the budget with the state. *The numbers are guesses until §5.1 measures a page* | Larger, and the budget raised. Or as sharp as the screen, which is four times the bytes for a second's use |
+| D4 | At most 800 pixels wide, a JPEG, 96 KB | Enough to be recognised and to stand in for a second; inside the budget with the state. A simple page is 11 to 15 KB so (§5.1); a page of photographs was not measured | Larger, and the budget raised. Or as sharp as the screen: the same simple page was 89 KB at a phone's three pixels to a point |
 | D5 | The picture shows what was in sight, at the size it was | It is replaced by the page at the place the page was scrolled to (051): the two then match | The top of the page |
 | D6 | Every page that sleeps is pictured, a page of a bank's as any other | A browser's own files hold the page's address, its state and what was typed in its forms already; other browsers keep such pictures | Not for a page with a password field in it; or not for pages the person marks |
 | D7 | The picture is drawn plainly, and is not a thing to press | It stands in for the page for a moment. Something that looked alive and was not would be worse than an empty window | Dimmed, or under a mark that says the page is coming |
 
 ## 7. Tests
 
-To be filled in as built.
+| Where | What |
+|---|---|
+| WebKit, against the suite's page of pictures and words (`WebKitPictureTests`, 1, on the Mac and the iPhone simulator) | A web view that is in no window, as a tab behind is, is pictured by WebKit. Made no wider than 800 pixels, the picture is of the page (more than a two-hundredth of it is drawn on), has the web view's shape, and is under half of 96 KB as a JPEG. What it measured is in §5.1 |
+| Android's WebView, on an emulator (`SystemWebViewPictureTest`, 2) | A web view that was shown and is then in no window is pictured by drawing it into a bitmap, smaller where it is wider than 800 pixels: the picture is 800 wide, has the view's shape, is of the page, and is under half of 96 KB as a JPEG. One that was never in a window and was given a size is pictured too, and its picture is of the page |
+
+The rest is to be filled in as built.
 
 ## 8. What is not verified
 
-To be filled in as built.
+- **A page of photographs.** The suite's pages are drawings and words: how large a photograph's picture is, and that the limit of 96 KB can be kept without making it a smudge, is not tried.
+- **A phone and an iPhone.** The engines were tried on a Mac, a simulator and an emulator.
+- **A web view that is drawing something as it is pictured** (a film, a page still loading): not tried.
+- **How long a picture takes when the machine is busy:** the times of §5.1 are of one page on a machine doing nothing else, and the iPhone simulator's is the first of its run.
+
+The rest is to be filled in as built.
 
 ## 9. Done checklist
 
 - [ ] The owner's word on §6.
-- [ ] What each engine can do (§5.1).
+- [x] What each engine can do (§5.1): tried on the Mac, the iPhone simulator and the Android emulator on 2026-11-24.
 - [ ] The core and the store.
 - [ ] The adapters.
 - [ ] The shells.
