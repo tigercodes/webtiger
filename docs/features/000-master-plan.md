@@ -1020,7 +1020,12 @@ And one that the measuring raised (060 §8): a Space whose row was arranged in t
 4. Nothing is said to a shell.
 5. A Space that is away is not tidied until it is shown, and is tidied then at once, before the window is told of its row.
 
-One thing 060 found is not acted on: the line of things to undo of the Space that *is* shown is fifty copies of its row, near 19 MB for a row of two thousand. Recommended: each step keeps only what it changed.
+**A row's line of things to undo keeps what changed** ([062](062-a-shorter-line-to-undo.md) §6, put on 2026-11-25; to be built on these, in the core, on the owner's word of 2026-11-24 to use what is suggested; the twelfth of W3). 060 found that the line of the Space that *is* shown is fifty copies of its row, near 19 MB for a row of two thousand:
+
+1. A step keeps what the thing done changed, and not the whole row: the tabs it changed, the order when it changed, the Groups when they changed. Undo is what it was to a person.
+2. The order is kept whole, as the tabs' numbers, when it changed.
+3. A thing undone moves nothing it did not move (as it is, a tab opened since goes to the row's end at any undo).
+4. The line has a ceiling of this document's in a test: 1 MB for a row of two thousand moved fifty times, 32 KB for the standard row's.
 
 And one that measuring the Mac app raised (060 §5.2, §8): its start is about 200 ms, but the first start after it was built was 395 ms once and 673 ms once, against the 500 allowed. Whether a cold start (after the Mac is turned on) is within the budget is not known: it cannot be measured here without the owner, since emptying the system's memory of files asks for a password. Recommended: the owner runs `Tools/perf/mac.sh` once after turning the Mac on, and the first line it prints is the number.
 
