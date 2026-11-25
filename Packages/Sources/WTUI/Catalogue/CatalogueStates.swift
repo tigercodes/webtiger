@@ -19,6 +19,7 @@ enum CatalogueState: String, CaseIterable, Identifiable {
     case history
     case tabs
     case sites
+    case doing
     case favourites
     case groups
     case sidebar
@@ -52,6 +53,7 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         case .history: Words.catalogueStateHistory
         case .tabs: Words.catalogueStateTabs
         case .sites: Words.catalogueStateSites
+        case .doing: Words.catalogueStateDoing
         case .favourites: Words.catalogueStateFavourites
         case .sidebar: Words.catalogueStateSidebar
         case .groups: Words.catalogueStateGroups
@@ -171,6 +173,14 @@ enum CatalogueState: String, CaseIterable, Identifiable {
             page(&window, url: "https://mail.example.com/", display: "mail.example.com", security: .secure)
             window.tab.title = "Mail"
             window.tab.kept = true
+        case .doing:
+            // Marks for what a tab is doing (058): the tab in front is in a call (the camera
+            // and sound: the camera's mark); beside it one with a long name that plays a
+            // sound (the name gives up the room, the mark does not), one whose page holds
+            // the microphone, and one that does nothing.
+            page(&window, url: "https://meet.example.com/", display: "meet.example.com", security: .secure)
+            window.tab.title = "Call"
+            window.tab.keepsAwake = [.sound, .capture]
         case .favourites:
             // Favourites (042): the tab in front is one; beside it one that is asleep, a
             // Site that is none, and a tab.
@@ -262,7 +272,15 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         front.kept = window.tab.kept
         front.favourite = window.tab.favourite
         front.siteName = window.tab.siteName
+        front.keepsAwake = window.tab.keepsAwake
         window.tabs = [front]
+        if self == .doing {
+            var song = Self.neighbour(30, title: "A song whose title is longer than a tab is wide", host: "music.example.com")
+            song.keepsAwake = [.sound]
+            var notes = Self.neighbour(31, title: "Notes", host: "notes.example.com")
+            notes.keepsAwake = [.capture]
+            window.tabs = [front, song, notes, Self.neighbour(33, title: "News", host: "news.example.com")]
+        }
         if self == .favourites {
             window.tabs = CatalogueGroups.favourites(front: front)
         }

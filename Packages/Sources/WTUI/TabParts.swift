@@ -5,8 +5,45 @@ import SwiftUI
 import WTContract
 import WTDesign
 
+/// What a tab is doing that a person must be able to find at a glance (058): its page holds
+/// the camera or the microphone, or plays a sound. Of the core's reasons a tab is kept awake
+/// (052), the two that have a mark in the row; the others are said in words in the list of what
+/// is awake (056). One mark to a tab: the camera or the microphone before sound.
+enum TabDoing: Equatable {
+    case capture
+    case sound
+
+    /// The mark a tab has; none for a tab that does neither. The core says the reasons, and
+    /// which of them hold: the shell chooses a picture.
+    init?(of tab: WTTabSummary) {
+        if tab.keepsAwake.contains(.capture) {
+            self = .capture
+        } else if tab.keepsAwake.contains(.sound) {
+            self = .sound
+        } else {
+            return nil
+        }
+    }
+
+    /// The system's picture for it.
+    var symbol: String {
+        switch self {
+        case .capture: "record.circle"
+        case .sound: "speaker.wave.2.fill"
+        }
+    }
+
+    /// The words for it: the ones the list of what is awake uses.
+    var words: Word {
+        switch self {
+        case .capture: Words.awakeWhyCapture
+        case .sound: Words.awakeWhySound
+        }
+    }
+}
+
 /// What a tab shows of itself: a dot while it loads, a Site's mark, its site's icon when the
-/// window has it (046), and its name.
+/// window has it (046), its name, and a mark for what it is doing (058).
 struct TabLabel: View {
     let tab: WTTabSummary
     let isFront: Bool
@@ -39,6 +76,15 @@ struct TabLabel: View {
                 // less than the system's secondary colour, which is too faint to read at this
                 // size by the measure the iPhone's accessibility audit uses.
                 .opacity(tab.asleep ? TabStrip.asleepOpacity : 1)
+            if let doing = TabDoing(of: tab) {
+                // What its page is doing (058): after its name, and never squeezed. Where a
+                // tab is as wide as a tab may be, the name gives up the room. Said in words
+                // beside the tab's name.
+                Image(systemName: doing.symbol)
+                    .font(.caption2)
+                    .layoutPriority(1)
+                    .accessibilityHidden(true)
+            }
         }
     }
 

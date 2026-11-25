@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Drawn for WebTiger: a tab that plays a sound (058), a speaker and two waves on a 24 dp grid, tinted where the icon is used. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M3.5,9.5H7.5L12.5,5V19L7.5,14.5H3.5Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeWidth="1.8"
+        android:pathData="M15.5,9.2C16.8,10.8 16.8,13.2 15.5,14.8" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeWidth="1.8"
+        android:pathData="M18,6.8C20.6,9.8 20.6,14.2 18,17.2" />
+</vector>

@@ -64,6 +64,7 @@ import com.tigercodes.webtiger.core.v1.DownloadsPage
 import com.tigercodes.webtiger.core.v1.FindView
 import com.tigercodes.webtiger.core.v1.HistoryEntry
 import com.tigercodes.webtiger.core.v1.HistoryPage
+import com.tigercodes.webtiger.core.v1.KeepAwake
 import com.tigercodes.webtiger.core.v1.LoadState
 import com.tigercodes.webtiger.core.v1.PermissionKind
 import com.tigercodes.webtiger.core.v1.PermissionPrompt
@@ -106,6 +107,7 @@ internal enum class CatalogueState(@StringRes val title: Int) {
     HISTORY(R.string.catalogue_state_history),
     TABS(R.string.catalogue_state_tabs),
     SITES(R.string.catalogue_state_sites),
+    DOING(R.string.catalogue_state_doing),
     FAVOURITES(R.string.catalogue_state_favourites),
     GROUPS(R.string.catalogue_state_groups),
     SIDEBAR(R.string.catalogue_state_sidebar),
@@ -257,6 +259,13 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                     // Sites (039): the tab in front is one, awake; beside it one that is
                     // asleep, and a tab that is none.
                     SITES -> page("https://mail.example.com/", "mail.example.com").copy(title = "Mail", kept = true)
+                    // Marks for what a tab is doing (058): the tab in front is in a call (the
+                    // camera and sound: the camera's mark); beside it one with a long name that
+                    // plays a sound, one whose page holds the microphone, and one that does
+                    // nothing.
+                    DOING ->
+                        page("https://meet.example.com/", "meet.example.com")
+                            .copy(title = "Call", keeps_awake = listOf(KeepAwake.KEEP_AWAKE_SOUND, KeepAwake.KEEP_AWAKE_CAPTURE))
                     // Favourites (042): the tab in front is one; beside it one that is asleep,
                     // a Site that is none, and a tab.
                     FAVOURITES -> page("https://mail.example.com/", "mail.example.com").copy(title = "Mail", kept = true, favourite = true, site_name = "Mail")
@@ -316,9 +325,22 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                     kept = tab.kept,
                     favourite = tab.favourite,
                     site_name = tab.site_name,
+                    keeps_awake = tab.keeps_awake,
                 )
             val tabs =
-                if (this == SITES) {
+                if (this == DOING) {
+                    listOf(
+                        front,
+                        TabSummary(
+                            tab_id = 30,
+                            title = "A song whose title is longer than a tab is wide",
+                            host = "music.example.com",
+                            keeps_awake = listOf(KeepAwake.KEEP_AWAKE_SOUND),
+                        ),
+                        TabSummary(tab_id = 31, title = "Notes", host = "notes.example.com", keeps_awake = listOf(KeepAwake.KEEP_AWAKE_CAPTURE)),
+                        TabSummary(tab_id = 33, title = "News", host = "news.example.com"),
+                    )
+                } else if (this == SITES) {
                     listOf(
                         front,
                         TabSummary(tab_id = 20, title = "A page", host = "wiki.example.com", kept = true, away = true, site_name = "Wiki"),

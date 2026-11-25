@@ -47,7 +47,7 @@
     <string name="awake_sleep_others">Sleep All Others</string>
     <!-- Title of the list of tabs that are awake (that have a page loaded, and so are using memory), and the name of its part of the switch beside History, Downloads, Permissions and the Archive. A tab that is not awake is asleep: it keeps its place, and its page is loaded again when it is gone to. -->
     <string name="awake_title">Awake</string>
-    <!-- Why a tab is awake, under its name in the list of tabs that are awake. -->
+    <!-- Why a tab is awake, under its name in the list of tabs that are awake. Also said of a tab in the row of tabs, to a screen reader, with the tab's name: the tab has a small recording mark after its name. -->
     <string name="awake_why_capture">Using the camera or microphone</string>
     <!-- Why a tab is awake, under its name in the list of tabs that are awake: a download its page started is still coming. -->
     <string name="awake_why_download">Downloading</string>
@@ -57,7 +57,7 @@
     <string name="awake_why_loading">Loading</string>
     <!-- Why a tab is awake, under its name in the list of tabs that are awake: its page asked a question that has not been answered, such as whether it may use the camera. -->
     <string name="awake_why_question">Asking you something</string>
-    <!-- Why a tab is awake, under its name in the list of tabs that are awake: its page is playing something that can be heard. -->
+    <!-- Why a tab is awake, under its name in the list of tabs that are awake: its page is playing something that can be heard. Also said of a tab in the row of tabs, to a screen reader, with the tab's name: the tab has a small speaker after its name. -->
     <string name="awake_why_sound">Playing sound</string>
     <!-- Why a tab is awake, under its name in the list of tabs that are awake: something was typed into its page, which would be lost if it slept. -->
     <string name="awake_why_typed">Has text you typed</string>
@@ -81,6 +81,8 @@
     <string name="catalogue_state_awake_empty">What is awake, nothing</string>
     <!-- Design catalogue: the Library with the list of tabs that are awake shown, with tabs in it. -->
     <string name="catalogue_state_awake_list">What is awake</string>
+    <!-- Design catalogue: a state of the window, in which some tabs have a mark after their names for what their pages are doing. -->
+    <string name="catalogue_state_doing">Tabs playing sound and using the camera</string>
     <!-- Design catalogue: a state of the Downloads list. -->
     <string name="catalogue_state_downloads_empty">Downloads: none</string>
     <!-- Design catalogue: a state of the Downloads list. -->

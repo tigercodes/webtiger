@@ -499,11 +499,16 @@ internal fun TabChip(
     // A tab with nothing to keep, nowhere to go and nothing to undo has no menu.
     val hasMenu = keeps || moves.isNotEmpty() || undo != null
     val menuSays = if (keeps) keepOrLetGo else (moves.firstOrNull()?.words ?: undo?.words)?.let { stringResource(it) }
+    // What its page is doing that has a mark in the row (058): the camera or the microphone,
+    // or a sound.
+    val doing = TabDoing.of(tab)
     // What is said of the tab beside its name: that it is a Favourite, or a Site (a Favourite is
-    // one, and is not said to be both), that it is away from its home, that it is asleep.
+    // one, and is not said to be both), that it is away from its home, what its page is doing,
+    // that it is asleep.
     val said = listOfNotNull(
         if (tab.favourite) stringResource(R.string.favourites_favourite) else if (tab.kept) stringResource(R.string.sites_site) else null,
         if (tab.away) stringResource(R.string.sites_away) else null,
+        doing?.let { stringResource(it.words) },
         if (tab.asleep) stringResource(R.string.sites_asleep) else null,
     ).joinToString(", ")
     // "Return to Mail": for a Site that is away, by the name it was kept with.
@@ -583,9 +588,13 @@ internal fun TabChip(
                     // Asleep, it has no page: its name is fainter, and it is said so.
                     color = if (tab.asleep) MaterialTheme.colorScheme.onSurfaceVariant else Color.Unspecified,
                     // In the strip a name is as wide as a tab may be; in a row of the sidebar
-                    // it has the row.
-                    modifier = if (fills) Modifier else Modifier.widthIn(max = 180.dp),
+                    // it has the row, but for the mark after it, which is never squeezed out.
+                    modifier = if (fills) Modifier.weight(1f, fill = false) else Modifier.widthIn(max = 180.dp),
                 )
+                if (doing != null) {
+                    // What its page is doing (058): after its name; said in words above.
+                    Icon(painter = painterResource(doing.picture), contentDescription = null, modifier = Modifier.size(14.dp).testTag(doing.tag))
+                }
                 }
             }
             DropdownMenu(expanded = offering && hasMenu, onDismissRequest = { offering = false }) {

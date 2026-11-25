@@ -120,7 +120,7 @@ enum Words {
 
     /// Using the camera or microphone
     ///
-    /// Why a tab is awake, under its name in the list of tabs that are awake.
+    /// Why a tab is awake, under its name in the list of tabs that are awake. Also said of a tab in the row of tabs, to a screen reader, with the tab's name: the tab has a small recording mark after its name.
     static let awakeWhyCapture = Word(key: "awake.why.capture")
 
     /// Downloading
@@ -145,7 +145,7 @@ enum Words {
 
     /// Playing sound
     ///
-    /// Why a tab is awake, under its name in the list of tabs that are awake: its page is playing something that can be heard.
+    /// Why a tab is awake, under its name in the list of tabs that are awake: its page is playing something that can be heard. Also said of a tab in the row of tabs, to a screen reader, with the tab's name: the tab has a small speaker after its name.
     static let awakeWhySound = Word(key: "awake.why.sound")
 
     /// Has text you typed
@@ -202,6 +202,11 @@ enum Words {
     ///
     /// Design catalogue: the Library with the list of tabs that are awake shown, with tabs in it.
     static let catalogueStateAwakeList = Word(key: "catalogue.state.awake_list")
+
+    /// Tabs playing sound and using the camera
+    ///
+    /// Design catalogue: a state of the window, in which some tabs have a mark after their names for what their pages are doing.
+    static let catalogueStateDoing = Word(key: "catalogue.state.doing")
 
     /// Downloads: none
     ///
@@ -1722,6 +1727,7 @@ extension Word {
         "catalogue.state.archive_list",
         "catalogue.state.awake_empty",
         "catalogue.state.awake_list",
+        "catalogue.state.doing",
         "catalogue.state.downloads_empty",
         "catalogue.state.downloads_list",
         "catalogue.state.empty",

@@ -143,8 +143,8 @@ struct TabStrip: View {
     /// How strongly a sleeping tab's name is drawn: against white this is a contrast of 8 to 1.
     static let asleepOpacity = 0.7
 
-    /// What is said of a tab beside its name (039): that it is a Site, that it is asleep, both,
-    /// or nothing.
+    /// What is said of a tab beside its name (039): that it is a Site, that it is away, what
+    /// its page is doing (058), that it is asleep; or nothing.
     static func said(of tab: WTTabSummary, locale: Locale = .current) -> String {
         var said: [String] = []
         // A Favourite is a Site: it is said to be the one, not both.
@@ -155,6 +155,9 @@ struct TabStrip: View {
         }
         if tab.away {
             said.append(Words.sitesAway.string(locale))
+        }
+        if let doing = TabDoing(of: tab) {
+            said.append(doing.words.string(locale))
         }
         if tab.asleep {
             said.append(Words.sitesAsleep.string(locale))
