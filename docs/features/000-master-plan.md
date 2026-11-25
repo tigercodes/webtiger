@@ -1065,6 +1065,16 @@ And one that the measuring raised (060 §8): a Space whose row was arranged in t
 5. A limit of 256 KB of text.
 6. Private windows are under the same rules.
 
+**Guard's switches** ([067](067-guards-switches.md) §6, put on 2026-11-25; to be built on these, in the core alone: the mark, its count and the panel are a shell's design, and are not made):
+
+1. One switch at each of the three levels, for Guard as a whole, until there are lists to have kinds of.
+2. A site and a Space can say nothing, and are then as the level above; everywhere is on or off.
+3. A site's switch is kept for the login set: Spaces that share logins share it.
+4. A site's switch set for a tab reloads that tab; a Space's and everywhere's reload nothing.
+5. A frame of another site is under the page's switches.
+6. A private window is under everywhere's switch, and a site's switch set in it holds for the window's life.
+7. A window is told Guard's state for the tab in front in what it is already told of that tab.
+
 And one that measuring the Mac app raised (060 §5.2, §8): its start is about 200 ms, but the first start after it was built was 395 ms once and 673 ms once, against the 500 allowed. Whether a cold start (after the Mac is turned on) is within the budget is not known: it cannot be measured here without the owner, since emptying the system's memory of files asks for a password. Recommended: the owner runs `Tools/perf/mac.sh` once after turning the Mac on, and the first line it prints is the number.
 
 Also the owner's to say, from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
