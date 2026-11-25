@@ -147,4 +147,4 @@ Through Guard's own interface, which parses the request's address and the page's
 - [x] Guard's crate, and the corpus.
 - [x] The fast path; fake mode's rules; Android.
 - [x] The budgets.
-- [ ] The gate.
+- [x] The gate: every stage of `Tools/test.sh all` green, and `android-device`, on 2026-11-25: `lint`, `core` (800, and the strings tool's 24), `unit` (407 on the Mac), `build`, the Mac's UI suite (67), `ios` (391 on the iPhone simulator), the iPhone's UI suite (56), `android` (538 and 33 on the JVM) and `android-device` (200 on the emulator).
