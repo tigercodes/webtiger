@@ -1036,6 +1036,17 @@ And one that the measuring raised (060 §8): a Space whose row was arranged in t
 5. The script measures this app and no other.
 6. The list of sites is a file the run is given; the repository has no list of public sites until the owner has chosen one.
 
+**Guard's request engine** ([064](064-guards-request-engine.md) §6, put on 2026-11-25; the first of W4; to be built on these, on the owner's word of 2026-11-24 to use what is suggested):
+
+1. The blocker is `adblock` (Brave's), as 000 WT-D10 chose, at one exact version.
+2. The core's own registrable domains are handed to the blocker with each request; the blocker's own resolver is left out of the build.
+3. One blocker, shared by every thread that asks, swapped at a stroke when rules change.
+4. It fails open: whatever goes wrong in deciding, the request is allowed.
+5. A request for the top frame's own document is always allowed, until there is a page that says a page was blocked.
+6. The corpus's rules are written here. **No public list is checked in until the owner has said which, and under what terms:** they are other people's work under their own licences.
+7. Fake mode can be given rules by a suite.
+8. The C header says what the fast path keeps to, and no longer that it never allocates.
+
 And one that measuring the Mac app raised (060 §5.2, §8): its start is about 200 ms, but the first start after it was built was 395 ms once and 673 ms once, against the 500 allowed. Whether a cold start (after the Mac is turned on) is within the budget is not known: it cannot be measured here without the owner, since emptying the system's memory of files asks for a password. Recommended: the owner runs `Tools/perf/mac.sh` once after turning the Mac on, and the first line it prints is the number.
 
 Also the owner's to say, from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
