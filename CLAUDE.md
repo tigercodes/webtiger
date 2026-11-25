@@ -16,6 +16,7 @@ Tools/test.sh ui       # the apps' UI tests in fake mode (`ui-mac` and `ui-ios` 
 Tools/test.sh all      # everything above, and `android` where a JDK and the Android SDK are found
 Tools/test.sh android  # the Android shell: JVM tests against the real core, its pictures, and the debug APK
 Tools/test.sh android-device  # the Android shell on a device: adapter suite, isolation, the window (not in `all`)
+Tools/test.sh budgets  # the plan's budgets that are times, measured on a release build, failing at the budget (not in `all`; 060)
 ```
 
 - Fast loop for core work: `cd Core && cargo test -p <crate>`.

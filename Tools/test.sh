@@ -13,6 +13,9 @@
 #                          real WebView, isolation, and the app's window
 #   Tools/test.sh all      lint, core, unit, build, ui-mac, ios, ui-ios, and android where its
 #                          tools are
+#   Tools/test.sh budgets  the plan's budgets that are times, for the core's part: measured on
+#                          a release build, and failing at the budget (not in `all`: a time
+#                          on a busy machine fails for no fault of the code)
 #
 # Exits non-zero on the first failing step. Set IOS_SIM to pick a simulator.
 # The Windows shell's checks are Tools/test.ps1's, on the Windows PC. `android` needs a JDK,
@@ -87,6 +90,15 @@ run_core() {
   (cd Core && cargo test --workspace --locked)
   step "core: the strings tool (cargo test)"
   (cd Core/tools/strings-gen && CARGO_TARGET_DIR="$ROOT/Core/target/strings-gen" cargo test --locked)
+}
+
+# The budgets that are times (000 §7, 060), for the core's part. The ones that are counts are
+# among the core's own tests, and run every time.
+run_budgets() {
+  step "budgets: places offered among 100,000 visits (a release build)"
+  (cd Core && cargo test --release --locked -p wt-store -- --ignored --nocapture measure_offering)
+  step "budgets: a row of 200 told, and a sleeping tab woken (a release build)"
+  (cd Core && cargo test --release --locked -p wt-app --test timed_budgets -- --ignored --nocapture)
 }
 
 run_unit() {
@@ -241,10 +253,11 @@ case "${1:-all}" in
   ui-ios) run_ui_ios ;;
   android) run_android ;;
   android-device) run_android_device ;;
+  budgets) run_budgets ;;
   # The Mac's UI suite goes before anything starts the iPhone simulator: a process of the
   # simulator's own crashes now and then, the Mac puts "… quit unexpectedly" on the screen,
   # and the Mac's suite does not start while a dialog of the system's is there.
   all) ensure_tools; run_lint; run_core; run_unit; run_build; run_ui_mac; run_ios; run_ui_ios; run_android_if_possible ;;
-  *) echo "usage: Tools/test.sh [lint|core|unit|ios|build|ui|ui-mac|ui-ios|android|android-device|all]" >&2; exit 2 ;;
+  *) echo "usage: Tools/test.sh [lint|core|unit|ios|build|ui|ui-mac|ui-ios|android|android-device|budgets|all]" >&2; exit 2 ;;
 esac
 printf '\n\033[1;32mOK: %s\033[0m\n' "${1:-all}"

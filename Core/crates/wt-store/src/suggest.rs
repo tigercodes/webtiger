@@ -358,12 +358,16 @@ mod tests {
         }
     }
 
-    /// A measurement, not a gate (011 §7): run it with
-    /// `cargo test -p wt-store --release -- --ignored --nocapture measure_offering`.
+    /// "Address-field suggestions over 100,000 history rows: ≤ 10 ms at p95"
+    /// (000 §7; 011 §7). A time, so not among the tests that run every
+    /// time (060): `Tools/test.sh budgets` runs it, on a release build, and
+    /// it fails at the budget.
     #[test]
-    #[ignore = "a measurement: it takes seconds and asserts nothing about time"]
+    #[ignore = "timed (060): `Tools/test.sh budgets` runs it, on a release build; it fails at the plan's 10 ms at p95"]
     fn measure_offering_places_among_a_hundred_thousand_visits() {
-        use std::time::Instant;
+        use std::time::{Duration, Instant};
+
+        const BUDGET: Duration = Duration::from_millis(10);
 
         const WORDS: [&str; 16] = [
             "rust",
@@ -411,8 +415,22 @@ mod tests {
                 .collect();
             times.sort();
             println!(
-                "{what}: median {:?}, p95 {:?}, worst {:?}",
-                times[100], times[190], times[199]
+                "places offered for {what}, among 100,000 visits: median {:?}, p95 {:?}, worst {:?} ({} {}, {} build)",
+                times[100],
+                times[190],
+                times[199],
+                std::env::consts::OS,
+                std::env::consts::ARCH,
+                if cfg!(debug_assertions) {
+                    "a debug"
+                } else {
+                    "a release"
+                }
+            );
+            assert!(
+                times[190] <= BUDGET,
+                "{what}: {:?} at p95, and it may be {BUDGET:?}",
+                times[190]
             );
         };
         measure("one letter", "r");

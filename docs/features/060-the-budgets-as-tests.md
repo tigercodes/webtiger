@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Its first four steps are built, in the core: what the core holds was measured, the standard session is a thing a test can ask for, the core counts its own timers' wake-ups, and seven counted budgets are tests that fail at the budget.** One budget is not met, and its test is written and set aside (§8). On the recommendations of §6, used on the owner's word of 2026-11-24 (to use what is suggested where something waits on a choice, and to go on); they stay the owner's to change. Not built: the timed budgets, the app's |
+| **Status** | **Its first five steps are built, in the core: what the core holds was measured, the standard session is a thing a test can ask for, the core counts its own timers' wake-ups, seven counted budgets are tests that fail at the budget every run, and three timed ones are measurements that fail at the budget when they are run** (`Tools/test.sh budgets`). One budget is not met, and its test is written and set aside (§8). On the recommendations of §6, used on the owner's word of 2026-11-24 (to use what is suggested where something waits on a choice, and to go on); they stay the owner's to change. Not built: the app's (its own memory and its start, scripted) |
 | **Phase** | W3 of [000](000-master-plan.md) §9: "every §7 budget as a failing test". The tenth of W3 |
 | **Contract** | None |
 | **Builds on** | [000](000-master-plan.md) §7: the budgets. [001](001-foundations.md) §11: the first measurements. [011](011-suggestions.md) §7 and [043](043-the-sidebar.md) §7: two budgets measured by hand. [051](051-a-tabs-kept-state.md), [053](053-a-tab-sleeps-by-itself.md), [059](059-a-sleeping-tabs-picture.md): what a sleeping tab keeps |
@@ -64,7 +64,7 @@ A budget is one of four kinds, and its kind says where its test is.
 2. **The standard session,** as a fixture. **Built:** the test kit makes it through the contract, as a person would: five Spaces, each with forty Sites (four Favourites, sixteen in two Groups, twenty in none) and eight tabs; the first Space shown, one page alive.
 3. **The counted budgets,** in the core's suite. **Built,** but for the timers (step 4).
 4. **The core's wake-ups,** counted, and the idle test. **Built:** the core has three timers of its own (the look for tabs to put to sleep, the look for tabs to tidy, and fake mode's word that memory is short); each counts when it wakes the core, and each stops when it has nothing to look for.
-5. **The timed ones,** as measurements with ceilings, and their command.
+5. **The timed ones,** as measurements with ceilings, and their command. **Built:** `Tools/test.sh budgets`, on a release build, outside `all`.
 6. **The app's,** scripted for the Mac.
 
 ### 5.1 What the core holds, measured
@@ -108,7 +108,11 @@ Counted by an allocator that counts what the core's thread has asked for and not
 | The core's timers (`budgets`, +4) | **Idle with every tab asleep, no timer is going:** the standard session at a start, with one page alive in front, no tab that could sleep and no Space tidied: in an hour none of the core's timers wakes it, and nothing is asked of the shell. A tab that could sleep wakes the core once a minute until it sleeps, and then no more. A Space that is tidied wakes it once a minute (a sixtieth of the one a second it may have), and when none is tidied, no more. Fake mode's word that memory is short is counted as the others are |
 | The counting and the looks' ends broken, a part at a time | 8 parts, 8 caught |
 
+| The timed budgets, for the core's part (`timed_budgets`, 2, and `wt-store`'s measurement of suggestions; all three set aside from the usual run, and run by `Tools/test.sh budgets`) | Each fails at the plan's number and says what it measured and on what. On this Mac (Apple M6, twelve cores, a release build), three runs on 2026-11-25: **places offered among 100,000 visits,** for one letter to three words: 0.4 to 3.5 ms at p95, where 10 is allowed. **A change to a row of 200, told across the contract** (a Group opened: the model changed, the session written, the window told, and what it is told written as the contract carries it and read again): 0.26 to 0.43 ms at p95 (median 0.18), where 2 is allowed. **A sleeping tab woken,** with the largest state and picture the core keeps: to its picture's bytes answered, 4.2 to 6.4 ms at p95 (median 1.0), where 50 is allowed; to its load asked of the shell, the same, where 100 is allowed |
+
 The test of the core's memory is in the crate of the C functions and not with the core's others: an allocator is unsafe code, which is that crate's alone.
+
+**A thing the timed tests taught:** the first reading of the row of 200 was 2.9 ms at p95, over the budget. It was the watching shell's own doing: the test kit's shell keeps every snapshot it was ever sent and copies them all to find the last. Its notes are now thrown away before each reading, and taking the snapshot out of them is not counted. The core's part was what 043 had measured.
 
 The rest is to be filled in as built.
 
@@ -128,6 +132,7 @@ And, apart from the budget: **a long row's line is large** (near 19 MB for two t
 - **The default lists' share** of the core's 30 MB: they are W4's.
 - **What SQLite holds.** Its page cache is not Rust's and is not counted (§5.1).
 - **The app's own processes,** cold start, frames: steps 5 and 6, and §2.
+- **The timed budgets on a reference device.** This Mac is faster than every one of them (D6): that a time is met here does not say it is met on an 8 GB laptop or a phone. And the shell's and the engine's parts of waking a tab (drawing the picture, beginning the load) are not in the core's measurement: 059 §8 has what was read once in an app.
 - **A margin.** A Space that was shown and left is 99,293 bytes against 102,400: a tab that grows by seventy bytes fails the test. That is what the test is for; it is said here so that whoever meets it knows the number was this near.
 
 ## 9. Done checklist
@@ -137,6 +142,6 @@ And, apart from the budget: **a long row's line is large** (near 19 MB for two t
 - [x] The standard session.
 - [x] The counted budgets: on disk, at a start, in the core's memory. One is not met (§8).
 - [x] The core's wake-ups, and the idle test.
-- [ ] The timed ones.
+- [x] The timed ones, for the core's part.
 - [ ] The app's, scripted for the Mac.
 - [ ] The gate.
