@@ -23,6 +23,7 @@ import com.tigercodes.webtiger.core.v1.WebViewSetZoom
 import com.tigercodes.webtiger.core.v1.WebViewLoad
 import com.tigercodes.webtiger.core.v1.WebViewRestore
 import com.tigercodes.webtiger.core.v1.WebViewSaveState
+import com.tigercodes.webtiger.core.v1.WebViewSnapshot
 import com.tigercodes.webtiger.core.v1.WebViewTrustCertificate
 import kotlinx.coroutines.test.runTest
 import okio.ByteString.Companion.encodeUtf8
@@ -458,6 +459,30 @@ class SystemWebViewEngineTest {
             assertEquals("the page's own", engine.answer(saveState(4)).web_view_state?.state?.utf8())
             assertEquals(2, pages.made[0].statesAsked)
             assertRefused("webview.unknown", engine.answer(saveState(9)))
+        }
+
+    private fun snapshot(id: Long, wide: Int = 800, bytes: Int = 96 * 1024) =
+        HostRequest(web_view_snapshot = WebViewSnapshot(web_view_id = id, max_width = wide, max_bytes = bytes))
+
+    @Test
+    fun aWebViewsPictureIsWhatItsPageGivesAndNoneWhenItGivesNone() =
+        runTest {
+            engine.answer(create(4))
+            // A page with none to give: answered, with no bytes and no size.
+            val none = engine.answer(snapshot(4))
+            assertNull(none.error)
+            val empty = checkNotNull(none.web_view_picture)
+            assertEquals(listOf(0, 0, 0), listOf(empty.jpeg.size, empty.width, empty.height))
+            // One with a picture: its bytes and its size, asked for as wide and as large as the core said.
+            pages.made[0].hasPicture = Pictured("the page's own".toByteArray(), 640, 480)
+            val given = checkNotNull(engine.answer(snapshot(4, wide = 640, bytes = 5_000)).web_view_picture)
+            assertEquals("the page's own", given.jpeg.utf8())
+            assertEquals(640 to 480, given.width to given.height)
+            assertEquals(listOf(800 to 96 * 1024, 640 to 5_000), pages.made[0].picturesAsked)
+            assertRefused("webview.unknown", engine.answer(snapshot(9)))
+            // Asking changes nothing: the page is there, and was asked nothing else.
+            assertEquals(0, pages.made[0].statesAsked)
+            assertTrue(pages.made[0].loaded.isEmpty())
         }
 
     @Test

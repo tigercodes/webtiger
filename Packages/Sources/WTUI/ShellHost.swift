@@ -167,7 +167,7 @@ public final class ShellHost: HostServices {
             return .error(error)
         case .ping, .webViewCreate, .webViewLoad, .webViewCommand, .webViewDestroy, .webViewFind, .webViewSetZoom, .downloadStart,
              .downloadCancel, .permissionAnswer, .dialogAnswer, .signInAnswer, .webViewTrustCertificate, .webViewFetchIcon,
-             .webViewSaveState, .webViewRestore:
+             .webViewSaveState, .webViewRestore, .webViewSnapshot:
             return await engine.answer(request)
         }
     }

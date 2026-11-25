@@ -7,7 +7,7 @@ use std::time::Duration;
 use wt_core::{TabId, WebViewId, WindowId};
 use wt_proto::v1::{
     Ack, CoreConfig, DeviceKind, MemoryLevel, QueryAwake, SleepOthers, WebViewDestroy,
-    WebViewSaveState, host_request, host_response, response,
+    WebViewSaveState, WebViewSnapshot, host_request, host_response, response,
 };
 
 use crate::app::App;
@@ -89,7 +89,7 @@ impl App {
     /// together, in that order. The state is the tab's when it arrives.
     pub fn sleep_idle_tabs(&self) {
         let due = self.state.borrow_mut().sleepers(self.sleep.0);
-        self.let_go(due);
+        self.let_go(due, true);
     }
 
     /// A look at the limit of live tabs (054): with more tabs alive than
@@ -97,18 +97,21 @@ impl App {
     /// this returns, each as the time would have put it to sleep.
     pub(crate) fn sleep_over_the_limit(&self) {
         let due = self.state.borrow_mut().over_the_limit(self.live_tabs);
-        self.let_go(due);
+        self.let_go(due, true);
     }
 
     /// The system is short of memory (055): the tabs that are out of sight
     /// with no reason to be awake are asleep when this returns, each as the
     /// time would have put it to sleep; and when it is very short, the tabs
     /// that are only on their way too. A level this core does not know is
-    /// taken for short. Done once, and nothing lasts.
+    /// taken for short. Done once, and nothing lasts. When it is very short
+    /// no tab is asked for a picture of its page (059): drawing one takes
+    /// memory, and time before the web view is let go, when there is
+    /// neither.
     pub fn memory_short(&self, level: i32) {
         let very = matches!(MemoryLevel::try_from(level), Ok(MemoryLevel::VeryShort));
         let due = self.state.borrow_mut().short_of_memory(very);
-        self.let_go(due);
+        self.let_go(due, !very);
     }
 
     /// What is awake (056), for the window that asks.
@@ -143,9 +146,10 @@ impl App {
     }
 
     /// Asks the shell for what is left to do for tabs that were put to
-    /// sleep: each one's state, where it has one worth asking for, and then
-    /// its web view let go, the two together and in that order.
-    fn let_go(&self, due: Vec<Sleeper>) {
+    /// sleep: each one's state, where it has one worth asking for; with
+    /// `pictures`, a picture of its page with it (059); and then its web
+    /// view let go. All together, and in that order.
+    fn let_go(&self, due: Vec<Sleeper>, pictures: bool) {
         for sleeper in due {
             if sleeper.ask_state {
                 let asking =
@@ -153,6 +157,14 @@ impl App {
                         .request(host_request::Kind::WebViewSaveState(WebViewSaveState {
                             web_view_id: sleeper.web_view.get(),
                         }));
+                let picturing = pictures.then(|| {
+                    self.host
+                        .request(host_request::Kind::WebViewSnapshot(WebViewSnapshot {
+                            web_view_id: sleeper.web_view.get(),
+                            max_width: crate::pictures::MOST_WIDE,
+                            max_bytes: crate::pictures::MOST_BYTES,
+                        }))
+                });
                 let app = self.clone();
                 tokio::task::spawn_local(async move {
                     // A shell that has none to give, or will not say, gives none.
@@ -160,7 +172,23 @@ impl App {
                         Ok(host_response::Kind::WebViewState(answer)) => answer.state,
                         _ => Vec::new(),
                     };
-                    app.sleeper_answered(sleeper.tab, sleeper.web_view, sleeper.engine, &state);
+                    let slept_on =
+                        app.sleeper_answered(sleeper.tab, sleeper.web_view, sleeper.engine, &state);
+                    let Some(picturing) = picturing else {
+                        return;
+                    };
+                    // The picture is kept with the state the tab sleeps on:
+                    // a tab with none wakes at its address, with nothing to
+                    // show before its page.
+                    let picture = match picturing.await {
+                        Ok(host_response::Kind::WebViewPicture(answer)) => {
+                            crate::pictures::worth_keeping(answer)
+                        }
+                        _ => None,
+                    };
+                    if let (Some(state), Some(picture)) = (slept_on, picture) {
+                        app.sleeper_pictured(state, &picture);
+                    }
                 });
             }
             let destroying =
@@ -179,15 +207,22 @@ impl App {
     /// The shell has said the state of a web view whose tab was put to
     /// sleep. It is kept when there is one and it is not too large, and is
     /// then the tab's, in the place of the one it had; with none, the one it
-    /// had stays.
-    fn sleeper_answered(&self, tab: TabId, web_view: WebViewId, engine: i32, state: &[u8]) {
+    /// had stays. The state the tab sleeps on now, when it sleeps still and
+    /// has one.
+    fn sleeper_answered(
+        &self,
+        tab: TabId,
+        web_view: WebViewId,
+        engine: i32,
+        state: &[u8],
+    ) -> Option<i64> {
         let keep = !state.is_empty() && state.len() <= MOST_STATE;
         let id = if keep {
             self.store.borrow_mut().keep_state(engine, state).ok()
         } else {
             None
         };
-        let unwanted = self
+        let (unwanted, slept_on) = self
             .state
             .borrow_mut()
             .sleeper_state_kept(tab, web_view, id);
@@ -196,6 +231,7 @@ impl App {
         }
         // The session names the state: it is written with it.
         self.persist();
+        slept_on
     }
 
     /// Asks for the state of every tab that has left the front since this

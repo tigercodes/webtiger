@@ -40,6 +40,8 @@ import com.tigercodes.webtiger.core.v1.SearchRequested
 import com.tigercodes.webtiger.core.v1.WebViewCommand
 import com.tigercodes.webtiger.core.v1.WebViewCreate
 import com.tigercodes.webtiger.core.v1.WebViewLoad
+import com.tigercodes.webtiger.core.v1.WebViewPicture
+import com.tigercodes.webtiger.core.v1.WebViewSnapshot
 import com.tigercodes.webtiger.core.v1.WebViewState
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
@@ -184,6 +186,7 @@ class SystemWebViewEngine internal constructor(
         val trust = request.web_view_trust_certificate
         val saveState = request.web_view_save_state
         val restore = request.web_view_restore
+        val snapshot = request.web_view_snapshot
         val response =
             when {
                 // The core's word on a download this adapter reported (013).
@@ -248,6 +251,7 @@ class SystemWebViewEngine internal constructor(
                 create != null -> create(create)
                 load != null -> load(load)
                 saveState != null -> state(saveState.web_view_id)
+                snapshot != null -> picture(snapshot)
                 restore != null -> go(restore.web_view_id, restore.url) { page -> page.restore(restore.state.toByteArray(), restore.url) }
                 command != null -> command(command)
                 destroy != null -> {
@@ -352,6 +356,16 @@ class SystemWebViewEngine internal constructor(
     private fun state(webViewId: Long): HostResponse {
         val page = pages[webViewId] ?: return failure("webview.unknown")
         return HostResponse(web_view_state = WebViewState(state = page.state()?.toByteString() ?: ByteString.EMPTY))
+    }
+
+    /**
+     * A picture of a web view as it is (059), for where its page will be when its tab wakes:
+     * with no bytes when there is none to give, or none as small as was asked for.
+     */
+    private fun picture(asked: WebViewSnapshot): HostResponse {
+        val page = pages[asked.web_view_id] ?: return failure("webview.unknown")
+        val taken = page.picture(asked.max_width, asked.max_bytes) ?: return HostResponse(web_view_picture = WebViewPicture())
+        return HostResponse(web_view_picture = WebViewPicture(jpeg = taken.jpeg.toByteString(), width = taken.width, height = taken.height))
     }
 
     private fun command(command: WebViewCommand): HostResponse {

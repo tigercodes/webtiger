@@ -23,7 +23,7 @@ mod shell;
 
 use std::future::Future;
 
-pub use engine::{FakeEngine, FakePage, FakeWebView};
+pub use engine::{FakeEngine, FakePage, FakeWebView, picture_of};
 pub use shell::FakeShell;
 
 /// The first bytes of a PNG, as an icon is handed over (046): its header,

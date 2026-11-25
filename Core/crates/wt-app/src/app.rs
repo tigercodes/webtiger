@@ -276,6 +276,7 @@ impl App {
             }
             request::Kind::QueryAwake(query) => answer(self.query_awake(&query)),
             request::Kind::SleepOthers(asked) => answer(self.sleep_others(&asked)),
+            request::Kind::QueryPictures(query) => answer(Ok(self.query_pictures(&query))),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
             | request::Kind::Unsubscribe(_)
@@ -840,9 +841,21 @@ impl App {
         waking
             .into_iter()
             .filter_map(|(tab, address, kept)| {
-                // From its kept state, where the store has it (051).
-                let state = kept.and_then(|id| self.store.borrow().kept_state(id).ok().flatten());
-                self.begin_load_as(tab, address, true, state)
+                // From its kept state, where the store has it (051); and
+                // with the picture kept with that state (059), which is the
+                // store's no longer than the state is.
+                let (state, picture) = kept.map_or((None, None), |id| {
+                    let store = self.store.borrow();
+                    (
+                        store.kept_state(id).ok().flatten(),
+                        store.kept_picture(id).ok().flatten(),
+                    )
+                });
+                let loading = self.begin_load_as(tab, address, true, state)?;
+                if let (Some(id), Some(picture)) = (kept, picture) {
+                    self.wake_with_picture(tab, id, picture);
+                }
+                Some(loading)
             })
             .collect()
     }

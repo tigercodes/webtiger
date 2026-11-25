@@ -213,6 +213,13 @@ internal class WebViewPage(
     }
 
     /**
+     * The WebView drawn into a picture (059). It draws itself when it is in no window, as a
+     * tab's is that is behind, and when it never was in one and has a size (the adapter suite
+     * holds it to both, on a device).
+     */
+    override fun picture(mostWide: Int, mostBytes: Int): Pictured? = webView?.let { Pictures.of(it, mostWide, mostBytes) }
+
+    /**
      * Hands the WebView a state, which it takes or does not, and says by the list it gives
      * back. One it took is loading the page the state is at: when that is `url`, the page the
      * tab is at and the core's policy was asked about, that is the load. The WebView asks the

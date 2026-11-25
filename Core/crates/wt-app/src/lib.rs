@@ -25,6 +25,7 @@ mod icons;
 mod layout;
 mod model;
 mod permissions;
+mod pictures;
 mod search;
 mod signin;
 mod spaces;

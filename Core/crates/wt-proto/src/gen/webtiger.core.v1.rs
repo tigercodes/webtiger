@@ -671,6 +671,14 @@ pub struct TabView {
     /// Since 1.45. As TabSummary's: why the tab would not be put to sleep.
     #[prost(enumeration = "KeepAwake", repeated, tag = "21")]
     pub keeps_awake: ::prost::alloc::vec::Vec<i32>,
+    /// Since 1.50. The number of the picture to show where the tab's page will
+    /// be (059): its page as it was when the tab was put to sleep, while the
+    /// tab wakes. 0 when there is none to show: the tab was not asleep, or had
+    /// no picture, or its page has arrived, or has failed. A shell asks for the
+    /// picture (QueryPictures), draws it in the page's place, and takes it away
+    /// when this is 0 again. A number is one picture, and is not used twice.
+    #[prost(uint64, tag = "22")]
+    pub picture_id: u64,
 }
 /// What the address field shows. The core builds it so that every shell shows
 /// the same thing and none can be made to lie: a page-initiated load does not
@@ -1683,6 +1691,32 @@ pub struct SleepOthers {
     #[prost(uint64, tag = "1")]
     pub window_id: u64,
 }
+/// Since 1.50. Asks for pictures of pages by their numbers (059). Answered
+/// with PicturesPage: the pictures of the numbers the core has now, in the
+/// order asked; a number it has not (the tab's page has arrived since, or
+/// the tab is gone) is left out.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct QueryPictures {
+    #[prost(uint64, repeated, tag = "1")]
+    pub picture_ids: ::prost::alloc::vec::Vec<u64>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct PicturesPage {
+    #[prost(message, repeated, tag = "1")]
+    pub pictures: ::prost::alloc::vec::Vec<PagePicture>,
+}
+/// A picture of a page as it was (059): a JPEG, and its size in pixels.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct PagePicture {
+    #[prost(uint64, tag = "1")]
+    pub picture_id: u64,
+    #[prost(bytes = "vec", tag = "2")]
+    pub jpeg: ::prost::alloc::vec::Vec<u8>,
+    #[prost(uint32, tag = "3")]
+    pub width: u32,
+    #[prost(uint32, tag = "4")]
+    pub height: u32,
+}
 /// The layout of a window (043). Since 1.33.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -2621,7 +2655,7 @@ pub struct NamedIcon {
 pub struct HostRequest {
     #[prost(
         oneof = "host_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19"
     )]
     pub kind: ::core::option::Option<host_request::Kind>,
 }
@@ -2676,11 +2710,14 @@ pub mod host_request {
         WebViewSaveState(super::WebViewSaveState),
         #[prost(message, tag = "18")]
         WebViewRestore(super::WebViewRestore),
+        /// Since 1.50
+        #[prost(message, tag = "19")]
+        WebViewSnapshot(super::WebViewSnapshot),
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct HostResponse {
-    #[prost(oneof = "host_response::Kind", tags = "1, 2, 3, 4")]
+    #[prost(oneof = "host_response::Kind", tags = "1, 2, 3, 4, 5")]
     pub kind: ::core::option::Option<host_response::Kind>,
 }
 /// Nested message and enum types in `HostResponse`.
@@ -2696,6 +2733,9 @@ pub mod host_response {
         /// Since 1.44
         #[prost(message, tag = "4")]
         WebViewState(super::WebViewState),
+        /// Since 1.50
+        #[prost(message, tag = "5")]
+        WebViewPicture(super::WebViewPicture),
     }
 }
 /// The contract's health check through the shell (Ping.via_host).
@@ -2793,6 +2833,34 @@ pub struct WebViewRestore {
     pub state: ::prost::alloc::vec::Vec<u8>,
     #[prost(string, tag = "3")]
     pub url: ::prost::alloc::string::String,
+}
+/// Since 1.50. WebViews: a picture of what a web view shows now (059): the
+/// part of its page that is in sight, as the engine last drew it, whether or
+/// not the web view is on the screen. A JPEG no wider than `max_width` pixels
+/// and of no more than `max_bytes` bytes: a shell draws it smaller until it
+/// is both. The core asks as a tab is put to sleep, keeps the picture with
+/// the web view's state, and never looks at it: it is shown where the page
+/// will be while the tab wakes. Answered with WebViewPicture, whose bytes are
+/// empty when the engine has none to give, or none that small; or
+/// "webview.unknown".
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct WebViewSnapshot {
+    #[prost(uint64, tag = "1")]
+    pub web_view_id: u64,
+    #[prost(uint32, tag = "2")]
+    pub max_width: u32,
+    #[prost(uint32, tag = "3")]
+    pub max_bytes: u32,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct WebViewPicture {
+    #[prost(bytes = "vec", tag = "1")]
+    pub jpeg: ::prost::alloc::vec::Vec<u8>,
+    /// Its size, in pixels.
+    #[prost(uint32, tag = "2")]
+    pub width: u32,
+    #[prost(uint32, tag = "3")]
+    pub height: u32,
 }
 /// System: opens an address that is not a browser's with whatever the system
 /// has for it: the mail app for a letter, the dialler for a number (007).
@@ -2979,7 +3047,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -3133,6 +3201,9 @@ pub mod request {
         QueryAwake(super::QueryAwake),
         #[prost(message, tag = "58")]
         SleepOthers(super::SleepOthers),
+        /// Since 1.50
+        #[prost(message, tag = "59")]
+        QueryPictures(super::QueryPictures),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.
@@ -3140,7 +3211,7 @@ pub mod request {
 pub struct Response {
     #[prost(
         oneof = "response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18"
     )]
     pub kind: ::core::option::Option<response::Kind>,
 }
@@ -3193,6 +3264,9 @@ pub mod response {
         /// Since 1.49
         #[prost(message, tag = "17")]
         AwakePage(super::AwakePage),
+        /// Since 1.50
+        #[prost(message, tag = "18")]
+        PicturesPage(super::PicturesPage),
     }
 }
 /// Core → shell, unasked.

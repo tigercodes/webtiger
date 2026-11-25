@@ -53,6 +53,12 @@ internal interface Page {
      */
     fun restore(state: ByteArray, url: String): Boolean
 
+    /**
+     * The web view's picture as it is now (059): a JPEG no wider than `mostWide` pixels and of
+     * no more than `mostBytes` bytes. Null when it has none to give, or none that small.
+     */
+    fun picture(mostWide: Int, mostBytes: Int): Pictured?
+
     /** Destroys the web view and releases what it held. */
     fun close()
 }

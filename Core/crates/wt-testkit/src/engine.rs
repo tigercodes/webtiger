@@ -11,8 +11,8 @@ use wt_proto::v1::{
     NavigationCommand, NavigationCommitted, NavigationFailed, NavigationFinished,
     NavigationStarted, NewWindowRequested, OutsideLinkRequested, PageActivityChanged,
     PermissionKind, PermissionRequested, PermissionWithdrawn, ProgressChanged, RendererGone,
-    SearchRequested, SignInRequested, TitleChanged, WebViewState, engine_event, host_request,
-    host_response,
+    SearchRequested, SignInRequested, TitleChanged, WebViewPicture, WebViewState, engine_event,
+    host_request, host_response,
 };
 
 /// A page of the scripted web.
@@ -78,6 +78,13 @@ fn read_state(state: &[u8]) -> Option<(Vec<String>, usize)> {
     (index < history.len()).then_some((history, index))
 }
 
+/// A web view's picture as the scripted engine gives it (059): words that
+/// say which page it is of, where a JPEG's bytes would be.
+#[must_use]
+pub fn picture_of(url: &str) -> Vec<u8> {
+    format!("scripted engine's picture of {url}").into_bytes()
+}
+
 /// The engine behind a [`crate::FakeShell`].
 #[derive(Debug)]
 pub struct FakeEngine {
@@ -92,6 +99,15 @@ pub struct FakeEngine {
     pub gives_no_state: bool,
     /// Bytes that say nothing, added to every state the engine gives.
     pub state_padding: usize,
+    /// The web views whose picture was asked for (059), in order: each with
+    /// the most pixels wide and the most bytes it was to be.
+    pub pictures_asked: Vec<(u64, u32, u32)>,
+    /// The engine has no picture to give.
+    pub gives_no_picture: bool,
+    /// Bytes that say nothing, added to every picture the engine gives.
+    pub picture_padding: usize,
+    /// The size every picture the engine gives says it has, in pixels.
+    pub picture_size: (u32, u32),
     pages: BTreeMap<String, FakePage>,
     /// The web views that exist, by id.
     pub web_views: BTreeMap<u64, FakeWebView>,
@@ -169,6 +185,10 @@ impl FakeEngine {
             refuses_states: false,
             gives_no_state: false,
             state_padding: 0,
+            pictures_asked: Vec::new(),
+            gives_no_picture: false,
+            picture_padding: 0,
+            picture_size: (800, 600),
             pages: BTreeMap::new(),
             web_views: BTreeMap::new(),
             engines,
@@ -485,6 +505,32 @@ impl FakeEngine {
                     host_response::Kind::WebViewState(WebViewState { state }),
                     Vec::new(),
                 )
+            }
+            Kind::WebViewSnapshot(snapshot) => {
+                let Some(view) = self.web_views.get(&snapshot.web_view_id) else {
+                    return (error("webview.unknown"), Vec::new());
+                };
+                self.pictures_asked.push((
+                    snapshot.web_view_id,
+                    snapshot.max_width,
+                    snapshot.max_bytes,
+                ));
+                // A web view that has been nowhere has nothing to picture;
+                // nor has any, when the engine is one that gives none: no
+                // bytes, of the size the picture would have had.
+                let mut jpeg = Vec::new();
+                if let Some(url) = view.history.get(view.index)
+                    && !self.gives_no_picture
+                {
+                    jpeg = picture_of(url);
+                    jpeg.extend(std::iter::repeat_n(b'x', self.picture_padding));
+                }
+                let picture = WebViewPicture {
+                    jpeg,
+                    width: self.picture_size.0,
+                    height: self.picture_size.1,
+                };
+                (host_response::Kind::WebViewPicture(picture), Vec::new())
             }
             Kind::WebViewRestore(restore) => {
                 if !self.web_views.contains_key(&restore.web_view_id) {

@@ -200,7 +200,19 @@ public final class WebKitEngine: HostServices {
         case let .webViewFetchIcon(fetch): return fetchIcon(fetch)
         case let .webViewSaveState(save): return state(of: save.webViewID)
         case let .webViewRestore(restore): return self.restore(restore)
+        case let .webViewSnapshot(asked): return await picture(asked)
         }
+    }
+
+    /// A picture of a web view as it is (059), for where its page will be when its tab
+    /// wakes. The requests that follow wait for it: the next lets the web view go.
+    private func picture(_ asked: WTWebViewSnapshot) async -> WTHostResponse.OneOf_Kind {
+        guard let page = pages[asked.webViewID] else { return failure("webview.unknown") }
+        return await .webViewPicture(WebKitPictures.picture(
+            of: page.webView,
+            mostWide: Int(asked.maxWidth),
+            mostBytes: Int(asked.maxBytes)
+        ))
     }
 
     /// Loads an address in a web view, as the core asked.

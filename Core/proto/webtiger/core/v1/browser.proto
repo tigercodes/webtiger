@@ -470,6 +470,13 @@ message TabView {
   bool favourite = 20;
   // Since 1.45. As TabSummary's: why the tab would not be put to sleep.
   repeated KeepAwake keeps_awake = 21;
+  // Since 1.50. The number of the picture to show where the tab's page will
+  // be (059): its page as it was when the tab was put to sleep, while the
+  // tab wakes. 0 when there is none to show: the tab was not asleep, or had
+  // no picture, or its page has arrived, or has failed. A shell asks for the
+  // picture (QueryPictures), draws it in the page's place, and takes it away
+  // when this is 0 again. A number is one picture, and is not used twice.
+  uint64 picture_id = 22;
 }
 
 enum LoadState {
@@ -1253,4 +1260,24 @@ message AwakeTab {
 // "window.unknown".
 message SleepOthers {
   uint64 window_id = 1;
+}
+
+// Since 1.50. Asks for pictures of pages by their numbers (059). Answered
+// with PicturesPage: the pictures of the numbers the core has now, in the
+// order asked; a number it has not (the tab's page has arrived since, or
+// the tab is gone) is left out.
+message QueryPictures {
+  repeated uint64 picture_ids = 1;
+}
+
+message PicturesPage {
+  repeated PagePicture pictures = 1;
+}
+
+// A picture of a page as it was (059): a JPEG, and its size in pixels.
+message PagePicture {
+  uint64 picture_id = 1;
+  bytes jpeg = 2 [(wt.redact) = true];
+  uint32 width = 3;
+  uint32 height = 4;
 }

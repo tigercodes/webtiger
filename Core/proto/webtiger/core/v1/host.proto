@@ -50,6 +50,8 @@ message HostRequest {
     // Since 1.44
     WebViewSaveState web_view_save_state = 17;
     WebViewRestore web_view_restore = 18;
+    // Since 1.50
+    WebViewSnapshot web_view_snapshot = 19;
   }
 }
 
@@ -60,6 +62,8 @@ message HostResponse {
     HostPong pong = 3;
     // Since 1.44
     WebViewState web_view_state = 4;
+    // Since 1.50
+    WebViewPicture web_view_picture = 5;
   }
 }
 
@@ -140,6 +144,28 @@ message WebViewRestore {
   uint64 web_view_id = 1;
   bytes state = 2 [(wt.redact) = true];
   string url = 3 [(wt.redact) = true];
+}
+
+// Since 1.50. WebViews: a picture of what a web view shows now (059): the
+// part of its page that is in sight, as the engine last drew it, whether or
+// not the web view is on the screen. A JPEG no wider than `max_width` pixels
+// and of no more than `max_bytes` bytes: a shell draws it smaller until it
+// is both. The core asks as a tab is put to sleep, keeps the picture with
+// the web view's state, and never looks at it: it is shown where the page
+// will be while the tab wakes. Answered with WebViewPicture, whose bytes are
+// empty when the engine has none to give, or none that small; or
+// "webview.unknown".
+message WebViewSnapshot {
+  uint64 web_view_id = 1;
+  uint32 max_width = 2;
+  uint32 max_bytes = 3;
+}
+
+message WebViewPicture {
+  bytes jpeg = 1 [(wt.redact) = true];
+  // Its size, in pixels.
+  uint32 width = 2;
+  uint32 height = 3;
 }
 
 // System: opens an address that is not a browser's with whatever the system

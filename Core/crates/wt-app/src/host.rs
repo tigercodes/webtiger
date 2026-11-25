@@ -100,6 +100,8 @@ enum Expected {
     Ack,
     /// A web view's state (051).
     State,
+    /// A web view's picture (059).
+    Picture,
 }
 
 impl Expected {
@@ -123,6 +125,7 @@ impl Expected {
             | host_request::Kind::WebViewFetchIcon(_)
             | host_request::Kind::WebViewRestore(_) => Expected::Ack,
             host_request::Kind::WebViewSaveState(_) => Expected::State,
+            host_request::Kind::WebViewSnapshot(_) => Expected::Picture,
         }
     }
 
@@ -135,7 +138,8 @@ impl Expected {
             }),
             (Expected::Pong, Some(kind @ host_response::Kind::Pong(_)))
             | (Expected::Ack, Some(kind @ host_response::Kind::Ack(_)))
-            | (Expected::State, Some(kind @ host_response::Kind::WebViewState(_))) => Ok(kind),
+            | (Expected::State, Some(kind @ host_response::Kind::WebViewState(_)))
+            | (Expected::Picture, Some(kind @ host_response::Kind::WebViewPicture(_))) => Ok(kind),
             _ => Err(HostError::new("host.wrong_answer")),
         }
     }

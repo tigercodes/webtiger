@@ -44,6 +44,17 @@ internal class FakePage(
         return hasState
     }
 
+    /** What the page gives as its picture: none, until a test says. */
+    var hasPicture: Pictured? = null
+
+    /** The pictures the page was asked for: how wide, and of how many bytes, each might be. */
+    val picturesAsked = ArrayList<Pair<Int, Int>>()
+
+    override fun picture(mostWide: Int, mostBytes: Int): Pictured? {
+        picturesAsked.add(mostWide to mostBytes)
+        return hasPicture
+    }
+
     /** The states the page was handed, each with the address it came with. */
     val restored = ArrayList<Pair<String, String>>()
 

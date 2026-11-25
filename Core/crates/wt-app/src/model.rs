@@ -2,6 +2,7 @@
 //! no I/O: [`crate::App`] changes it and asks the shell for the rest.
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::rc::Rc;
 
 use wt_core::words::{all_found, typed_words};
 use wt_core::{
@@ -10,7 +11,7 @@ use wt_core::{
 };
 use wt_proto::v1::{
     AddressView, AwakePage, AwakeTab, DialogKind, DialogPrompt, DownloadPrompt, EngineKind,
-    FindView, GroupSummary, IconNamed, KeepAwake, Layout, LoadState, NavigationFailed,
+    FindView, GroupSummary, IconNamed, KeepAwake, Layout, LoadState, NavigationFailed, PagePicture,
     PermissionKind, PermissionPrompt, PromptView, SignInPrompt, TabSummary, TabView,
     WindowSnapshot, ZoomView, address_view, engine_event, prompt_view,
 };
@@ -334,6 +335,11 @@ pub(crate) struct Tab {
     /// be forgotten (051): while it is the tab's, its state is neither asked
     /// for nor kept. Another web view's list starts anew.
     withheld: Option<WebViewId>,
+    /// The picture that is shown where the tab's page will be (059): the
+    /// tab was woken from a sleep it has a picture of, and is on its way to
+    /// its page still. `None` once the page has arrived, or has failed, or
+    /// the tab was sent somewhere else: the picture is held by nothing then.
+    waking: Option<Rc<PagePicture>>,
 }
 
 /// What a page is doing that would keep its tab awake, as far as an engine's
@@ -445,6 +451,7 @@ impl Tab {
             kept: None,
             commits: 0,
             withheld: None,
+            waking: None,
         }
     }
 
@@ -649,6 +656,9 @@ impl Tab {
         // address typed. Where the load lands is its home.
         self.homing = self.site.as_ref().is_some_and(|site| site.home == address);
         self.asleep = false;
+        // Wherever it is sent, the picture of where it slept is not of that
+        // (059). (A tab that wakes is given its picture after this.)
+        self.waking = None;
         self.own_load = true;
         self.pending = Some(address);
         self.load = Load::Loading;
@@ -670,6 +680,9 @@ impl Tab {
     fn fail(&mut self, code: &str) {
         // Nothing came of a load of the Site's home: its home is as it was.
         self.homing = false;
+        // Nor of the page a picture stood in for (059): what is shown is the
+        // failure.
+        self.waking = None;
         self.load = Load::Failed;
         self.progress = 0.0;
         self.passable = None;
@@ -692,6 +705,8 @@ impl Tab {
             }
             Kind::NavigationCommitted(committed) => {
                 self.commits = self.commits.wrapping_add(1);
+                // The page has arrived: its picture has done its work (059).
+                self.waking = None;
                 // An address the engine reports but the parser refuses is
                 // shown as no address at all rather than as the old one.
                 self.committed = Address::parse(&committed.url).ok();
@@ -733,6 +748,9 @@ impl Tab {
                     self.load = Load::Idle;
                     self.progress = 1.0;
                 }
+                // Nothing more is coming that a picture could stand in for
+                // (059).
+                self.waking = None;
             }
             Kind::NavigationFailed(failed) => {
                 // The page an icon was waiting for is not coming (046).
@@ -740,6 +758,9 @@ impl Tab {
                 if failed.code == "net.cancelled" {
                     // The user stopped it, or another load replaced it: the
                     // field goes back to the page that is still on screen.
+                    // Nor is the page coming that a picture stood in for
+                    // (059).
+                    self.waking = None;
                     self.homing = false;
                     self.load = Load::Idle;
                     self.progress = 0.0;
@@ -898,6 +919,7 @@ impl Tab {
             site_name: self.site_name(),
             favourite: self.favourite,
             keeps_awake: self.keeps_awake(),
+            picture_id: self.waking.as_ref().map_or(0, |picture| picture.picture_id),
         }
     }
 
@@ -1902,27 +1924,48 @@ impl State {
     /// the store as `id`; or, with `None`, the shell had none to give. It is
     /// the tab's while the tab is asleep still, out of that web view. What
     /// is to be dropped from the store: the state the tab had; or the new
-    /// one, when the tab was woken before it came.
+    /// one, when the tab was woken before it came. And the state the tab
+    /// sleeps on now, when it sleeps still: a picture of its page is kept
+    /// with that one (059).
     pub(crate) fn sleeper_state_kept(
         &mut self,
         tab: TabId,
         web_view: WebViewId,
         id: Option<i64>,
-    ) -> Vec<i64> {
+    ) -> (Vec<i64>, Option<i64>) {
         let waiting = self
             .tabs
             .get_mut(&tab)
             .filter(|tab| tab.asleep && tab.sleeping_with == Some(web_view));
         let Some(tab) = waiting else {
-            return id.into_iter().collect();
+            return (id.into_iter().collect(), None);
         };
         tab.sleeping_with = None;
-        match id {
+        let unwanted = match id {
             Some(id) => tab.kept.replace(id).into_iter().collect(),
             // The one it had from when it left the front is of the same
             // page: with none given now, it is the tab's still.
             None => Vec::new(),
+        };
+        (unwanted, tab.kept)
+    }
+
+    /// A tab that has just been woken is shown with this picture where its
+    /// page will be (059), until its page arrives. (Its window is to be told
+    /// already: the tab was sent on its way a moment ago.)
+    pub(crate) fn wakes_with(&mut self, tab: TabId, picture: PagePicture) {
+        if let Some(tab) = self.tabs.get_mut(&tab) {
+            tab.waking = Some(Rc::new(picture));
         }
+    }
+
+    /// The picture of that number (059), while some tab is shown with it.
+    pub(crate) fn picture(&self, number: u64) -> Option<PagePicture> {
+        self.tabs
+            .values()
+            .filter_map(|tab| tab.waking.as_deref())
+            .find(|picture| picture.picture_id == number)
+            .cloned()
     }
 
     /// A tab's state was kept in the store as `id`; or, with `None`, there
@@ -3962,6 +4005,10 @@ impl State {
             if tab.login_set == login_set {
                 self.states_to_drop.extend(tab.kept.take());
                 tab.withheld = tab.web_view;
+                // Nor is a picture of a page that was visited shown (059).
+                if tab.waking.take().is_some() {
+                    self.dirty.insert(tab.window);
+                }
             }
         }
     }

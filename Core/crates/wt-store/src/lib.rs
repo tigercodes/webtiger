@@ -39,6 +39,7 @@ pub use private::PRIVATE_DOWNLOADS_FROM;
 pub use schema::SCHEMA_VERSION;
 pub use session::{SavedGroup, SavedTab};
 pub use space::Logins;
+pub use state::KeptPicture;
 pub use suggest::{MAX_SUGGESTIONS, Suggested};
 
 /// Why the store could not do what was asked, as the code a shell is told

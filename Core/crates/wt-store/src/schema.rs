@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use crate::StoreError;
 
 /// The version this build's store is at.
-pub const SCHEMA_VERSION: u32 = 16;
+pub const SCHEMA_VERSION: u32 = 17;
 
 /// The migrations, in order: `MIGRATIONS[n]` takes version `n` to `n + 1`.
 const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
@@ -196,6 +196,12 @@ const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
          state BLOB NOT NULL
      ) STRICT;
      ALTER TABLE tab ADD COLUMN state_id INTEGER NOT NULL DEFAULT 0;",
+    // 17 (W3, 059): the picture of a sleeping tab's page, with its state: a
+    // JPEG and its size in pixels. NULL, and nought by nought, for a state
+    // with none: which is every state there was.
+    "ALTER TABLE tab_state ADD COLUMN picture BLOB;
+     ALTER TABLE tab_state ADD COLUMN picture_width INTEGER NOT NULL DEFAULT 0;
+     ALTER TABLE tab_state ADD COLUMN picture_height INTEGER NOT NULL DEFAULT 0;",
 ];
 
 pub(crate) fn version(connection: &Connection) -> Result<u32, StoreError> {

@@ -1256,6 +1256,17 @@ public nonisolated struct WTTabView: @unchecked Sendable {
     set {_uniqueStorage()._keepsAwake = newValue}
   }
 
+  /// Since 1.50. The number of the picture to show where the tab's page will
+  /// be (059): its page as it was when the tab was put to sleep, while the
+  /// tab wakes. 0 when there is none to show: the tab was not asleep, or had
+  /// no picture, or its page has arrived, or has failed. A shell asks for the
+  /// picture (QueryPictures), draws it in the page's place, and takes it away
+  /// when this is 0 again. A number is one picture, and is not used twice.
+  public var pictureID: UInt64 {
+    get {_storage._pictureID}
+    set {_uniqueStorage()._pictureID = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2769,6 +2780,53 @@ public nonisolated struct WTSleepOthers: Sendable {
   public init() {}
 }
 
+/// Since 1.50. Asks for pictures of pages by their numbers (059). Answered
+/// with PicturesPage: the pictures of the numbers the core has now, in the
+/// order asked; a number it has not (the tab's page has arrived since, or
+/// the tab is gone) is left out.
+public nonisolated struct WTQueryPictures: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var pictureIds: [UInt64] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct WTPicturesPage: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var pictures: [WTPagePicture] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// A picture of a page as it was (059): a JPEG, and its size in pixels.
+public nonisolated struct WTPagePicture: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var pictureID: UInt64 = 0
+
+  public var jpeg: Data = Data()
+
+  public var width: UInt32 = 0
+
+  public var height: UInt32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
@@ -4002,7 +4060,7 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TabView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}web_view_id\0\u{1}address\0\u{1}title\0\u{3}load_state\0\u{1}progress\0\u{3}can_go_back\0\u{3}can_go_forward\0\u{3}error_code\0\u{1}engine\0\u{3}login_set_id\0\u{1}find\0\u{1}zoom\0\u{1}prompt\0\u{3}certificate_passable\0\u{3}certificate_host\0\u{1}kept\0\u{1}away\0\u{3}site_name\0\u{1}favourite\0\u{3}keeps_awake\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}web_view_id\0\u{1}address\0\u{1}title\0\u{3}load_state\0\u{1}progress\0\u{3}can_go_back\0\u{3}can_go_forward\0\u{3}error_code\0\u{1}engine\0\u{3}login_set_id\0\u{1}find\0\u{1}zoom\0\u{1}prompt\0\u{3}certificate_passable\0\u{3}certificate_host\0\u{1}kept\0\u{1}away\0\u{3}site_name\0\u{1}favourite\0\u{3}keeps_awake\0\u{3}picture_id\0")
 
   fileprivate class _StorageClass {
     var _tabID: UInt64 = 0
@@ -4026,6 +4084,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _siteName: String = String()
     var _favourite: Bool = false
     var _keepsAwake: [WTKeepAwake] = []
+    var _pictureID: UInt64 = 0
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -4057,6 +4116,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _siteName = source._siteName
       _favourite = source._favourite
       _keepsAwake = source._keepsAwake
+      _pictureID = source._pictureID
     }
   }
 
@@ -4096,6 +4156,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 19: try { try decoder.decodeSingularStringField(value: &_storage._siteName) }()
         case 20: try { try decoder.decodeSingularBoolField(value: &_storage._favourite) }()
         case 21: try { try decoder.decodeRepeatedEnumField(value: &_storage._keepsAwake) }()
+        case 22: try { try decoder.decodeSingularUInt64Field(value: &_storage._pictureID) }()
         default: break
         }
       }
@@ -4171,6 +4232,9 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       if !_storage._keepsAwake.isEmpty {
         try visitor.visitPackedEnumField(value: _storage._keepsAwake, fieldNumber: 21)
       }
+      if _storage._pictureID != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._pictureID, fieldNumber: 22)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4201,6 +4265,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._siteName != rhs_storage._siteName {return false}
         if _storage._favourite != rhs_storage._favourite {return false}
         if _storage._keepsAwake != rhs_storage._keepsAwake {return false}
+        if _storage._pictureID != rhs_storage._pictureID {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -6667,6 +6732,111 @@ nonisolated extension WTSleepOthers: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
   public static func ==(lhs: WTSleepOthers, rhs: WTSleepOthers) -> Bool {
     if lhs.windowID != rhs.windowID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTQueryPictures: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".QueryPictures"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}picture_ids\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedUInt64Field(value: &self.pictureIds) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.pictureIds.isEmpty {
+      try visitor.visitPackedUInt64Field(value: self.pictureIds, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTQueryPictures, rhs: WTQueryPictures) -> Bool {
+    if lhs.pictureIds != rhs.pictureIds {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTPicturesPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PicturesPage"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}pictures\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.pictures) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.pictures.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.pictures, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTPicturesPage, rhs: WTPicturesPage) -> Bool {
+    if lhs.pictures != rhs.pictures {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTPagePicture: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PagePicture"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}picture_id\0\u{1}jpeg\0\u{1}width\0\u{1}height\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.pictureID) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.jpeg) }()
+      case 3: try { try decoder.decodeSingularUInt32Field(value: &self.width) }()
+      case 4: try { try decoder.decodeSingularUInt32Field(value: &self.height) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.pictureID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.pictureID, fieldNumber: 1)
+    }
+    if !self.jpeg.isEmpty {
+      try visitor.visitSingularBytesField(value: self.jpeg, fieldNumber: 2)
+    }
+    if self.width != 0 {
+      try visitor.visitSingularUInt32Field(value: self.width, fieldNumber: 3)
+    }
+    if self.height != 0 {
+      try visitor.visitSingularUInt32Field(value: self.height, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTPagePicture, rhs: WTPagePicture) -> Bool {
+    if lhs.pictureID != rhs.pictureID {return false}
+    if lhs.jpeg != rhs.jpeg {return false}
+    if lhs.width != rhs.width {return false}
+    if lhs.height != rhs.height {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -11,11 +11,12 @@ use wt_core::Clock;
 use wt_proto::v1::{
     ActivateTab, ArchiveEntry, CloseTab, ColourGroup, CoreConfig, EngineEvent, EngineInfo,
     EngineKind, Envelope, FakeOptions, ForgetArchived, HostResponse, Icon, KeepTab, Layout,
-    LetGoSite, MakeGroup, MoveGroup, MoveTab, MoveToGroup, OpenTab, OpenWindow, Platform,
-    QueryArchive, QueryIcons, RemoveGroup, RenameGroup, Request, RestoreArchived, SendSiteHome,
-    SetFavourite, SetLayout, SetSpaceTidying, ShutGroup, SubmitAddress, Subscribe, TestMode,
-    UndoArrangement, WindowSnapshot, WindowTopic, envelope, event, forget_archived, host_request,
-    host_response, move_tab, request, response, snapshot, subscribe,
+    LetGoSite, MakeGroup, MoveGroup, MoveTab, MoveToGroup, OpenTab, OpenWindow, PagePicture,
+    Platform, QueryArchive, QueryIcons, QueryPictures, RemoveGroup, RenameGroup, Request,
+    RestoreArchived, SendSiteHome, SetFavourite, SetLayout, SetSpaceTidying, ShutGroup,
+    SubmitAddress, Subscribe, TestMode, UndoArrangement, WindowSnapshot, WindowTopic, envelope,
+    event, forget_archived, host_request, host_response, move_tab, request, response, snapshot,
+    subscribe,
 };
 use wt_proto::{CONTRACT_MAJOR, CONTRACT_MINOR};
 
@@ -41,6 +42,11 @@ pub struct FakeShell {
     /// the core at `release_states`.
     pub slow_states: bool,
     slow_answers: VecDeque<(u64, host_response::Kind)>,
+    /// A web view's picture is taken when it is asked for (059), and said
+    /// only when `release_pictures` is called: a shell that is slow to
+    /// draw one.
+    pub hold_pictures: bool,
+    held_pictures: VecDeque<(u64, host_response::Kind)>,
     /// How many times a web view's state was asked for.
     states_asked: usize,
     /// Answer the next host request with this instead of the engine's answer.
@@ -162,6 +168,8 @@ impl FakeShell {
             held_states: VecDeque::new(),
             slow_states: false,
             slow_answers: VecDeque::new(),
+            hold_pictures: false,
+            held_pictures: VecDeque::new(),
             states_asked: 0,
             answer_next_with: None,
             host_requests: Vec::new(),
@@ -273,6 +281,25 @@ impl FakeShell {
                         }
                         continue;
                     }
+                    // A web view's picture (059) is the scripted engine's to
+                    // answer too, and is listed there
+                    // (`engine.pictures_asked`): it is asked whenever a tab
+                    // with a state is put to sleep, whatever else a test is
+                    // counting.
+                    if let Some(kind @ host_request::Kind::WebViewSnapshot(_)) = request.kind {
+                        let (answer, _) = self.engine.answer(kind);
+                        if self.hold_pictures {
+                            self.held_pictures.push_back((envelope.id, answer));
+                        } else {
+                            self.dispatcher.accept(Envelope {
+                                id: envelope.id,
+                                body: Some(envelope::Body::HostResponse(HostResponse {
+                                    kind: Some(answer),
+                                })),
+                            });
+                        }
+                        continue;
+                    }
                     self.order.push("host_request");
                     let Some(kind) = request.kind else { continue };
                     self.host_requests.push(kind.clone());
@@ -325,6 +352,20 @@ impl FakeShell {
         }
         self.slow_states = false;
         while let Some((id, answer)) = self.slow_answers.pop_front() {
+            self.dispatcher.accept(Envelope {
+                id,
+                body: Some(envelope::Body::HostResponse(HostResponse {
+                    kind: Some(answer),
+                })),
+            });
+        }
+    }
+
+    /// Says the pictures held back while `hold_pictures` was set, each as
+    /// its web view was when it was asked for, and stops holding.
+    pub fn release_pictures(&mut self) {
+        self.hold_pictures = false;
+        while let Some((id, answer)) = self.held_pictures.pop_front() {
             self.dispatcher.accept(Envelope {
                 id,
                 body: Some(envelope::Body::HostResponse(HostResponse {
@@ -502,6 +543,19 @@ impl FakeShell {
         match answer {
             response::Kind::IconsPage(page) => page.icons,
             other => panic!("QueryIcons answers IconsPage, not {other:?}"),
+        }
+    }
+
+    /// The pictures of pages with these numbers (059), as the core answers.
+    pub async fn query_pictures(&mut self, numbers: &[u64]) -> Vec<PagePicture> {
+        let answer = self
+            .request(request::Kind::QueryPictures(QueryPictures {
+                picture_ids: numbers.to_vec(),
+            }))
+            .await;
+        match answer {
+            response::Kind::PicturesPage(page) => page.pictures,
+            other => panic!("QueryPictures answers PicturesPage, not {other:?}"),
         }
     }
 
