@@ -3793,6 +3793,34 @@ impl State {
         Some(self.guard.for_page(tab.space, tab.login_set, tab.site()))
     }
 
+    /// Whether an address handed in from outside the browser is cleaned
+    /// (068) when it is opened in a window: under the switches of the Space
+    /// the window shows, and everywhere's. It comes from no page, so no
+    /// site's switch is its.
+    pub(crate) fn cleans_from_outside(&self, window: WindowId) -> bool {
+        let front = self
+            .windows
+            .get(&window)
+            .and_then(Window::shown)
+            .and_then(|row| self.tabs.get(&row.front));
+        front.is_some_and(|tab| self.guard.for_page(tab.space, tab.login_set, None).0)
+    }
+
+    /// Whether a link of the page in a web view is cleaned (068) when it is
+    /// opened in a tab of its own: when it leads to another site than the
+    /// page's, and Guard is on for the page. Within one site nothing is
+    /// cleaned.
+    pub(crate) fn cleans_link_from(&self, web_view: WebViewId, to: &Address) -> bool {
+        let Some(tab) = self
+            .web_views
+            .get(&web_view)
+            .and_then(|id| self.tabs.get(id))
+        else {
+            return false;
+        };
+        tab.site() != to.site() && self.guard.for_page(tab.space, tab.login_set, tab.site()).0
+    }
+
     /// Sets everywhere's switch for Guard (067). Every window is told.
     pub(crate) fn set_guard_everywhere(&mut self, on: bool) {
         self.guard.off_everywhere = !on;

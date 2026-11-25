@@ -637,6 +637,13 @@ impl App {
         let Some(address) = Address::web(&asked.url) else {
             return;
         };
+        // A link that leads to another site is opened without what is there
+        // to follow the click (068), where Guard is on for the page.
+        let address = if self.state.borrow().cleans_link_from(web_view, &address) {
+            address.cleaned().unwrap_or(address)
+        } else {
+            address
+        };
         let opened = self
             .state
             .borrow_mut()
@@ -716,6 +723,13 @@ impl App {
         // on to the system (007).
         let Some(address) = Address::web(&asked.url) else {
             return refuse(AppError::new("address.not_web").field("url"));
+        };
+        // What is there to follow the click that brought it here is taken out
+        // (068), where Guard is on for the window's Space.
+        let address = if self.state.borrow().cleans_from_outside(window) {
+            address.cleaned().unwrap_or(address)
+        } else {
+            address
         };
         self.open_in_front(window, front, address)
     }

@@ -16,6 +16,43 @@ use std::str::FromStr as _;
 
 use url::{Host, Position, Url};
 
+/// The names of the parts of a query that exist to follow a click from one
+/// site to another (068): what the big advertising and mailing systems add
+/// to the links they hand out, to tell who clicked and from which campaign.
+/// No page needs one to show itself. In small letters; a name is one of
+/// these whatever its case. And, beside them, every name that begins
+/// `utm_`, which is a family of them.
+const FOLLOWS_A_CLICK: [&str; 18] = [
+    // Google's.
+    "gclid",
+    "gclsrc",
+    "dclid",
+    "gbraid",
+    "wbraid",
+    "_gl",
+    // Meta's.
+    "fbclid",
+    "igshid",
+    // Microsoft's, X's, TikTok's, LinkedIn's, Yandex's.
+    "msclkid",
+    "twclid",
+    "ttclid",
+    "li_fat_id",
+    "yclid",
+    // The mailing systems': Mailchimp's, HubSpot's, Marketo's.
+    "mc_eid",
+    "mc_cid",
+    "_hsenc",
+    "_hsmi",
+    "mkt_tok",
+];
+
+/// Whether a part of a query, by its name, is there to follow a click.
+fn follows_a_click(name: &str) -> bool {
+    let name = name.to_ascii_lowercase();
+    name.starts_with("utm_") || FOLLOWS_A_CLICK.contains(&name.as_str())
+}
+
 /// An absolute address, parsed by the WHATWG URL Standard.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Address {
@@ -149,6 +186,30 @@ impl Address {
             "http" => Security::Insecure,
             _ => Security::Local,
         }
+    }
+
+    /// The address without the parts of its query that exist to follow a
+    /// click from one site to another (068). `None` when it has none of
+    /// them: the address is then as it should be. Whatever else the query
+    /// has stays, in its order, as it was written; a query left with nothing
+    /// goes, with its `?`; nothing else of the address is touched.
+    #[must_use]
+    pub fn cleaned(&self) -> Option<Address> {
+        let query = self.url.query()?;
+        let kept: Vec<&str> = query
+            .split('&')
+            .filter(|part| !follows_a_click(part.split('=').next().unwrap_or(part)))
+            .collect();
+        if kept.len() == query.split('&').count() {
+            return None;
+        }
+        let mut url = self.url.clone();
+        if kept.is_empty() {
+            url.set_query(None);
+        } else {
+            url.set_query(Some(&kept.join("&")));
+        }
+        Some(Address { url })
     }
 
     /// What the address field shows while it is not being edited: the host
@@ -717,5 +778,78 @@ mod tests {
             !asked_directly.is_tuple(),
             "an origin of its own, and no site's"
         );
+    }
+
+    #[test]
+    fn what_follows_a_click_is_taken_out_of_an_address_and_nothing_else_is() {
+        let cleaned = |text: &str| {
+            Address::parse(text)
+                .unwrap()
+                .cleaned()
+                .map(|address| address.as_str().to_owned())
+        };
+        // Each name, alone: the query goes with its `?`, and the fragment stays.
+        for name in FOLLOWS_A_CLICK {
+            assert_eq!(
+                cleaned(&format!("https://example.com/a/page?{name}=Xy9_-z#part")).as_deref(),
+                Some("https://example.com/a/page#part"),
+                "{name}"
+            );
+        }
+        // The family, whatever follows `utm_`; and any of them whatever its case.
+        for name in [
+            "utm_source",
+            "utm_medium",
+            "utm_campaign",
+            "utm_term",
+            "utm_content",
+            "utm_id",
+            "utm_anything",
+            "UTM_Source",
+            "FBCLID",
+            "GclId",
+        ] {
+            assert_eq!(
+                cleaned(&format!("https://example.com/?{name}=x")).as_deref(),
+                Some("https://example.com/"),
+                "{name}"
+            );
+        }
+        // Among others: the others stay, in their order, exactly as they were written,
+        // wherever the ones that go were.
+        assert_eq!(
+            cleaned("https://shop.example.com/item?utm_source=mail&id=42&fbclid=AbC&colour=sea%20green&q=a+b&flag&empty=&gclid=1").as_deref(),
+            Some("https://shop.example.com/item?id=42&colour=sea%20green&q=a+b&flag&empty=")
+        );
+        assert_eq!(
+            cleaned("https://example.com/?a=1&utm_source=x&a=2&utm_medium=y&a=3").as_deref(),
+            Some("https://example.com/?a=1&a=2&a=3")
+        );
+        // One with no value, and one whose value has an `=` in it.
+        assert_eq!(
+            cleaned("https://example.com/?fbclid&id=1").as_deref(),
+            Some("https://example.com/?id=1")
+        );
+        assert_eq!(
+            cleaned("https://example.com/?id=1&mkt_tok=a=b=c").as_deref(),
+            Some("https://example.com/?id=1")
+        );
+    }
+
+    #[test]
+    fn an_address_with_nothing_that_follows_a_click_is_as_it_is() {
+        for text in [
+            "https://example.com/",
+            "https://example.com/a/page?id=42&colour=sea%20green#part",
+            "https://example.com/?",
+            // A name that only begins or ends like one, or is the family's without its mark.
+            "https://example.com/?gclidx=1&xfbclid=2&utm=3&utmsource=4&my_utm_source=5",
+            // In the path or the fragment, or as a value: not a part of the query by that name.
+            "https://example.com/utm_source=x/fbclid?id=utm_source#fbclid=1",
+            "about:blank",
+            "data:text/plain,utm_source=x",
+        ] {
+            assert!(Address::parse(text).unwrap().cleaned().is_none(), "{text}");
+        }
     }
 }
