@@ -65,6 +65,7 @@ message WindowSnapshot { … string undo_arrangement = 13; }   // the kind of th
 - **A tab that has come since** is after the others when a row is put back: it is no Site, whatever was done to it since having been undone before.
 - **Each window's row has its own line**, as it has its own Groups (041): what is done in one window is not another's to undo.
 - **What is put back is then what is kept** across a quit, as any arrangement is: only the line of what could be undone is the run's.
+- **Since 061 the line is the visit's.** A Space that no window shows, with nothing of it alive, is put away ([061](061-a-space-put-away.md)), and its row's line goes with it: after coming back to such a Space there is nothing of its arrangement to undo. A line is fifty copies of its row, and was four fifths of what such a Space held ([060](060-the-budgets-as-tests.md) §5.1).
 - **A kind a shell does not know** is undone all the same: the kind is a name for the command, and nothing goes by it.
 
 **The shells, as built** (D4 to D6):

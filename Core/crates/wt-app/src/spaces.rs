@@ -124,6 +124,28 @@ impl App {
         }
     }
 
+    /// Puts away each Space that no window shows and of which nothing is
+    /// alive (061): the model lets go of its row, and what the session
+    /// keeps of it is what is left. Only where the store has that: a store
+    /// that refused the last writing keeps the Space in the model, where
+    /// the next writing has it still.
+    pub(crate) fn put_away_idle_spaces(&self) {
+        let idle = self.state.borrow().idle_spaces();
+        for space in idle {
+            let stored = {
+                let state = self.state.borrow();
+                let written = self.written.borrow();
+                state.kept_of(space).is_some_and(|(tabs, groups)| {
+                    written.rows.get(&space).map(Vec::as_slice) == Some(tabs)
+                        && written.groups.get(&space).map_or(&[][..], Vec::as_slice) == groups
+                })
+            };
+            if stored {
+                self.state.borrow_mut().put_away(space);
+            }
+        }
+    }
+
     /// The Spaces, in their order, and which of them share their logins.
     pub(crate) fn query_spaces(&self) -> response::Kind {
         let state = self.state.borrow();
@@ -295,6 +317,10 @@ impl App {
             };
             return refuse(AppError::new(code).field(field));
         }
+        // The Space may have been away (061), where nothing looked at its
+        // tabs: those that are past its time are tidied before the window
+        // is told of its row (049), so that none shows and then goes.
+        self.tidy();
         // A tab that came back from the session is loaded when it comes in
         // front (009): the one in front of the Space now shown is. The
         // window shows the Space whatever becomes of that load.

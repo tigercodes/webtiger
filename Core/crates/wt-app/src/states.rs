@@ -231,6 +231,8 @@ impl App {
         }
         // The session names the state: it is written with it.
         self.persist();
+        // And a Space that was only waiting for this to be put away is (061).
+        self.put_away_idle_spaces();
         slept_on
     }
 

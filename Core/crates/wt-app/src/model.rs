@@ -1554,8 +1554,9 @@ impl State {
     /// A window shows another Space (024 §3): that Space's row, as it was
     /// left, or as the session kept it, or one empty tab. The row of the
     /// Space it showed stays as it is. The Space the window shows already
-    /// changes nothing. Refused with the code for a window, or a Space,
-    /// that is not there.
+    /// changes nothing. (A Space that was put away, 061, is one the window
+    /// has no row of: its row is made as the session kept it.) Refused with
+    /// the code for a window, or a Space, that is not there.
     pub(crate) fn switch_space(
         &mut self,
         window_id: WindowId,
@@ -1591,6 +1592,56 @@ impl State {
         }
         self.dirty.insert(window_id);
         Ok(())
+    }
+
+    /// The Spaces that can be put away (061): of the window that keeps the
+    /// session, each that the window does not show, none of whose tabs has
+    /// a web view, and none of whose tabs waits still for the state it was
+    /// asked for as it was put to sleep (053).
+    pub(crate) fn idle_spaces(&self) -> Vec<SpaceId> {
+        let Some(window) = self.session_window.and_then(|id| self.windows.get(&id)) else {
+            return Vec::new();
+        };
+        window
+            .rows
+            .iter()
+            .filter(|(space, _)| **space != window.space)
+            .filter(|(_, row)| {
+                row.tabs.iter().all(|id| {
+                    self.tabs
+                        .get(id)
+                        .is_none_or(|tab| tab.web_view.is_none() && tab.sleeping_with.is_none())
+                })
+            })
+            .map(|(space, _)| *space)
+            .collect()
+    }
+
+    /// What the session keeps of a Space, as the model last said it
+    /// ([`State::session`]): its tabs, and its Groups. `None` where no
+    /// session is kept, or none of that Space.
+    pub(crate) fn kept_of(&self, space: SpaceId) -> Option<(&[SavedTab], &[SavedGroup])> {
+        let tabs = self.saved.as_ref()?.get(&space)?;
+        let groups = self.saved_groups.get(&space).map_or(&[][..], Vec::as_slice);
+        Some((tabs, groups))
+    }
+
+    /// Puts a Space away (061): its row goes from the window that keeps the
+    /// session, and its tabs from the model, with the row's line of things
+    /// to undo (044). What the session keeps of it stays, and is what its
+    /// row is made from when it is shown again, as at a start. The states
+    /// its tabs sleep on are the store's still: the session names them.
+    /// Only of a Space [`State::idle_spaces`] names.
+    pub(crate) fn put_away(&mut self, space: SpaceId) {
+        let Some(window) = self.session_window.and_then(|id| self.windows.get_mut(&id)) else {
+            return;
+        };
+        let Some(row) = window.rows.remove(&space) else {
+            return;
+        };
+        for id in row.tabs {
+            self.tabs.remove(&id);
+        }
     }
 
     /// The tabs in front that are asleep, and where each was (009): each is

@@ -284,11 +284,14 @@ async fn held_with_spaces_shown_and_left(spaces: usize, arranged: bool) -> isize
 }
 
 /// What a Space that this run has shown and left comes to, with nothing of
-/// it alive: what four more of them add to a session of one, each.
+/// it alive: what three more of them add to a session of two, each. (Of
+/// two, and not of one: with a second Space, the first has itself been left
+/// and shown again, as it has with five. A session of one Space has only
+/// the Space that is shown, with all it has gathered.)
 async fn a_space_shown_and_left(arranged: bool) -> isize {
-    let one = held_with_spaces_shown_and_left(1, arranged).await;
+    let two = held_with_spaces_shown_and_left(2, arranged).await;
     let five = held_with_spaces_shown_and_left(SPACES, arranged).await;
-    (five - one) / 4
+    (five - two) / 3
 }
 
 #[test]
@@ -305,7 +308,6 @@ fn a_space_that_was_shown_and_left_with_nothing_live_is_no_more_than_100_kb() {
 }
 
 #[test]
-#[ignore = "not met (060 §8): a Space whose row was arranged in this run holds the row as it was before each of the last fifty things done to it; this measures it, and fails at the budget"]
 fn a_space_that_was_arranged_shown_and_left_with_nothing_live_is_no_more_than_100_kb() {
     run(async {
         let space = a_space_shown_and_left(true).await;

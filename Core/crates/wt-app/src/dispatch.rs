@@ -362,6 +362,9 @@ impl Dispatcher {
         // What is published is what is kept: the session is written here,
         // when it has changed (009).
         self.app.persist();
+        // And a Space that no window shows, with nothing alive, is put away
+        // (061): written, it is the store's to keep.
+        self.app.put_away_idle_spaces();
         let closed = self.app.take_closed();
         let dirty = self.app.take_dirty();
         let mut publishing = Vec::new();
