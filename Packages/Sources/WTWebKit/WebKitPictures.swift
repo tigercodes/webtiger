@@ -17,8 +17,11 @@ import WTContract
 @MainActor
 enum WebKitPictures {
     /// How long WebKit is waited for. A web view whose page's process is gone may never say:
-    /// the core then has no picture, and the web view is let go without one.
-    static let patience: Duration = .seconds(1)
+    /// the core then has no picture, and the web view is let go without one. A web view that
+    /// has been out of its window for a while is slow to draw the first time: three quarters
+    /// of a second in the app on the iPhone simulator, where one in a test's hands took a
+    /// quarter. Three seconds is more than any that was seen.
+    static let patience: Duration = .seconds(3)
 
     /// How a picture is made smaller until it is of no more bytes than were asked for: how
     /// much of its width it keeps, and how good a JPEG it is. A plain page fits at the first;

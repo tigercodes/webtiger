@@ -16,6 +16,7 @@ import com.tigercodes.webtiger.core.v1.LoadState
 import com.tigercodes.webtiger.core.v1.MemoryLevel
 import com.tigercodes.webtiger.core.v1.NavigationCommand
 import com.tigercodes.webtiger.core.v1.Platform
+import com.tigercodes.webtiger.core.v1.QueryPictures
 import com.tigercodes.webtiger.core.v1.QuerySpaces
 import com.tigercodes.webtiger.core.v1.Request
 import com.tigercodes.webtiger.design.Tokens
@@ -29,6 +30,7 @@ import com.tigercodes.webtiger.ui.LaunchOptions
 import com.tigercodes.webtiger.webview.DownloadPlace
 import com.tigercodes.webtiger.webview.FakePage
 import com.tigercodes.webtiger.webview.FakePages
+import com.tigercodes.webtiger.webview.Pictured
 import com.tigercodes.webtiger.webview.SystemWebViewEngine
 import java.util.concurrent.Executors
 import kotlinx.coroutines.CoroutineScope
@@ -395,6 +397,66 @@ class ThroughTheCoreTest {
                 assertEquals(listOf("the first tab's state" to "https://example.com/"), pages.made[2].restored)
                 assertTrue("and not loaded beside it", pages.made[2].loaded.isEmpty())
             }
+        }
+
+    /**
+     * A sleeping tab's picture (059), through the real core, with the app's own engine over
+     * pages that have no WebView: the page is asked for no picture as its tab leaves the front,
+     * and for one, as wide and as large as the core's most, as the tab is put to sleep; brought
+     * in front, the tab names a picture while it is on its way, and the core hands back the
+     * bytes the page gave, as an answer this shell can read; when the page comes, it names none.
+     * (What the window then draws is PagePictureTest's, where there are pictures to draw.)
+     */
+    @Test
+    fun aTabPutToSleepIsAskedForItsPictureAndNamesItWhileItWakes() =
+        runBlocking {
+            val model = BrowserModel(session(LaunchOptions(fake = true, sleepAfter = 2)))
+            onMain { model.open() }
+            await("the window's first snapshot") { model.tab.tab_id != 0L }
+            val firstTab = onMain { model.tab.tab_id }
+            onMain {
+                model.isEditingAddress = true
+                model.addressText = "example.com"
+                model.submit()
+            }
+            await("the first load") { pages.made.size == 1 && pages.made[0].loaded.isNotEmpty() }
+            arrive(pages.made[0], "https://example.com/", "Example Domain")
+            await("the first page named") { model.tab.title == "Example Domain" }
+            pages.made[0].hasState = "the first tab's state".toByteArray()
+            pages.made[0].hasPicture = Pictured("the first tab's page, as it was".toByteArray(), 400, 300)
+
+            // Another tab in front: the first is asked for its state, and for no picture.
+            onMain { model.openFromOutside("https://example.org/story") }
+            await("the second load") { pages.made.size == 2 && pages.made[1].loaded.isNotEmpty() }
+            arrive(pages.made[1], "https://example.org/story", "A Story")
+            await("asked as it left the front") { pages.made[0].statesAsked == 1 }
+            assertTrue("a tab that leaves the front is asked for no picture", onMain { pages.made[0].picturesAsked.isEmpty() })
+
+            // Put to sleep by the core's own look: asked for a picture once, as the core's most.
+            await("the tab behind put to sleep") { pages.made[0].closed && model.tabs.first().asleep }
+            assertEquals(listOf(800 to 96 * 1024), onMain { pages.made[0].picturesAsked })
+            assertEquals("the tab in front names no picture", 0L, onMain { model.tab.picture_id })
+
+            // Brought in front, on its way: it names its picture, and the core has the bytes.
+            onMain { model.activate(firstTab) }
+            await("a web view for the tab that wakes") { pages.made.size == 3 && pages.made[2].restored.isNotEmpty() }
+            await("the tab names its picture") { model.tab.tab_id == firstTab && model.tab.picture_id != 0L }
+            val number = onMain { model.tab.picture_id }
+            val answered = checkNotNull(core).request(Request(query_pictures = QueryPictures(picture_ids = listOf(number)))).pictures_page
+            val picture = checkNotNull(answered) { "the answer is one this shell names" }.pictures.single()
+            assertEquals(number, picture.picture_id)
+            assertEquals("the first tab's page, as it was", picture.jpeg.utf8())
+            assertEquals(400 to 300, picture.width to picture.height)
+
+            // Its page comes: it names none, and the core has none to give. (There are no
+            // pictures to draw here: what the page gave is no JPEG, and this JVM has nothing
+            // to decode one with. The window shows none, and goes on: a picture that cannot
+            // be drawn is no picture, and nothing worse.)
+            arrive(pages.made[2], "https://example.com/", "Example Domain")
+            await("the page has come") { model.tab.picture_id == 0L && model.tab.load_state == LoadState.LOAD_STATE_IDLE }
+            assertNull(onMain { model.pagePicture })
+            val after = checkNotNull(core).request(Request(query_pictures = QueryPictures(picture_ids = listOf(number)))).pictures_page
+            assertTrue(checkNotNull(after).pictures.isEmpty())
         }
 
     /** What the app runs on is said to the core as the shell found it (054); a suite's limit is fake mode's alone. */

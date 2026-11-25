@@ -491,7 +491,9 @@ public struct BrowserWindowView: View {
         if model.hasFailed {
             FailedPageView(code: model.tab.errorCode, goingOn: model.goingOn) { model.perform(.reload) }
         } else if model.hasPage {
+            // With the page as it was over its place, while a tab that slept is on its way (059).
             WebViewHost(engine: session.engine, webViewID: model.tab.webViewID, pageWaits: model.pageWaits)
+                .overlay { model.pagePicture.map { PagePictureView(picture: $0) } }
         } else {
             EmptyTabView(searchesGoTo: model.searchEngineName, changeSearch: model.changeSearch, isPrivate: model.isPrivate)
         }

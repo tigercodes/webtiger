@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **The core and both adapters are built and tested, on the recommendations of §6; no shell draws the picture yet.** The owner's word of 2026-11-24 was to use what is suggested where something waits on a choice, and to go on: they are built on, and stay the owner's to change. A tab that is put to sleep is asked for a picture of its page, which is kept with its state; a tab that wakes says which picture stands where its page will be, until the page arrives |
+| **Status** | **Built and tested on Apple's systems and Android, on the recommendations of §6.** The owner's word of 2026-11-24 was to use what is suggested where something waits on a choice, and to go on: they are built on, and stay the owner's to change. A tab that is put to sleep is asked for a picture of its page, which is kept with its state; when the tab wakes, the page as it was stands where the page will be, until the page arrives |
 | **Phase** | W3 of [000](000-master-plan.md) §9: "snapshots". 000 §5.7: "Asleep. The web view is gone. A snapshot, the saved state and the scroll position remain. Cost: a database row and a small image on disk." 000 §7: "Wake a sleeping tab: snapshot within 50 ms; the engine loading within 100 ms." The ninth of W3 |
 | **Contract** | 1.50 (§4): a web view's picture asked of a shell (`WebViewSnapshot`, `WebViewPicture`), which picture a waking tab is shown with (`TabView.picture_id`), and a picture asked of the core (`QueryPictures`, `PicturesPage`). The store's schema is 17 |
 | **Builds on** | [051](051-a-tabs-kept-state.md): a tab's kept state, which this follows in almost everything. [053](053-a-tab-sleeps-by-itself.md): putting a tab to sleep. [046](046-a-sites-icon.md): pictures that cross the contract by a number, asked for when wanted. [037](037-private-windows.md): what is never written |
@@ -44,7 +44,11 @@ I go back to a tab I left this morning. The browser had put it to sleep, and for
 - **A picture that comes late** (a shell that is slow to draw) is kept when the tab sleeps on that state still; a tab that was woken meanwhile took its state with it, and the picture is nobody's.
 - **How an adapter makes a picture small.** It draws the web view no wider than was asked (WebKit is asked for fewer points, so that it draws the picture small itself: a phone's web view at three pixels to a point is otherwise 2,400 wide on the way; Android's WebView is drawn through a smaller scale in one go). Then, where the JPEG is of more bytes than were asked for, by steps, the same on both systems: the whole width at six tenths of a JPEG's best; the whole width at four tenths; three quarters of the width; half; half at a quarter. The first that fits is the answer; where none does, there is no picture.
 - **A web view that was never given a size** (a tab opened behind and never looked at) has drawn nothing: no picture.
-- **WebKit is waited for a second.** A web view whose page's process is gone may never say; the adapter then answers with none, and the web view is let go. The host requests that follow wait meanwhile: a shell answers them one at a time, in order, and the next lets the web view go.
+- **WebKit is waited for three seconds.** A web view whose page's process is gone may never say; the adapter then answers with none, and the web view is let go. The host requests that follow wait meanwhile: a shell answers them one at a time, in order, and the next lets the web view go. It was one second at first, and that was too few: in the app on the iPhone simulator, a web view that had been out of its window for some seconds took 734 ms to draw the first time (11 to 198 ms the other times it was read), and in the run before that one, which was not read, the app's test saw no picture at all.
+- **In a window, the picture is drawn over the page's place:** as wide as the place, from its top, in its own shape, and cut off where the place ends. A window that is as it was when the tab slept shows the page where it was. In one that has been made taller, what is under the picture (the web view, with nothing in it yet) shows below it; in one that is shorter, the picture's end is not seen. It is not made to fill a place of another shape: a page laid out for one width is not the same page at another height.
+- **It says what it is.** To a screen reader it is a picture called "The page as it was". A press or a touch goes through it to what is under it. (D7.)
+- **What is drawn is checked first.** Only bytes that begin as a JPEG does are handed to the system's decoder; the picture's size is read before any of it is decoded, and one wider than the core keeps (800 pixels), or taller than 8,192, is not drawn. On Android a decoder that throws, or has no memory for the picture, means no picture, and the window goes on.
+- **A shell asks once for each number its tab names,** and shows the picture when it comes if the tab names that number still; a tab that names none has none at once. An answer that comes after the page has, or after another tab is in front, is nobody's.
 - **A dropped picture, like a dropped state,** is overwritten in the database at once; the write-ahead log has its pages until they are next written back. Forgetting history writes them back there and then (008).
 
 ## 4. The contract (1.50)
@@ -102,7 +106,7 @@ A shell that does not know `WebViewSnapshot` answers as it answers any request i
    What follows from it. **A picture can be taken as the tab is put to sleep** (D1 is no guess now): neither engine needs the web view to be on the screen. **The limit is in pixels, not points** (D4): a phone draws three pixels to a point, and the same page is 15 KB at 800 pixels and 89 KB as WebKit gives it; a picture is made no wider than 800 pixels before it is a JPEG. **The sizes are of a simple page:** the suite has no page of photographs, and a photograph is many times a drawing; the limit of 96 KB is kept by the adapter, which makes a picture smaller until it is under it, and that is not tried yet.
 2. **The core and the store:** the request, the picture kept and dropped with the state, shown while the tab wakes. Against the scripted engine. **Built.**
 3. **The adapters:** taking the picture. **Built,** for WebKit and for Android's WebView.
-4. **The shells:** the picture drawn where the page will be, and gone when the page arrives. Not built.
+4. **The shells:** the picture drawn where the page will be, and gone when the page arrives. **Built,** on Apple's systems and on Android.
 
 ## 6. Decisions
 
@@ -132,7 +136,15 @@ A shell that does not know `WebViewSnapshot` answers as it answers any request i
 | Android's adapter broken, a part at a time | 17 parts, 17 caught. The first run had an eighteenth, not caught: a check that a picture of no bytes was asked for, which the steps answer anyway (none fits). The check was taken out, on both systems |
 | Android's WebView, on an emulator (`SystemWebViewPictureTest`, 4) | **What the WebView does:** a web view that was shown and is then in no window is pictured by drawing it into a bitmap, smaller where it is wider than 800 pixels; one that was never in a window and was given a size is pictured too (§5.1). **What the adapter answers:** as WebKit's, with the real WebView: a JPEG 800 wide in the web view's shape, of the page; as narrow as asked; the next step for a byte fewer; none for fewer than any picture has; the state there afterwards; an error for a web view that is not there. A web view that was never given a size has no picture |
 
-The shells' are to be filled in as built.
+| Apple's window, against a scripted core (`PagePictureTests`, 4, on the Mac and the iPhone simulator) | A tab that names no picture: nothing asked, nothing shown. One that names a picture: asked for once, by its number alone, and shown; told again while the page comes, not asked again; when the tab names none, none at once; another tab's picture, and the first's again, each asked for as it is named. What is no picture is not drawn: none from the core, words, a PNG, a JPEG wider than the core keeps or taller than a window, the first bytes of a JPEG and no more. An answer that comes after the page has, after another picture is named, or that carries another picture than was asked for, is not shown. The picture drawn: in a place of its shape it fills it, top half above bottom; in a taller place it is as wide, from the top, and what is under shows below; in a shorter one it is cut off at the place's end and goes no further; in a wider place than it has dots it is drawn larger |
+| Apple's pictures (`CatalogueSnapshotTests`, a state more: two pictures on each system) | The window with a tab that slept on its way to its page, in both themes: the tab loading, and the page as it was where the page will be, cut off at the window's end. Every other picture was recorded again and is the one it was, to the last dot |
+| The apps, in fake mode, with the real core and the real engine (`WakingPictureTests`, 1, on the Mac and the iPhone simulator) | A tab at the suite's slow page, which answers after three seconds, is left behind and sleeps. No picture is over the other tab's page. Pressed, it is on its way for three seconds: the picture is there, and says "The page as it was". The page comes: the picture is gone, and the tab is awake |
+| Apple's shell broken, a part at a time, on the Mac | 11 parts, 11 caught. The first run caught 10: with the picture not cut off at its place's end every test passed, because the tests' place had nothing under its end to be drawn over. One now has |
+| Android's window, on the JVM (`PagePictureTest`, 7) | As Apple's first three, with a core that will not answer as well: no picture, and the tab in front all the same. And the picture drawn by Compose: in a place of its shape; in a taller one, with what is under showing below; in a shorter one, as wide and cut off; and it says "The page as it was" |
+| Android's pictures (`CatalogueSnapshotTest`, a state more: two pictures) | As Apple's, in both themes, at a phone's width. Every other picture was recorded again and is the one it was |
+| Android through the real core, on the JVM (`ThroughTheCoreTest`, +1) | With the app's own engine over pages that have no WebView: a page is asked for no picture as its tab leaves the front, and for one, 800 wide and of 96 KB at most, as the core puts the tab to sleep; brought in front, the tab names a picture, and the core hands back the bytes the page gave, in an answer this shell names; the page comes, the tab names none, and the core has none. The bytes are no JPEG and this JVM has nothing to decode with: the window shows none and goes on (before the decoder was made safe, this ended the window's session) |
+| Android's shell broken, a part at a time | 22 parts, 22 caught. (One was first written so that it would not build, and was caught when written so that it did) |
+| Android, on an emulator (`AppPagePictureTest`, 1), in fake mode, with the real core and the real WebView | The suite's slow page; another tab in front; the first put to sleep from the Library ("Sleep All Others": the app's tests share one core, with the usual half hour); touched, the picture is there for the three seconds and says what it is; the page comes, the picture is gone, and the tab is named by its page again |
 
 ## 8. What is not verified
 
@@ -145,8 +157,13 @@ The shells' are to be filled in as built.
 - **WebKit never saying.** The second it is waited for is tried with no time at all, which ends the wait before WebKit can have said; a web view whose process is gone was not made.
 - **A tab on its way, put to sleep again before its page comes** (the system very short of memory): it gave its state as it woke and is asked for none as it sleeps, so it sleeps with no state and no picture, and next wakes at its address. As 053 has it; a picture changes nothing there.
 - **Memory, measured.** D8 rests on what a picture is known to cost in bytes of bitmap, not on a measurement of an app under pressure. No test makes a system short of memory.
-
-The shells' are to be filled in as built.
+- **The 50 ms of the plan** ("snapshot within 50 ms"). Not measured as a budget. What was read once, in the app on the iPhone simulator: 16 and 21 ms from the window being told the picture's number to the picture being shown. The budgets as tests are later in W3.
+- **A press that goes through the picture.** It is made so on both systems and no test presses one: the page under it is not there to be pressed.
+- **Apple's audit with the picture on the screen.** The audit takes longer than the three seconds the suite's slow page gives. The picture's name is read by the app's test; its contrast is the page's own.
+- **The moment the picture goes.** It goes at the page's commit, when the web view may not have drawn the page yet: a blink of an empty page between the two was looked for in no test, and by nobody.
+- **A window that is not the shape it was** (a phone turned, a Mac's window made narrower): the picture is as wide as its place, and the page it stands in for will be laid out anew. Drawn in tests; not looked at in an app.
+- **A dark page, and a dark window.** The picture is the page's own colours. A place taller than the picture shows the empty web view below it, which is white before a page comes.
+- **A picture too tall for Android's memory.** That no memory for a picture means no picture is written, and cannot be tried.
 
 ## 9. Done checklist
 
@@ -154,5 +171,5 @@ The shells' are to be filled in as built.
 - [x] What each engine can do (§5.1): tried on the Mac, the iPhone simulator and the Android emulator on 2026-11-24.
 - [x] The core and the store.
 - [x] The adapters.
-- [ ] The shells.
+- [x] The shells.
 - [ ] The gate.

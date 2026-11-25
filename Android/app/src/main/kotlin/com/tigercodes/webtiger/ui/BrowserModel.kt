@@ -38,6 +38,7 @@ import com.tigercodes.webtiger.core.v1.QuerySpaces
 import com.tigercodes.webtiger.core.v1.RenameSpace
 import com.tigercodes.webtiger.core.v1.MoveTab
 import com.tigercodes.webtiger.core.v1.QueryIcons
+import com.tigercodes.webtiger.core.v1.QueryPictures
 import com.tigercodes.webtiger.core.v1.Request
 import com.tigercodes.webtiger.core.v1.RowStep
 import com.tigercodes.webtiger.core.v1.SearchSettings
@@ -434,6 +435,38 @@ class BrowserModel(
                 val pictures = answer?.icons.orEmpty().mapNotNull { icon -> iconPicture(icon.png.toByteArray())?.let { icon.icon_id to it } }
                 if (pictures.isNotEmpty()) icons = icons + pictures
             }
+        }
+    }
+
+    // A sleeping tab's picture (059)
+
+    /** The picture that stands where the page of the tab in front will be, while the core says there is one and once it has come. */
+    var pagePicture by mutableStateOf<ImageBitmap?>(null)
+        private set
+
+    /** The picture's number, as the core last said it; 0 for none. */
+    private var pictureWanted = 0L
+
+    /**
+     * Shows the picture the tab in front says stands where its page will be: asked of the core
+     * once for each number, and shown when it comes if the tab says that number still. When
+     * the tab says none there is none, at once.
+     */
+    internal fun showPicture(front: TabView) {
+        val wanted = front.picture_id
+        if (wanted == pictureWanted) return
+        pictureWanted = wanted
+        pagePicture = null
+        if (wanted == 0L) return
+        session.scope.launch {
+            val answer =
+                try {
+                    session.core.request(Request(query_pictures = QueryPictures(picture_ids = listOf(wanted)))).pictures_page
+                } catch (_: CoreError) {
+                    null
+                }
+            val jpeg = answer?.pictures?.firstOrNull { it.picture_id == wanted }?.jpeg ?: return@launch
+            if (pictureWanted == wanted) pagePicture = pictureOfAPage(jpeg.toByteArray())
         }
     }
 
@@ -1083,6 +1116,7 @@ class BrowserModel(
         val sameFailure = goesOn && (first || (!switched && front.certificate_host == tab.certificate_host))
         if (!sameFailure) isWarnedOfCertificate = false
         tab = front
+        showPicture(front)
         tabs = snapshot.tabs
         askForIcons(snapshot.tabs)
         groups = snapshot.groups

@@ -10,6 +10,7 @@ import WTWebKit
 enum CatalogueState: String, CaseIterable, Identifiable {
     case empty
     case loading
+    case waking
     case secure
     case insecure
     case long
@@ -44,6 +45,7 @@ enum CatalogueState: String, CaseIterable, Identifiable {
         switch self {
         case .empty: Words.catalogueStateEmpty
         case .loading: Words.catalogueStateLoading
+        case .waking: Words.catalogueStateWaking
         case .secure: Words.catalogueStateSecure
         case .insecure: Words.catalogueStateInsecure
         case .long: Words.catalogueStateLong
@@ -140,6 +142,14 @@ enum CatalogueState: String, CaseIterable, Identifiable {
             page(&window, url: "https://example.com/", display: "example.com", security: .unspecified)
             window.tab.loadState = .loading
             window.tab.progress = 0.4
+        case .waking:
+            // A tab that slept, on its way to its page: the page as it was stands where it
+            // will be (059).
+            page(&window, url: "https://example.com/", display: "example.com", security: .unspecified)
+            window.tab.title = "Example Domain"
+            window.tab.loadState = .loading
+            window.tab.progress = 0.4
+            window.tab.pictureID = CataloguePictures.page
         case .secure:
             page(&window, url: "https://example.com/", display: "example.com", security: .secure)
         case .insecure:
@@ -370,6 +380,9 @@ enum CatalogueState: String, CaseIterable, Identifiable {
             case let .queryIcons(query):
                 // The pictures of the catalogue's icons (046), as a core hands them over.
                 return .iconsPage(CatalogueIcons.page(query.iconIds))
+            case let .queryPictures(query):
+                // And of the page a waking tab had (059).
+                return .picturesPage(CataloguePictures.answer(query.pictureIds))
             default:
                 return .ack(WTAck())
             }

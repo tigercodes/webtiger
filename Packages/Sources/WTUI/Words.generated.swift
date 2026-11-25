@@ -428,6 +428,11 @@ enum Words {
     /// Design catalogue: a state of the window.
     static let catalogueStateTabs = Word(key: "catalogue.state.tabs")
 
+    /// A tab waking, with its page as it was
+    ///
+    /// Design catalogue: a state of the window, in which a tab that was asleep is loading and a picture of its page as it was stands where the page will be.
+    static let catalogueStateWaking = Word(key: "catalogue.state.waking")
+
     /// The zoom bar, on a page made bigger
     ///
     /// Design catalogue: a state of the window.
@@ -987,6 +992,11 @@ enum Words {
     ///
     /// Android: the item WebTiger adds to other apps' menu of selected text. Choosing it opens the words as a search in WebTiger, with the search engine the person chose. Short: it sits in a small bar.
     static let outsideSearch = Word(key: "outside.search")
+
+    /// The page as it was
+    ///
+    /// Said by a screen reader of the picture that stands where a page will be while a tab that was asleep loads it again: a picture of the page as it was when the tab went to sleep. Not a button.
+    static let pagePicture = Word(key: "page.picture")
 
     /// Remove All
     ///
@@ -1772,6 +1782,7 @@ extension Word {
         "catalogue.state.suggestions",
         "catalogue.state.switcher",
         "catalogue.state.tabs",
+        "catalogue.state.waking",
         "catalogue.state.zoom",
         "catalogue.states",
         "catalogue.title",
@@ -1884,6 +1895,7 @@ extension Word {
         "menu.close_window",
         "menu.history",
         "outside.search",
+        "page.picture",
         "permissions.clear",
         "permissions.done",
         "permissions.empty",

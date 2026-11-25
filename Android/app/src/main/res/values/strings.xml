@@ -171,6 +171,8 @@
     <string name="catalogue_state_switcher">The phone’s switcher</string>
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_tabs">Several tabs</string>
+    <!-- Design catalogue: a state of the window, in which a tab that was asleep is loading and a picture of its page as it was stands where the page will be. -->
+    <string name="catalogue_state_waking">A tab waking, with its page as it was</string>
     <!-- Design catalogue: a state of the window. -->
     <string name="catalogue_state_zoom">The zoom bar, on a page made bigger</string>
     <!-- Design catalogue: heading of the browser window's states. -->
@@ -395,6 +397,8 @@
     <string name="menu_history">History</string>
     <!-- Android: the item WebTiger adds to other apps' menu of selected text. Choosing it opens the words as a search in WebTiger, with the search engine the person chose. Short: it sits in a small bar. -->
     <string name="outside_search">Search with WebTiger</string>
+    <!-- Said by a screen reader of the picture that stands where a page will be while a tab that was asleep loads it again: a picture of the page as it was when the tab went to sleep. Not a button. -->
+    <string name="page_picture">The page as it was</string>
     <!-- Button in the Permissions list that takes back what every site was allowed. Each will ask again. -->
     <string name="permissions_clear">Remove All</string>
     <!-- Button that closes the Permissions list. -->

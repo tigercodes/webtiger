@@ -61,6 +61,10 @@ public final class BrowserModel {
     /// this window has them; and the numbers whose pictures the core was asked for.
     var icons: [UInt64: CGImage] = [:]
     @ObservationIgnored var iconsAsked: Set<UInt64> = []
+    /// The picture that stands where the page of the tab in front will be (059), while the
+    /// core says there is one and once it has come; and the number the core last said.
+    var pagePicture: CGImage?
+    @ObservationIgnored var pictureWanted: UInt64 = 0
     /// The window is a private one (037): made to be one, or said to be one by the core.
     public internal(set) var isPrivate = false
     /// The window is to be opened in the core as a private one. Set before it opens.
@@ -504,6 +508,7 @@ public final class BrowserModel {
         }
         keepWarning(for: snapshot.tab, switched: switched)
         tab = snapshot.tab
+        showPicture(of: snapshot.tab)
         tabs = snapshot.tabs
         askForIcons(snapshot.tabs)
         groups = snapshot.groups

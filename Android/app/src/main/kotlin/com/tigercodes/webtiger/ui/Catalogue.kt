@@ -69,6 +69,7 @@ import com.tigercodes.webtiger.core.v1.LoadState
 import com.tigercodes.webtiger.core.v1.PermissionKind
 import com.tigercodes.webtiger.core.v1.PermissionPrompt
 import com.tigercodes.webtiger.core.v1.PermissionsPage
+import com.tigercodes.webtiger.core.v1.PicturesPage
 import com.tigercodes.webtiger.core.v1.PromptView
 import com.tigercodes.webtiger.core.v1.SearchEngine
 import com.tigercodes.webtiger.core.v1.SearchSettings
@@ -98,6 +99,7 @@ import okio.ByteString.Companion.toByteString
 internal enum class CatalogueState(@StringRes val title: Int) {
     EMPTY(R.string.catalogue_state_empty),
     LOADING(R.string.catalogue_state_loading),
+    WAKING(R.string.catalogue_state_waking),
     SECURE(R.string.catalogue_state_secure),
     INSECURE(R.string.catalogue_state_insecure),
     LONG(R.string.catalogue_state_long),
@@ -234,6 +236,11 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                     LOADING ->
                         page("https://example.com/", "example.com", AddressView.Security.SECURITY_UNSPECIFIED)
                             .copy(load_state = LoadState.LOAD_STATE_LOADING, progress = 0.4)
+                    // A tab that slept, on its way to its page: the page as it was stands where
+                    // it will be (059).
+                    WAKING ->
+                        page("https://example.com/", "example.com", AddressView.Security.SECURITY_UNSPECIFIED)
+                            .copy(title = "Example Domain", load_state = LoadState.LOAD_STATE_LOADING, progress = 0.4, picture_id = CataloguePictures.PAGE)
                     SECURE -> page("https://example.com/", "example.com")
                     INSECURE -> page("http://example.com/", "http://example.com", AddressView.Security.SECURITY_INSECURE)
                     LONG ->
@@ -434,11 +441,50 @@ internal enum class CatalogueState(@StringRes val title: Int) {
                                     icons = request.query_icons?.icon_ids.orEmpty().mapNotNull { number -> CatalogueIcons.png(number)?.let { Icon(icon_id = number, png = it.toByteString()) } },
                                 ),
                         )
+                    // And of the page a waking tab had (059).
+                    request.query_pictures != null -> Response(pictures_page = CataloguePictures.answer(request.query_pictures?.picture_ids.orEmpty()))
                     else -> Response(ack = Ack())
                 }
             }
         return BrowserSession(core, SystemWebViewEngine(context), scope)
     }
+}
+
+/**
+ * The picture of a page as it was (059), which the catalogue's waking tab is shown with: a page
+ * of sorts, made here, as a core would hand a picture over.
+ */
+internal object CataloguePictures {
+    const val PAGE = 7L
+
+    /** A page of sorts, 800 by 1,600 as a phone's is tall: a heading's bar, lines of words as bars, and a picture's block; as a JPEG. */
+    fun jpeg(): ByteArray {
+        val picture = android.graphics.Bitmap.createBitmap(800, 1600, android.graphics.Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(picture)
+        canvas.drawColor(android.graphics.Color.WHITE)
+        val paint = android.graphics.Paint()
+
+        fun bar(down: Int, left: Int, width: Int, height: Int, grey: Int) {
+            paint.color = android.graphics.Color.rgb(grey, grey, grey)
+            canvas.drawRect(left.toFloat(), down.toFloat(), (left + width).toFloat(), (down + height).toFloat(), paint)
+        }
+        bar(60, 60, 520, 56, 0x26)
+        listOf(680, 640, 660, 420).forEachIndexed { line, width -> bar(170 + line * 44, 60, width, 18, 0x8C) }
+        paint.color = android.graphics.Color.rgb(0xE0, 0x6A, 0x10)
+        canvas.drawRect(60f, 380f, 740f, 760f, paint)
+        listOf(680, 620, 660, 640, 300).forEachIndexed { line, width -> bar(820 + line * 44, 60, width, 18, 0x8C) }
+        val out = java.io.ByteArrayOutputStream()
+        picture.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, out)
+        return out.toByteArray()
+    }
+
+    /** What a core answers when asked for pictures: the one there is, when it is asked for. */
+    fun answer(numbers: List<Long>): PicturesPage =
+        if (PAGE in numbers) {
+            PicturesPage(pictures = listOf(com.tigercodes.webtiger.core.v1.PagePicture(picture_id = PAGE, jpeg = jpeg().toByteString(), width = 800, height = 1600)))
+        } else {
+            PicturesPage()
+        }
 }
 
 /** The icons the catalogue's sites have (046): each a plain shape of one colour, made here, as a core would hand a picture over. */

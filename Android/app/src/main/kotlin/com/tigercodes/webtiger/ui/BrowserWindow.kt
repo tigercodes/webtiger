@@ -228,7 +228,11 @@ private fun Window(session: BrowserSession, model: BrowserModel, private: Privat
                                     null
                                 },
                         )
-                    model.hasPage -> WebViewHost(session.engine, model.tab.web_view_id, Modifier.fillMaxSize().testTag("page"))
+                    model.hasPage -> {
+                        WebViewHost(session.engine, model.tab.web_view_id, Modifier.fillMaxSize().testTag("page"))
+                        // The page as it was, over its place, while a tab that slept is on its way (059).
+                        model.pagePicture?.let { PageAsItWas(it) }
+                    }
                     else -> EmptyTab(searchesGoTo = model.searchEngineName, onChangeSearch = model::changeSearch, private = model.isPrivate)
                 }
                 // What is offered for what is typed (011): under the toolbar, over the page.

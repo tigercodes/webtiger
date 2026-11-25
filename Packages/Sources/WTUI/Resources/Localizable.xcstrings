@@ -1021,6 +1021,18 @@
         }
       }
     },
+    "catalogue.state.waking": {
+      "comment": "Design catalogue: a state of the window, in which a tab that was asleep is loading and a picture of its page as it was stands where the page will be.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A tab waking, with its page as it was"
+          }
+        }
+      }
+    },
     "catalogue.state.zoom": {
       "comment": "Design catalogue: a state of the window.",
       "extractionState": "manual",
@@ -2361,6 +2373,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Search with WebTiger"
+          }
+        }
+      }
+    },
+    "page.picture": {
+      "comment": "Said by a screen reader of the picture that stands where a page will be while a tab that was asleep loads it again: a picture of the page as it was when the tab went to sleep. Not a button.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The page as it was"
           }
         }
       }

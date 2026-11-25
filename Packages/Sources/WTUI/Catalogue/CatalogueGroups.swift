@@ -173,3 +173,55 @@ enum CatalogueIcons {
         return page
     }
 }
+
+/// The picture of a page as it was (059), which the catalogue's waking tab is shown with: a
+/// page of sorts, made here, as a core would hand a picture over.
+enum CataloguePictures {
+    static let page: UInt64 = 7
+
+    /// A page of sorts, 800 by 600: a heading's bar, lines of words as bars, and a picture's
+    /// block; as a JPEG.
+    static func jpeg() -> Data? {
+        let (wide, tall) = (800, 600)
+        guard let context = CGContext(
+            data: nil, width: wide, height: tall, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+        ) else { return nil }
+        context.setFillColor(red: 1, green: 1, blue: 1, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: wide, height: tall))
+        // Quartz counts up from the bottom: `down` is how far from the top a bar begins.
+        func bar(_ down: Int, _ left: Int, _ width: Int, _ height: Int, _ grey: CGFloat) {
+            context.setFillColor(red: grey, green: grey, blue: grey, alpha: 1)
+            context.fill(CGRect(x: left, y: tall - down - height, width: width, height: height))
+        }
+        bar(48, 60, 420, 36, 0.15)
+        for (line, width) in [680, 640, 660, 420].enumerated() {
+            bar(120 + line * 30, 60, width, 12, 0.55)
+        }
+        context.setFillColor(red: 0.88, green: 0.42, blue: 0.06, alpha: 1)
+        context.fill(CGRect(x: 60, y: tall - 270 - 200, width: 320, height: 200))
+        for (line, width) in [300, 280, 300, 180].enumerated() {
+            bar(280 + line * 30, 420, width, 12, 0.55)
+        }
+        let written = NSMutableData()
+        guard let image = context.makeImage(),
+              let destination = CGImageDestinationCreateWithData(written, "public.jpeg" as CFString, 1, nil)
+        else { return nil }
+        CGImageDestinationAddImage(destination, image, [kCGImageDestinationLossyCompressionQuality: 0.8] as CFDictionary)
+        return CGImageDestinationFinalize(destination) ? written as Data : nil
+    }
+
+    /// What a core answers when asked for pictures: the one there is, when it is asked for.
+    static func answer(_ numbers: [UInt64]) -> WTPicturesPage {
+        var answer = WTPicturesPage()
+        if numbers.contains(page), let jpeg = jpeg() {
+            var picture = WTPagePicture()
+            picture.pictureID = page
+            picture.jpeg = jpeg
+            picture.width = 800
+            picture.height = 600
+            answer.pictures = [picture]
+        }
+        return answer
+    }
+}
