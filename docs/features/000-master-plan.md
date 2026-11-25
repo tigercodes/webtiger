@@ -1027,6 +1027,15 @@ And one that the measuring raised (060 §8): a Space whose row was arranged in t
 3. A thing undone moves nothing it did not move (as it is, a tab opened since goes to the row's end at any undo).
 4. The line has ceilings of this document's in a test: 1 MB for a row of two thousand moved fifty times, 32 to 48 KB for a row of forty.
 
+**The published run** ([063](063-the-published-run.md) §6, put on 2026-11-25; the script is to be built on these, and tried with the test site alone; the last of W3). **The run itself waits for the owner:** it loads other people's sites, on a list the owner chooses.
+
+1. The run is in fake mode: nothing of a person's is read, written or left.
+2. Sites are opened by handing the app addresses from outside, a stated time apart: no automation, and nothing new in the contract.
+3. The engine's processes are told by this: they began after the app and ended with it.
+4. The app's own limit of live tabs and sleep times are in force, and the report says them.
+5. The script measures this app and no other.
+6. The list of sites is a file the run is given; the repository has no list of public sites until the owner has chosen one.
+
 And one that measuring the Mac app raised (060 §5.2, §8): its start is about 200 ms, but the first start after it was built was 395 ms once and 673 ms once, against the 500 allowed. Whether a cold start (after the Mac is turned on) is within the budget is not known: it cannot be measured here without the owner, since emptying the system's memory of files asks for a password. Recommended: the owner runs `Tools/perf/mac.sh` once after turning the Mac on, and the first line it prints is the number.
 
 Also the owner's to say, from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
