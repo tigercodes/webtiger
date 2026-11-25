@@ -1020,19 +1020,32 @@ struct Row {
     front: TabId,
     /// The Groups, in their order.
     groups: Vec<Group>,
-    /// The row's arrangement before each of the newest things done to
-    /// arrange it (044), the newest last: what undoing them puts back.
+    /// What each of the newest things done to arrange the row changed (044,
+    /// 062), the newest last: what undoing them puts back.
     arrangements: Vec<Arrangement>,
 }
 
-/// A row's arrangement as it was before something was done to it (044).
+/// What a thing done to arrange a row changed (044): what undoing it puts
+/// back. Not the row as it was, which for a long row arranged all day was
+/// most of what the core held (062): the tabs the thing changed, the order
+/// when it changed, the Groups when they changed.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Arrangement {
-    /// What was then done, by the kind a window is told an undo would undo.
+    /// What was done, by the kind a window is told an undo would undo.
     kind: &'static str,
-    /// The Groups there were.
+    /// The Groups there were, when the thing changed a Group.
+    groups: Option<Vec<Group>>,
+    /// The row's tabs in the order they were in, when the thing changed the
+    /// order.
+    order: Option<Vec<TabId>>,
+    /// The tabs the thing changed, each as it was.
+    tabs: Vec<Arranged>,
+}
+
+/// A row's whole arrangement, as it is for a moment: what the row is
+/// compared with once a thing has been done to it, to keep what changed.
+struct WholeRow {
     groups: Vec<Group>,
-    /// The row's tabs, in their order, each as it was.
     tabs: Vec<Arranged>,
 }
 
@@ -2361,10 +2374,9 @@ impl State {
     }
 
     /// A row's arrangement as it is now (044).
-    fn arrangement(&self, row: (WindowId, SpaceId), kind: &'static str) -> Option<Arrangement> {
+    fn arrangement(&self, row: (WindowId, SpaceId)) -> Option<WholeRow> {
         let found = self.windows.get(&row.0)?.rows.get(&row.1)?;
-        Some(Arrangement {
-            kind,
+        Some(WholeRow {
             groups: found.groups.clone(),
             tabs: found
                 .tabs
@@ -2382,26 +2394,59 @@ impl State {
         })
     }
 
-    /// Does one of the things that arrange a row (044), and keeps the
-    /// arrangement the row had before it, when the doing changed it: what
-    /// an undo puts back. A thing that changed nothing is not kept; nor is
-    /// anything of a row there is not.
+    /// What of a row is not as it was (062): the tabs that are not what
+    /// they were, each as it was; the order it had, when the order is
+    /// another; the Groups it had, when they are others. `None` when the row
+    /// is as it was.
+    fn changed_since(
+        &self,
+        row: (WindowId, SpaceId),
+        kind: &'static str,
+        before: WholeRow,
+    ) -> Option<Arrangement> {
+        let found = self.windows.get(&row.0)?.rows.get(&row.1)?;
+        let now = found.tabs.iter().filter(|id| self.tabs.contains_key(id));
+        let order = (!before.tabs.iter().map(|was| &was.tab).eq(now))
+            .then(|| before.tabs.iter().map(|was| was.tab).collect());
+        let groups = (before.groups != found.groups).then_some(before.groups);
+        // (Gathered into a list of their own: one made by sifting the whole
+        // row's keeps the room the whole row took, however few are left.)
+        let mut tabs = Vec::new();
+        for was in before.tabs {
+            if self.tabs.get(&was.tab).is_some_and(|tab| {
+                tab.site != was.site || tab.group != was.group || tab.favourite != was.favourite
+            }) {
+                tabs.push(was);
+            }
+        }
+        tabs.shrink_to_fit();
+        (order.is_some() || groups.is_some() || !tabs.is_empty()).then_some(Arrangement {
+            kind,
+            groups,
+            order,
+            tabs,
+        })
+    }
+
+    /// Does one of the things that arrange a row (044), and keeps what the
+    /// doing changed, as it was before: what an undo puts back. A thing that
+    /// changed nothing is not kept; nor is anything of a row there is not.
     pub(crate) fn arranging<T>(
         &mut self,
         row: Option<(WindowId, SpaceId)>,
         kind: &'static str,
         action: impl FnOnce(&mut State) -> T,
     ) -> T {
-        let before = row.and_then(|row| self.arrangement(row, kind));
+        let before = row.and_then(|row| self.arrangement(row));
         let done = action(self);
         if let (Some(row), Some(before)) = (row, before)
-            && self.arrangement(row, kind).as_ref() != Some(&before)
+            && let Some(changed) = self.changed_since(row, kind, before)
             && let Some(found) = self
                 .windows
                 .get_mut(&row.0)
                 .and_then(|window| window.rows.get_mut(&row.1))
         {
-            found.arrangements.push(before);
+            found.arrangements.push(changed);
             if found.arrangements.len() > MOST_ARRANGEMENTS {
                 found.arrangements.remove(0);
             }
@@ -2411,42 +2456,46 @@ impl State {
     }
 
     /// Undoes the newest thing done to arrange the row a window shows
-    /// (044): the row is put back as it was before it. Every tab that is
-    /// still in the row is what it was, and where it was among those; a tab
-    /// that has come since stays; the Groups are those there were, each shut
-    /// or open as it is now when it is still there. The code to refuse with.
+    /// (044): what it changed is put back as it was before it (062). Every
+    /// tab it changed that is still in the row is what it was; where it
+    /// changed the order, the tabs that are still there are where they were
+    /// among those, and a tab that has come since stays, where a row's order
+    /// puts a tab of its kind; where it changed the Groups, they are those
+    /// there were, each shut or open as it is now when it is still there.
+    /// What it did not change is left as it is: nothing else can have
+    /// changed it but a newer thing, and that was undone before this. The
+    /// code to refuse with.
     pub(crate) fn undo_arrangement(&mut self, window_id: WindowId) -> Result<(), &'static str> {
         let window = self.windows.get_mut(&window_id).ok_or("window.unknown")?;
         let space = window.space;
         let row = window.rows.get_mut(&space).ok_or("window.unknown")?;
         let was = row.arrangements.pop().ok_or("undo.nothing")?;
-        let shut_now: BTreeMap<GroupId, bool> = row
-            .groups
-            .iter()
-            .map(|group| (group.id, group.shut))
-            .collect();
-        row.groups = was
-            .groups
-            .into_iter()
-            .map(|mut group| {
-                if let Some(shut) = shut_now.get(&group.id) {
-                    group.shut = *shut;
-                }
-                group
-            })
-            .collect();
-        // The tabs that are still in the row, in the order they had; then
-        // those that have come since, in theirs.
+        if let Some(groups) = was.groups {
+            let shut_now: BTreeMap<GroupId, bool> = row
+                .groups
+                .iter()
+                .map(|group| (group.id, group.shut))
+                .collect();
+            row.groups = groups
+                .into_iter()
+                .map(|mut group| {
+                    if let Some(shut) = shut_now.get(&group.id) {
+                        group.shut = *shut;
+                    }
+                    group
+                })
+                .collect();
+        }
         let here: BTreeSet<TabId> = row.tabs.iter().copied().collect();
-        let then: BTreeSet<TabId> = was.tabs.iter().map(|arranged| arranged.tab).collect();
-        let mut order: Vec<TabId> = was
-            .tabs
-            .iter()
-            .map(|arranged| arranged.tab)
-            .filter(|id| here.contains(id))
-            .collect();
-        order.extend(row.tabs.iter().copied().filter(|id| !then.contains(id)));
-        row.tabs = order;
+        if let Some(order) = was.order {
+            // The tabs that are still in the row, in the order they had;
+            // then those that have come since, in theirs.
+            let then: BTreeSet<TabId> = order.iter().copied().collect();
+            let mut put_back: Vec<TabId> =
+                order.into_iter().filter(|id| here.contains(id)).collect();
+            put_back.extend(row.tabs.iter().copied().filter(|id| !then.contains(id)));
+            row.tabs = put_back;
+        }
         for arranged in was.tabs {
             if here.contains(&arranged.tab)
                 && let Some(tab) = self.tabs.get_mut(&arranged.tab)
@@ -2456,10 +2505,11 @@ impl State {
                 tab.favourite = arranged.favourite;
             }
         }
-        // (The row is in a row's order: it was when it was kept, a tab that
-        // has gone leaves the rest in theirs, and one that has come since is
-        // no Site, whatever was done to it since having been undone before
-        // this was, and is after the others.)
+        // In a row's order (041), whatever has come since: the row was in
+        // one when the thing was done, a tab that has gone leaves the rest
+        // in theirs, and one that has come since is put where a row's order
+        // has a tab of its kind, the others staying as they are.
+        arrange(&self.tabs, row);
         self.dirty.insert(window_id);
         Ok(())
     }

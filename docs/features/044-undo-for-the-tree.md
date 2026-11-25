@@ -33,6 +33,8 @@ I remove a Group I did not mean to remove, or let go of a Site by the wrong key,
 - the Groups are the Groups there were, by name and colour; whether each is shut is left as it is now;
 - no page is loaded, closed, put to sleep or woken by it.
 
+(Since [062](062-a-shorter-line-to-undo.md) what is kept is what the thing done changed, and not the whole arrangement: undoing it comes to the same row, but that a thing which moved no tab moves none when it is undone.)
+
 **One line for each row**, the newest first, fifty deep. Undo undoes the newest and takes it off the line. A thing that changed nothing (a Site kept again; a tab moved to the Group it is in) is not kept.
 
 **The window is told** what its newest is, by its kind: `site.kept`, `site.let_go`, `group.made`, `group.removed`, `group.renamed`, `group.coloured`, `group.moved`, `favourite.added`, `favourite.removed`; or nothing. (Since [045](045-moving-in-the-row.md): `tab.moved` and `group.reordered` too.)

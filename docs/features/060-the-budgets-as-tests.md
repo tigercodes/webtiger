@@ -148,7 +148,7 @@ The test of the core's memory is in the crate of the C functions and not with th
 1. **A Space that no window shows, and that has nothing alive, is put away:** the core keeps of it what the session keeps, as it does of a Space that has not been shown since a start (39 KB), and its line of things to undo goes with it. Coming back to it after its tabs have all slept, there is nothing of its arrangement to undo. *Recommended:* it meets the budget whatever a row has been through, and it is what a start already does.
 2. **The line kept, and made small:** each step keeping only what it changed. It keeps undo for a Space that was left; it does not by itself bring such a Space under the budget, whose tabs alone are 99 KB of the 100.
 
-And, apart from the budget: **a long row's line is large** (near 19 MB for two thousand tabs). Making each step keep only what it changed is worth doing for that alone, whichever of the two is chosen.
+And, apart from the budget: **a long row's line was large** (near 19 MB for two thousand tabs, as it was worked out; 28.7 MB when it was measured). Making each step keep only what it changed is worth doing for that alone, whichever of the two is chosen. **Done since** ([062](062-a-shorter-line-to-undo.md)): 0.8 MB.
 
 **Not verified:**
 

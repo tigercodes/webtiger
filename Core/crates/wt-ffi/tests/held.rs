@@ -17,7 +17,7 @@
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::cell::Cell;
 
-use wt_proto::v1::{SleepOthers, SwitchSpace, request};
+use wt_proto::v1::{RowStep, SleepOthers, SwitchSpace, move_tab, request};
 use wt_testkit::{FakeShell, SPACES, run, standard_pages, standard_session_of};
 
 /// The plan's budgets (000 §7) that are bytes the core holds.
@@ -25,6 +25,18 @@ const A_SLEEPING_TAB: isize = 4 * 1024;
 const A_HUNDRED_SLEEPING_TABS: isize = 5 * 1024 * 1024;
 const A_SPACE_WITH_NOTHING_LIVE: isize = 100 * 1024;
 const THE_CORES_SHARE: isize = 30 * 1024 * 1024;
+
+/// This crate's own ceilings for a row's line of things to undo (062): the
+/// plan has no budget for the line by itself. For a row of forty Sites and
+/// for one of two thousand, each with eight Groups: fifty moves of a Site,
+/// which keep the order and no tab; fifty names given to a Group, which keep
+/// the Groups, and neither a tab nor the order, whatever the row's length;
+/// fifty times a Site is made a Favourite or not, which keep the order and
+/// the one tab. Each about a quarter over what was measured (25,153, 34,306
+/// and 38,733 bytes; 812,033, 34,306 and 809,933), so that a line that keeps
+/// more than the thing done changed fails.
+const A_SHORT_ROWS_LINE: [isize; 3] = [32 * 1024, 44 * 1024, 48 * 1024];
+const A_LONG_ROWS_LINE: [isize; 3] = [1024 * 1024, 44 * 1024, 1024 * 1024];
 
 thread_local! {
     /// The bytes this thread has asked for and not given back.
@@ -318,5 +330,132 @@ fn a_space_that_was_arranged_shown_and_left_with_nothing_live_is_no_more_than_10
             space <= A_SPACE_WITH_NOTHING_LIVE,
             "a Space that was arranged, shown and left is {space} bytes in the core, and may be {A_SPACE_WITH_NOTHING_LIVE}"
         );
+    });
+}
+
+/// A row of so many Sites, eight of them each in a Group of its own, made in a run that is
+/// over: the store
+/// in `folder` has it, and a start there finds it asleep, with nothing of its arrangement
+/// to undo.
+async fn a_long_row_made_before(folder: &std::path::Path, sites: usize) {
+    let mut shell = FakeShell::live(folder);
+    for number in 0..=sites {
+        let (url, title) = page(number);
+        shell.engine.page(&url, &title);
+    }
+    let (window, first, _) = shell.open_window().await;
+    shell.submit(first, &page(0).0).await;
+    let mut kept = Vec::new();
+    for number in 1..=sites {
+        let tab = shell.open_tab(window, &page(number).0).await;
+        acked(shell.keep_tab(tab).await);
+        kept.push(tab);
+        if number % 50 == 0 {
+            shell.forget();
+        }
+    }
+    for (number, tab) in kept.iter().rev().take(8).enumerate() {
+        let made = shell.make_group(window, &format!("Group {number}")).await;
+        let wt_proto::v1::response::Kind::GroupMade(group) = made else {
+            panic!("a Group, not {made:?}");
+        };
+        acked(shell.move_to_group(*tab, group.group_id).await);
+    }
+    shell.settle().await;
+}
+
+fn acked(answer: wt_proto::v1::response::Kind) {
+    assert!(
+        matches!(answer, wt_proto::v1::response::Kind::Ack(_)),
+        "{answer:?}"
+    );
+}
+
+/// A thing done to arrange a row, fifty times over, that leaves the row as it was.
+#[derive(Clone, Copy, Debug)]
+enum Fifty {
+    /// A Site moved a place on and a place back: the order changes, and no tab.
+    Moves,
+    /// A Group named one thing and the other: a Group changes, and no tab.
+    Names,
+    /// A Site made a Favourite and not: a tab changes, and the order.
+    Favourites,
+}
+
+/// What a row's line of things to undo holds (062): what the thread holds once fifty
+/// things have been done to arrange the row a start found in `folder`, less what it held
+/// before them. The fifty leave the row as it was, so the difference is the line.
+async fn held_by_a_line_of(folder: &std::path::Path, fifty: Fifty) -> isize {
+    let mut shell = FakeShell::live(folder);
+    let (window, _, subscription) = shell.open_window().await;
+    shell.settle().await;
+    let told = shell.window(subscription);
+    assert_eq!(told.undo_arrangement, "", "a start has nothing to undo");
+    let site = told
+        .tabs
+        .iter()
+        .find(|tab| tab.kept && !tab.favourite && tab.group_id == 0)
+        .expect("a Site in no Group")
+        .tab_id;
+    let group = told.groups.first().expect("a Group").group_id;
+    let name = told.groups[0].name.clone();
+    shell.forget();
+    let before = held();
+    for step in 0..50 {
+        let even = step % 2 == 0;
+        let answer = match fifty {
+            Fifty::Moves => {
+                let by = if even {
+                    RowStep::Forward
+                } else {
+                    RowStep::Back
+                };
+                shell.move_tab(site, move_tab::To::By(by.into())).await
+            }
+            Fifty::Names => {
+                shell
+                    .rename_group(group, if even { "Play" } else { &name })
+                    .await
+            }
+            Fifty::Favourites => shell.set_favourite(site, even).await,
+        };
+        acked(answer);
+    }
+    shell.settle().await;
+    assert_ne!(
+        shell.window(subscription).undo_arrangement,
+        "",
+        "there is a line to undo"
+    );
+    let _ = window;
+    shell.forget();
+    let after = held();
+    drop(shell);
+    after - before
+}
+
+#[test]
+fn a_rows_line_of_things_to_undo_holds_what_changed_and_not_the_row() {
+    run(async {
+        for (sites, ceilings) in [(40, A_SHORT_ROWS_LINE), (2_000, A_LONG_ROWS_LINE)] {
+            let folder = tempfile::tempdir().unwrap();
+            a_long_row_made_before(folder.path(), sites).await;
+            for (fifty, may) in [Fifty::Moves, Fifty::Names, Fifty::Favourites]
+                .into_iter()
+                .zip(ceilings)
+            {
+                let line = held_by_a_line_of(folder.path(), fifty).await;
+                println!(
+                    "a row of {sites} Sites, {fifty:?} fifty times: its line holds {line} bytes"
+                );
+                assert!(
+                    line <= may,
+                    "a row of {sites} Sites, {fifty:?} fifty times: its line holds {line} bytes, and may hold {may}"
+                );
+                // And not nothing: there are fifty things to undo, and a count that said
+                // otherwise would be counting something else.
+                assert!(line >= 2_000, "a line of fifty cannot be {line} bytes");
+            }
+        }
     });
 }

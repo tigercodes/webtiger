@@ -12,8 +12,10 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use wt_proto::v1::{Layout, StepTab, Undo, host_request, request, response, step_tab};
-use wt_testkit::{FakeShell, run};
+use wt_proto::v1::{
+    Layout, RowStep, StepTab, Undo, host_request, move_tab, request, response, step_tab,
+};
+use wt_testkit::{FakeEngine, FakeShell, run};
 
 const MAIL: &str = "https://mail.example.com/";
 const BOARD: &str = "https://board.example.com/";
@@ -461,5 +463,115 @@ fn what_is_undone_is_what_is_kept_across_a_quit_and_the_line_is_not() {
         );
         assert_eq!(undoes(&shell, subscription), "");
         assert_eq!(code(shell.undo_arrangement(window).await), "undo.nothing");
+    });
+}
+
+/// Opens a link of the page in front in a tab behind it, beside it in the row.
+async fn link_beside_the_front(shell: &mut FakeShell, subscription: u64, url: &str) {
+    let web_view = shell.window(subscription).tab.expect("a tab").web_view_id;
+    shell.report(FakeEngine::link_open_requested(web_view, url, true, true));
+    shell.settle().await;
+}
+
+/// A step keeps what the thing done changed (062), and undoing it puts that back and
+/// nothing else: a thing that moved no tab moves none when it is undone, whatever has come
+/// since.
+#[test]
+fn a_thing_that_moved_nothing_moves_nothing_when_it_is_undone() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (window, subscription, [mail, ..]) = four_tabs(&mut shell).await;
+        // A Group is made, named again and coloured: none of them moves a tab.
+        let work = group(&mut shell, window, "Work").await;
+        acked(&shell.rename_group(work, "Play").await);
+        acked(&shell.colour_group(work, "green").await);
+        // Since then: a link of the first tab's page, opened in a tab beside it.
+        acked(&shell.activate_tab(mail).await);
+        link_beside_the_front(&mut shell, subscription, CARD).await;
+        let beside = ["Mail", "Card 3", "Board", "News", "A story"];
+        assert_eq!(row(&shell, subscription)[..5], beside);
+
+        // Each undone in turn: the Group is what it was, and every tab is where it is.
+        for (undone, groups) in [
+            ("group.coloured", vec!["[Play]"]),
+            ("group.renamed", vec!["[Work]"]),
+            ("group.made", vec![]),
+        ] {
+            assert_eq!(undoes(&shell, subscription), undone);
+            acked(&shell.undo_arrangement(window).await);
+            let now = row(&shell, subscription);
+            assert_eq!(now[..5], beside, "after undoing {undone}");
+            assert_eq!(now[5..], groups, "after undoing {undone}");
+        }
+        assert_eq!(undoes(&shell, subscription), "");
+    });
+}
+
+/// Where the thing changed what a tab is and not the order, the row is still in a row's
+/// order once it is undone (062): a tab that came since is not left among the Sites.
+#[test]
+fn a_site_let_go_is_a_site_again_before_a_tab_that_came_since() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (window, subscription, [mail, board, ..]) = four_tabs(&mut shell).await;
+        acked(&shell.keep_tab(mail).await);
+        acked(&shell.keep_tab(board).await);
+        // The last of the Sites is let go: it is the first of the tabs, where it was.
+        acked(&shell.let_go_site(board).await);
+        assert_eq!(
+            row(&shell, subscription),
+            ["Mail S", "Board", "News", "A story"]
+        );
+        // Since then a link was opened beside the Site in front: a tab, so after the Sites.
+        acked(&shell.activate_tab(mail).await);
+        link_beside_the_front(&mut shell, subscription, CARD).await;
+        assert_eq!(
+            row(&shell, subscription),
+            ["Mail S", "Card 3", "Board", "News", "A story"]
+        );
+
+        // Undone: the Site is a Site again, with the Sites; the tab that came since is
+        // after it, and before the tabs it was before.
+        acked(&shell.undo_arrangement(window).await);
+        assert_eq!(
+            row(&shell, subscription),
+            ["Mail S", "Board S", "Card 3", "News", "A story"]
+        );
+    });
+}
+
+/// Where the thing changed the order, the tabs that are still there are in the order they
+/// were, a tab that came since is after them, and a tab that has gone since is not in the
+/// row in any way (044's rule, as it was).
+#[test]
+fn a_tab_moved_is_back_where_it_was_and_a_tab_that_came_since_is_after_the_others() {
+    run(async {
+        let mut shell = FakeShell::fake();
+        let (window, subscription, [mail, board, _, story]) = four_tabs(&mut shell).await;
+        acked(
+            &shell
+                .move_tab(story, move_tab::To::By(RowStep::Back.into()))
+                .await,
+        );
+        assert_eq!(
+            row(&shell, subscription),
+            ["Mail", "Board", "A story", "News"]
+        );
+        acked(&shell.activate_tab(mail).await);
+        link_beside_the_front(&mut shell, subscription, CARD).await;
+        assert_eq!(
+            row(&shell, subscription),
+            ["Mail", "Card 3", "Board", "A story", "News"]
+        );
+        // And a tab was closed.
+        acked(&shell.close_tab(board).await);
+
+        acked(&shell.undo_arrangement(window).await);
+        assert_eq!(
+            row(&shell, subscription),
+            ["Mail", "News", "A story", "Card 3"]
+        );
+        // The row is those four, and no place is kept in it for the tab that has gone.
+        assert_eq!(shell.window(subscription).row_tabs, 4);
     });
 }
