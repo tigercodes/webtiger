@@ -172,4 +172,4 @@ A shell that does not know `WebViewSnapshot` answers as it answers any request i
 - [x] The core and the store.
 - [x] The adapters.
 - [x] The shells.
-- [ ] The gate.
+- [x] The gate: every stage of `Tools/test.sh all` green, and `android-device`, on 2026-11-24: `lint`, `core` (757, and the strings tool's 24), `unit` (400 on the Mac), `build`, the Mac's UI suite (65), `ios` (384 on the iPhone simulator), the iPhone's UI suite (54), `android` (536 and 32 on the JVM) and `android-device` (200 on the emulator).
