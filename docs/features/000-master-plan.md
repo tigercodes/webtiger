@@ -1010,7 +1010,15 @@ Four features of W2 are built on the recommendations of their own documents, the
 5. The standard session is made by the test kit, and by the `webtiger` command line for an app to be started on.
 6. A timed test's ceiling is the budget itself, on whatever machine it runs on; what it prints says which machine.
 
-And one that the measuring raised (060 §8), not yet acted on: a Space whose row was arranged in this run holds 549 KB when it is left with nothing live, against a budget of 100, because a row keeps itself as it was before each of the last fifty things done to arrange it (044). Recommended: a Space that no window shows and that has nothing alive is put away (the core keeps of it what the session keeps), and its line of things to undo goes with it.
+And one that the measuring raised (060 §8): a Space whose row was arranged in this run holds 549 KB when it is left with nothing live, against a budget of 100, because a row keeps itself as it was before each of the last fifty things done to arrange it (044).
+
+**A Space that is not shown is put away** ([061](061-a-space-put-away.md) §6, put on 2026-11-25; designed, not built; the eleventh of W3; it is how that budget is to be met):
+
+1. A Space is put away as soon as no window shows it and nothing of it is alive: the core keeps of it what the session keeps.
+2. Its line of things to undo (044) goes with it: after coming back, there is nothing of its arrangement to undo.
+3. Only the Spaces of the window that keeps the session: a second window's rows, and a private window's, are kept nowhere else.
+4. Nothing is said to a shell.
+5. A Space that is away is not tidied until it is shown, and is tidied then at once, before the window is told of its row.
 
 Also the owner's to say, from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
 
