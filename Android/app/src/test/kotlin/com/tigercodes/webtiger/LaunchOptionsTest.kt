@@ -48,6 +48,20 @@ class LaunchOptionsTest {
             LaunchOptions(fake = true, clockStep = 86_400, sleepAfter = 5, liveTabs = 2, memoryShortEvery = 3),
             MainActivity.launchOptions(numbers, debuggable = true),
         )
+        // And the standard session (060): asked for, it is; said to be false, or not said, it is not.
+        assertEquals(
+            LaunchOptions(fake = true, standardSession = true),
+            MainActivity.launchOptions(fake().putExtra(MainActivity.EXTRA_FAKE_STANDARD, true), debuggable = true),
+        )
+        assertEquals(
+            LaunchOptions(fake = true),
+            MainActivity.launchOptions(fake().putExtra(MainActivity.EXTRA_FAKE_STANDARD, false), debuggable = true),
+        )
+        assertEquals(
+            "without fake mode there is no such thing",
+            LaunchOptions(),
+            MainActivity.launchOptions(Intent(Intent.ACTION_MAIN).putExtra(MainActivity.EXTRA_FAKE_STANDARD, true), debuggable = true),
+        )
         // A number below nothing is nothing; and without fake mode none of them is anything.
         val below =
             fake()

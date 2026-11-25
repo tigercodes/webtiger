@@ -63,6 +63,11 @@ data class LaunchOptions(
      * in seconds, for a suite that must see what follows (055). 0: never.
      */
     val memoryShortEvery: Int = 0,
+    /**
+     * Fake mode: the core starts on the standard session of the plan's budgets (060), with
+     * its tab in front at the start address.
+     */
+    val standardSession: Boolean = false,
 )
 
 /**
@@ -249,6 +254,7 @@ class BrowserSession(
                 sleep_after_seconds = launch.sleepAfter,
                 live_tabs = launch.liveTabs,
                 memory_short_every_seconds = launch.memoryShortEvery,
+                standard_session = launch.standardSession,
             )
     }
 }

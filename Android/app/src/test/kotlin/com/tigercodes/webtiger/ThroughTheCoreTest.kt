@@ -583,6 +583,8 @@ class ThroughTheCoreTest {
     fun aSuitesSecondsOfMemoryAreHandedOnAndFakeModeDoesNotListenToTheSystem() {
         assertEquals(3, config(LaunchOptions(fake = true, memoryShortEvery = 3)).fake?.memory_short_every_seconds)
         assertEquals("a launch that says nothing is never told", 0, config(LaunchOptions(fake = true)).fake?.memory_short_every_seconds)
+        assertEquals(true, config(LaunchOptions(fake = true, standardSession = true)).fake?.standard_session)
+        assertEquals(false, config(LaunchOptions(fake = true)).fake?.standard_session)
         assertNull("and outside fake mode there is no such thing", config(LaunchOptions(memoryShortEvery = 3)).fake)
         assertFalse(BrowserSession.hearsTheSystemsMemory(LaunchOptions(fake = true)))
         assertTrue(BrowserSession.hearsTheSystemsMemory(LaunchOptions()))
@@ -673,6 +675,36 @@ class ThroughTheCoreTest {
             await("the first put to sleep") { pages.made[0].closed && model.tabs.first { it.tab_id == firstTab }.asleep }
             assertFalse("the tab in front is awake", onMain { pages.made[1].closed })
             assertEquals("A Story", onMain { model.tab.title })
+        }
+
+    /**
+     * Fake mode's standard session (060), through the real core: a launch that asks for it
+     * opens its window on a Space of forty-eight tabs, the last of them in front at the start
+     * address and the only one with a page; every other tab of the five Spaces is asleep.
+     */
+    @Test
+    fun aLaunchThatAsksForTheStandardSessionStartsOnIt() =
+        runBlocking {
+            val start = "http://127.0.0.1:8765/"
+            val running = session(LaunchOptions(fake = true, fakeStart = start, standardSession = true))
+            val model = BrowserModel(running)
+            onMain { model.open() }
+            await("the window's first snapshot") { model.tab.tab_id != 0L }
+            await("the one page asked for") { pages.made.size == 1 && pages.made[0].loaded.isNotEmpty() }
+            onMain {
+                assertEquals(48, model.tabs.size)
+                assertEquals(1, model.tabs.count { !it.asleep })
+                assertEquals("the last tab is in front", model.tabs.last().tab_id, model.tab.tab_id)
+                assertEquals(listOf(start), pages.made[0].loaded)
+            }
+            val awake = AwakeModel(running, onMain { model.windowId!! })
+            onMain { awake.reload() }
+            await("the list of what is awake") { awake.loaded }
+            onMain {
+                assertEquals(1, awake.tabs.size)
+                assertEquals("two hundred Sites and forty tabs, but for the one in front", 239, awake.asleep)
+                assertEquals(1, pages.made.size)
+            }
         }
 
     /**

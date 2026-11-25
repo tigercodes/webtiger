@@ -165,59 +165,89 @@ public nonisolated enum WTTestMode: SwiftProtobuf.Enum, Swift.CaseIterable {
 }
 
 /// Passed to wt_core_start.
-public nonisolated struct WTCoreConfig: Sendable {
+public nonisolated struct WTCoreConfig: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   /// The contract the shell was built with. The core refuses another major; a
   /// different minor works, because both sides ignore fields they don't know.
-  public var contractMajor: UInt32 = 0
+  public var contractMajor: UInt32 {
+    get {_storage._contractMajor}
+    set {_uniqueStorage()._contractMajor = newValue}
+  }
 
-  public var contractMinor: UInt32 = 0
+  public var contractMinor: UInt32 {
+    get {_storage._contractMinor}
+    set {_uniqueStorage()._contractMinor = newValue}
+  }
 
-  public var platform: WTPlatform = .unspecified
+  public var platform: WTPlatform {
+    get {_storage._platform}
+    set {_uniqueStorage()._platform = newValue}
+  }
 
   /// BCP 47, such as "en-GB".
-  public var locale: String = String()
+  public var locale: String {
+    get {_storage._locale}
+    set {_uniqueStorage()._locale = newValue}
+  }
 
   /// Per-user application data: the store lives here. Ignored in fake mode,
   /// whose store is in memory.
-  public var dataDir: String = String()
+  public var dataDir: String {
+    get {_storage._dataDir}
+    set {_uniqueStorage()._dataDir = newValue}
+  }
 
-  public var testMode: WTTestMode = .unspecified
+  public var testMode: WTTestMode {
+    get {_storage._testMode}
+    set {_uniqueStorage()._testMode = newValue}
+  }
 
   /// Fake mode's knobs. Read with TEST_MODE_FAKE only.
   public var fake: WTFakeOptions {
-    get {_fake ?? WTFakeOptions()}
-    set {_fake = newValue}
+    get {_storage._fake ?? WTFakeOptions()}
+    set {_uniqueStorage()._fake = newValue}
   }
   /// Returns true if `fake` has been explicitly set.
-  public var hasFake: Bool {self._fake != nil}
+  public var hasFake: Bool {_storage._fake != nil}
   /// Clears the value of `fake`. Subsequent reads from it will return its default value.
-  public mutating func clearFake() {self._fake = nil}
+  public mutating func clearFake() {_uniqueStorage()._fake = nil}
 
   /// The app's version, such as "0.1.0". For diagnostics.
-  public var appVersion: String = String()
+  public var appVersion: String {
+    get {_storage._appVersion}
+    set {_uniqueStorage()._appVersion = newValue}
+  }
 
   /// The engines this shell can create web views with, the default first. At
   /// least one. A pack installed later is announced with a request (W6).
-  public var engines: [WTEngineInfo] = []
+  public var engines: [WTEngineInfo] {
+    get {_storage._engines}
+    set {_uniqueStorage()._engines = newValue}
+  }
 
   /// Since 1.47. The device, as the shell finds it when it starts (054): the
   /// core works out from it how many tabs may be alive at once. A window made
   /// wide or narrow, or a foldable opened, after that changes nothing.
-  public var deviceKind: WTDeviceKind = .unspecified
+  public var deviceKind: WTDeviceKind {
+    get {_storage._deviceKind}
+    set {_uniqueStorage()._deviceKind = newValue}
+  }
 
   /// Since 1.47. The device's memory, in megabytes. 0 when the shell does
   /// not know.
-  public var memoryMegabytes: UInt32 = 0
+  public var memoryMegabytes: UInt32 {
+    get {_storage._memoryMegabytes}
+    set {_uniqueStorage()._memoryMegabytes = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _fake: WTFakeOptions? = nil
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public nonisolated struct WTFakeOptions: Sendable {
@@ -257,6 +287,15 @@ public nonisolated struct WTFakeOptions: Sendable {
   /// many seconds, for a suite that must see what follows: no suite may make
   /// a system short of memory. 0: never.
   public var memoryShortEverySeconds: UInt32 = 0
+
+  /// Since 1.51. The core starts on the standard session of the plan's
+  /// budgets (000 §7, 060): five Spaces, two hundred Sites and forty tabs,
+  /// made in its store as it starts, the first Space shown with its last tab
+  /// in front. That tab is at `start_address`, and is the one page that is
+  /// alive; every other tab is asleep, at an address nothing is fetched from.
+  /// For an app that is to be measured on the standard session: fake mode's
+  /// store is in memory, and nothing of anybody's is in it.
+  public var standardSession: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -300,81 +339,137 @@ nonisolated extension WTCoreConfig: SwiftProtobuf.Message, SwiftProtobuf._Messag
   public static let protoMessageName: String = _protobuf_package + ".CoreConfig"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}contract_major\0\u{3}contract_minor\0\u{1}platform\0\u{1}locale\0\u{3}data_dir\0\u{3}test_mode\0\u{1}fake\0\u{3}app_version\0\u{1}engines\0\u{3}device_kind\0\u{3}memory_megabytes\0")
 
+  fileprivate class _StorageClass {
+    var _contractMajor: UInt32 = 0
+    var _contractMinor: UInt32 = 0
+    var _platform: WTPlatform = .unspecified
+    var _locale: String = String()
+    var _dataDir: String = String()
+    var _testMode: WTTestMode = .unspecified
+    var _fake: WTFakeOptions? = nil
+    var _appVersion: String = String()
+    var _engines: [WTEngineInfo] = []
+    var _deviceKind: WTDeviceKind = .unspecified
+    var _memoryMegabytes: UInt32 = 0
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _contractMajor = source._contractMajor
+      _contractMinor = source._contractMinor
+      _platform = source._platform
+      _locale = source._locale
+      _dataDir = source._dataDir
+      _testMode = source._testMode
+      _fake = source._fake
+      _appVersion = source._appVersion
+      _engines = source._engines
+      _deviceKind = source._deviceKind
+      _memoryMegabytes = source._memoryMegabytes
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularUInt32Field(value: &self.contractMajor) }()
-      case 2: try { try decoder.decodeSingularUInt32Field(value: &self.contractMinor) }()
-      case 3: try { try decoder.decodeSingularEnumField(value: &self.platform) }()
-      case 4: try { try decoder.decodeSingularStringField(value: &self.locale) }()
-      case 5: try { try decoder.decodeSingularStringField(value: &self.dataDir) }()
-      case 6: try { try decoder.decodeSingularEnumField(value: &self.testMode) }()
-      case 7: try { try decoder.decodeSingularMessageField(value: &self._fake) }()
-      case 8: try { try decoder.decodeSingularStringField(value: &self.appVersion) }()
-      case 9: try { try decoder.decodeRepeatedMessageField(value: &self.engines) }()
-      case 10: try { try decoder.decodeSingularEnumField(value: &self.deviceKind) }()
-      case 11: try { try decoder.decodeSingularUInt32Field(value: &self.memoryMegabytes) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularUInt32Field(value: &_storage._contractMajor) }()
+        case 2: try { try decoder.decodeSingularUInt32Field(value: &_storage._contractMinor) }()
+        case 3: try { try decoder.decodeSingularEnumField(value: &_storage._platform) }()
+        case 4: try { try decoder.decodeSingularStringField(value: &_storage._locale) }()
+        case 5: try { try decoder.decodeSingularStringField(value: &_storage._dataDir) }()
+        case 6: try { try decoder.decodeSingularEnumField(value: &_storage._testMode) }()
+        case 7: try { try decoder.decodeSingularMessageField(value: &_storage._fake) }()
+        case 8: try { try decoder.decodeSingularStringField(value: &_storage._appVersion) }()
+        case 9: try { try decoder.decodeRepeatedMessageField(value: &_storage._engines) }()
+        case 10: try { try decoder.decodeSingularEnumField(value: &_storage._deviceKind) }()
+        case 11: try { try decoder.decodeSingularUInt32Field(value: &_storage._memoryMegabytes) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if self.contractMajor != 0 {
-      try visitor.visitSingularUInt32Field(value: self.contractMajor, fieldNumber: 1)
-    }
-    if self.contractMinor != 0 {
-      try visitor.visitSingularUInt32Field(value: self.contractMinor, fieldNumber: 2)
-    }
-    if self.platform != .unspecified {
-      try visitor.visitSingularEnumField(value: self.platform, fieldNumber: 3)
-    }
-    if !self.locale.isEmpty {
-      try visitor.visitSingularStringField(value: self.locale, fieldNumber: 4)
-    }
-    if !self.dataDir.isEmpty {
-      try visitor.visitSingularStringField(value: self.dataDir, fieldNumber: 5)
-    }
-    if self.testMode != .unspecified {
-      try visitor.visitSingularEnumField(value: self.testMode, fieldNumber: 6)
-    }
-    try { if let v = self._fake {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
-    } }()
-    if !self.appVersion.isEmpty {
-      try visitor.visitSingularStringField(value: self.appVersion, fieldNumber: 8)
-    }
-    if !self.engines.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.engines, fieldNumber: 9)
-    }
-    if self.deviceKind != .unspecified {
-      try visitor.visitSingularEnumField(value: self.deviceKind, fieldNumber: 10)
-    }
-    if self.memoryMegabytes != 0 {
-      try visitor.visitSingularUInt32Field(value: self.memoryMegabytes, fieldNumber: 11)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._contractMajor != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._contractMajor, fieldNumber: 1)
+      }
+      if _storage._contractMinor != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._contractMinor, fieldNumber: 2)
+      }
+      if _storage._platform != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._platform, fieldNumber: 3)
+      }
+      if !_storage._locale.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._locale, fieldNumber: 4)
+      }
+      if !_storage._dataDir.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._dataDir, fieldNumber: 5)
+      }
+      if _storage._testMode != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._testMode, fieldNumber: 6)
+      }
+      try { if let v = _storage._fake {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
+      } }()
+      if !_storage._appVersion.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._appVersion, fieldNumber: 8)
+      }
+      if !_storage._engines.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._engines, fieldNumber: 9)
+      }
+      if _storage._deviceKind != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._deviceKind, fieldNumber: 10)
+      }
+      if _storage._memoryMegabytes != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._memoryMegabytes, fieldNumber: 11)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: WTCoreConfig, rhs: WTCoreConfig) -> Bool {
-    if lhs.contractMajor != rhs.contractMajor {return false}
-    if lhs.contractMinor != rhs.contractMinor {return false}
-    if lhs.platform != rhs.platform {return false}
-    if lhs.locale != rhs.locale {return false}
-    if lhs.dataDir != rhs.dataDir {return false}
-    if lhs.testMode != rhs.testMode {return false}
-    if lhs._fake != rhs._fake {return false}
-    if lhs.appVersion != rhs.appVersion {return false}
-    if lhs.engines != rhs.engines {return false}
-    if lhs.deviceKind != rhs.deviceKind {return false}
-    if lhs.memoryMegabytes != rhs.memoryMegabytes {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._contractMajor != rhs_storage._contractMajor {return false}
+        if _storage._contractMinor != rhs_storage._contractMinor {return false}
+        if _storage._platform != rhs_storage._platform {return false}
+        if _storage._locale != rhs_storage._locale {return false}
+        if _storage._dataDir != rhs_storage._dataDir {return false}
+        if _storage._testMode != rhs_storage._testMode {return false}
+        if _storage._fake != rhs_storage._fake {return false}
+        if _storage._appVersion != rhs_storage._appVersion {return false}
+        if _storage._engines != rhs_storage._engines {return false}
+        if _storage._deviceKind != rhs_storage._deviceKind {return false}
+        if _storage._memoryMegabytes != rhs_storage._memoryMegabytes {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -382,7 +477,7 @@ nonisolated extension WTCoreConfig: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".FakeOptions"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}start_address\0\u{3}first_run\0\u{3}seconds_a_read\0\u{3}sleep_after_seconds\0\u{3}live_tabs\0\u{3}memory_short_every_seconds\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}start_address\0\u{3}first_run\0\u{3}seconds_a_read\0\u{3}sleep_after_seconds\0\u{3}live_tabs\0\u{3}memory_short_every_seconds\0\u{3}standard_session\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -396,6 +491,7 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
       case 4: try { try decoder.decodeSingularUInt32Field(value: &self.sleepAfterSeconds) }()
       case 5: try { try decoder.decodeSingularUInt32Field(value: &self.liveTabs) }()
       case 6: try { try decoder.decodeSingularUInt32Field(value: &self.memoryShortEverySeconds) }()
+      case 7: try { try decoder.decodeSingularBoolField(value: &self.standardSession) }()
       default: break
       }
     }
@@ -420,6 +516,9 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if self.memoryShortEverySeconds != 0 {
       try visitor.visitSingularUInt32Field(value: self.memoryShortEverySeconds, fieldNumber: 6)
     }
+    if self.standardSession != false {
+      try visitor.visitSingularBoolField(value: self.standardSession, fieldNumber: 7)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -430,6 +529,7 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if lhs.sleepAfterSeconds != rhs.sleepAfterSeconds {return false}
     if lhs.liveTabs != rhs.liveTabs {return false}
     if lhs.memoryShortEverySeconds != rhs.memoryShortEverySeconds {return false}
+    if lhs.standardSession != rhs.standardSession {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

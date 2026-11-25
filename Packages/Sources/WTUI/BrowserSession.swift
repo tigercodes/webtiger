@@ -135,6 +135,9 @@ public final class BrowserSession {
             // How often the core acts as though the system had said it is short of memory,
             // in seconds, for a suite that must see what follows (055). Without it: never.
             fake.memoryShortEverySeconds = UInt32(environment["WEBTIGER_FAKE_MEMORY_SHORT_EVERY"] ?? "") ?? 0
+            // The core starts on the standard session of the plan's budgets, for an app that
+            // is to be measured on it (060): its tab in front is at the start address.
+            fake.standardSession = environment["WEBTIGER_FAKE_STANDARD"] == "1"
             return fake
         }
 

@@ -185,6 +185,18 @@ impl Dispatcher {
         let space = store
             .default_space(new_login_set, now)
             .map_err(|e| StartError::new(e.code()))?;
+        // Fake mode, for an app that is to be measured (060): the standard
+        // session of the plan's budgets is in the store before the app is
+        // made, and the app finds it as it finds a session a person left.
+        let options = config.fake.as_ref().filter(|_| fake);
+        let standard = options.is_some_and(|options| options.standard_session);
+        if standard {
+            let front = options
+                .map(|options| options.start_address.as_str())
+                .filter(|start| !start.is_empty());
+            crate::standard::make(&mut store, &space, front, now)
+                .map_err(|e| StartError::new(e.code()))?;
+        }
         let clock: Rc<dyn Clock> = match clock {
             Some(chosen) => chosen,
             None if fake => Rc::new(FakeClock::new(
@@ -212,7 +224,9 @@ impl Dispatcher {
                 .map(|options| options.start_address.clone())
                 .filter(|start| fake && !start.is_empty()),
             clock,
-            session: !fake,
+            // Fake mode keeps no session: every window opens the same way.
+            // But for the standard session, which is one.
+            session: !fake || standard,
             sleep_after_seconds: config
                 .fake
                 .as_ref()

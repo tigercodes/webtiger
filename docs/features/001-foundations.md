@@ -251,7 +251,7 @@ Release build, this Mac (Apple silicon, 36 GB; **not** the 8 GB reference machin
 | Process start to a window on screen | 210 to 370 ms | ≤ 500 ms |
 | Rust core build for four Apple targets | 56 s | — |
 
-These are a single tab with no Spaces, no history and no Guard. They say the starting point is light. They do not say the budgets are met.
+These are a single tab with no Spaces, no history and no Guard. They say the starting point is light. They do not say the budgets are met. (On the standard session, measured by a script on 2026-11-25, on a Mac with 16 GB: 48 to 53 MB, and a window after about 200 ms, but for the first start after a build. [060](060-the-budgets-as-tests.md) §5.2.)
 
 ### 11.1 Q3: WebKit rule lists
 

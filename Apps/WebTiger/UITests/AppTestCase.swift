@@ -28,12 +28,16 @@ class AppTestCase: XCTestCase {
     /// alive at once, where fake mode has no limit: for a test that must see it met (054).
     /// With `memoryShortEvery`, the core acts every so many seconds as though the system had
     /// said it is short of memory: for a test that must see what follows (055). No test
-    /// makes a system short of memory.
+    /// makes a system short of memory. With `standardSession`, the core starts on the
+    /// standard session of the plan's budgets, its tab in front at `start` (060).
     func launch(
         start: String?, firstRun: Bool = false, icons: Bool = false, clockStep: Int = 0, sleepAfter: Int = 0, liveTabs: Int = 0,
-        memoryShortEvery: Int = 0
+        memoryShortEvery: Int = 0, standardSession: Bool = false
     ) -> XCUIApplication {
         let app = inFakeMode(start: start, firstRun: firstRun)
+        if standardSession {
+            app.launchEnvironment["WEBTIGER_FAKE_STANDARD"] = "1"
+        }
         if liveTabs > 0 {
             app.launchEnvironment["WEBTIGER_FAKE_LIVE_TABS"] = String(liveTabs)
         }

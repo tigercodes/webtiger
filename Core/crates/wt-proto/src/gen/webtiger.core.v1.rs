@@ -2073,6 +2073,15 @@ pub struct FakeOptions {
     /// a system short of memory. 0: never.
     #[prost(uint32, tag = "6")]
     pub memory_short_every_seconds: u32,
+    /// Since 1.51. The core starts on the standard session of the plan's
+    /// budgets (000 §7, 060): five Spaces, two hundred Sites and forty tabs,
+    /// made in its store as it starts, the first Space shown with its last tab
+    /// in front. That tab is at `start_address`, and is the one page that is
+    /// alive; every other tab is asleep, at an address nothing is fetched from.
+    /// For an app that is to be measured on the standard session: fake mode's
+    /// store is in memory, and nothing of anybody's is in it.
+    #[prost(bool, tag = "7")]
+    pub standard_session: bool,
 }
 /// One engine a shell offers.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]

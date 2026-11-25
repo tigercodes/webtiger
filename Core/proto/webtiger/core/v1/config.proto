@@ -96,6 +96,14 @@ message FakeOptions {
   // many seconds, for a suite that must see what follows: no suite may make
   // a system short of memory. 0: never.
   uint32 memory_short_every_seconds = 6;
+  // Since 1.51. The core starts on the standard session of the plan's
+  // budgets (000 §7, 060): five Spaces, two hundred Sites and forty tabs,
+  // made in its store as it starts, the first Space shown with its last tab
+  // in front. That tab is at `start_address`, and is the one page that is
+  // alive; every other tab is asleep, at an address nothing is fetched from.
+  // For an app that is to be measured on the standard session: fake mode's
+  // store is in memory, and nothing of anybody's is in it.
+  bool standard_session = 7;
 }
 
 // One engine a shell offers.

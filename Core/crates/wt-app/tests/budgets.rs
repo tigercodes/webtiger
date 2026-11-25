@@ -338,3 +338,128 @@ fn fake_modes_word_that_memory_is_short_is_counted_as_a_wake_up_too() {
         );
     });
 }
+
+/// Fake mode can start on the standard session (060): for an app that is to
+/// be measured on it, with nobody's tabs in it and nothing fetched but one
+/// page of a suite's own.
+#[test]
+fn fake_mode_can_start_on_the_standard_session_with_one_page_alive_at_its_start_address() {
+    const START: &str = "http://127.0.0.1:8765/";
+    run(async {
+        let mut config = FakeShell::config(wt_proto::v1::EngineKind::Webkit);
+        config.fake = Some(wt_proto::v1::FakeOptions {
+            standard_session: true,
+            start_address: START.to_owned(),
+            ..wt_proto::v1::FakeOptions::default()
+        });
+        let mut shell = FakeShell::start(&config).unwrap();
+        shell.engine.page(START, "Start");
+        // (The pages of the test kit's standard session: the two sessions are at the same
+        // addresses, and whatever of this one is woken below loads.)
+        standard_pages(&mut shell, SPACES);
+        let (window, _, subscription) = shell.open_window().await;
+        shell.settle().await;
+
+        // One web view was asked for and one page loaded: the tab in front, at the start
+        // address. Every other tab is asleep.
+        assert_eq!(asked(&shell), (1, 1, 0));
+        let told = shell.window(subscription);
+        let front = told.tab.clone().unwrap();
+        assert_eq!(front.address.unwrap().url, START);
+        assert_eq!(front.title, "Start");
+        assert_eq!(told.tabs.len(), SITES_A_SPACE + TABS_A_SPACE);
+        assert_eq!(told.tabs.iter().filter(|tab| !tab.asleep).count(), 1);
+        assert_eq!(
+            told.tabs.last().unwrap().tab_id,
+            front.tab_id,
+            "the last tab is in front"
+        );
+
+        // Five Spaces, each with forty Sites (four Favourites, sixteen in two Groups) and
+        // eight tabs: the shape the test kit's standard session has.
+        let answer = shell
+            .request(request::Kind::QuerySpaces(wt_proto::v1::QuerySpaces {}))
+            .await;
+        let wt_proto::v1::response::Kind::SpacesPage(page) = answer else {
+            panic!("the Spaces, not {answer:?}");
+        };
+        assert_eq!(page.spaces.len(), SPACES);
+        // Each with logins of its own.
+        let logins: std::collections::BTreeSet<u32> =
+            page.spaces.iter().map(|space| space.logins).collect();
+        assert_eq!(logins.len(), SPACES);
+        let (mut sites, mut tabs) = (0, 0);
+        for (number, space) in page.spaces.iter().enumerate() {
+            shell
+                .request(request::Kind::SwitchSpace(wt_proto::v1::SwitchSpace {
+                    window_id: window,
+                    space_id: space.space_id,
+                }))
+                .await;
+            shell.settle().await;
+            let row = shell.window(subscription);
+            assert_eq!(row.tabs.len(), SITES_A_SPACE + TABS_A_SPACE);
+            assert_eq!(row.tabs.iter().filter(|tab| tab.favourite).count(), 4);
+            assert_eq!(
+                row.groups
+                    .iter()
+                    .map(|group| group.sites)
+                    .collect::<Vec<_>>(),
+                [8, 8]
+            );
+            sites += row.tabs.iter().filter(|tab| tab.kept).count();
+            tabs += row.tabs.iter().filter(|tab| !tab.kept).count();
+            // Only the first Space's tab in front is at the start address: every other
+            // Space's is its own last tab, where the test kit's session has it.
+            let front = row.tab.clone().unwrap();
+            assert_eq!(row.tabs.last().unwrap().tab_id, front.tab_id);
+            if number == 0 {
+                assert_eq!(front.title, "Start");
+            } else {
+                assert_eq!(
+                    front.title,
+                    format!(
+                        "A page with a title of an ordinary length, number 7 of Space {number}"
+                    )
+                );
+            }
+        }
+        assert_eq!((sites, tabs), (200, 40));
+    });
+    run(async {
+        // Outside fake mode the option is nothing: a person's own store is never written
+        // to by it. The app starts on what is there, which is one Space and one empty tab.
+        let folder = tempfile::tempdir().unwrap();
+        let mut config = FakeShell::live_config(folder.path());
+        config.fake = Some(wt_proto::v1::FakeOptions {
+            standard_session: true,
+            start_address: START.to_owned(),
+            ..wt_proto::v1::FakeOptions::default()
+        });
+        let mut shell = FakeShell::start(&config).unwrap();
+        let (_, _, subscription) = shell.open_window().await;
+        shell.settle().await;
+        assert_eq!(shell.window(subscription).tabs.len(), 1);
+        assert_eq!(asked(&shell), (0, 0, 0), "and nothing is loaded");
+        let answer = shell
+            .request(request::Kind::QuerySpaces(wt_proto::v1::QuerySpaces {}))
+            .await;
+        let wt_proto::v1::response::Kind::SpacesPage(page) = answer else {
+            panic!("the Spaces, not {answer:?}");
+        };
+        assert_eq!(page.spaces.len(), 1);
+    });
+    run(async {
+        // Without the option, fake mode is as it was: one empty window, no session.
+        let mut shell = FakeShell::fake();
+        let (_, _, subscription) = shell.open_window().await;
+        assert_eq!(shell.window(subscription).tabs.len(), 1);
+        let answer = shell
+            .request(request::Kind::QuerySpaces(wt_proto::v1::QuerySpaces {}))
+            .await;
+        let wt_proto::v1::response::Kind::SpacesPage(page) = answer else {
+            panic!("the Spaces, not {answer:?}");
+        };
+        assert_eq!(page.spaces.len(), 1);
+    });
+}

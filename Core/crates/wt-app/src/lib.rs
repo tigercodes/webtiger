@@ -29,6 +29,7 @@ mod pictures;
 mod search;
 mod signin;
 mod spaces;
+mod standard;
 mod states;
 mod tidying;
 

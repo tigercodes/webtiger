@@ -214,6 +214,13 @@ class MainActivity : ComponentActivity() {
          */
         const val EXTRA_FAKE_MEMORY_SHORT_EVERY = "webtiger.fake.memory_short_every"
 
+        /**
+         * `--ez webtiger.fake.standard true`: in fake mode, the core starts on the standard
+         * session of the plan's budgets (060), with its tab in front at the start address:
+         * for an app that is to be measured on it.
+         */
+        const val EXTRA_FAKE_STANDARD = "webtiger.fake.standard"
+
         /** The words of [ACTION_SEARCH_WORDS]. */
         const val EXTRA_WORDS = "webtiger.search.words"
 
@@ -290,6 +297,7 @@ class MainActivity : ComponentActivity() {
                 sleepAfter = intent.getIntExtra(EXTRA_FAKE_SLEEP_AFTER, 0).coerceAtLeast(0),
                 liveTabs = intent.getIntExtra(EXTRA_FAKE_LIVE_TABS, 0).coerceAtLeast(0),
                 memoryShortEvery = intent.getIntExtra(EXTRA_FAKE_MEMORY_SHORT_EVERY, 0).coerceAtLeast(0),
+                standardSession = intent.getBooleanExtra(EXTRA_FAKE_STANDARD, false),
             )
         }
     }

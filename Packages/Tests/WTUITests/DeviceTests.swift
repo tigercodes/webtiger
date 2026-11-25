@@ -38,6 +38,7 @@
                 "WEBTIGER_FAKE_SLEEP_AFTER": "4",
                 "WEBTIGER_FAKE_LIVE_TABS": "2",
                 "WEBTIGER_FAKE_MEMORY_SHORT_EVERY": "3",
+                "WEBTIGER_FAKE_STANDARD": "1",
             ])
             XCTAssertEqual(all.startAddress, "https://example.com/")
             XCTAssertTrue(all.firstRun)
@@ -45,6 +46,11 @@
             XCTAssertEqual(all.sleepAfterSeconds, 4)
             XCTAssertEqual(all.liveTabs, 2)
             XCTAssertEqual(all.memoryShortEverySeconds, 3)
+            XCTAssertTrue(all.standardSession)
+            // Only "1" asks for the standard session.
+            for said in ["0", "yes", "", "true"] {
+                XCTAssertFalse(BrowserSession.fakeOptions(["WEBTIGER_FAKE_STANDARD": said]).standardSession, said)
+            }
             // What is no count is no limit, and no seconds are never.
             for said in ["many", "-1", "", "2.5"] {
                 XCTAssertEqual(BrowserSession.fakeOptions(["WEBTIGER_FAKE_LIVE_TABS": said]).liveTabs, 0, said)
