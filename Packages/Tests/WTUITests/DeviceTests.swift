@@ -39,6 +39,9 @@
                 "WEBTIGER_FAKE_LIVE_TABS": "2",
                 "WEBTIGER_FAKE_MEMORY_SHORT_EVERY": "3",
                 "WEBTIGER_FAKE_STANDARD": "1",
+                "WEBTIGER_FAKE_OPEN": "https://a.example.com/  https://b.example.com/one?two=3\nhttp://c.example.com/\n",
+                "WEBTIGER_FAKE_OPEN_EVERY": "20",
+                "WEBTIGER_FAKE_DEVICE_LIMITS": "1",
             ])
             XCTAssertEqual(all.startAddress, "https://example.com/")
             XCTAssertTrue(all.firstRun)
@@ -47,6 +50,13 @@
             XCTAssertEqual(all.liveTabs, 2)
             XCTAssertEqual(all.memoryShortEverySeconds, 3)
             XCTAssertTrue(all.standardSession)
+            // The list, in its order, each address as it was written; and the seconds between.
+            XCTAssertEqual(all.openAddresses, ["https://a.example.com/", "https://b.example.com/one?two=3", "http://c.example.com/"])
+            XCTAssertEqual(all.openEverySeconds, 20)
+            XCTAssertTrue(all.deviceLimits)
+            XCTAssertFalse(BrowserSession.fakeOptions(["WEBTIGER_FAKE_DEVICE_LIMITS": "yes"]).deviceLimits)
+            XCTAssertEqual(BrowserSession.fakeOptions(["WEBTIGER_FAKE_OPEN": " \n "]).openAddresses, [], "nothing but spaces is no list")
+            XCTAssertEqual(BrowserSession.fakeOptions(["WEBTIGER_FAKE_OPEN_EVERY": "soon"]).openEverySeconds, 0)
             // Only "1" asks for the standard session.
             for said in ["0", "yes", "", "true"] {
                 XCTAssertFalse(BrowserSession.fakeOptions(["WEBTIGER_FAKE_STANDARD": said]).standardSession, said)

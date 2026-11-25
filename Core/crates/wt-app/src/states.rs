@@ -36,14 +36,16 @@ const LIVE_TABS_AT_LEAST: usize = 8;
 /// The most tabs that are alive at once (054), from what the shell says of
 /// the device. A shell that does not say what it runs on is taken for a
 /// desktop; one that does not say its memory, for one with none to speak
-/// of. Fake mode has no limit of its own: only the one a suite gives.
+/// of. Fake mode has no limit of its own: only the one a suite gives, or
+/// the device's when a run asks for the app as it is (063).
 pub(crate) fn live_tabs(config: &CoreConfig, fake: bool) -> usize {
     if fake {
-        let given = config.fake.as_ref().map_or(0, |options| options.live_tabs);
-        return match given {
-            0 => usize::MAX,
-            given => usize::try_from(given).unwrap_or(usize::MAX),
-        };
+        let options = config.fake.as_ref();
+        match options.map_or(0, |options| options.live_tabs) {
+            0 if options.is_some_and(|options| options.device_limits) => {}
+            0 => return usize::MAX,
+            given => return usize::try_from(given).unwrap_or(usize::MAX),
+        }
     }
     match DeviceKind::try_from(config.device_kind) {
         Ok(DeviceKind::Phone) => LIVE_TABS_PHONE,

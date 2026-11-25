@@ -692,6 +692,23 @@ impl App {
         self.open_in_front(window, front, address)
     }
 
+    /// The window an address from outside is opened in when nobody names
+    /// one (063): the first that was opened and is still there, and is not
+    /// private. `None` when there is none.
+    pub(crate) fn window_for_outside(&self) -> Option<WindowId> {
+        self.state.borrow().first_ordinary_window()
+    }
+
+    /// Opens an address as one the system handed a shell from outside is
+    /// opened (031), in `window`: fake mode's own list (063). The wait for
+    /// its page; an address that is none of the web opens nothing.
+    pub(crate) fn open_from_outside(&self, window: WindowId, url: String) -> AppFuture {
+        self.open_address(&OpenAddress {
+            window_id: window.get(),
+            url,
+        })
+    }
+
     /// Opens a tab after `front`, in front, and sends it to an address the
     /// person asked for from outside any tab: a search for words, or a
     /// link pressed in another app. Answered with the tab that opened.

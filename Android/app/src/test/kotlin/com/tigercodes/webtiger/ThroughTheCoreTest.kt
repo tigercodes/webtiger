@@ -708,6 +708,37 @@ class ThroughTheCoreTest {
         }
 
     /**
+     * Fake mode's list (063), through the real core: a launch that has one has the core open
+     * each address by itself, in its turn, in a new tab in front, as a link from another app
+     * is opened. The shell asked for none of them.
+     */
+    @Test
+    fun aLaunchWithAListHasTheCoreOpenEachAddressByItself() =
+        runBlocking {
+            val list = listOf("https://example.com/", "https://example.org/story")
+            assertEquals(list, config(LaunchOptions(fake = true, open = list, openEvery = 1)).fake?.open_addresses)
+            assertEquals(1, config(LaunchOptions(fake = true, open = list, openEvery = 1)).fake?.open_every_seconds)
+            assertNull("outside fake mode there is no such thing", config(LaunchOptions(open = list, openEvery = 1)).fake)
+            assertEquals(true, config(LaunchOptions(fake = true, deviceLimits = true)).fake?.device_limits)
+            assertEquals(false, config(LaunchOptions(fake = true)).fake?.device_limits)
+
+            val model = BrowserModel(session(LaunchOptions(fake = true, open = list, openEvery = 1)))
+            onMain { model.open() }
+            await("the window's first snapshot") { model.tab.tab_id != 0L }
+            await("the first of the list asked for") { pages.made.size == 1 && pages.made[0].loaded.isNotEmpty() }
+            arrive(pages.made[0], list[0], "Example Domain")
+            await("the second of the list asked for") { pages.made.size == 2 && pages.made[1].loaded.isNotEmpty() }
+            arrive(pages.made[1], list[1], "A Story")
+            await("the second in front") { model.tab.title == "A Story" }
+            onMain {
+                assertEquals(listOf(list[0]), pages.made[0].loaded)
+                assertEquals(listOf(list[1]), pages.made[1].loaded)
+                assertEquals("the window's own empty tab, and the two", 3, model.tabs.size)
+                assertEquals(listOf("", "Example Domain", "A Story"), model.tabs.map { it.title })
+            }
+        }
+
+    /**
      * What is awake (056), through the real core: the list names both tabs, in their row's
      * order, the one in front on screen; "sleep all others" has the core put the one behind to
      * sleep, and the list is then of the one that is left, with one counted asleep.

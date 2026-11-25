@@ -138,6 +138,14 @@ public final class BrowserSession {
             // The core starts on the standard session of the plan's budgets, for an app that
             // is to be measured on it (060): its tab in front is at the start address.
             fake.standardSession = environment["WEBTIGER_FAKE_STANDARD"] == "1"
+            // Addresses the core opens by itself, so many seconds apart, each as a link from
+            // another app is opened: for a run that is to be measured with a list of sites
+            // open (063). With spaces or lines between them. Without the seconds: none.
+            fake.openAddresses = (environment["WEBTIGER_FAKE_OPEN"] ?? "").split(whereSeparator: \.isWhitespace).map(String.init)
+            fake.openEverySeconds = UInt32(environment["WEBTIGER_FAKE_OPEN_EVERY"] ?? "") ?? 0
+            // The limit of live tabs is this device's own, as it is outside fake mode, where
+            // fake mode has none: for a run that is to be of the app as it is (063).
+            fake.deviceLimits = environment["WEBTIGER_FAKE_DEVICE_LIMITS"] == "1"
             return fake
         }
 

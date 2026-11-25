@@ -104,7 +104,7 @@ Outside fake mode the option is nothing: a person's own store is never written t
 
 **The first start of a program that has just been built is slow,** and was over the budget once of the twice it was seen. The system looks a new program over before it runs it for the first time, and that is what a first start after an update is too. The script says every run and holds the middle one to the budget: held to the slowest, it would fail for what the system does and the app does not. It is written here as found, and in §8 as not shown to be met.
 
-The app's own process is the shell and the core. The engine's processes (WebKit's, for the page, the network and drawing) are others, and the plan counts them separately: they are not in this number. (001 §11 had the same process at 36 MB with one page and no session.)
+The app's own process is the shell and the core. The engine's processes (WebKit's, for the page, the network and drawing) are others, and the plan counts them separately: they are not in this number. **Since [063](063-the-published-run.md) the script says them beside it:** three, holding 30.6 MB with the session's one page, which is a page of the test site. (And the first start after a build was over the budget a second time of three: 581 ms.) (001 §11 had the same process at 36 MB with one page and no session.)
 
 ## 6. Decisions
 

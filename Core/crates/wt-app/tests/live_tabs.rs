@@ -177,6 +177,50 @@ fn fake_mode_has_no_limit_but_the_one_a_suite_gives() {
     });
 }
 
+/// A run that is to be of the app as it is (063) asks fake mode for the device's own limit:
+/// what the same device has outside fake mode. A limit a suite gives comes before it.
+#[test]
+fn fake_mode_has_the_devices_own_limit_when_a_run_asks_for_it() {
+    run(async {
+        for (kind, memory, limit) in [
+            (DeviceKind::Phone as i32, 8_192, 3),
+            (DeviceKind::Desktop as i32, 8_192, 16),
+            (DeviceKind::Desktop as i32, 2_048, 8),
+        ] {
+            let said = format!("kind {kind} with {memory} megabytes");
+            let mut config = FakeShell::config(EngineKind::Webkit);
+            config.device_kind = kind;
+            config.memory_megabytes = memory;
+            config.fake = Some(FakeOptions {
+                device_limits: true,
+                ..FakeOptions::default()
+            });
+            let mut shell = FakeShell::start(&config).unwrap();
+            web(&mut shell);
+            let (window, _, subscription) = a_row_of(&mut shell, limit).await;
+            assert_eq!(sleepers(&shell, subscription), [] as [&str; 0], "{said}");
+            shell.open_tab(window, &at(limit + 1)).await;
+            assert_eq!(sleepers(&shell, subscription), ["Site 1"], "{said}");
+            assert_eq!(shell.engine.web_views.len(), limit, "{said}");
+        }
+
+        // With a suite's limit as well, the suite's is the limit.
+        let mut config = FakeShell::config(EngineKind::Webkit);
+        config.device_kind = DeviceKind::Phone as i32;
+        config.fake = Some(FakeOptions {
+            device_limits: true,
+            live_tabs: 5,
+            ..FakeOptions::default()
+        });
+        let mut shell = FakeShell::start(&config).unwrap();
+        web(&mut shell);
+        let (window, _, subscription) = a_row_of(&mut shell, 5).await;
+        assert_eq!(sleepers(&shell, subscription), [] as [&str; 0]);
+        shell.open_tab(window, &at(6)).await;
+        assert_eq!(sleepers(&shell, subscription), ["Site 1"]);
+    });
+}
+
 #[test]
 fn the_tab_longest_out_of_sight_sleeps_as_the_time_would_put_it_to_sleep_and_wakes_as_it_was() {
     run(async {

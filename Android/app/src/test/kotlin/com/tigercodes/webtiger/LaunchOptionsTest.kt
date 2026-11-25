@@ -62,6 +62,34 @@ class LaunchOptionsTest {
             LaunchOptions(),
             MainActivity.launchOptions(Intent(Intent.ACTION_MAIN).putExtra(MainActivity.EXTRA_FAKE_STANDARD, true), debuggable = true),
         )
+        // And a list for the core to open by itself (063): in its order, each address as it was
+        // written, with the seconds between.
+        val list =
+            fake()
+                .putExtra(MainActivity.EXTRA_FAKE_OPEN, "https://a.example.com/  https://b.example.com/one?two=3\nhttp://c.example.com/\n")
+                .putExtra(MainActivity.EXTRA_FAKE_OPEN_EVERY, 20)
+        assertEquals(
+            LaunchOptions(
+                fake = true,
+                open = listOf("https://a.example.com/", "https://b.example.com/one?two=3", "http://c.example.com/"),
+                openEvery = 20,
+            ),
+            MainActivity.launchOptions(list, debuggable = true),
+        )
+        assertEquals(
+            "nothing but spaces is no list, and seconds below nothing are none",
+            LaunchOptions(fake = true),
+            MainActivity.launchOptions(
+                fake().putExtra(MainActivity.EXTRA_FAKE_OPEN, " \n ").putExtra(MainActivity.EXTRA_FAKE_OPEN_EVERY, -5),
+                debuggable = true,
+            ),
+        )
+        assertEquals(LaunchOptions(), MainActivity.launchOptions(list, debuggable = false))
+        // And the device's own limit of live tabs, for a run of the app as it is (063).
+        assertEquals(
+            LaunchOptions(fake = true, deviceLimits = true),
+            MainActivity.launchOptions(fake().putExtra(MainActivity.EXTRA_FAKE_DEVICE_LIMITS, true), debuggable = true),
+        )
         // A number below nothing is nothing; and without fake mode none of them is anything.
         val below =
             fake()

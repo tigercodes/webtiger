@@ -2082,6 +2082,24 @@ pub struct FakeOptions {
     /// store is in memory, and nothing of anybody's is in it.
     #[prost(bool, tag = "7")]
     pub standard_session: bool,
+    /// Since 1.52. Addresses the core opens by itself, in this order, one every
+    /// `open_every_seconds` from the first thing a shell sends: each as an
+    /// address the system hands a shell from outside is opened (OpenAddress,
+    /// 031), in a new tab, in front, in the window that was opened first and is
+    /// not private. One that is no address of the web is passed over. While
+    /// there is no such window the next waits. When the last has been opened
+    /// the core's timer for them stops. For a run that is to be measured with a
+    /// list of sites open (063), with nothing in the app automated.
+    #[prost(string, repeated, tag = "8")]
+    pub open_addresses: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// Since 1.52. The seconds between them. 0: none is opened.
+    #[prost(uint32, tag = "9")]
+    pub open_every_seconds: u32,
+    /// Since 1.52. The limit of live tabs is the device's own, as it is outside
+    /// fake mode (054), where fake mode has none: for a run that is to be of
+    /// the app as it is (063). A limit a suite gives (`live_tabs`) comes first.
+    #[prost(bool, tag = "10")]
+    pub device_limits: bool,
 }
 /// One engine a shell offers.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]

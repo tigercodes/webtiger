@@ -221,6 +221,23 @@ class MainActivity : ComponentActivity() {
          */
         const val EXTRA_FAKE_STANDARD = "webtiger.fake.standard"
 
+        /**
+         * `--es webtiger.fake.open "<address> <address> …"`: in fake mode, addresses the core
+         * opens by itself, each as a link from another app is opened, for a run that is to be
+         * measured with a list of sites open (063). With spaces or lines between them.
+         */
+        const val EXTRA_FAKE_OPEN = "webtiger.fake.open"
+
+        /** `--ei webtiger.fake.open_every 20`: the seconds between them. Without it: none is opened. */
+        const val EXTRA_FAKE_OPEN_EVERY = "webtiger.fake.open_every"
+
+        /**
+         * `--ez webtiger.fake.device_limits true`: in fake mode, the limit of live tabs is this
+         * device's own, as it is outside fake mode, for a run that is to be of the app as it is
+         * (063). Without it fake mode has none.
+         */
+        const val EXTRA_FAKE_DEVICE_LIMITS = "webtiger.fake.device_limits"
+
         /** The words of [ACTION_SEARCH_WORDS]. */
         const val EXTRA_WORDS = "webtiger.search.words"
 
@@ -298,6 +315,14 @@ class MainActivity : ComponentActivity() {
                 liveTabs = intent.getIntExtra(EXTRA_FAKE_LIVE_TABS, 0).coerceAtLeast(0),
                 memoryShortEvery = intent.getIntExtra(EXTRA_FAKE_MEMORY_SHORT_EVERY, 0).coerceAtLeast(0),
                 standardSession = intent.getBooleanExtra(EXTRA_FAKE_STANDARD, false),
+                open =
+                    intent
+                        .getStringExtra(EXTRA_FAKE_OPEN)
+                        .orEmpty()
+                        .split(Regex("\\s+"))
+                        .filter { it.isNotEmpty() },
+                openEvery = intent.getIntExtra(EXTRA_FAKE_OPEN_EVERY, 0).coerceAtLeast(0),
+                deviceLimits = intent.getBooleanExtra(EXTRA_FAKE_DEVICE_LIMITS, false),
             )
         }
     }

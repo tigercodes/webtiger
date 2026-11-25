@@ -297,6 +297,24 @@ public nonisolated struct WTFakeOptions: Sendable {
   /// store is in memory, and nothing of anybody's is in it.
   public var standardSession: Bool = false
 
+  /// Since 1.52. Addresses the core opens by itself, in this order, one every
+  /// `open_every_seconds` from the first thing a shell sends: each as an
+  /// address the system hands a shell from outside is opened (OpenAddress,
+  /// 031), in a new tab, in front, in the window that was opened first and is
+  /// not private. One that is no address of the web is passed over. While
+  /// there is no such window the next waits. When the last has been opened
+  /// the core's timer for them stops. For a run that is to be measured with a
+  /// list of sites open (063), with nothing in the app automated.
+  public var openAddresses: [String] = []
+
+  /// Since 1.52. The seconds between them. 0: none is opened.
+  public var openEverySeconds: UInt32 = 0
+
+  /// Since 1.52. The limit of live tabs is the device's own, as it is outside
+  /// fake mode (054), where fake mode has none: for a run that is to be of
+  /// the app as it is (063). A limit a suite gives (`live_tabs`) comes first.
+  public var deviceLimits: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -477,7 +495,7 @@ nonisolated extension WTCoreConfig: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".FakeOptions"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}start_address\0\u{3}first_run\0\u{3}seconds_a_read\0\u{3}sleep_after_seconds\0\u{3}live_tabs\0\u{3}memory_short_every_seconds\0\u{3}standard_session\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}start_address\0\u{3}first_run\0\u{3}seconds_a_read\0\u{3}sleep_after_seconds\0\u{3}live_tabs\0\u{3}memory_short_every_seconds\0\u{3}standard_session\0\u{3}open_addresses\0\u{3}open_every_seconds\0\u{3}device_limits\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -492,6 +510,9 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
       case 5: try { try decoder.decodeSingularUInt32Field(value: &self.liveTabs) }()
       case 6: try { try decoder.decodeSingularUInt32Field(value: &self.memoryShortEverySeconds) }()
       case 7: try { try decoder.decodeSingularBoolField(value: &self.standardSession) }()
+      case 8: try { try decoder.decodeRepeatedStringField(value: &self.openAddresses) }()
+      case 9: try { try decoder.decodeSingularUInt32Field(value: &self.openEverySeconds) }()
+      case 10: try { try decoder.decodeSingularBoolField(value: &self.deviceLimits) }()
       default: break
       }
     }
@@ -519,6 +540,15 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if self.standardSession != false {
       try visitor.visitSingularBoolField(value: self.standardSession, fieldNumber: 7)
     }
+    if !self.openAddresses.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.openAddresses, fieldNumber: 8)
+    }
+    if self.openEverySeconds != 0 {
+      try visitor.visitSingularUInt32Field(value: self.openEverySeconds, fieldNumber: 9)
+    }
+    if self.deviceLimits != false {
+      try visitor.visitSingularBoolField(value: self.deviceLimits, fieldNumber: 10)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -530,6 +560,9 @@ nonisolated extension WTFakeOptions: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if lhs.liveTabs != rhs.liveTabs {return false}
     if lhs.memoryShortEverySeconds != rhs.memoryShortEverySeconds {return false}
     if lhs.standardSession != rhs.standardSession {return false}
+    if lhs.openAddresses != rhs.openAddresses {return false}
+    if lhs.openEverySeconds != rhs.openEverySeconds {return false}
+    if lhs.deviceLimits != rhs.deviceLimits {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

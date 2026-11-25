@@ -1485,6 +1485,15 @@ impl State {
             .is_some_and(|window| self.is_private_space(window.space))
     }
 
+    /// The window that was opened first of those there are, private windows
+    /// apart (063). `None` when there is none.
+    pub(crate) fn first_ordinary_window(&self) -> Option<WindowId> {
+        self.windows
+            .iter()
+            .find(|(_, window)| !self.is_private_space(window.space))
+            .map(|(id, _)| *id)
+    }
+
     /// The login set of a private window; `None` for an ordinary window and
     /// for one there is not.
     pub(crate) fn private_login_set(&self, window: WindowId) -> Option<LoginSetId> {

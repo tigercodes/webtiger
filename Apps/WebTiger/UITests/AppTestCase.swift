@@ -29,14 +29,20 @@ class AppTestCase: XCTestCase {
     /// With `memoryShortEvery`, the core acts every so many seconds as though the system had
     /// said it is short of memory: for a test that must see what follows (055). No test
     /// makes a system short of memory. With `standardSession`, the core starts on the
-    /// standard session of the plan's budgets, its tab in front at `start` (060).
+    /// standard session of the plan's budgets, its tab in front at `start` (060). With
+    /// `open` and `openEvery`, the core opens those addresses by itself, so many seconds
+    /// apart, each as a link from another app is opened (063).
     func launch(
         start: String?, firstRun: Bool = false, icons: Bool = false, clockStep: Int = 0, sleepAfter: Int = 0, liveTabs: Int = 0,
-        memoryShortEvery: Int = 0, standardSession: Bool = false
+        memoryShortEvery: Int = 0, standardSession: Bool = false, open: [String] = [], openEvery: Int = 0
     ) -> XCUIApplication {
         let app = inFakeMode(start: start, firstRun: firstRun)
         if standardSession {
             app.launchEnvironment["WEBTIGER_FAKE_STANDARD"] = "1"
+        }
+        if !open.isEmpty {
+            app.launchEnvironment["WEBTIGER_FAKE_OPEN"] = open.joined(separator: " ")
+            app.launchEnvironment["WEBTIGER_FAKE_OPEN_EVERY"] = String(openEvery)
         }
         if liveTabs > 0 {
             app.launchEnvironment["WEBTIGER_FAKE_LIVE_TABS"] = String(liveTabs)

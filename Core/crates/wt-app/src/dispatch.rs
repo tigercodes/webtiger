@@ -7,7 +7,7 @@
 //! task). `wt-ffi` does that on the core's thread; the tests do it in line.
 
 use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::Path;
 use std::rc::Rc;
@@ -116,6 +116,9 @@ pub struct Dispatcher {
     /// had been told the system is short of memory. `None` when it does
     /// not, and once that has been set going.
     short_every: std::cell::Cell<Option<Duration>>,
+    /// Fake mode's list of addresses to open by itself (063), and how long
+    /// between them; taken when the opening is set going.
+    opening: RefCell<Option<(Duration, VecDeque<String>)>>,
     /// How many times one of the core's own timers has woken it (060): the
     /// look for tabs to put to sleep, the look for tabs to tidy, and fake
     /// mode's word that memory is short. A core with nothing to look for
@@ -273,6 +276,18 @@ impl Dispatcher {
                     .filter(|seconds| *seconds > 0)
                     .map(Duration::from_secs),
             ),
+            opening: RefCell::new(
+                config
+                    .fake
+                    .as_ref()
+                    .filter(|options| fake && options.open_every_seconds > 0)
+                    .map(|options| {
+                        (
+                            Duration::from_secs(u64::from(options.open_every_seconds)),
+                            options.open_addresses.iter().cloned().collect(),
+                        )
+                    }),
+            ),
         });
         dispatcher.send_event(event::Kind::Status(CoreStatus {
             state: core_status::State::Ready as i32,
@@ -300,6 +315,7 @@ impl Dispatcher {
         // for tabs to put to sleep is set going when there is one.
         self.watch_for_sleepers();
         self.say_memory_is_short();
+        self.open_the_addresses();
     }
 
     /// How many times one of the core's own timers has woken it since it
@@ -332,6 +348,44 @@ impl Dispatcher {
                 core.woken();
                 core.app.memory_short(MemoryLevel::Short as i32);
                 core.flush();
+            }
+        });
+    }
+
+    /// Fake mode, for a run that is to be measured with a list of sites open
+    /// (063): from the first thing a shell sends, the core opens the next
+    /// address of its list every so often, as an address handed to a shell
+    /// from outside is opened (031), by the runtime's own time. While there
+    /// is no window to open one in, the next waits. When the last has been
+    /// opened the timer stops; and with the core.
+    fn open_the_addresses(self: &Rc<Self>) {
+        let Some((every, mut addresses)) = self.opening.borrow_mut().take() else {
+            return;
+        };
+        let core = Rc::downgrade(self);
+        tokio::task::spawn_local(async move {
+            while !addresses.is_empty() {
+                tokio::time::sleep(every).await;
+                let Some(core) = core.upgrade() else {
+                    break;
+                };
+                core.woken();
+                let Some(window) = core.app.window_for_outside() else {
+                    continue;
+                };
+                let Some(url) = addresses.pop_front() else {
+                    break;
+                };
+                // The tab is open, and going where it goes, before this
+                // returns: what is left is the wait for its page, which holds
+                // up nothing here.
+                let loading = core.app.open_from_outside(window, url);
+                core.flush();
+                let this = Rc::clone(&core);
+                tokio::task::spawn_local(async move {
+                    let _ = CatchUnwind::new(loading).await;
+                    this.flush();
+                });
             }
         });
     }

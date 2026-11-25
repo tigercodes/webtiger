@@ -68,6 +68,17 @@ data class LaunchOptions(
      * its tab in front at the start address.
      */
     val standardSession: Boolean = false,
+    /**
+     * Fake mode: addresses the core opens by itself, in this order, each as a link from another
+     * app is opened (063); and the seconds between them, without which none is opened.
+     */
+    val open: List<String> = emptyList(),
+    val openEvery: Int = 0,
+    /**
+     * Fake mode: the limit of live tabs is the device's own, as it is outside fake mode (063),
+     * where fake mode has none.
+     */
+    val deviceLimits: Boolean = false,
 )
 
 /**
@@ -255,6 +266,9 @@ class BrowserSession(
                 live_tabs = launch.liveTabs,
                 memory_short_every_seconds = launch.memoryShortEvery,
                 standard_session = launch.standardSession,
+                open_addresses = launch.open,
+                open_every_seconds = launch.openEvery,
+                device_limits = launch.deviceLimits,
             )
     }
 }

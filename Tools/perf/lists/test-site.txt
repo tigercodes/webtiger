@@ -1,0 +1,12 @@
+# A list for trying the run (063) on this machine alone: pages of the test site, which
+# Tools/perf/mac-run.sh serves on 127.0.0.1:8765 when a list names it. It shows that the
+# script works, and nothing about the web. One address to a line; a line that begins with
+# # is not read.
+http://127.0.0.1:8765/
+http://127.0.0.1:8765/landed
+http://127.0.0.1:8765/tall
+http://127.0.0.1:8765/find
+http://127.0.0.1:8765/links
+http://127.0.0.1:8765/words
+http://127.0.0.1:8765/pictures
+http://127.0.0.1:8765/whoami
