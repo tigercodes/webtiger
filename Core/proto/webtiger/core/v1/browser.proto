@@ -477,6 +477,9 @@ message TabView {
   // picture (QueryPictures), draws it in the page's place, and takes it away
   // when this is 0 again. A number is one picture, and is not used twice.
   uint64 picture_id = 22;
+  // Since 1.55. Guard, for the page this tab shows (067): whether it is on,
+  // and which of its three switches said so. Always there.
+  GuardView guard = 23;
 }
 
 enum LoadState {
@@ -1299,4 +1302,49 @@ message QueryGuardRules {}
 message GuardRules {
   // The text as it was set; empty when there are none.
   string text = 1 [(wt.redact) = true];
+}
+
+// Since 1.55. What one of Guard's switches says (067).
+enum GuardSwitch {
+  // Nothing: as the level above has it. A site's switch and a Space's may
+  // say nothing; everywhere's may not.
+  GUARD_SWITCH_UNSPECIFIED = 0;
+  GUARD_SWITCH_ON = 1;
+  GUARD_SWITCH_OFF = 2;
+}
+
+// Since 1.55. Which of Guard's three switches said what Guard is for a page:
+// the nearest that says anything.
+enum GuardLevel {
+  GUARD_LEVEL_UNSPECIFIED = 0;
+  GUARD_LEVEL_EVERYWHERE = 1;
+  GUARD_LEVEL_SPACE = 2;
+  GUARD_LEVEL_SITE = 3;
+}
+
+// Since 1.55. Guard, for the page a tab shows (067).
+message GuardView {
+  bool on = 1;
+  GuardLevel said_by = 2;
+}
+
+// Since 1.55. Sets one of Guard's three switches (067): everywhere's; a
+// Space's; or a site's, which is the site of the page a tab shows, within
+// that tab's logins (Spaces that share logins share it). The nearest switch
+// that says anything wins. It is kept, and is in force from the next request
+// a page makes, on every thread that asks the fast path. A site's switch
+// that changes what Guard is for the tab's page reloads that tab; the other
+// two reload nothing. Answered with Ack; or "guard.where" when none of the
+// three is named, "guard.switch" for everywhere's switch saying nothing or
+// for a value this core does not know, "space.unknown", "tab.unknown", or
+// "guard.no_site" for a tab that shows no page of a site. A refusal changes
+// nothing.
+message SetGuard {
+  oneof of {
+    // Everywhere's switch. (The value is not read.)
+    bool everywhere = 1;
+    uint64 space_id = 2;
+    uint64 tab_id = 3;
+  }
+  GuardSwitch switch = 4;
 }

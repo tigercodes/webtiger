@@ -105,6 +105,10 @@ pub struct App {
     /// told when they change.
     pub(crate) guard_rules: Rc<RefCell<Rc<str>>>,
     pub(crate) guard_sink: Rc<RefCell<Option<crate::guard::RulesSink>>>,
+    /// Who is told Guard's switches and which web view is whose (067), and
+    /// what it was last told.
+    pub(crate) guard_switches_sink: Rc<RefCell<Option<crate::guard::SwitchesSink>>>,
+    pub(crate) guard_switches_told: Rc<RefCell<Option<wt_core::GuardSwitches>>>,
     fake_start: Option<Rc<str>>,
     /// When each web view last had an address handed to the system, for
     /// those that had one within [`OUTSIDE_LINK_INTERVAL`].
@@ -173,7 +177,11 @@ impl App {
             .iter()
             .map(|space| (space.id, store.borrow().closed_tabs(space.id).unwrap_or(0)))
             .collect();
+        // Guard's switches (067), as the store has kept them for these Spaces.
+        let guard =
+            crate::guard::kept_switches(&store.borrow(), kept.spaces.iter().map(|space| space.id));
         let mut state = State::new(kept.spaces, &kept.start, options.engine, kept.saved);
+        state.guard = guard;
         state.saved_groups = kept.groups;
         state.layout = crate::layout::kept(&store.borrow());
         for (space, count) in closed {
@@ -187,6 +195,8 @@ impl App {
             search: Rc::new(Cell::new(search)),
             guard_rules: Rc::new(RefCell::new(guard_rules)),
             guard_sink: Rc::new(RefCell::new(None)),
+            guard_switches_sink: Rc::new(RefCell::new(None)),
+            guard_switches_told: Rc::new(RefCell::new(None)),
             fake_start: options.fake_start.map(Into::into),
             outside: Rc::new(RefCell::new(BTreeMap::new())),
             store,
@@ -294,6 +304,7 @@ impl App {
             request::Kind::QueryPictures(query) => answer(Ok(self.query_pictures(&query))),
             request::Kind::SetGuardRules(set) => answer(self.set_guard_rules(&set)),
             request::Kind::QueryGuardRules(_) => answer(Ok(self.query_guard_rules())),
+            request::Kind::SetGuard(set) => self.set_guard(&set),
             request::Kind::Ping(_)
             | request::Kind::Subscribe(_)
             | request::Kind::Unsubscribe(_)
@@ -1543,6 +1554,12 @@ impl App {
             engine,
             login_set,
         } = target;
+        // A web view that is to be made is known to whoever answers the fast
+        // path before the shell is asked for it (067): its first request is
+        // under its own Space's and site's switches.
+        if create {
+            self.tell_guard_switches();
+        }
         let creating = create.then(|| {
             self.host
                 .request(host_request::Kind::WebViewCreate(WebViewCreate {

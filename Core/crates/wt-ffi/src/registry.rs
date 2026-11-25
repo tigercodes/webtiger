@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use arc_swap::{ArcSwap, ArcSwapOption};
+use wt_core::{GuardSwitches, WebViewId};
 use wt_guard::{Guard, Kind, Verdict};
 use wt_proto::v1::CoreConfig;
 
@@ -25,6 +26,9 @@ struct Entry {
     /// at a stroke, when the rules change (066): a decision that is being
     /// made is made on the one it began with.
     guard: Arc<ArcSwap<Guard>>,
+    /// Guard's switches, and which web view is whose (067): put here by the
+    /// core's own thread, at a stroke, each time either changes.
+    switches: Arc<ArcSwap<GuardSwitches>>,
 }
 
 static SLOTS: [ArcSwapOption<Entry>; MAX_CORES] =
@@ -44,11 +48,13 @@ pub(crate) fn start(config: CoreConfig, target: SinkTarget) -> Result<u64, &'sta
     // With no rules until the core's thread has said what its rules are,
     // which it has by the time `Core::start` returns.
     let guard = Arc::new(ArcSwap::from_pointee(Guard::default()));
-    let core = Core::start(config, target, Arc::clone(&guard))?;
+    let switches = Arc::new(ArcSwap::from_pointee(GuardSwitches::default()));
+    let core = Core::start(config, target, Arc::clone(&guard), Arc::clone(&switches))?;
     let entry = Arc::new(Entry {
         handle,
         core,
         guard,
+        switches,
     });
     for slot in &SLOTS {
         let empty: Option<Arc<Entry>> = None;
@@ -81,15 +87,31 @@ pub(crate) fn is_running(handle: u64) -> bool {
         })
 }
 
-/// Guard's decision for a request, by the blocker of the core with this
-/// handle (064): the fast path's lookup. `None` when no such core runs.
-pub(crate) fn decide(handle: u64, url: &str, source_url: &str, kind: Kind) -> Option<Verdict> {
+/// Guard's decision for a request a page makes in a web view, by the
+/// switches and the blocker of the core with this handle (064, 067): the
+/// fast path's lookup. Where Guard is off for the page, by the nearest
+/// switch that says anything, the request is allowed and the blocker is not
+/// asked. `None` when no such core runs.
+pub(crate) fn decide(
+    handle: u64,
+    web_view: u64,
+    url: &str,
+    source_url: &str,
+    kind: Kind,
+) -> Option<Verdict> {
     if handle == 0 {
         return None;
     }
     SLOTS.iter().find_map(|slot| {
         let entry = slot.load();
         let entry = entry.as_ref().filter(|entry| entry.handle == handle)?;
+        if !entry
+            .switches
+            .load()
+            .on_for(WebViewId(web_view), source_url)
+        {
+            return Some(Verdict::Allow);
+        }
         Some(entry.guard.load().decide(url, source_url, kind))
     })
 }

@@ -295,7 +295,7 @@ mod tests {
         {
             let old = Connection::open(&path).unwrap();
             old.execute_batch(
-                "ALTER TABLE tab DROP COLUMN state_id; DROP TABLE tab_state; PRAGMA user_version = 15;",
+                "DROP TABLE site_guard; ALTER TABLE tab DROP COLUMN state_id; DROP TABLE tab_state; PRAGMA user_version = 15;",
             )
             .unwrap();
         }
@@ -508,7 +508,8 @@ mod tests {
         {
             let old = Connection::open(&path).unwrap();
             old.execute_batch(
-                "ALTER TABLE tab_state DROP COLUMN picture;
+                "DROP TABLE site_guard;
+                 ALTER TABLE tab_state DROP COLUMN picture;
                  ALTER TABLE tab_state DROP COLUMN picture_width;
                  ALTER TABLE tab_state DROP COLUMN picture_height;
                  PRAGMA user_version = 16;",

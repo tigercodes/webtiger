@@ -807,6 +807,238 @@ fn guard_is_asked_from_many_threads_while_its_rules_change() {
     );
 }
 
+/// Guard's answer for a request a page makes in a web view, through the C
+/// function: the status, and the verdict written.
+fn guard_in(handle: u64, web_view: u64, url: &[u8], source: &[u8]) -> (i32, u32) {
+    let request = WtRequest {
+        url: url.as_ptr(),
+        url_len: url.len(),
+        source_url: source.as_ptr(),
+        source_url_len: source.len(),
+        web_view_id: web_view,
+        resource_type: SCRIPT,
+    };
+    let mut verdict = WtVerdict {
+        action: WT_VERDICT_ALLOW,
+    };
+    // SAFETY: both structures are live, and each address covers its length.
+    let status = unsafe { wt_guard_check(handle, &raw const request, &raw mut verdict) };
+    (status, verdict.action)
+}
+
+/// Sets one of Guard's switches (067), through the contract.
+fn set_guard(
+    shell: &mut TestShell,
+    of: wt_proto::v1::set_guard::Of,
+    switch: wt_proto::v1::GuardSwitch,
+) {
+    let answer = shell.request(request::Kind::SetGuard(wt_proto::v1::SetGuard {
+        of: Some(of),
+        switch: switch.into(),
+    }));
+    assert!(matches!(answer, response::Kind::Ack(_)), "{answer:?}");
+}
+
+/// A core, a window, and a tab whose page of the news site has arrived in a
+/// web view: the tab, its web view, and the Space the window shows.
+fn a_page_in_a_web_view(shell: &mut TestShell) -> (u64, u64, u64) {
+    let response::Kind::WindowOpened(opened) =
+        shell.request(request::Kind::OpenWindow(OpenWindow::default()))
+    else {
+        panic!("OpenWindow answers WindowOpened");
+    };
+    let response::Kind::Subscribed(_) = shell.request(request::Kind::Subscribe(Subscribe {
+        topic: Some(subscribe::Topic::Window(WindowTopic {
+            window_id: opened.window_id,
+        })),
+    })) else {
+        panic!("Subscribe answers Subscribed");
+    };
+    let answer = shell.request(request::Kind::SubmitAddress(SubmitAddress {
+        tab_id: opened.tab_id,
+        text: "https://news.example.com/story".to_owned(),
+    }));
+    assert!(matches!(answer, response::Kind::Ack(_)), "{answer:?}");
+    let web_view = shell
+        .host_requests
+        .iter()
+        .find_map(|request| match request {
+            host_request::Kind::WebViewCreate(create) => Some(create.web_view_id),
+            _ => None,
+        })
+        .expect("a web view was asked for");
+    for kind in [
+        engine_event::Kind::NavigationCommitted(NavigationCommitted {
+            url: "https://news.example.com/story".to_owned(),
+        }),
+        engine_event::Kind::NavigationFinished(NavigationFinished {}),
+    ] {
+        shell.report(EngineEvent {
+            web_view_id: web_view,
+            kind: Some(kind),
+        });
+    }
+    // The window is told its page has arrived, and which Space it shows.
+    let space = loop {
+        let event::Kind::Snapshot(snapshot) = shell.next_event() else {
+            continue;
+        };
+        let Some(snapshot::Model::Window(window)) = snapshot.model else {
+            continue;
+        };
+        if window
+            .tab
+            .is_some_and(|tab| tab.load_state() == LoadState::Idle && tab.address.is_some())
+        {
+            break window.space_id;
+        }
+    };
+    (opened.tab_id, web_view, space)
+}
+
+#[test]
+fn guards_switches_are_heeded_from_the_next_request_and_the_nearest_wins() {
+    use wt_proto::v1::GuardSwitch::{Off, On, Unspecified};
+    use wt_proto::v1::set_guard::Of;
+    let mut shell = with_rules(RULES);
+    let (tab, web_view, space) = a_page_in_a_web_view(&mut shell);
+    let handle = shell.handle;
+    let show = b"https://ads.tracker.example.net/show.js";
+    let other_page = b"https://www.example.org/";
+    let blocked = (0, WT_VERDICT_BLOCK);
+    let allowed = (0, WT_VERDICT_ALLOW);
+    let reloads = |shell: &TestShell| {
+        shell
+            .host_requests
+            .iter()
+            .filter(|request| matches!(request, host_request::Kind::WebViewCommand(_)))
+            .count()
+    };
+
+    // Guard is on: by the rules.
+    assert_eq!(guard_in(handle, web_view, show, PAGE), blocked);
+    // Off everywhere: the very next request is allowed, in this web view and in one
+    // that is not known. On again: refused again.
+    set_guard(&mut shell, Of::Everywhere(true), Off);
+    assert_eq!(guard_in(handle, web_view, show, PAGE), allowed);
+    assert_eq!(guard_in(handle, web_view + 500, show, PAGE), allowed);
+    set_guard(&mut shell, Of::Everywhere(true), On);
+    assert_eq!(guard_in(handle, web_view, show, PAGE), blocked);
+    // Off for the Space: this web view's requests are allowed, whatever page asks; a
+    // web view that is not known is under everywhere's switch, which is on.
+    set_guard(&mut shell, Of::SpaceId(space), Off);
+    assert_eq!(guard_in(handle, web_view, show, PAGE), allowed);
+    assert_eq!(guard_in(handle, web_view, show, other_page), allowed);
+    assert_eq!(guard_in(handle, web_view + 500, show, PAGE), blocked);
+    assert_eq!(reloads(&shell), 0, "a Space's switch reloads nothing");
+    // On for the site, in a Space that is off: the site's pages are under Guard, and
+    // another site's in the same web view are not. The tab was reloaded.
+    set_guard(&mut shell, Of::TabId(tab), On);
+    assert_eq!(guard_in(handle, web_view, show, PAGE), blocked);
+    assert_eq!(
+        guard_in(handle, web_view, show, b"https://shop.example.com/basket"),
+        blocked
+    );
+    assert_eq!(guard_in(handle, web_view, show, other_page), allowed);
+    assert_eq!(reloads(&shell), 1);
+    // The Space says nothing again: everywhere's, which is on, for the other site too.
+    set_guard(&mut shell, Of::SpaceId(space), Unspecified);
+    assert_eq!(guard_in(handle, web_view, show, other_page), blocked);
+    // Off for the site alone.
+    set_guard(&mut shell, Of::TabId(tab), Off);
+    assert_eq!(guard_in(handle, web_view, show, PAGE), allowed);
+    assert_eq!(guard_in(handle, web_view, show, other_page), blocked);
+    assert_eq!(reloads(&shell), 2);
+    // What no rule names is allowed under any switch.
+    assert_eq!(
+        guard_in(
+            handle,
+            web_view,
+            b"https://cdn.example.org/app.js",
+            other_page
+        ),
+        allowed
+    );
+}
+
+#[test]
+fn guards_switches_are_in_force_after_a_start_with_nothing_asked() {
+    use wt_proto::v1::GuardSwitch::Off;
+    use wt_proto::v1::set_guard::Of;
+    let folder = tempfile::tempdir().unwrap();
+    let mut config = fake_config();
+    config.test_mode = wt_proto::v1::TestMode::Live as i32;
+    config.data_dir = folder.path().to_str().unwrap().to_owned();
+    let show = b"https://ads.tracker.example.net/show.js";
+
+    let mut shell = TestShell::start(&config);
+    set_rules(&mut shell, RULES);
+    assert_eq!(guard_in(shell.handle, 1, show, PAGE), (0, WT_VERDICT_BLOCK));
+    set_guard(&mut shell, Of::Everywhere(true), Off);
+    assert_eq!(guard_in(shell.handle, 1, show, PAGE), (0, WT_VERDICT_ALLOW));
+    shell.stop();
+    // Started again: off, before anything is asked of the core.
+    let shell = TestShell::start(&config);
+    assert_eq!(guard_in(shell.handle, 1, show, PAGE), (0, WT_VERDICT_ALLOW));
+}
+
+#[test]
+fn guard_is_asked_from_many_threads_while_a_switch_is_turned() {
+    use wt_proto::v1::GuardSwitch::{Off, On};
+    use wt_proto::v1::set_guard::Of;
+    let mut shell = with_rules(RULES);
+    let (_, web_view, _) = a_page_in_a_web_view(&mut shell);
+    let handle = shell.handle;
+    let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let threads: Vec<_> = (0..8)
+        .map(|_| {
+            let stop = std::sync::Arc::clone(&stop);
+            std::thread::spawn(move || {
+                let (mut blocked, mut allowed, mut wrong) = (0_u32, 0_u32, 0_u32);
+                while !stop.load(std::sync::atomic::Ordering::Relaxed) {
+                    match guard_in(
+                        handle,
+                        web_view,
+                        b"https://ads.tracker.example.net/show.js",
+                        PAGE,
+                    ) {
+                        (0, WT_VERDICT_BLOCK) => blocked += 1,
+                        (0, WT_VERDICT_ALLOW) => allowed += 1,
+                        _ => wrong += 1,
+                    }
+                }
+                (blocked, allowed, wrong)
+            })
+        })
+        .collect();
+    for _ in 0..150 {
+        set_guard(&mut shell, Of::Everywhere(true), Off);
+        set_guard(&mut shell, Of::Everywhere(true), On);
+    }
+    stop.store(true, std::sync::atomic::Ordering::Relaxed);
+    let (mut blocked, mut allowed) = (0, 0);
+    for thread in threads {
+        let (was_blocked, was_allowed, wrong) = thread.join().unwrap();
+        assert_eq!(wrong, 0);
+        blocked += was_blocked;
+        allowed += was_allowed;
+    }
+    assert!(
+        blocked > 0 && allowed > 0,
+        "{blocked} blocked, {allowed} allowed"
+    );
+    assert_eq!(
+        guard_in(
+            handle,
+            web_view,
+            b"https://ads.tracker.example.net/show.js",
+            PAGE
+        ),
+        (0, WT_VERDICT_BLOCK),
+        "the last switch set is the one in force"
+    );
+}
+
 #[test]
 fn several_cores_run_side_by_side() {
     let mut shells: Vec<TestShell> = (0..6).map(|_| TestShell::fake()).collect();

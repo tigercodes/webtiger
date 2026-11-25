@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use crate::StoreError;
 
 /// The version this build's store is at.
-pub const SCHEMA_VERSION: u32 = 17;
+pub const SCHEMA_VERSION: u32 = 18;
 
 /// The migrations, in order: `MIGRATIONS[n]` takes version `n` to `n + 1`.
 const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
@@ -202,6 +202,15 @@ const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
     "ALTER TABLE tab_state ADD COLUMN picture BLOB;
      ALTER TABLE tab_state ADD COLUMN picture_width INTEGER NOT NULL DEFAULT 0;
      ALTER TABLE tab_state ADD COLUMN picture_height INTEGER NOT NULL DEFAULT 0;",
+    // 18 (W4, 067): Guard's switch for a site, in a login set: on (1) or
+    // off (0). A site that says nothing has no row, which is every site
+    // there was.
+    "CREATE TABLE site_guard (
+         login_set_id BLOB NOT NULL REFERENCES login_set (id),
+         site TEXT NOT NULL,
+         guard INTEGER NOT NULL CHECK (guard IN (0, 1)),
+         PRIMARY KEY (login_set_id, site)
+     ) STRICT, WITHOUT ROWID;",
 ];
 
 pub(crate) fn version(connection: &Connection) -> Result<u32, StoreError> {

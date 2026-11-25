@@ -4,6 +4,7 @@
 pub mod address;
 pub mod clock;
 pub mod download;
+pub mod guard;
 pub mod id;
 pub mod policy;
 mod search;
@@ -15,6 +16,7 @@ pub mod zoom;
 pub use address::{Address, AddressError, Input, Security, classify, search_address};
 pub use clock::{Clock, ManualClock, SystemClock, Timestamp};
 pub use download::download_file_name;
+pub use guard::{GuardSwitches, SaidBy};
 pub use id::{GroupId, IdMint, LoginSetId, SpaceId, SubscriptionId, TabId, WebViewId, WindowId};
 pub use policy::{NavigationAction, check_navigation, opens_outside};
 pub use search::{

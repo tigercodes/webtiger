@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | **Designed, on the recommendations of §6, for the core alone.** The owner's word of 2026-11-24 was to use what is suggested where something waits on a choice, and to go on: they are to be built on, and stay the owner's to change. Not built. The mark in the address field, its count and its panel are a shell's design, and are not designed here |
+| **Status** | **Built and tested, in the core, on the recommendations of §6.** The owner's word of 2026-11-24 was to use what is suggested where something waits on a choice, and to go on: they are built on, and stay the owner's to change. Guard has three switches, the nearest that says anything winning: everywhere's, a Space's, and a site's within a login set. The fast path heeds them from the next request, a site's switch reloads its tab, they are kept, and a window is told what Guard is for the page in front and which switch said so. **No shell shows or sets them yet:** the mark, its count and the panel are a shell's design, and are not designed here |
 | **Phase** | W4 of [000](000-master-plan.md) §9: "the three levels of switch". 000 §5.8: "Three levels, the nearest wins: this site (within this Space's logins), this Space, everywhere." W4's exit: "a site's switch takes effect in one reload" |
-| **Contract** | To come: a request that sets a switch; and what a window is told of Guard for the page in front |
+| **Contract** | 1.55: `SetGuard`; `TabView.guard`. The store is at schema 18: a site's switch has a table |
 | **Builds on** | [064](064-guards-request-engine.md): the blocker and the fast path. [066](066-a-persons-own-rules.md): something put in force at a stroke for every thread that asks. [012](012-zoom.md): a thing remembered for a site, in a login set. [024](024-several-spaces.md): Spaces, and logins shared between them |
 | **Last updated** | 2026-11-25 |
 
@@ -39,23 +39,32 @@ A site I need is broken, and I suspect my browser's blocker. I want to turn the 
 
 **In force from the next request,** on every thread that asks, as rules are (066). And a site's switch set for a tab reloads that tab, so that what the person sees is the page under their choice: one click, and a reload. A Space's switch and everywhere's reload nothing: they are for many pages, and reloading those is a person's to do.
 
-**Kept:** everywhere's and each Space's with the app's settings and the Space; a site's with the login set, as its zoom is. Forgetting a site ("Forget this site") forgets its switch with the rest.
+**Kept:** everywhere's and each Space's with the app's settings; a site's with the login set, as its zoom is, in a table of its own. ("Forget this site", 000 §5.9, is not built: when it is, a site's switch goes with the rest.)
 
 **A private window** has a login set of its own, kept in memory (037), and no Space: it is under everywhere's switch, and a site's switch set in it holds for the window's life and is kept nowhere.
 
 ## 4. The contract
 
-The next minor.
+1.55.
 
-- **Set a switch:** everywhere (on or off); a Space's, by the Space (on, off, or nothing said); a site's, by a tab that shows a page of it (on, off, or nothing said). Refused when the tab shows no page of a site.
-- **What a window is told of the tab in front:** whether Guard is on for its page, and which of the three said so.
+- **`SetGuard { of, switch }`:** `of` is `everywhere`, a `space_id`, or a `tab_id` (the site of the page that tab shows, within its logins); `switch` is on, off, or nothing said. Answered with `Ack`. Refused, changing nothing: `guard.where` when none of the three is named; `guard.switch` when everywhere's switch is to say nothing, or the value is one this core does not know; `space.unknown`; `tab.unknown`; `guard.no_site` for a tab that shows no page of a site.
+- **`TabView.guard`:** `on`, and `said_by` (everywhere, the Space, the site). In what a window is told of the tab in front, always.
+
+**As built, where the design did not say:**
+
+- **A tab is reloaded only when its site's switch changed what Guard is for its page.** A site turned off where the Space is off already changes nothing for the page, and reloads nothing.
+- **Only the tab the switch was set from** is reloaded: another tab of the same site is under the new switch from its next request, and is as it was until it is reloaded.
+- **Whoever answers the fast path is told before anything else happens.** A switch that is set is in force before the tab's reload is asked of the shell, and before the request is answered. A web view that is to be made is known there, with its Space and its logins, before the shell is asked to make it: its first request is under its own switches.
+- **A web view a page opened by itself** (006) is made by the engine before the core hears of it: it is known to the fast path's side when the windows are next told, and under everywhere's switch for the moment before.
+- **A tab's site, for its switch and for what its window is told,** is the site of the page that has arrived in it. A tab that is on its way to its first page has none yet. The fast path does not wait for that: it goes by the address the engine says the page has.
+- **The refusals have no words yet:** no screen shows them.
 
 ## 5. In what order
 
-1. **The store:** a site's switch, a Space's, everywhere's.
-2. **The core:** the switches, the request, what a window is told, the reload.
-3. **The fast path:** the switches, and which web view is whose, put where every thread reads them, at a stroke when either changes.
-4. **The shells:** nothing, until the mark and the panel are designed. Android's client must know anything new by its name (003).
+1. **The store:** a site's switch, a Space's, everywhere's. **Built:** schema 18.
+2. **The core:** the switches, the request, what a window is told, the reload. **Built.**
+3. **The fast path:** the switches, and which web view is whose, put where every thread reads them, at a stroke when either changes. **Built.**
+4. **The shells:** nothing, until the mark and the panel are designed. There is no new kind of answer for Android's client to know (003).
 
 ## 6. Decisions
 
@@ -73,24 +82,30 @@ The next minor.
 
 ## 7. Tests
 
-To be filled in as built. Planned:
-
 | Where | What |
 |---|---|
-| The core, through the contract | Each switch set and what a window is then told, for each of the three saying and not saying; Spaces that share logins share a site's switch and not a Space's; kept across a start; a site's switch reloads its tab and the others reload nothing; a tab with no site refused; a private window |
-| The fast path, through the C functions | A request refused with Guard on and allowed with it off, at each level, with the nearest winning; from the next request; eight threads asking while a switch is turned |
-| The core broken, a part at a time | Each level, and each "not said", left out |
+| The rule (`wt-core`, 3) | **The nearest that says wins:** everywhere on or off, the Space saying nothing, on or off, the site the same: all eighteen, by the page and by the fast path's question. **A site's switch is its logins', and a Space's its own:** another site in the same logins, and the same site in other logins, are not under it; another Space with the same logins shares the site's switch and not the Space's; a page of no site has no site's switch. **The fast path's question:** the site is what somebody registered, whatever the host, the port and the path; another site, a host that only ends alike, and a page that is no address or of no site, are under the next switch; a web view that is not known is under everywhere's |
+| The store (`wt-store`, +2) | A site's switch written, listed with every other in every login set, replaced in place, and taken away by saying nothing, which leaves nothing written; another login set's is its own; a login set the store does not have can have none; a site's zoom is not touched. A store from before the switches gains them and keeps what it had |
+| The core, through the contract (`guard_switches`, 8) | **On until a switch says otherwise, and the nearest wins:** each switch set in turn, and what the window is told of the page in front at once, with which switch said so; a site and a Space saying nothing again; another site in the same tab, and another host of the same site. **Which tab is reloaded:** a site's switch that changes what Guard is for the page reloads that tab, once; said again, or saying what the level above says already, it reloads nothing; a Space's and everywhere's reload nothing whatever they change; another tab of the same site is not reloaded by it. **What is refused,** each by its code and the field it names, with nothing changed, nothing reloaded and nothing told. **Spaces that share logins share a site's switch and not a Space's;** a Space with logins of its own shares neither. **Kept across a start:** all three, told to whoever answers the fast path before anything is asked, and to the window of its page; said to say nothing, or on, nothing of them is left at the next start. **A web view is told before the shell is asked for it,** with its Space and its logins; one that has gone is told when the windows are. **A site's switch is told before its tab's reload is asked,** once. **A private window** is under everywhere's switch and not the Space's of another window; it shows no Space; a site's switch set in it holds there and is not the same site's in an ordinary window, nor the other way |
+| The fast path, through the C functions (`wt-ffi`, `core`, +3) | A core with a suite's rules and a page in a web view: refused with Guard on; off everywhere, the very next request allowed, in this web view and one that is not known; off for the Space, allowed whatever page asks, and a web view that is not known still refused; on for the site in a Space that is off, that site's pages under Guard, by any of its hosts, and another site's in the same web view not; each change from the next request, and a site's switch asking a reload each time. **After a start with nothing asked.** **Eight threads asking while everywhere's switch is turned three hundred times:** every answer is "ok" with one verdict or the other, both were seen, and the last switch set is the one in force |
+| Android, on the JVM, through the core's library (`NativeCoreTest`, +1) | Off everywhere, the very next request is allowed through the function Android's adapter calls; on again, refused |
+| The switches broken, a part at a time | 23 parts, 23 caught. The first run caught 21. One of the two was a break that did not build. The other: with a switch that is set not told to the fast path's side until the windows are told, every test passed, since the windows are told a moment later; nothing checked that the switch is in force before the reload is asked of the shell, which is the one moment it matters. A test does now |
+| Every other test of the core | 809 before this, and all pass with it |
 
 ## 8. What is not verified
 
-To be filled in as built.
-
-- **The choices of §6** are the recommendations; the owner has not looked at them.
+- **The choices of §6** are the recommendations, used on the owner's word; the owner has not looked at them.
+- **In an app.** No shell sets a switch or shows what Guard is: nothing here was seen in an app. On Android the fast path is the adapter's, and heeds the switches through the core's own library (tested on the JVM); with the real WebView it was not tried. On Apple's systems nothing asks the fast path (064).
+- **A reload that mends a page:** that a page which was broken by a rule works after its site's switch is turned off and the tab reloads is what all of this is for, and needs a real engine and a rule that breaks a page. Not tried.
+- **A web view a page opened by itself,** in the moment before the core hears of it (§4): under everywhere's switch, whatever its Space's and its site's say. Written, and not tested.
+- **A store that refuses:** the switch holds for the run, and what was there before comes back at the next start. Written, and not tried.
+- **Another tab of the same site,** which is as it was until it is reloaded (§4): whether a person expects that was not tried with anyone.
+- **What telling the switches at every telling of the windows costs:** the switches and the web views are copied and compared each time. They are few (a web view for each live tab), and the plan's time for a row of two hundred told (060) is held by its measurement; it was not measured apart.
 
 ## 9. Done checklist
 
 - [ ] The owner's word on §6.
-- [ ] The store.
-- [ ] The core.
-- [ ] The fast path.
+- [x] The store.
+- [x] The core.
+- [x] The fast path.
 - [ ] The gate.

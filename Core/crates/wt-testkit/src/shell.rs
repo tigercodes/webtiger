@@ -62,6 +62,11 @@ pub struct FakeShell {
     next_request: u64,
 }
 
+/// What whoever answers the fast path was told (067), each time: Guard's
+/// switches with which web view is whose; and the web views the core had by
+/// then asked the shell to make or to reload, unread.
+pub type SwitchesTold = Rc<RefCell<Vec<(wt_core::GuardSwitches, Vec<u64>)>>>;
+
 impl FakeShell {
     /// A configuration for fake mode with one engine.
     #[must_use]
@@ -365,6 +370,39 @@ impl FakeShell {
     #[must_use]
     pub fn wakeups(&self) -> u64 {
         self.dispatcher.wakeups()
+    }
+
+    /// Stands where whoever answers the fast path stands (067): each time
+    /// it is told Guard's switches and which web view is whose, what it was
+    /// told; and with it, the web views the core had by then asked the shell
+    /// to make or to reload, that this shell had not yet read of. The first
+    /// is told as this is called.
+    #[must_use]
+    pub fn guard_switches_told(&self) -> SwitchesTold {
+        let told = Rc::new(RefCell::new(Vec::new()));
+        let noted = Rc::clone(&told);
+        let inbox = Rc::clone(&self.inbox);
+        self.dispatcher
+            .on_guard_switches(Rc::new(move |switches: &wt_core::GuardSwitches| {
+                let asked = inbox
+                    .borrow()
+                    .iter()
+                    .filter_map(|envelope| match &envelope.body {
+                        Some(envelope::Body::HostRequest(request)) => match &request.kind {
+                            Some(host_request::Kind::WebViewCreate(create)) => {
+                                Some(create.web_view_id)
+                            }
+                            Some(host_request::Kind::WebViewCommand(command)) => {
+                                Some(command.web_view_id)
+                            }
+                            _ => None,
+                        },
+                        _ => None,
+                    })
+                    .collect();
+                noted.borrow_mut().push((switches.clone(), asked));
+            }));
+        told
     }
 
     /// Stands where the holder of Guard's blocker stands (066): what it is

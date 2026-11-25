@@ -445,7 +445,7 @@ mod tests {
         {
             let old = Connection::open(&path).unwrap();
             old.execute_batch(
-                "ALTER TABLE tab DROP COLUMN state_id; DROP TABLE tab_state; ALTER TABLE space DROP COLUMN icon; DROP INDEX archive_space; DROP TABLE archive; ALTER TABLE tab DROP COLUMN shown_at; \
+                "DROP TABLE site_guard; ALTER TABLE tab DROP COLUMN state_id; DROP TABLE tab_state; ALTER TABLE space DROP COLUMN icon; DROP INDEX archive_space; DROP TABLE archive; ALTER TABLE tab DROP COLUMN shown_at; \
                  ALTER TABLE space DROP COLUMN tidy_after; PRAGMA user_version = 13;",
             )
             .unwrap();

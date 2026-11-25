@@ -332,6 +332,14 @@ impl Dispatcher {
         self.app.on_guard_rules(sink);
     }
 
+    /// Has `sink` told Guard's switches, and which web view is whose (067):
+    /// now, and each time either changes. A switch that is set is told
+    /// before its request is answered; a web view that is to be made, before
+    /// the shell is asked for it. For whoever answers the fast path.
+    pub fn on_guard_switches(&self, sink: Rc<dyn Fn(&wt_core::GuardSwitches)>) {
+        self.app.on_guard_switches(sink);
+    }
+
     /// How many times one of the core's own timers has woken it since it
     /// started (060): what "idle, with no timers" is counted by.
     #[must_use]
@@ -447,6 +455,10 @@ impl Dispatcher {
         // And a Space that no window shows, with nothing alive, is put away
         // (061): written, it is the store's to keep.
         self.app.put_away_idle_spaces();
+        // Whoever answers the fast path is told which web view is whose
+        // (067), when that is not what it was last told: a web view a page
+        // opened, or one that has gone.
+        self.app.tell_guard_switches();
         let closed = self.app.take_closed();
         let dirty = self.app.take_dirty();
         let mut publishing = Vec::new();

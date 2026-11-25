@@ -920,6 +920,9 @@ impl Tab {
             favourite: self.favourite,
             keeps_awake: self.keeps_awake(),
             picture_id: self.waking.as_ref().map_or(0, |picture| picture.picture_id),
+            // What Guard is for the page is the window's to say, which knows
+            // the switches (067).
+            guard: None,
         }
     }
 
@@ -1254,6 +1257,10 @@ pub(crate) struct State {
     /// The window whose tabs are the session: the first opened, and the
     /// next one opened once that is closed.
     session_window: Option<WindowId>,
+    /// Guard's switches (067): everywhere's, each Space's and each site's
+    /// that says anything. (Which web view is whose is not kept here: it is
+    /// read from the tabs when the switches are told.)
+    pub(crate) guard: wt_core::GuardSwitches,
     /// How many downloads of each login set are coming (013), for the
     /// snapshots of its windows.
     downloads_active: BTreeMap<LoginSetId, u32>,
@@ -1308,6 +1315,7 @@ impl State {
             saved_groups: BTreeMap::new(),
             layout: Layout::Strip,
             session_window: None,
+            guard: wt_core::GuardSwitches::default(),
             downloads_active: BTreeMap::new(),
             exceptions: BTreeSet::new(),
             icons: Icons::default(),
@@ -3749,6 +3757,81 @@ impl State {
         self.tabs.get(&tab).ok_or(false)?.web_view.ok_or(true)
     }
 
+    /// Guard's switches as they stand, with which web view is whose (067):
+    /// what whoever answers the fast path is told. A web view's Space and
+    /// logins are its tab's.
+    pub(crate) fn guard_switches(&self) -> wt_core::GuardSwitches {
+        let mut switches = self.guard.clone();
+        switches.web_views = self
+            .web_views
+            .iter()
+            .filter_map(|(web_view, tab)| {
+                let tab = self.tabs.get(tab)?;
+                Some((*web_view, (tab.space, tab.login_set)))
+            })
+            .collect();
+        switches
+    }
+
+    /// Whose site's switch a tab would set (067): its logins, the site of
+    /// the page it shows, and the tab's web view if it has one. `Err(false)`
+    /// for a tab there is not, `Err(true)` for one that shows no page of a
+    /// site.
+    pub(crate) fn guard_site_of(
+        &self,
+        tab: TabId,
+    ) -> Result<(LoginSetId, String, Option<WebViewId>), bool> {
+        let tab = self.tabs.get(&tab).ok_or(false)?;
+        let site = tab.site().ok_or(true)?;
+        Ok((tab.login_set, site.to_owned(), tab.web_view))
+    }
+
+    /// Whether Guard is on for the page a tab shows, and which switch said
+    /// so (067). `None` for a tab there is not.
+    pub(crate) fn guard_for(&self, tab: TabId) -> Option<(bool, wt_core::SaidBy)> {
+        let tab = self.tabs.get(&tab)?;
+        Some(self.guard.for_page(tab.space, tab.login_set, tab.site()))
+    }
+
+    /// Sets everywhere's switch for Guard (067). Every window is told.
+    pub(crate) fn set_guard_everywhere(&mut self, on: bool) {
+        self.guard.off_everywhere = !on;
+        self.every_window_is_dirty();
+    }
+
+    /// Sets a Space's switch for Guard (067): on, off, or nothing said.
+    /// Whether there is such a Space; a private window's is none.
+    pub(crate) fn set_guard_space(&mut self, space: SpaceId, says: Option<bool>) -> bool {
+        if !self.spaces.iter().any(|one| one.id == space) {
+            return false;
+        }
+        match says {
+            Some(on) => self.guard.spaces.insert(space, on),
+            None => self.guard.spaces.remove(&space),
+        };
+        self.every_window_is_dirty();
+        true
+    }
+
+    /// Sets a site's switch for Guard in a login set (067): on, off, or
+    /// nothing said.
+    pub(crate) fn set_guard_site(&mut self, login_set: LoginSetId, site: &str, says: Option<bool>) {
+        let sites = self.guard.sites.entry(login_set).or_default();
+        match says {
+            Some(on) => sites.insert(site.to_owned(), on),
+            None => sites.remove(site),
+        };
+        if sites.is_empty() {
+            self.guard.sites.remove(&login_set);
+        }
+        self.every_window_is_dirty();
+    }
+
+    /// What every window is told may have changed.
+    fn every_window_is_dirty(&mut self) {
+        self.dirty.extend(self.windows.keys().copied());
+    }
+
     /// The person asked for a link of a web view's page in a new tab (018).
     /// One is opened in the window of the tab that has the link, in its
     /// Space and login set, remembering where it was opened from: after that tab and
@@ -4226,6 +4309,18 @@ impl State {
         let row = window.shown()?;
         let front = self.tabs.get(&row.front)?;
         let mut view = front.view(row.front);
+        // Guard, for the page in front (067): by the nearest switch that says.
+        let (guard_on, said_by) = self
+            .guard
+            .for_page(front.space, front.login_set, front.site());
+        view.guard = Some(wt_proto::v1::GuardView {
+            on: guard_on,
+            said_by: match said_by {
+                wt_core::SaidBy::Everywhere => wt_proto::v1::GuardLevel::Everywhere,
+                wt_core::SaidBy::Space => wt_proto::v1::GuardLevel::Space,
+                wt_core::SaidBy::Site => wt_proto::v1::GuardLevel::Site,
+            } as i32,
+        });
         // A page whose certificate the person went on past is never shown as
         // secure (026 §3), whatever its address says.
         let excepted = front

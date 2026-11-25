@@ -15,6 +15,7 @@ import com.tigercodes.webtiger.core.v1.Event
 import com.tigercodes.webtiger.core.v1.FakeOptions
 import com.tigercodes.webtiger.core.v1.ForgetHistory
 import com.tigercodes.webtiger.core.v1.HostPong
+import com.tigercodes.webtiger.core.v1.GuardSwitch
 import com.tigercodes.webtiger.core.v1.HostRequest
 import com.tigercodes.webtiger.core.v1.HostResponse
 import com.tigercodes.webtiger.core.v1.LoadState
@@ -31,6 +32,7 @@ import com.tigercodes.webtiger.core.v1.QuerySearch
 import com.tigercodes.webtiger.core.v1.QuerySpaces
 import com.tigercodes.webtiger.core.v1.Request
 import com.tigercodes.webtiger.core.v1.Response
+import com.tigercodes.webtiger.core.v1.SetGuard
 import com.tigercodes.webtiger.core.v1.SubmitAddress
 import com.tigercodes.webtiger.core.v1.SuggestAddresses
 import com.tigercodes.webtiger.core.v1.SwitchSpace
@@ -454,6 +456,24 @@ class NativeCoreTest {
         // Another core, with no rules, allows what this one blocks.
         assertEquals(RequestVerdict.ALLOW, start().requestVerdict("https://ads.tracker.example.net/show.js", page, 1, ResourceType.OTHER))
     }
+
+    /**
+     * Guard's switch (067), through the core's library: turned off everywhere, the very next
+     * request is allowed; turned on again, it is refused.
+     */
+    @Test
+    fun guardsSwitchIsHeededFromTheNextRequest() =
+        runBlocking {
+            val core = start(fakeConfig().copy(fake = FakeOptions(guard_rules = "||ads.tracker.example.net^")))
+            val page = "https://news.example.com/story"
+
+            fun verdict() = core.requestVerdict("https://ads.tracker.example.net/show.js", page, webViewId = 1, resource = ResourceType.SCRIPT)
+            assertEquals(RequestVerdict.BLOCK, verdict())
+            core.request(Request(set_guard = SetGuard(everywhere = true, switch = GuardSwitch.GUARD_SWITCH_OFF)))
+            assertEquals(RequestVerdict.ALLOW, verdict())
+            core.request(Request(set_guard = SetGuard(everywhere = true, switch = GuardSwitch.GUARD_SWITCH_ON)))
+            assertEquals(RequestVerdict.BLOCK, verdict())
+        }
 
     @Test
     fun aHostThatThrowsIsAnsweredWithACodeAndTheNextRequestIsStillAnswered() =

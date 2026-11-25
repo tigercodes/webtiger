@@ -84,6 +84,7 @@ impl Store {
         for table in [
             "visit",
             "site_setting",
+            "site_guard",
             "site_permission",
             "icon",
             "download",

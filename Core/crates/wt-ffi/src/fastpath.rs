@@ -101,7 +101,7 @@ pub unsafe extern "C" fn wt_guard_check(
             return (Status::BadArgument, WT_VERDICT_ALLOW);
         };
         let kind = Kind::from_code(request.resource_type);
-        match registry::decide(core, url, source_url, kind) {
+        match registry::decide(core, request.web_view_id, url, source_url, kind) {
             Some(Verdict::Block) => (Status::Ok, WT_VERDICT_BLOCK),
             Some(Verdict::Allow) => (Status::Ok, WT_VERDICT_ALLOW),
             // The core stopped between the two looks.

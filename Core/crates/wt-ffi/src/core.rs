@@ -13,6 +13,7 @@ use arc_swap::ArcSwap;
 use prost::Message as _;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use wt_app::{Dispatcher, Outbox};
+use wt_core::GuardSwitches;
 use wt_guard::Guard;
 use wt_proto::v1::{CoreConfig, Envelope};
 
@@ -38,6 +39,7 @@ impl Core {
         config: CoreConfig,
         target: SinkTarget,
         guard: Arc<ArcSwap<Guard>>,
+        switches: Arc<ArcSwap<GuardSwitches>>,
     ) -> Result<Core, &'static str> {
         let (sender, receiver) = unbounded_channel();
         let (started, starting) = sync_channel::<Result<(), &'static str>>(1);
@@ -45,7 +47,7 @@ impl Core {
             .name("wt-core".to_owned())
             .spawn(move || {
                 let ran = catch_unwind(AssertUnwindSafe(|| {
-                    run(&config, target, receiver, &started, guard);
+                    run(&config, target, receiver, &started, guard, switches);
                 }));
                 if ran.is_err() {
                     // Before the dispatcher was up: the starter hears of it.
@@ -108,6 +110,7 @@ fn run(
     mut receiver: UnboundedReceiver<Message>,
     started: &std::sync::mpsc::SyncSender<Result<(), &'static str>>,
     guard: Arc<ArcSwap<Guard>>,
+    switches: Arc<ArcSwap<GuardSwitches>>,
 ) {
     let Ok(runtime) = tokio::runtime::Builder::new_current_thread()
         .enable_time()
@@ -132,6 +135,13 @@ fn run(
     // set, before the request that set them is answered.
     dispatcher.on_guard_rules(Rc::new(move |rules: &str| {
         guard.store(Arc::new(Guard::with_rules([rules])));
+    }));
+    // And Guard's switches, with which web view is whose (067): the same
+    // way. The switches the core starts with are in place before a shell is
+    // told it has started; a web view is known here before the shell is
+    // asked to make it.
+    dispatcher.on_guard_switches(Rc::new(move |now: &GuardSwitches| {
+        switches.store(Arc::new(now.clone()));
     }));
     let _ = started.send(Ok(()));
 

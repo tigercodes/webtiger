@@ -679,6 +679,10 @@ pub struct TabView {
     /// when this is 0 again. A number is one picture, and is not used twice.
     #[prost(uint64, tag = "22")]
     pub picture_id: u64,
+    /// Since 1.55. Guard, for the page this tab shows (067): whether it is on,
+    /// and which of its three switches said so. Always there.
+    #[prost(message, optional, tag = "23")]
+    pub guard: ::core::option::Option<GuardView>,
 }
 /// What the address field shows. The core builds it so that every shell shows
 /// the same thing and none can be made to lie: a page-initiated load does not
@@ -1738,6 +1742,45 @@ pub struct GuardRules {
     #[prost(string, tag = "1")]
     pub text: ::prost::alloc::string::String,
 }
+/// Since 1.55. Guard, for the page a tab shows (067).
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GuardView {
+    #[prost(bool, tag = "1")]
+    pub on: bool,
+    #[prost(enumeration = "GuardLevel", tag = "2")]
+    pub said_by: i32,
+}
+/// Since 1.55. Sets one of Guard's three switches (067): everywhere's; a
+/// Space's; or a site's, which is the site of the page a tab shows, within
+/// that tab's logins (Spaces that share logins share it). The nearest switch
+/// that says anything wins. It is kept, and is in force from the next request
+/// a page makes, on every thread that asks the fast path. A site's switch
+/// that changes what Guard is for the tab's page reloads that tab; the other
+/// two reload nothing. Answered with Ack; or "guard.where" when none of the
+/// three is named, "guard.switch" for everywhere's switch saying nothing or
+/// for a value this core does not know, "space.unknown", "tab.unknown", or
+/// "guard.no_site" for a tab that shows no page of a site. A refusal changes
+/// nothing.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SetGuard {
+    #[prost(enumeration = "GuardSwitch", tag = "4")]
+    pub switch: i32,
+    #[prost(oneof = "set_guard::Of", tags = "1, 2, 3")]
+    pub of: ::core::option::Option<set_guard::Of>,
+}
+/// Nested message and enum types in `SetGuard`.
+pub mod set_guard {
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Of {
+        /// Everywhere's switch. (The value is not read.)
+        #[prost(bool, tag = "1")]
+        Everywhere(bool),
+        #[prost(uint64, tag = "2")]
+        SpaceId(u64),
+        #[prost(uint64, tag = "3")]
+        TabId(u64),
+    }
+}
 /// The layout of a window (043). Since 1.33.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -2015,6 +2058,72 @@ impl MemoryLevel {
             "MEMORY_LEVEL_UNSPECIFIED" => Some(Self::Unspecified),
             "MEMORY_LEVEL_SHORT" => Some(Self::Short),
             "MEMORY_LEVEL_VERY_SHORT" => Some(Self::VeryShort),
+            _ => None,
+        }
+    }
+}
+/// Since 1.55. What one of Guard's switches says (067).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum GuardSwitch {
+    /// Nothing: as the level above has it. A site's switch and a Space's may
+    /// say nothing; everywhere's may not.
+    Unspecified = 0,
+    On = 1,
+    Off = 2,
+}
+impl GuardSwitch {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "GUARD_SWITCH_UNSPECIFIED",
+            Self::On => "GUARD_SWITCH_ON",
+            Self::Off => "GUARD_SWITCH_OFF",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "GUARD_SWITCH_UNSPECIFIED" => Some(Self::Unspecified),
+            "GUARD_SWITCH_ON" => Some(Self::On),
+            "GUARD_SWITCH_OFF" => Some(Self::Off),
+            _ => None,
+        }
+    }
+}
+/// Since 1.55. Which of Guard's three switches said what Guard is for a page:
+/// the nearest that says anything.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum GuardLevel {
+    Unspecified = 0,
+    Everywhere = 1,
+    Space = 2,
+    Site = 3,
+}
+impl GuardLevel {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "GUARD_LEVEL_UNSPECIFIED",
+            Self::Everywhere => "GUARD_LEVEL_EVERYWHERE",
+            Self::Space => "GUARD_LEVEL_SPACE",
+            Self::Site => "GUARD_LEVEL_SITE",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "GUARD_LEVEL_UNSPECIFIED" => Some(Self::Unspecified),
+            "GUARD_LEVEL_EVERYWHERE" => Some(Self::Everywhere),
+            "GUARD_LEVEL_SPACE" => Some(Self::Space),
+            "GUARD_LEVEL_SITE" => Some(Self::Site),
             _ => None,
         }
     }
@@ -3101,7 +3210,7 @@ pub mod envelope {
 pub struct Request {
     #[prost(
         oneof = "request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62"
     )]
     pub kind: ::core::option::Option<request::Kind>,
 }
@@ -3263,6 +3372,9 @@ pub mod request {
         SetGuardRules(super::SetGuardRules),
         #[prost(message, tag = "61")]
         QueryGuardRules(super::QueryGuardRules),
+        /// Since 1.55
+        #[prost(message, tag = "62")]
+        SetGuard(super::SetGuard),
     }
 }
 /// Core → shell: the answer to the Request with the envelope's id.

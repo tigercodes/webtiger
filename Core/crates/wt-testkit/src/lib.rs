@@ -25,7 +25,7 @@ mod standard;
 use std::future::Future;
 
 pub use engine::{FakeEngine, FakePage, FakeWebView, picture_of};
-pub use shell::FakeShell;
+pub use shell::{FakeShell, SwitchesTold};
 pub use standard::{
     SITES_A_SPACE, SPACES, StandardSession, TABS_A_SPACE, standard_pages, standard_session,
     standard_session_of,

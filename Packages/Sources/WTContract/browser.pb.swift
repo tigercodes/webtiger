@@ -411,6 +411,92 @@ public nonisolated enum WTMemoryLevel: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
+/// Since 1.55. What one of Guard's switches says (067).
+public nonisolated enum WTGuardSwitch: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+
+  /// Nothing: as the level above has it. A site's switch and a Space's may
+  /// say nothing; everywhere's may not.
+  case unspecified // = 0
+  case on // = 1
+  case off // = 2
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .on
+    case 2: self = .off
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .on: return 1
+    case .off: return 2
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [WTGuardSwitch] = [
+    .unspecified,
+    .on,
+    .off,
+  ]
+
+}
+
+/// Since 1.55. Which of Guard's three switches said what Guard is for a page:
+/// the nearest that says anything.
+public nonisolated enum WTGuardLevel: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case everywhere // = 1
+  case space // = 2
+  case site // = 3
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .everywhere
+    case 2: self = .space
+    case 3: self = .site
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .everywhere: return 1
+    case .space: return 2
+    case .site: return 3
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [WTGuardLevel] = [
+    .unspecified,
+    .everywhere,
+    .space,
+    .site,
+  ]
+
+}
+
 /// Opens a window in the default Space, with one tab. Answered with
 /// WindowOpened. In fake mode the tab opens FakeOptions.start_address.
 public nonisolated struct WTOpenWindow: Sendable {
@@ -1266,6 +1352,17 @@ public nonisolated struct WTTabView: @unchecked Sendable {
     get {_storage._pictureID}
     set {_uniqueStorage()._pictureID = newValue}
   }
+
+  /// Since 1.55. Guard, for the page this tab shows (067): whether it is on,
+  /// and which of its three switches said so. Always there.
+  public var `guard`: WTGuardView {
+    get {_storage._guard ?? WTGuardView()}
+    set {_uniqueStorage()._guard = newValue}
+  }
+  /// Returns true if ``guard`` has been explicitly set.
+  public var hasGuard: Bool {_storage._guard != nil}
+  /// Clears the value of ``guard``. Subsequent reads from it will return its default value.
+  public mutating func clearGuard() {_uniqueStorage()._guard = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2870,6 +2967,79 @@ public nonisolated struct WTGuardRules: Sendable {
   public init() {}
 }
 
+/// Since 1.55. Guard, for the page a tab shows (067).
+public nonisolated struct WTGuardView: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var on: Bool = false
+
+  public var saidBy: WTGuardLevel = .unspecified
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Since 1.55. Sets one of Guard's three switches (067): everywhere's; a
+/// Space's; or a site's, which is the site of the page a tab shows, within
+/// that tab's logins (Spaces that share logins share it). The nearest switch
+/// that says anything wins. It is kept, and is in force from the next request
+/// a page makes, on every thread that asks the fast path. A site's switch
+/// that changes what Guard is for the tab's page reloads that tab; the other
+/// two reload nothing. Answered with Ack; or "guard.where" when none of the
+/// three is named, "guard.switch" for everywhere's switch saying nothing or
+/// for a value this core does not know, "space.unknown", "tab.unknown", or
+/// "guard.no_site" for a tab that shows no page of a site. A refusal changes
+/// nothing.
+public nonisolated struct WTSetGuard: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var of: WTSetGuard.OneOf_Of? = nil
+
+  /// Everywhere's switch. (The value is not read.)
+  public var everywhere: Bool {
+    get {
+      if case .everywhere(let v)? = of {return v}
+      return false
+    }
+    set {of = .everywhere(newValue)}
+  }
+
+  public var spaceID: UInt64 {
+    get {
+      if case .spaceID(let v)? = of {return v}
+      return 0
+    }
+    set {of = .spaceID(newValue)}
+  }
+
+  public var tabID: UInt64 {
+    get {
+      if case .tabID(let v)? = of {return v}
+      return 0
+    }
+    set {of = .tabID(newValue)}
+  }
+
+  public var `switch`: WTGuardSwitch = .unspecified
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public nonisolated enum OneOf_Of: Equatable, Sendable {
+    /// Everywhere's switch. (The value is not read.)
+    case everywhere(Bool)
+    case spaceID(UInt64)
+    case tabID(UInt64)
+
+  }
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "webtiger.core.v1"
@@ -2904,6 +3074,14 @@ nonisolated extension WTDownloadState: SwiftProtobuf._ProtoNameProviding {
 
 nonisolated extension WTMemoryLevel: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0MEMORY_LEVEL_UNSPECIFIED\0\u{1}MEMORY_LEVEL_SHORT\0\u{1}MEMORY_LEVEL_VERY_SHORT\0")
+}
+
+nonisolated extension WTGuardSwitch: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0GUARD_SWITCH_UNSPECIFIED\0\u{1}GUARD_SWITCH_ON\0\u{1}GUARD_SWITCH_OFF\0")
+}
+
+nonisolated extension WTGuardLevel: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0GUARD_LEVEL_UNSPECIFIED\0\u{1}GUARD_LEVEL_EVERYWHERE\0\u{1}GUARD_LEVEL_SPACE\0\u{1}GUARD_LEVEL_SITE\0")
 }
 
 nonisolated extension WTOpenWindow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
@@ -4103,7 +4281,7 @@ nonisolated extension WTTabSummary: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TabView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}web_view_id\0\u{1}address\0\u{1}title\0\u{3}load_state\0\u{1}progress\0\u{3}can_go_back\0\u{3}can_go_forward\0\u{3}error_code\0\u{1}engine\0\u{3}login_set_id\0\u{1}find\0\u{1}zoom\0\u{1}prompt\0\u{3}certificate_passable\0\u{3}certificate_host\0\u{1}kept\0\u{1}away\0\u{3}site_name\0\u{1}favourite\0\u{3}keeps_awake\0\u{3}picture_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tab_id\0\u{3}web_view_id\0\u{1}address\0\u{1}title\0\u{3}load_state\0\u{1}progress\0\u{3}can_go_back\0\u{3}can_go_forward\0\u{3}error_code\0\u{1}engine\0\u{3}login_set_id\0\u{1}find\0\u{1}zoom\0\u{1}prompt\0\u{3}certificate_passable\0\u{3}certificate_host\0\u{1}kept\0\u{1}away\0\u{3}site_name\0\u{1}favourite\0\u{3}keeps_awake\0\u{3}picture_id\0\u{1}guard\0")
 
   fileprivate class _StorageClass {
     var _tabID: UInt64 = 0
@@ -4128,6 +4306,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _favourite: Bool = false
     var _keepsAwake: [WTKeepAwake] = []
     var _pictureID: UInt64 = 0
+    var _guard: WTGuardView? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -4160,6 +4339,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _favourite = source._favourite
       _keepsAwake = source._keepsAwake
       _pictureID = source._pictureID
+      _guard = source._guard
     }
   }
 
@@ -4200,6 +4380,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 20: try { try decoder.decodeSingularBoolField(value: &_storage._favourite) }()
         case 21: try { try decoder.decodeRepeatedEnumField(value: &_storage._keepsAwake) }()
         case 22: try { try decoder.decodeSingularUInt64Field(value: &_storage._pictureID) }()
+        case 23: try { try decoder.decodeSingularMessageField(value: &_storage._guard) }()
         default: break
         }
       }
@@ -4278,6 +4459,9 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       if _storage._pictureID != 0 {
         try visitor.visitSingularUInt64Field(value: _storage._pictureID, fieldNumber: 22)
       }
+      try { if let v = _storage._guard {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 23)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4309,6 +4493,7 @@ nonisolated extension WTTabView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._favourite != rhs_storage._favourite {return false}
         if _storage._keepsAwake != rhs_storage._keepsAwake {return false}
         if _storage._pictureID != rhs_storage._pictureID {return false}
+        if _storage._guard != rhs_storage._guard {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -6959,6 +7144,115 @@ nonisolated extension WTGuardRules: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
   public static func ==(lhs: WTGuardRules, rhs: WTGuardRules) -> Bool {
     if lhs.text != rhs.text {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTGuardView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GuardView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}on\0\u{3}said_by\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBoolField(value: &self.on) }()
+      case 2: try { try decoder.decodeSingularEnumField(value: &self.saidBy) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.on != false {
+      try visitor.visitSingularBoolField(value: self.on, fieldNumber: 1)
+    }
+    if self.saidBy != .unspecified {
+      try visitor.visitSingularEnumField(value: self.saidBy, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTGuardView, rhs: WTGuardView) -> Bool {
+    if lhs.on != rhs.on {return false}
+    if lhs.saidBy != rhs.saidBy {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension WTSetGuard: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SetGuard"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}everywhere\0\u{3}space_id\0\u{3}tab_id\0\u{1}switch\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try {
+        var v: Bool?
+        try decoder.decodeSingularBoolField(value: &v)
+        if let v = v {
+          if self.of != nil {try decoder.handleConflictingOneOf()}
+          self.of = .everywhere(v)
+        }
+      }()
+      case 2: try {
+        var v: UInt64?
+        try decoder.decodeSingularUInt64Field(value: &v)
+        if let v = v {
+          if self.of != nil {try decoder.handleConflictingOneOf()}
+          self.of = .spaceID(v)
+        }
+      }()
+      case 3: try {
+        var v: UInt64?
+        try decoder.decodeSingularUInt64Field(value: &v)
+        if let v = v {
+          if self.of != nil {try decoder.handleConflictingOneOf()}
+          self.of = .tabID(v)
+        }
+      }()
+      case 4: try { try decoder.decodeSingularEnumField(value: &self.`switch`) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    switch self.of {
+    case .everywhere?: try {
+      guard case .everywhere(let v)? = self.of else { preconditionFailure() }
+      try visitor.visitSingularBoolField(value: v, fieldNumber: 1)
+    }()
+    case .spaceID?: try {
+      guard case .spaceID(let v)? = self.of else { preconditionFailure() }
+      try visitor.visitSingularUInt64Field(value: v, fieldNumber: 2)
+    }()
+    case .tabID?: try {
+      guard case .tabID(let v)? = self.of else { preconditionFailure() }
+      try visitor.visitSingularUInt64Field(value: v, fieldNumber: 3)
+    }()
+    case nil: break
+    }
+    if self.`switch` != .unspecified {
+      try visitor.visitSingularEnumField(value: self.`switch`, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: WTSetGuard, rhs: WTSetGuard) -> Bool {
+    if lhs.of != rhs.of {return false}
+    if lhs.`switch` != rhs.`switch` {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
