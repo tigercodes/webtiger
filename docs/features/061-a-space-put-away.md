@@ -86,4 +86,4 @@ Nothing is said to a shell of a Space put away (D4): the tests tell by what foll
 - [ ] The owner's word on §6 (to be used as suggested, on the word of 2026-11-24).
 - [x] The core.
 - [x] The budget's test put back (060).
-- [ ] The gate.
+- [x] The gate: every stage of `Tools/test.sh all` green, and `android-device`, on 2026-11-25: `lint`, `core` (776, and the strings tool's 24), `unit` (407 on the Mac), `build`, the Mac's UI suite (66), `ios` (391 on the iPhone simulator), the iPhone's UI suite (55), `android` (537 and 32 on the JVM) and `android-device` (200 on the emulator). (The Mac's UI suite was run last, after the others, once a dialog of the system's had gone from the screen).
