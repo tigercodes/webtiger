@@ -1084,6 +1084,7 @@ And one that the measuring raised (060 §8): a Space whose row was arranged in t
 4. Under Guard's switches: where Guard is off, nothing is cleaned.
 5. Nothing says that an address was cleaned.
 6. A page's own navigation to another site is the last step: it needs each engine's adapter.
+7. Copying a link clean (put on 2026-11-28; designed, to be built on these): an item of its own, "Copy Clean Link", under "Copy Link", which stays; always offered where "Copy Link" is, whether or not the link has a tail; whatever Guard's switches say, since it is asked for by name; and cleaned by the core, asked when the item is chosen.
 
 **Global Privacy Control** ([069](069-global-privacy-control.md) §6, put on 2026-11-25; built on these, in the core and on both engines):
 

@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | **Its first two steps are built and tested, in the core, on the recommendations of §6:** the rule, and its use where the core itself loads an address (a link from another app; a link of a page opened in a tab of its own, when it leads to another site). The owner's word of 2026-11-24 was to use what is suggested where something waits on a choice, and to go on: they are built on, and stay the owner's to change. **Not built: a link pressed in a page that takes the same tab to another site, which is where most such links are pressed; and copying a link clean.** Both need the shells |
+| **Status** | **Its first two steps are built and tested, in the core, on the recommendations of §6:** the rule, and its use where the core itself loads an address (a link from another app; a link of a page opened in a tab of its own, when it leads to another site). The owner's word of 2026-11-24 was to use what is suggested where something waits on a choice, and to go on: they are built on, and stay the owner's to change. **Not built: a link pressed in a page that takes the same tab to another site, which is where most such links are pressed; and copying a link clean, which is designed (§3, §4, D7 to D10) and is the next step.** Both need the shells |
 | **Phase** | W4 of [000](000-master-plan.md) §9: "link cleaning". 000 §5.9: "Tracking parameters are removed from navigations in the core; 'Copy clean link'" |
-| **Contract** | None for the steps that are built. To come with the others (§5) |
+| **Contract** | None for the steps that are built. Designed for copying a link clean: 1.58, `CleanLink` (§4). To come with the last step (§5) |
 | **Builds on** | [031](031-links-from-other-apps.md): an address handed in from another app. [018](018-link-in-new-tab.md): a link of a page opened in a tab. `wt-core`: addresses, and which site one is of. [067](067-guards-switches.md): Guard's switches, which this is under |
-| **Last updated** | 2026-11-25 |
+| **Last updated** | 2026-11-28 |
 
 ## 1. User story
 
@@ -55,17 +55,31 @@ Never within one site; and never an address a person typed or pasted, which is t
 
 **What a person sees.** The address they arrive at is the clean one, in the address field and in history. Nothing says that something was taken out.
 
-**Copy clean link.** Where a link's address can be copied (018's menu), it can be copied clean: the same rule, whatever site the link leads to, since what is copied is for somewhere else.
+**Copy clean link** (designed, not built). Where a link's address can be copied in a menu WebTiger draws or adds to (018, 022), it can be copied clean, by an item of its own under "Copy Link": "Copy Clean Link". What is copied is the link's address without the parts of the list, and otherwise to the letter.
+
+- **Whatever site the link leads to,** the page's own among them: what is copied is for somewhere else.
+- **Whatever Guard's switches say:** it is asked for by name (D9).
+- **Always offered** where "Copy Link" is, whether or not the link has anything to take out (D8). A link with nothing of the kind is copied as it is.
+- **The core cleans, the shell copies.** The shell asks the core for the clean address when the item is chosen, and puts the answer where "Copy Link" puts the link (018: the system's clipboard; in fake mode and in every test, one of the app's own).
+- **An address that is none of the web's** (a link that writes a letter) has nothing the list names: it is copied as it is.
 
 ## 4. The contract
 
-To come with each step. Foreseen: nothing for the first two (the core cleans what it loads); for a page's own navigations, an answer of the navigation check that says "go here instead"; for copying, the clean address beside the link's own in what a shell is told of a link.
+Nothing for the first two steps (the core cleans what it loads).
+
+**For copying a link clean (designed): 1.58.**
+
+- **`CleanLink { url }`:** a link's address, as the page has it. Answered with **`CleanedLink { url }`**: the address without the parts the core's list names, or as it was given when there is nothing of the kind or it is no address of the web. Never refused. Both addresses are a person's: neither is logged.
+
+(The design first foresaw the clean address told to a shell beside the link's own. A shell is not told of links by the core: it finds them in the page. So it asks.)
+
+**For a page's own navigations:** to come with that step. Foreseen: an answer of the navigation check that says "go here instead".
 
 ## 5. In what order
 
 1. **The rule,** in `wt-core`: the list, and an address cleaned. **Built.**
 2. **What the core loads by itself:** an address from another app; a link opened in a new tab that leads to another site. **Built.**
-3. **Copy clean link:** the clean address told to a shell with a link; the menus. Not built.
+3. **Copy clean link:** the request; then each shell's menu: Android's and the iPhone's, which are the shell's own, and the Mac's, where the item stands under WebKit's "Copy Link". Designed; not built.
 4. **A page's own navigation to another site:** the navigation check, and each engine's adapter, which must stop the navigation and begin the clean one. Not built.
 
 ## 6. Decisions
@@ -80,6 +94,10 @@ To come with each step. Foreseen: nothing for the first two (the core cleans wha
 | D4 | Under Guard's switches | It is one of Guard's protections; a page broken by it is mended by the same switch | A switch of its own |
 | D5 | Nothing says that an address was cleaned | It is the ordinary case, and a mark for it is noise. Guard's panel, when there is one, can count them | A mark in the address field |
 | D6 | A page's own navigation is the last step | It needs each engine's adapter to stop a navigation and begin another, which is where pages break; the first steps need no engine | First: it is where most such links are pressed |
+| D7 | Copying clean is a request to the core, made when the item is chosen | The rule and its list are the core's, and are not to be written again in a shell; and a shell finds a link in the page, where the core does not see it | The list in each shell: three copies to keep alike. The fast path, with the answer written where the caller says: a C function that hands back text, for a thing nobody waits on |
+| D8 | Always offered where "Copy Link" is | The Mac's menu is built at once, by WebKit, and cannot wait for the core to say whether a link has a tail; a menu that is the same on every system is the one to have; and a person who wants a link without its tail need not know whether it has one | Only where there is something to take out: the menu waits on a question, and on the Mac cannot |
+| D9 | Not under Guard's switches | It is asked for by name. An item called "Copy Clean Link" that copies the tail where Guard is off would lie | Under the switch, like the cleaning nobody asked for |
+| D10 | An item of its own, under "Copy Link", which stays | "Copy Link" is what a person knows, and now and then the tail is wanted (a link that signs somebody in) | "Copy Link" copies clean, and the tail cannot be had |
 
 ## 7. Tests
 
@@ -88,6 +106,7 @@ To come with each step. Foreseen: nothing for the first two (the core cleans wha
 | The rule (`wt-core`, +2) | **Taken out, and nothing else:** each name of the list alone, with the query then gone with its `?` and the fragment kept; the `utm_` family, whatever follows; any of them whatever its case; among other parts, the others staying in their order exactly as they were written (an encoded space, a plus, a part with no value, an empty value, a name twice); one with no value; one whose value has an `=` in it. **An address with nothing of the kind is as it is:** no query, an empty one, a name that only begins or ends like one or is the family's without its mark, the names in the path, in the fragment or as a value, and an address that is none of the web's |
 | The core, through the contract (`link_cleaning`, 4) | **From another app:** what is loaded, what the address field shows and what history keeps are the address without what followed the click, the rest as written; an address with nothing of the kind is loaded to the letter. **A link opened in a tab:** cleaned when it leads to another site; within the site, by another of its hosts, as the site wrote it. **What a person typed** is loaded and shown as they gave it. **Where Guard is off:** off everywhere, neither is cleaned; off for the Space the window shows, an address from another app is not; off for the site of the page that has the link, its links are not, and an address from another app still is; on again, cleaned |
 | Link cleaning broken, a part at a time | 15 parts, 15 caught, at the first run |
+| Copying a link clean (to be written with it) | The core, through the contract: the clean address for a link with a tail, whatever site it leads to and whatever Guard's switches say; a link with nothing of the kind, and one that is none of the web's, as given. Each shell's menu, against `ScriptedCore` and in its pictures: the item is there under "Copy Link". With the real engines and the real core: a link with a tail, its menu, the item chosen, and the clean address in the app's own clipboard |
 | Every other test of the core | 825 before this, and all pass with it |
 
 ## 8. What is not verified
