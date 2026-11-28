@@ -6,7 +6,7 @@
 | **Phase** | W4 of [000](000-master-plan.md) §9: "Global Privacy Control". 000 §5.9: "Sent where the engine lets a header be added; exposed to scripts everywhere" |
 | **Contract** | 1.56: `WebViewCreate.global_privacy_control` |
 | **Builds on** | The engine adapters, and the adapter suite that holds each to the same behaviour. The test site. [067](067-guards-switches.md): a thing a person may turn off |
-| **Last updated** | 2026-11-25 |
+| **Last updated** | 2026-11-28 |
 
 ## 1. User story
 
@@ -104,4 +104,4 @@ As tried, 2026-11-28: WebKit on macOS 27.2 and on the iOS 27 simulator; the Syst
 - [x] The test site's page.
 - [x] The contract and the core.
 - [x] Each adapter, and its suite.
-- [ ] The gate.
+- [x] The gate: every stage of `Tools/test.sh all` green, and `android-device`, on 2026-11-28: `lint`, `core` (832, and the strings tool's 24), `unit` (414 on the Mac), `build`, the Mac's UI suite (68), `ios` (398 on the iPhone simulator), the iPhone's UI suite (57), `android` (543 and 34 on the JVM) and `android-device` (208 on the emulator).
