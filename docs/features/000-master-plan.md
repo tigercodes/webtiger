@@ -1101,6 +1101,15 @@ And one that the measuring raised (060 §8): a Space whose row was arranged in t
 
 And one that building it raised (070 §5.1, §8): **on Android a third party's storage is not kept apart.** A site in a frame of another site's page reads there what it stored as itself: the System WebView does not do what Chrome and WebKit do, and gives an app no setting for it. So on Android a site that is in many pages as a frame cannot follow a person by a cookie, and can by its storage. Recommended: both of the two things that can be done. A script of the adapter's own, in every frame before the page's, that gives a frame of another site no storage of the site's own, as a feature of its own with its limits said (it stops the plain use, and is not a wall); and Guard's lists, which keep the known followers' frames from loading, when there are lists.
 
+**A third party's storage, on Android** ([071](071-a-third-partys-storage-on-android.md) §6, put on 2026-11-28; to be built on these):
+
+1. Mended with a script of the adapter's, run before a page's in every frame, though that is not a wall: a worker has stores of its own, and a script that looks for a way round a script may find one. It stops the plain use.
+2. The core says which frames are kept apart, asked through the fast path as each frame's document starts: by its rule for sites.
+3. Under Guard's switches: where Guard is off for the page, the WebView is as it is. A page this breaks has that remedy.
+4. The page's storage in such a frame is a store that goes with the document; databases, caches, workers that serve pages and the private file system are refused.
+5. When the question fails, the frame is kept apart.
+6. Only on Android: the other engines keep storage apart themselves, and theirs lasts.
+
 And one that measuring the Mac app raised (060 §5.2, §8): its start is about 200 ms, but the first start after it was built was 395 ms once and 673 ms once, against the 500 allowed. Whether a cold start (after the Mac is turned on) is within the budget is not known: it cannot be measured here without the owner, since emptying the system's memory of files asks for a password. Recommended: the owner runs `Tools/perf/mac.sh` once after turning the Mac on, and the first line it prints is the number.
 
 Also the owner's to say, from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
