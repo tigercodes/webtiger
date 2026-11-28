@@ -1091,6 +1091,14 @@ And one that the measuring raised (060 §8): a Space whose row was arranged in t
 3. The core says whether, for each web view: a switch later is then the core's alone.
 4. Not under Guard's switches: the signal blocks nothing and breaks nothing.
 
+**Third-party cookies** ([070](070-third-party-cookies.md) §6, put on 2026-11-28; to be built on these):
+
+1. Blocked always, with no switch yet: WebKit has no public way to stop its own blocking, and the System WebView's setting is a web view's and not a page's. Under Guard's switches is a later step, with a design of its own.
+2. No contract: each adapter holds its engine to it. When there is a switch it is the core's, and comes with its own message.
+3. The adapter suite tries both kinds of cookie: one that says nothing of where it may go, and one that says it may go anywhere.
+4. A page's storage in a frame is looked at, said, and left as each engine has it.
+5. Android's adapter sets the WebView's setting though it is the default.
+
 And one that measuring the Mac app raised (060 §5.2, §8): its start is about 200 ms, but the first start after it was built was 395 ms once and 673 ms once, against the 500 allowed. Whether a cold start (after the Mac is turned on) is within the budget is not known: it cannot be measured here without the owner, since emptying the system's memory of files asks for a password. Recommended: the owner runs `Tools/perf/mac.sh` once after turning the Mac on, and the first line it prints is the number.
 
 Also the owner's to say, from earlier: the words, the keys and the mark for a Site that has wandered ([039](039-sites.md) §7b: "Return to" and the Site's name; ⇧⌘H and Alt+Home; an outline for its mark).
