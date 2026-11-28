@@ -234,6 +234,23 @@ class SystemWebViewEngineTest {
 
     private fun windowsAsked(by: Long) = core.reports.filter { it.web_view_id == by }.mapNotNull { it.new_window_requested }
 
+    /**
+     * Global Privacy Control (069): a page is told the signal as the core said of its web
+     * view, and a window a page asks for as the page that asked.
+     */
+    @Test
+    fun aPageIsToldTheSignalAsTheCoreSaidAndAWindowAPageAsksForAsThePageThatAsked() =
+        runTest {
+            val told = WebViewCreate(web_view_id = 4, engine = EngineKind.ENGINE_KIND_CHROMIUM, login_set = LoginSet(id = LOGIN_SET), global_privacy_control = true)
+            engine.answer(HostRequest(web_view_create = told))
+            engine.answer(create(5))
+            assertEquals(listOf(true, false), pages.made.map { it.privacySignal })
+
+            pages.made[0].host.newWindow(4, userGesture = true)
+            pages.made[1].host.newWindow(5, userGesture = true)
+            assertEquals(listOf(true, false, true, false), pages.made.map { it.privacySignal })
+        }
+
     @Test
     fun aWindowAPageAsksForIsMadeInItsLoginSetNamedByTheShellAndReported() =
         runTest {

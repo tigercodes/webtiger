@@ -1585,6 +1585,9 @@ impl App {
                         // nothing of it.
                         ephemeral: self.state.borrow().is_private(login_set),
                     }),
+                    // Every page is told the signal (069): there is no
+                    // switch for it yet, and when there is one it is here.
+                    global_privacy_control: true,
                 }))
         });
         let kept = kept

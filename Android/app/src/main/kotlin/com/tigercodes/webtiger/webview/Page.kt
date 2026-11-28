@@ -147,9 +147,10 @@ internal interface PageFactory {
     /**
      * A page whose web view runs in the login set `loginSet`, a UUID. Throws when the device
      * has no usable WebView. `forgetful`: the login set is a private window's (037), and the
-     * keyboard is asked not to learn from what is typed in the page's fields.
+     * keyboard is asked not to learn from what is typed in the page's fields. `privacySignal`:
+     * the web view's pages are told Global Privacy Control (069).
      */
-    fun create(webViewId: Long, loginSet: String, forgetful: Boolean, host: PageHost): Page
+    fun create(webViewId: Long, loginSet: String, forgetful: Boolean, privacySignal: Boolean, host: PageHost): Page
 
     /**
      * A login set is about to be used that is a private window's (037): to be thrown away.

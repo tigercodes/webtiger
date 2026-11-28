@@ -673,6 +673,26 @@ enum TestSitePages {
             delayMilliseconds: 0,
             authorization: ""
         ),
+        TestSitePage(
+            path: "/gpc",
+            status: "200 OK",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("<!doctype html><title>GPC</title><h1>GPC</h1><script>\nvar first = String(navigator.globalPrivacyControl);\ntry { navigator.globalPrivacyControl = false; } catch (e) {}\ntry { Object.defineProperty(navigator, 'globalPrivacyControl', { value: false }); } catch (e) {}\nvar read = 'gpc=' + first + ' then ' + navigator.globalPrivacyControl;\nif (window.parent !== window) { window.parent.postMessage(read, '*'); } else { document.title = read; document.write('<p>' + read + '</p>'); }\n</script>")],
+            bytes: "",
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
+        TestSitePage(
+            path: "/gpc-in-a-frame",
+            status: "200 OK",
+            type: "text/html",
+            headers: [[.text("Cache-Control: no-store")]],
+            body: [.text("<!doctype html><title>GPC in a frame</title><h1>GPC in a frame</h1><iframe id=\"frame\" width=\"320\" height=\"60\"></iframe>\n<script>\naddEventListener('message', function (said) { document.title = 'frame: ' + said.data; });\ndocument.getElementById('frame').src = 'http://localhost:' + location.port + '/gpc';\n</script>")],
+            bytes: "",
+            delayMilliseconds: 0,
+            authorization: ""
+        ),
     ]
 
     /// What every other path is answered with.

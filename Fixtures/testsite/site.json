@@ -632,6 +632,32 @@
       "path": "/kinds/data",
       "type": "application/json",
       "content": "{}"
+    },
+    {
+      "path": "/gpc",
+      "title": "GPC",
+      "body": [
+        "<script>",
+        "var first = String(navigator.globalPrivacyControl);",
+        "try { navigator.globalPrivacyControl = false; } catch (e) {}",
+        "try { Object.defineProperty(navigator, 'globalPrivacyControl', { value: false }); } catch (e) {}",
+        "var read = 'gpc=' + first + ' then ' + navigator.globalPrivacyControl;",
+        "if (window.parent !== window) { window.parent.postMessage(read, '*'); } else { document.title = read; document.write('<p>' + read + '</p>'); }",
+        "</script>"
+      ],
+      "note": "Says what a page's script reads of Global Privacy Control (069): what it reads first, and what it reads after trying to make it say otherwise. In its title and in its words; or, in a frame, to the page that holds it."
+    },
+    {
+      "path": "/gpc-in-a-frame",
+      "title": "GPC in a frame",
+      "body": [
+        "<iframe id=\"frame\" width=\"320\" height=\"60\"></iframe>",
+        "<script>",
+        "addEventListener('message', function (said) { document.title = 'frame: ' + said.data; });",
+        "document.getElementById('frame').src = 'http://localhost:' + location.port + '/gpc';",
+        "</script>"
+      ],
+      "note": "Holds /gpc in a frame from another origin (the same server by its other name, localhost): says in its title what the frame read."
     }
   ],
   "not_found": {

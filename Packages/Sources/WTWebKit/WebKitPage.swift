@@ -13,6 +13,9 @@ final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
     /// The login set the web view's pages run in, and whether it is a private one.
     let loginSet: UUID
     let isPrivate: Bool
+    /// The web view's pages are told Global Privacy Control (069): the loads the shell begins
+    /// for it carry the header.
+    let tellsPrivacySignal: Bool
     private(set) weak var engine: WebKitEngine?
     private var observations: [NSKeyValueObservation] = []
     /// A main-frame load has started and not yet committed or failed.
@@ -26,11 +29,12 @@ final class Page: NSObject, WKNavigationDelegate, WKUIDelegate {
     /// redirected to, and the load's end is the refusal's.
     var refusedWhileProvisional = false
 
-    init(id: UInt64, webView: WKWebView, loginSet: UUID, isPrivate: Bool, engine: WebKitEngine) {
+    init(id: UInt64, webView: WKWebView, loginSet: UUID, isPrivate: Bool, tellsPrivacySignal: Bool, engine: WebKitEngine) {
         self.id = id
         self.webView = webView
         self.loginSet = loginSet
         self.isPrivate = isPrivate
+        self.tellsPrivacySignal = tellsPrivacySignal
         self.engine = engine
         super.init()
         webView.navigationDelegate = self

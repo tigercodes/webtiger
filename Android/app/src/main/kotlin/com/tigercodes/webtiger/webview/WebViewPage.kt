@@ -66,8 +66,8 @@ internal class WebViewPages(private val context: Context) : PageFactory {
                 false
             }
 
-    override fun create(webViewId: Long, loginSet: String, forgetful: Boolean, host: PageHost): Page =
-        WebViewPage(context, webViewId, loginSet, forgetful, host, ::isOnline)
+    override fun create(webViewId: Long, loginSet: String, forgetful: Boolean, privacySignal: Boolean, host: PageHost): Page =
+        WebViewPage(context, webViewId, loginSet, forgetful, privacySignal, host, ::isOnline)
 
     /** The private login sets whose profiles are to be deleted (037): one name to a line, in a file that is never backed up. */
     private val thrownAway = File(context.noBackupFilesDir, "private-login-sets")
@@ -160,6 +160,8 @@ internal class WebViewPage(
     private val loginSet: String,
     /** The login set is a private window's: the keyboard is asked not to learn (037 §5.5). */
     private val forgetful: Boolean,
+    /** The web view's pages are told Global Privacy Control (069). */
+    private val privacySignal: Boolean,
     private val host: PageHost,
     private val online: () -> Boolean,
 ) : Page {
@@ -193,7 +195,10 @@ internal class WebViewPage(
     override fun load(url: String): Boolean {
         val view = webView ?: recreate() ?: return false
         tracker.willLoad(url)
-        view.loadUrl(url)
+        // A load the shell begins carries the signal's header (069), where the web view's
+        // pages are told it. What a page fetches of its own accord the WebView gives a shell
+        // no way to add to.
+        if (privacySignal) view.loadUrl(url, PrivacySignal.HEADERS) else view.loadUrl(url)
         return true
     }
 
@@ -446,6 +451,7 @@ internal class WebViewPage(
         view.webViewClient = Client()
         view.webChromeClient = Chrome()
         listenForDoings(view)
+        if (privacySignal) PrivacySignal.tell(view)
         // The WebView does not download: it says one was asked for (013). What it was loading
         // then comes to nothing, and the page stays. The name is what the site suggests, read
         // as the platform reads it; the core makes the name the file is saved under.

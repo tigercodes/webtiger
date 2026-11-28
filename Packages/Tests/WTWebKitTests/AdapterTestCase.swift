@@ -48,11 +48,13 @@ class AdapterTestCase: XCTestCase {
         _ id: UInt64,
         loginSet: UUID? = nil,
         ephemeral: Bool = false,
-        engine kind: WTEngineKind = .webkit
+        engine kind: WTEngineKind = .webkit,
+        privacySignal: Bool = false
     ) async -> WTHostResponse.OneOf_Kind {
         var create = WTWebViewCreate()
         create.webViewID = id
         create.engine = kind
+        create.globalPrivacyControl = privacySignal
         // A login set a test did not name is one of its own, deleted with the others.
         let loginSet = loginSet ?? (ephemeral ? UUID() : newLoginSet())
         create.loginSet.id = loginSet.uuidString.lowercased()

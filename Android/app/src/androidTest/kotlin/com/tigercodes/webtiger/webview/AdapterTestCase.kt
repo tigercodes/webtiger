@@ -93,8 +93,16 @@ internal abstract class AdapterTestCase {
         loginSet: String = newLoginSet(),
         ephemeral: Boolean = false,
         kind: EngineKind = EngineKind.ENGINE_KIND_CHROMIUM,
+        privacySignal: Boolean = false,
     ): HostResponse {
-        val answer = answer(HostRequest(web_view_create = WebViewCreate(web_view_id = id, engine = kind, login_set = LoginSet(id = loginSet, ephemeral = ephemeral))))
+        val made =
+            WebViewCreate(
+                web_view_id = id,
+                engine = kind,
+                login_set = LoginSet(id = loginSet, ephemeral = ephemeral),
+                global_privacy_control = privacySignal,
+            )
+        val answer = answer(HostRequest(web_view_create = made))
         if (answer.ack != null) created.add(id)
         return answer
     }

@@ -98,6 +98,15 @@ message WebViewCreate {
   uint64 web_view_id = 1;
   EngineKind engine = 2;
   LoginSet login_set = 3;
+  // Since 1.56. Pages in this web view are told Global Privacy Control (069).
+  // To their scripts: before any of a page's own run, in every frame,
+  // `navigator.globalPrivacyControl` is true, where the page cannot change
+  // it. To servers: each load the shell begins for this web view
+  // (WebViewLoad) carries `Sec-GPC: 1`; what the engine fetches of its own
+  // accord does not, where the engine gives a shell no way to add to it. A
+  // web view a page opened by itself (NewWindowRequested) is told as the
+  // one that opened it is.
+  bool global_privacy_control = 4;
 }
 
 // WebViews: loads an address. Answered with Ack once the load was started;

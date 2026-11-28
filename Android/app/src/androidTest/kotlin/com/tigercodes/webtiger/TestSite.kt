@@ -45,12 +45,24 @@ internal class TestSite : Closeable {
     private val server = ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"))
     private val workers = Executors.newCachedThreadPool { work -> Thread(work, "webtiger-testsite").apply { isDaemon = true } }
     private val asked = ConcurrentLinkedQueue<String>()
+    private val heads = ConcurrentLinkedQueue<Pair<String, List<String>>>()
 
     /** The port the site listens on. */
     val port: Int get() = server.localPort
 
     /** Every path asked for, in order, without its query. */
     val requests: List<String> get() = asked.toList()
+
+    /**
+     * What each request for a path said of itself, in order: its headers, by their names in
+     * small letters. For what a request carries that a path does not show.
+     */
+    fun headers(of: String): List<Map<String, String>> =
+        heads.filter { it.first == of }.map { (_, lines) ->
+            lines
+                .filter { ':' in it }
+                .associate { it.substringBefore(':').lowercase() to it.substringAfter(':').trim() }
+        }
 
     init {
         workers.execute {
@@ -125,6 +137,7 @@ internal class TestSite : Closeable {
         val target = lines.first().split(" ").getOrElse(1) { "/" }
         val path = target.substringBefore("?")
         asked.add(path)
+        heads.add(path to lines.drop(1))
         val query = pairs(target.substringAfter("?", ""), '&')
         val cookies = pairs(lines.drop(1).firstOrNull { it.lowercase().startsWith("cookie:") }?.substring("cookie:".length).orEmpty(), ';')
 

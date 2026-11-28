@@ -2940,6 +2940,16 @@ pub struct WebViewCreate {
     pub engine: i32,
     #[prost(message, optional, tag = "3")]
     pub login_set: ::core::option::Option<LoginSet>,
+    /// Since 1.56. Pages in this web view are told Global Privacy Control (069).
+    /// To their scripts: before any of a page's own run, in every frame,
+    /// `navigator.globalPrivacyControl` is true, where the page cannot change
+    /// it. To servers: each load the shell begins for this web view
+    /// (WebViewLoad) carries `Sec-GPC: 1`; what the engine fetches of its own
+    /// accord does not, where the engine gives a shell no way to add to it. A
+    /// web view a page opened by itself (NewWindowRequested) is told as the
+    /// one that opened it is.
+    #[prost(bool, tag = "4")]
+    pub global_privacy_control: bool,
 }
 /// WebViews: loads an address. Answered with Ack once the load was started;
 /// how it goes arrives as EngineEvents. "webview.unknown" for an id the shell

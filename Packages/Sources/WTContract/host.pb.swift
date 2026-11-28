@@ -382,6 +382,16 @@ public nonisolated struct WTWebViewCreate: Sendable {
   /// Clears the value of `loginSet`. Subsequent reads from it will return its default value.
   public mutating func clearLoginSet() {self._loginSet = nil}
 
+  /// Since 1.56. Pages in this web view are told Global Privacy Control (069).
+  /// To their scripts: before any of a page's own run, in every frame,
+  /// `navigator.globalPrivacyControl` is true, where the page cannot change
+  /// it. To servers: each load the shell begins for this web view
+  /// (WebViewLoad) carries `Sec-GPC: 1`; what the engine fetches of its own
+  /// accord does not, where the engine gives a shell no way to add to it. A
+  /// web view a page opened by itself (NewWindowRequested) is told as the
+  /// one that opened it is.
+  public var globalPrivacyControl: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1333,7 +1343,7 @@ nonisolated extension WTLoginSet: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 nonisolated extension WTWebViewCreate: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".WebViewCreate"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{1}engine\0\u{3}login_set\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}web_view_id\0\u{1}engine\0\u{3}login_set\0\u{3}global_privacy_control\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1344,6 +1354,7 @@ nonisolated extension WTWebViewCreate: SwiftProtobuf.Message, SwiftProtobuf._Mes
       case 1: try { try decoder.decodeSingularUInt64Field(value: &self.webViewID) }()
       case 2: try { try decoder.decodeSingularEnumField(value: &self.engine) }()
       case 3: try { try decoder.decodeSingularMessageField(value: &self._loginSet) }()
+      case 4: try { try decoder.decodeSingularBoolField(value: &self.globalPrivacyControl) }()
       default: break
       }
     }
@@ -1363,6 +1374,9 @@ nonisolated extension WTWebViewCreate: SwiftProtobuf.Message, SwiftProtobuf._Mes
     try { if let v = self._loginSet {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
     } }()
+    if self.globalPrivacyControl != false {
+      try visitor.visitSingularBoolField(value: self.globalPrivacyControl, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1370,6 +1384,7 @@ nonisolated extension WTWebViewCreate: SwiftProtobuf.Message, SwiftProtobuf._Mes
     if lhs.webViewID != rhs.webViewID {return false}
     if lhs.engine != rhs.engine {return false}
     if lhs._loginSet != rhs._loginSet {return false}
+    if lhs.globalPrivacyControl != rhs.globalPrivacyControl {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

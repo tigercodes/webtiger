@@ -129,6 +129,9 @@ class SystemWebViewEngine internal constructor(
     /** The login set each web view's pages run in. A window a page asks for is in the asking page's. */
     private val loginSets = HashMap<Long, String>()
 
+    /** The web views whose pages are told Global Privacy Control (069). */
+    private val privacySignalled = HashSet<Long>()
+
     /** The login sets of this run that are private windows' (037): cleared when their last page is gone. */
     private val thrownAway = HashSet<String>()
 
@@ -262,6 +265,7 @@ class SystemWebViewEngine internal constructor(
                     files.dropped(destroy.web_view_id)
                     pages.remove(destroy.web_view_id)?.close()
                     val loginSet = loginSets.remove(destroy.web_view_id)
+                    privacySignalled.remove(destroy.web_view_id)
                     certificates.dropped(destroy.web_view_id)
                     // A private window's login set, with its last page gone (037): what its
                     // pages stored is removed now, and its profile when the app next starts.
@@ -300,7 +304,7 @@ class SystemWebViewEngine internal constructor(
         }
         val page =
             try {
-                factory.create(create.web_view_id, name, forgetful = name in thrownAway, Reports())
+                factory.create(create.web_view_id, name, forgetful = name in thrownAway, privacySignal = create.global_privacy_control, Reports())
             } catch (_: RuntimeException) {
                 // The device has no WebView, or it is being updated. The exception's words
                 // stay here.
@@ -308,6 +312,7 @@ class SystemWebViewEngine internal constructor(
             }
         pages[create.web_view_id] = page
         loginSets[create.web_view_id] = name
+        if (create.global_privacy_control) privacySignalled.add(create.web_view_id)
         return done
     }
 
@@ -323,13 +328,15 @@ class SystemWebViewEngine internal constructor(
         val id = OWN_ID or (ownWebViews + 1)
         val page =
             try {
-                factory.create(id, loginSet, forgetful = loginSet in thrownAway, Reports())
+                // A window a page opened is told the signal as the page that opened it is (069).
+                factory.create(id, loginSet, forgetful = loginSet in thrownAway, privacySignal = askingId in privacySignalled, Reports())
             } catch (_: RuntimeException) {
                 return null
             }
         ownWebViews += 1
         pages[id] = page
         loginSets[id] = loginSet
+        if (askingId in privacySignalled) privacySignalled.add(id)
         generation += 1
         // The WebView does not say where the page wants the window to go.
         core?.report(EngineEvent(web_view_id = askingId, new_window_requested = NewWindowRequested(new_web_view_id = id, user_gesture = userGesture)))

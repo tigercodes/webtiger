@@ -11,6 +11,8 @@ internal class FakePage(
     val host: PageHost,
     /** Whether it was made as a private window's page, whose keyboard is asked not to learn (037 §5.5). */
     val forgetful: Boolean = false,
+    /** Whether its pages are to be told Global Privacy Control (069). */
+    val privacySignal: Boolean = false,
 ) : Page {
     val loaded = ArrayList<String>()
     val commands = ArrayList<NavigationCommand>()
@@ -102,10 +104,10 @@ internal class FakePages(override var keepsLoginSetsApart: Boolean = true) : Pag
     val made = ArrayList<FakePage>()
     var failure: RuntimeException? = null
 
-    override fun create(webViewId: Long, loginSet: String, forgetful: Boolean, host: PageHost): Page {
+    override fun create(webViewId: Long, loginSet: String, forgetful: Boolean, privacySignal: Boolean, host: PageHost): Page {
         failure?.let { throw it }
         did.add("make $loginSet")
-        return FakePage(webViewId, loginSet, host, forgetful).also { made.add(it) }
+        return FakePage(webViewId, loginSet, host, forgetful, privacySignal).also { made.add(it) }
     }
 
     /** What the adapter did about private login sets, in order: "sweep", "throw away <name>", "clear <name>"; and "make <name>" for each page made. */

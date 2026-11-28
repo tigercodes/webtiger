@@ -234,7 +234,7 @@ public final class WebKitEngine: HostServices {
     private func load(_ address: String, in webViewID: UInt64) -> WTHostResponse.OneOf_Kind {
         guard let page = pages[webViewID] else { return failure("webview.unknown") }
         guard let url = URL(string: address) else { return failure("webview.bad_address") }
-        page.webView.load(URLRequest(url: url))
+        page.webView.load(PrivacySignal.request(for: url, told: page.tellsPrivacySignal))
         return .ack(WTAck())
     }
 
@@ -342,11 +342,16 @@ public final class WebKitEngine: HostServices {
             pressed.listen(in: configuration.userContentController)
         #endif
         activity.listen(in: configuration.userContentController)
+        // Global Privacy Control (069), when the core says this web view's pages are told it.
+        if create.globalPrivacyControl {
+            PrivacySignal.tell(configuration.userContentController)
+        }
         pages[create.webViewID] = Page(
             id: create.webViewID,
             webView: Self.webView(configuration),
             loginSet: loginSet,
             isPrivate: create.loginSet.ephemeral,
+            tellsPrivacySignal: create.globalPrivacyControl,
             engine: self
         )
         made.one()
@@ -370,8 +375,15 @@ public final class WebKitEngine: HostServices {
     func newWindow(askedBy asking: Page, configuration: WKWebViewConfiguration, url: URL?) -> WKWebView {
         ownWebViews += 1
         let id = Self.ownID | ownWebViews
+        // (The configuration is the asking page's: with its scripts, and so with the signal
+        // when the asking page's pages are told it.)
         let page = Page(
-            id: id, webView: Self.webView(configuration), loginSet: asking.loginSet, isPrivate: asking.isPrivate, engine: self
+            id: id,
+            webView: Self.webView(configuration),
+            loginSet: asking.loginSet,
+            isPrivate: asking.isPrivate,
+            tellsPrivacySignal: asking.tellsPrivacySignal,
+            engine: self
         )
         pages[id] = page
         made.one()
