@@ -1,6 +1,6 @@
 //! The Android glue (000 §5.5, 003): the JNI exports the Kotlin object
 //! `com.tigercodes.webtiger.core.CoreLibrary` declares and `NativeCore` uses,
-//! over the six functions of the C ABI. Built with the `jni` feature: into
+//! over the seven functions of the C ABI. Built with the `jni` feature: into
 //! libwebtiger_core.so for Android, and into a host library that the Kotlin
 //! client's JVM tests load, so those tests drive the real core.
 //!
@@ -28,8 +28,8 @@ use jni::sys::{jint, jlong};
 use jni::{EnvUnowned, JValue, JavaVM, Outcome, jni_sig, jni_str};
 
 use crate::{
-    MAX_MESSAGE_LEN, Status, WT_NAV_CANCEL, WT_VERDICT_ALLOW, WtNavVerdict, WtNavigation,
-    WtRequest, WtVerdict,
+    MAX_MESSAGE_LEN, Status, WT_NAV_CANCEL, WT_STORAGE_APART, WT_VERDICT_ALLOW, WtFrame,
+    WtNavVerdict, WtNavigation, WtRequest, WtStorageVerdict, WtVerdict,
 };
 
 /// What the sink needs on the core's thread: the VM to attach to, and the
@@ -320,4 +320,46 @@ pub extern "system" fn Java_com_tigercodes_webtiger_core_CoreLibrary_guardCheck<
         })
         .into_outcome();
     settle(action).unwrap_or(allowed)
+}
+
+/// `CoreLibrary.storageCheck(core, origin, topOrigin, pageUrl, webViewId)`:
+/// `wt_storage_check`'s verdict (`WT_STORAGE_*`). `WT_STORAGE_APART` on any
+/// failure: a third party is let at its storage on the core's word alone.
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_com_tigercodes_webtiger_core_CoreLibrary_storageCheck<'local>(
+    mut env: EnvUnowned<'local>,
+    _class: JClass<'local>,
+    core: jlong,
+    origin: JString<'local>,
+    top_origin: JString<'local>,
+    page_url: JString<'local>,
+    web_view_id: jlong,
+) -> jint {
+    let apart = WT_STORAGE_APART.cast_signed();
+    let action = env
+        .with_env(|env| -> jni::errors::Result<jint> {
+            let origin = origin.mutf8_chars(env)?;
+            let top_origin = top_origin.mutf8_chars(env)?;
+            let page_url = page_url.mutf8_chars(env)?;
+            let (of_frame, of_top, of_page) =
+                (origin.to_str(), top_origin.to_str(), page_url.to_str());
+            let frame = WtFrame {
+                origin: of_frame.as_ptr(),
+                origin_len: of_frame.len(),
+                top_origin: of_top.as_ptr(),
+                top_origin_len: of_top.len(),
+                page_url: of_page.as_ptr(),
+                page_url_len: of_page.len(),
+                web_view_id: unsigned(web_view_id),
+            };
+            let mut verdict = WtStorageVerdict {
+                action: WT_STORAGE_APART,
+            };
+            // SAFETY: `frame` and `verdict` are live for the call, and the
+            // three texts cover their bytes for as long.
+            unsafe { crate::wt_storage_check(unsigned(core), &raw const frame, &raw mut verdict) };
+            Ok(jint::try_from(verdict.action).unwrap_or(apart))
+        })
+        .into_outcome();
+    settle(action).unwrap_or(apart)
 }

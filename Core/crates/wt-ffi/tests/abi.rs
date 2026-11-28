@@ -12,8 +12,9 @@ use std::collections::BTreeMap;
 
 use webtiger_core::{
     MAX_CORES, MAX_MESSAGE_LEN, Status, WT_NAV_ALLOW, WT_NAV_CANCEL, WT_NAV_EXTERNAL,
-    WT_NAV_MAIN_FRAME, WT_NAV_USER_GESTURE, WT_VERDICT_ALLOW, WT_VERDICT_BLOCK, WtNavVerdict,
-    WtNavigation, WtRequest, WtVerdict, wt_core_version,
+    WT_NAV_MAIN_FRAME, WT_NAV_USER_GESTURE, WT_STORAGE_APART, WT_STORAGE_OWN, WT_VERDICT_ALLOW,
+    WT_VERDICT_BLOCK, WtFrame, WtNavVerdict, WtNavigation, WtRequest, WtStorageVerdict, WtVerdict,
+    wt_core_version,
 };
 use wt_proto::{CONTRACT_MAJOR, CONTRACT_MINOR};
 
@@ -49,6 +50,7 @@ fn every_export_is_declared() {
         "int32_t wt_core_stop(uint64_t core);",
         "int32_t wt_guard_check(uint64_t core, const wt_request *request, wt_verdict *out);",
         "int32_t wt_nav_check(uint64_t core, const wt_navigation *navigation, wt_nav_verdict *out);",
+        "int32_t wt_storage_check(uint64_t core, const wt_frame *frame, wt_storage_verdict *out);",
         "typedef void (*wt_sink)(void *context, const uint8_t *envelope, size_t len);",
     ] {
         assert!(
@@ -61,7 +63,7 @@ fn every_export_is_declared() {
 #[test]
 fn every_constant_has_rusts_value() {
     let defines = defines();
-    let expected: [(&str, u64); 17] = [
+    let expected: [(&str, u64); 19] = [
         ("WT_OK", Status::Ok as u64),
         ("WT_UNKNOWN_CORE", Status::UnknownCore as u64),
         ("WT_NULL_ARGUMENT", Status::NullArgument as u64),
@@ -79,6 +81,8 @@ fn every_constant_has_rusts_value() {
         ("WT_NAV_ALLOW", u64::from(WT_NAV_ALLOW)),
         ("WT_NAV_CANCEL", u64::from(WT_NAV_CANCEL)),
         ("WT_NAV_EXTERNAL", u64::from(WT_NAV_EXTERNAL)),
+        ("WT_STORAGE_OWN", u64::from(WT_STORAGE_OWN)),
+        ("WT_STORAGE_APART", u64::from(WT_STORAGE_APART)),
     ];
     for (name, value) in expected {
         assert_eq!(defines.get(name), Some(&value), "{name}");
@@ -125,6 +129,16 @@ fn the_fast_paths_structures_have_cs_layout() {
     assert_eq!(size_of::<WtNavigation>(), 32);
     assert_eq!(offset_of!(WtNavigation, web_view_id), 16);
     assert_eq!(offset_of!(WtNavigation, flags), 24);
+    // wt_frame: three pointers each with its size_t, and a uint64_t.
+    assert_eq!(size_of::<WtFrame>(), 56);
+    assert_eq!(align_of::<WtFrame>(), 8);
+    assert_eq!(offset_of!(WtFrame, origin_len), 8);
+    assert_eq!(offset_of!(WtFrame, top_origin), 16);
+    assert_eq!(offset_of!(WtFrame, top_origin_len), 24);
+    assert_eq!(offset_of!(WtFrame, page_url), 32);
+    assert_eq!(offset_of!(WtFrame, page_url_len), 40);
+    assert_eq!(offset_of!(WtFrame, web_view_id), 48);
     assert_eq!(size_of::<WtVerdict>(), 4);
     assert_eq!(size_of::<WtNavVerdict>(), 4);
+    assert_eq!(size_of::<WtStorageVerdict>(), 4);
 }

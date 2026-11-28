@@ -23,6 +23,7 @@ import com.tigercodes.webtiger.core.HostServices
 import com.tigercodes.webtiger.core.NavigationVerdict
 import com.tigercodes.webtiger.core.RequestVerdict
 import com.tigercodes.webtiger.core.ResourceType
+import com.tigercodes.webtiger.core.StorageVerdict
 import com.tigercodes.webtiger.core.v1.Ack
 import com.tigercodes.webtiger.core.v1.DialogKind
 import com.tigercodes.webtiger.core.v1.EngineEvent
@@ -405,6 +406,11 @@ class SystemWebViewEngine internal constructor(
 
         override fun requestVerdict(url: String, sourceUrl: String, webViewId: Long, resource: ResourceType): RequestVerdict =
             core?.requestVerdict(url, sourceUrl, webViewId, resource) ?: RequestVerdict.ALLOW
+
+        // With no core to ask, a frame is kept apart: a third party is let at its storage on
+        // the core's word alone (071).
+        override fun storageVerdict(origin: String, topOrigin: String, pageUrl: String, webViewId: Long): StorageVerdict =
+            core?.storageVerdict(origin, topOrigin, pageUrl, webViewId) ?: StorageVerdict.APART
 
         override fun newWindow(askingId: Long, userGesture: Boolean): Page? = this@SystemWebViewEngine.newWindow(askingId, userGesture)
 

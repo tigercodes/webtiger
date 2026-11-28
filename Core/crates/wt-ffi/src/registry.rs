@@ -116,6 +116,31 @@ pub(crate) fn decide(
     })
 }
 
+/// Whether a frame is to be kept from its site's own storage (071), by the
+/// switches of the core with this handle: the fast path's lookup. `None`
+/// when no such core runs.
+pub(crate) fn keeps_apart(
+    handle: u64,
+    web_view: u64,
+    frame_origin: &str,
+    top_origin: &str,
+    page_url: &str,
+) -> Option<bool> {
+    if handle == 0 {
+        return None;
+    }
+    SLOTS.iter().find_map(|slot| {
+        let entry = slot.load();
+        let entry = entry.as_ref().filter(|entry| entry.handle == handle)?;
+        Some(entry.switches.load().keeps_apart(
+            WebViewId(web_view),
+            frame_origin,
+            top_origin,
+            page_url,
+        ))
+    })
+}
+
 /// Stops the core with a handle and frees its slot.
 pub(crate) fn stop(handle: u64) -> Status {
     for slot in &SLOTS {

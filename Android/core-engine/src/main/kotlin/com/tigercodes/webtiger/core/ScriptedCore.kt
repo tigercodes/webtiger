@@ -13,6 +13,9 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
 
+/** A frame whose storage a [ScriptedCore] was asked about (071): what was said of it. */
+data class FrameAsked(val origin: String, val topOrigin: String, val pageUrl: String, val webViewId: Long)
+
 /**
  * A core that answers every request with what [script] returns; the default answers Ack. A
  * script refuses by throwing [CoreError.Refused].
@@ -24,6 +27,8 @@ class ScriptedCore(private val script: (Request) -> Response = { Response(ack = 
     private val navigationVerdicts = HashMap<String, NavigationVerdict>()
     private val requestVerdicts = HashMap<String, RequestVerdict>()
     private val asked = ArrayList<Pair<String, ResourceType>>()
+    private val framesAsked = ArrayList<FrameAsked>()
+    private var storage: (FrameAsked) -> StorageVerdict = { StorageVerdict.OWN }
     private var stopped = false
     private val channel = Channel<Event>(Channel.UNLIMITED)
 
@@ -37,6 +42,9 @@ class ScriptedCore(private val script: (Request) -> Response = { Response(ack = 
 
     /** Every request a page made that was put to Guard, in order: its address, and what it was said to be for. */
     val guarded: List<Pair<String, ResourceType>> get() = synchronized(lock) { asked.toList() }
+
+    /** Every frame whose storage was asked about (071), in order. */
+    val frames: List<FrameAsked> get() = synchronized(lock) { framesAsked.toList() }
 
     val isStopped: Boolean get() = synchronized(lock) { stopped }
 
@@ -58,6 +66,14 @@ class ScriptedCore(private val script: (Request) -> Response = { Response(ack = 
     /** Sets Guard's answer for a request's address. Addresses not set are allowed. */
     fun setVerdict(verdict: RequestVerdict, url: String) {
         synchronized(lock) { requestVerdicts[url] = verdict }
+    }
+
+    /**
+     * Sets what is said of a frame's storage (071). Until it is set, every frame has its
+     * site's own: an engine under this core is as it is by itself.
+     */
+    fun setStorage(verdict: (FrameAsked) -> StorageVerdict) {
+        synchronized(lock) { storage = verdict }
     }
 
     override suspend fun request(request: Request): Response {
@@ -84,6 +100,16 @@ class ScriptedCore(private val script: (Request) -> Response = { Response(ack = 
             asked.add(url to resource)
             requestVerdicts[url]
         } ?: RequestVerdict.ALLOW
+
+    override fun storageVerdict(origin: String, topOrigin: String, pageUrl: String, webViewId: Long): StorageVerdict {
+        val frame = FrameAsked(origin, topOrigin, pageUrl, webViewId)
+        val says =
+            synchronized(lock) {
+                framesAsked.add(frame)
+                storage
+            }
+        return says(frame)
+    }
 
     override fun stop() {
         synchronized(lock) { stopped = true }

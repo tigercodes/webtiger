@@ -32,7 +32,7 @@ extern "C" {
  * as (major << 16) | minor; a shell refuses to start on a major mismatch, and
  * puts its own in CoreConfig. */
 #define WT_CONTRACT_MAJOR 1u
-#define WT_CONTRACT_MINOR 56u
+#define WT_CONTRACT_MINOR 57u
 
 /* What wt_core_send, wt_core_stop and the fast path return. */
 #define WT_OK 0
@@ -86,13 +86,14 @@ int32_t wt_core_stop(uint64_t core);
 
 /*
  * The fast path (000 §5.5): synchronous, and callable from any thread,
- * including an engine's own network and navigation threads. Neither call
- * queues behind the core's own thread, waits for the store, or waits for a
- * shell: each answers from what the core holds for it. The navigation check
- * neither locks nor allocates. Guard's check (064) parses the two addresses
- * and looks rules up: it allocates, and decisions are made one at a time
- * behind a lock of the blocker's own, held for the fraction of a microsecond
- * one takes.
+ * including an engine's own network and navigation threads. No call queues
+ * behind the core's own thread, waits for the store, or waits for a shell:
+ * each answers from what the core holds for it. The navigation check neither
+ * locks nor allocates. Guard's check (064) parses the two addresses and looks
+ * rules up: it allocates, and decisions are made one at a time behind a lock
+ * of the blocker's own, held for the fraction of a microsecond one takes. The
+ * storage check (071) parses its three addresses: it allocates, and locks
+ * nothing.
  */
 
 /* What a request is for, as far as the engine says. */
@@ -159,6 +160,42 @@ typedef struct wt_nav_verdict {
 /* Whether a web view may make a navigation. On any error the verdict written
  * is CANCEL. */
 int32_t wt_nav_check(uint64_t core, const wt_navigation *navigation, wt_nav_verdict *out);
+
+/* A frame whose document is starting, in a page. Origins and the address are
+ * UTF-8, not NUL-terminated, and borrowed for the call. */
+typedef struct wt_frame {
+    /* The frame's origin, as its own document has it ("https://example.com";
+     * "null" for one that is nobody's). */
+    const uint8_t *origin;
+    size_t origin_len;
+    /* The origin of the top frame above it, as the frame's document has it. */
+    const uint8_t *top_origin;
+    size_t top_origin_len;
+    /* The address of the page (the top frame), as the shell knows it. */
+    const uint8_t *page_url;
+    size_t page_url_len;
+    uint64_t web_view_id;
+} wt_frame;
+
+/* The frame has its site's own storage. */
+#define WT_STORAGE_OWN 0u
+/* The frame is kept from its site's storage: what it keeps goes with its
+ * document. */
+#define WT_STORAGE_APART 1u
+
+typedef struct wt_storage_verdict {
+    uint32_t action;
+} wt_storage_verdict;
+
+/* Whether a frame has its site's own storage (071): for an engine that does
+ * not keep a third party's storage apart by itself, asked as the frame's
+ * document starts. OWN for a frame of the page's own site, and for any frame
+ * where Guard is off for the page (067). APART for a frame of another site;
+ * and for any frame whose top frame is not of the origin of the page the
+ * shell knows, since a shell learns of a new page a moment after its engine
+ * has it. On any error the verdict written is APART: a third party is let at
+ * its storage on the core's word alone. */
+int32_t wt_storage_check(uint64_t core, const wt_frame *frame, wt_storage_verdict *out);
 
 #ifdef __cplusplus
 }

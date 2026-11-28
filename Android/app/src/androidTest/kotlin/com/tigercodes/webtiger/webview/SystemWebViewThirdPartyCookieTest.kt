@@ -5,7 +5,9 @@
 // an engine. The same behaviours as the WebKit run (WebKitThirdPartyCookieTests), but for one
 // thing, which is the WebView's and is said here as it is: **a page's storage is not kept
 // apart.** A site in a frame of another site's page reads what it stored as itself, and what
-// it stores there it has as itself (070 §5.1).
+// it stores there it has as itself (070 §5.1). The adapter keeps it apart where the core says
+// (071, SystemWebViewThirdPartyStorageTest); this suite's core lets every frame at its
+// storage, so what is seen here is the WebView's own doing.
 package com.tigercodes.webtiger.webview
 
 import androidx.test.ext.junit.runners.AndroidJUnit4

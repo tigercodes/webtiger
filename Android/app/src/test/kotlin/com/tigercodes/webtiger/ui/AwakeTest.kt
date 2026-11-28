@@ -22,6 +22,7 @@ import com.tigercodes.webtiger.core.NavigationVerdict
 import com.tigercodes.webtiger.core.RequestVerdict
 import com.tigercodes.webtiger.core.ResourceType
 import com.tigercodes.webtiger.core.ScriptedCore
+import com.tigercodes.webtiger.core.StorageVerdict
 import com.tigercodes.webtiger.core.v1.Ack
 import com.tigercodes.webtiger.core.v1.AwakePage
 import com.tigercodes.webtiger.core.v1.AwakeTab
@@ -167,6 +168,8 @@ class AwakeTest {
         override fun navigationVerdict(url: String, webViewId: Long, mainFrame: Boolean, userGesture: Boolean) = NavigationVerdict.ALLOW
 
         override fun requestVerdict(url: String, sourceUrl: String, webViewId: Long, resource: ResourceType) = RequestVerdict.ALLOW
+
+        override fun storageVerdict(origin: String, topOrigin: String, pageUrl: String, webViewId: Long) = StorageVerdict.OWN
 
         override fun stop() = Unit
     }

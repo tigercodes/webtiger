@@ -6,6 +6,7 @@ import android.view.View
 import com.tigercodes.webtiger.core.NavigationVerdict
 import com.tigercodes.webtiger.core.RequestVerdict
 import com.tigercodes.webtiger.core.ResourceType
+import com.tigercodes.webtiger.core.StorageVerdict
 import com.tigercodes.webtiger.core.v1.DialogKind
 import com.tigercodes.webtiger.core.v1.EngineEvent
 import com.tigercodes.webtiger.core.v1.NavigationCommand
@@ -83,6 +84,12 @@ internal interface PageHost {
 
     /** Called on the WebView's own threads. */
     fun requestVerdict(url: String, sourceUrl: String, webViewId: Long, resource: ResourceType): RequestVerdict
+
+    /**
+     * Whether a frame has its site's own storage (071): asked as the frame's document starts,
+     * on a thread of the WebView's own. [pageUrl] is the page's address as the adapter knows it.
+     */
+    fun storageVerdict(origin: String, topOrigin: String, pageUrl: String, webViewId: Long): StorageVerdict
 
     /**
      * The page of the web view `askingId` asked for a new window (006). The engine makes the

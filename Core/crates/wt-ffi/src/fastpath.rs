@@ -1,5 +1,5 @@
-//! The fast path (000 §5.5): the two questions an engine asks on its own
-//! threads and waits for. Synchronous: neither queues behind the core's own
+//! The fast path (000 §5.5): the questions an engine asks on its own
+//! threads and waits for. Synchronous: none queues behind the core's own
 //! thread, waits for the store, or waits for a shell.
 //!
 //! - [`wt_nav_check`]: may this web view make this navigation? Android's
@@ -11,6 +11,11 @@
 //!   the core's blocker (064), which is made as the core starts. It parses
 //!   the two addresses and looks rules up: it allocates, and the blocker
 //!   makes its decisions one at a time behind a lock of its own.
+//! - [`wt_storage_check`]: has this frame its site's own storage, in this
+//!   page? Asked as a frame's document starts, on the engines that do not
+//!   keep a third party's storage apart themselves (071), and answered from
+//!   the core's rule for sites and Guard's switches. It parses the three
+//!   addresses: it allocates, and locks nothing.
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
@@ -60,6 +65,27 @@ pub struct WtNavVerdict {
 pub const WT_NAV_ALLOW: u32 = 0;
 pub const WT_NAV_CANCEL: u32 = 1;
 pub const WT_NAV_EXTERNAL: u32 = 2;
+
+/// `wt_frame`: a frame whose document is starting.
+#[repr(C)]
+pub struct WtFrame {
+    pub origin: *const u8,
+    pub origin_len: usize,
+    pub top_origin: *const u8,
+    pub top_origin_len: usize,
+    pub page_url: *const u8,
+    pub page_url_len: usize,
+    pub web_view_id: u64,
+}
+
+/// `wt_storage_verdict`.
+#[repr(C)]
+pub struct WtStorageVerdict {
+    pub action: u32,
+}
+
+pub const WT_STORAGE_OWN: u32 = 0;
+pub const WT_STORAGE_APART: u32 = 1;
 
 /// Guard's decision for one request; see webtiger_core.h.
 ///
@@ -151,6 +177,64 @@ pub unsafe extern "C" fn wt_nav_check(
             NavigationAction::Cancel => WT_NAV_CANCEL,
             NavigationAction::External => WT_NAV_EXTERNAL,
         })
+    }));
+    match verdict {
+        Ok(Ok(action)) => {
+            // SAFETY: as above.
+            unsafe { (*out).action = action };
+            Status::Ok as i32
+        }
+        Ok(Err(status)) => status as i32,
+        Err(_) => Status::Panic as i32,
+    }
+}
+
+/// Whether a frame has its site's own storage; see webtiger_core.h.
+///
+/// # Safety
+/// `frame` must be NULL or point to a `wt_frame` whose three pointers each
+/// cover their length in readable bytes for the duration of the call. `out`
+/// must be NULL or point to a writable `wt_storage_verdict`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn wt_storage_check(
+    core: u64,
+    frame: *const WtFrame,
+    out: *mut WtStorageVerdict,
+) -> i32 {
+    if out.is_null() {
+        return Status::NullArgument as i32;
+    }
+    // Kept apart unless the core says otherwise: a third party is let at
+    // its storage on the core's word alone.
+    // SAFETY: `out` is non-NULL and, by the caller's contract, writable.
+    unsafe { (*out).action = WT_STORAGE_APART };
+    if frame.is_null() {
+        return Status::NullArgument as i32;
+    }
+    let verdict = catch_unwind(AssertUnwindSafe(|| {
+        if !registry::is_running(core) {
+            return Err(Status::UnknownCore);
+        }
+        // SAFETY: `frame` is non-NULL and, by the caller's contract, a valid
+        // `wt_frame` for this call.
+        let frame = unsafe { &*frame };
+        // SAFETY: the caller guarantees each pointer covers its length.
+        let texts = unsafe {
+            (
+                borrow_text(frame.origin, frame.origin_len),
+                borrow_text(frame.top_origin, frame.top_origin_len),
+                borrow_text(frame.page_url, frame.page_url_len),
+            )
+        };
+        let (Some(origin), Some(top_origin), Some(page_url)) = texts else {
+            return Err(Status::BadArgument);
+        };
+        match registry::keeps_apart(core, frame.web_view_id, origin, top_origin, page_url) {
+            Some(true) => Ok(WT_STORAGE_APART),
+            Some(false) => Ok(WT_STORAGE_OWN),
+            // The core stopped between the two looks.
+            None => Err(Status::UnknownCore),
+        }
     }));
     match verdict {
         Ok(Ok(action)) => {

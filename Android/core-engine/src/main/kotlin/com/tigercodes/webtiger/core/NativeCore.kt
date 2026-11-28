@@ -44,7 +44,7 @@ object Status {
 }
 
 /**
- * The six functions of the C ABI, as the JNI glue exports them: libwebtiger_core.so on Android,
+ * The seven functions of the C ABI, as the JNI glue exports them: libwebtiger_core.so on Android,
  * the same library built for this machine in the JVM tests.
  */
 internal object CoreLibrary {
@@ -55,6 +55,8 @@ internal object CoreLibrary {
     const val NAV_EXTERNAL = 2
     const val VERDICT_ALLOW = 0
     const val VERDICT_BLOCK = 1
+    const val STORAGE_OWN = 0
+    const val STORAGE_APART = 1
 
     /** The longest message either way (`WT_MAX_MESSAGE_LEN`). */
     const val MAX_MESSAGE_LEN = 4 * 1024 * 1024
@@ -87,7 +89,17 @@ internal object CoreLibrary {
 
     /** Guard's verdict (`VERDICT_*`); [VERDICT_ALLOW] on any failure. Any thread. */
     @JvmStatic external fun guardCheck(core: Long, url: String, sourceUrl: String, webViewId: Long, resourceType: Int): Int
+
+    /** Whether a frame has its site's own storage (`STORAGE_*`); [STORAGE_APART] on any failure. Any thread. */
+    @JvmStatic external fun storageCheck(core: Long, origin: String, topOrigin: String, pageUrl: String, webViewId: Long): Int
 }
+
+/**
+ * The library's verdict on a frame's storage (`STORAGE_*`), read: a frame has its site's
+ * storage on that one word, and anything else, a verdict this client does not know among
+ * them, keeps it apart.
+ */
+internal fun storageVerdictOf(code: Int): StorageVerdict = if (code == CoreLibrary.STORAGE_OWN) StorageVerdict.OWN else StorageVerdict.APART
 
 /** The running core. One per process. */
 class NativeCore private constructor(
@@ -160,6 +172,9 @@ class NativeCore private constructor(
             else -> RequestVerdict.ALLOW
         }
 
+    override fun storageVerdict(origin: String, topOrigin: String, pageUrl: String, webViewId: Long): StorageVerdict =
+        storageVerdictOf(CoreLibrary.storageCheck(handle, origin, topOrigin, pageUrl, webViewId))
+
     override fun stop() {
         if (!stopped.compareAndSet(false, true)) return
         answering.cancel()
@@ -181,7 +196,7 @@ class NativeCore private constructor(
     companion object {
         /** The contract this shell was built with (`WT_CONTRACT_*` in webtiger_core.h). */
         const val CONTRACT_MAJOR = 1
-        const val CONTRACT_MINOR = 56
+        const val CONTRACT_MINOR = 57
 
         /**
          * Starts the core. [config] needs no contract version: it is filled in here. Host

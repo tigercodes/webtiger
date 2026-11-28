@@ -15,8 +15,9 @@ use prost::Message as _;
 use support::{TestShell, fake_config};
 use webtiger_core::{
     MAX_MESSAGE_LEN, Status, WT_NAV_ALLOW, WT_NAV_CANCEL, WT_NAV_EXTERNAL, WT_NAV_MAIN_FRAME,
-    WT_VERDICT_ALLOW, WT_VERDICT_BLOCK, WtNavVerdict, WtNavigation, WtRequest, WtVerdict,
-    wt_core_send, wt_core_start, wt_core_stop, wt_guard_check, wt_nav_check,
+    WT_STORAGE_APART, WT_STORAGE_OWN, WT_VERDICT_ALLOW, WT_VERDICT_BLOCK, WtFrame, WtNavVerdict,
+    WtNavigation, WtRequest, WtStorageVerdict, WtVerdict, wt_core_send, wt_core_start,
+    wt_core_stop, wt_guard_check, wt_nav_check, wt_storage_check,
 };
 use wt_proto::v1::{
     EngineEvent, LoadState, NavigationCommitted, NavigationFinished, OpenWindow, Ping,
@@ -1035,6 +1036,220 @@ fn guard_is_asked_from_many_threads_while_a_switch_is_turned() {
             PAGE
         ),
         (0, WT_VERDICT_BLOCK),
+        "the last switch set is the one in force"
+    );
+}
+
+/// Whether a frame has its site's storage, through the C function: the
+/// status, and the verdict written. The verdict starts as OWN, so that what
+/// a failure leaves there is seen to have been written.
+fn storage(
+    handle: u64,
+    web_view: u64,
+    origin: &[u8],
+    top_origin: &[u8],
+    page: &[u8],
+) -> (i32, u32) {
+    let frame = WtFrame {
+        origin: origin.as_ptr(),
+        origin_len: origin.len(),
+        top_origin: top_origin.as_ptr(),
+        top_origin_len: top_origin.len(),
+        page_url: page.as_ptr(),
+        page_url_len: page.len(),
+        web_view_id: web_view,
+    };
+    let mut verdict = WtStorageVerdict {
+        action: WT_STORAGE_OWN,
+    };
+    // SAFETY: both structures are live, and each text covers its length.
+    let status = unsafe { wt_storage_check(handle, &raw const frame, &raw mut verdict) };
+    (status, verdict.action)
+}
+
+const TOP: &[u8] = b"https://news.example.com";
+const TRACKER: &[u8] = b"https://ads.tracker.example.net";
+
+#[test]
+fn a_frame_of_another_site_is_kept_from_its_storage() {
+    let mut shell = TestShell::fake();
+    let (_, web_view, _) = a_page_in_a_web_view(&mut shell);
+    let handle = shell.handle;
+    let apart = (0, WT_STORAGE_APART);
+    let own = (0, WT_STORAGE_OWN);
+    // Of another site than the page's: apart. Of the page's own, by any host: not.
+    assert_eq!(storage(handle, web_view, TRACKER, TOP, PAGE), apart);
+    assert_eq!(storage(handle, web_view, b"null", TOP, PAGE), apart);
+    assert_eq!(storage(handle, web_view, TOP, TOP, PAGE), own);
+    assert_eq!(
+        storage(handle, web_view, b"https://comments.example.com", TOP, PAGE),
+        own
+    );
+    // A frame whose top frame is not of the page the shell knows: apart, though the
+    // frame is of that page's site.
+    assert_eq!(
+        storage(handle, web_view, TOP, b"https://www.example.org", PAGE),
+        apart
+    );
+    assert_eq!(storage(handle, web_view, TOP, TOP, b"about:blank"), apart);
+    // A web view that is not known is under everywhere's switch, which is on.
+    assert_eq!(storage(handle, web_view + 500, TRACKER, TOP, PAGE), apart);
+    assert_eq!(storage(handle, web_view + 500, TOP, TOP, PAGE), own);
+}
+
+#[test]
+fn the_storage_question_fails_apart() {
+    let mut shell = TestShell::fake();
+    let handle = shell.handle;
+    // Of the page's own site: only the failure can have written APART.
+    let frame = |origin: *const u8, origin_len: usize| WtFrame {
+        origin,
+        origin_len,
+        top_origin: TOP.as_ptr(),
+        top_origin_len: TOP.len(),
+        page_url: PAGE.as_ptr(),
+        page_url_len: PAGE.len(),
+        web_view_id: 1,
+    };
+    let ask = |handle: u64, frame: *const WtFrame| {
+        let mut verdict = WtStorageVerdict {
+            action: WT_STORAGE_OWN,
+        };
+        // SAFETY: the verdict is live; the frame is NULL or live, and its texts cover
+        // their lengths or are NULL, which is refused before anything is read.
+        let status = unsafe { wt_storage_check(handle, frame, &raw mut verdict) };
+        (status, verdict.action)
+    };
+    assert_eq!(storage(handle, 1, TOP, TOP, PAGE), (0, WT_STORAGE_OWN));
+    // No frame.
+    assert_eq!(
+        ask(handle, std::ptr::null()),
+        (Status::NullArgument as i32, WT_STORAGE_APART)
+    );
+    // An origin that is not text, and one that is nowhere but has a length.
+    let not_text = [0xff_u8, 0xfe, 0xfd];
+    let of_no_text = frame(not_text.as_ptr(), not_text.len());
+    assert_eq!(
+        ask(handle, &raw const of_no_text),
+        (Status::BadArgument as i32, WT_STORAGE_APART)
+    );
+    let of_nowhere = frame(std::ptr::null(), 4);
+    assert_eq!(
+        ask(handle, &raw const of_nowhere),
+        (Status::BadArgument as i32, WT_STORAGE_APART)
+    );
+    // No core of that handle, and none at all.
+    assert_eq!(
+        storage(handle + 1000, 1, TOP, TOP, PAGE),
+        (Status::UnknownCore as i32, WT_STORAGE_APART)
+    );
+    assert_eq!(
+        storage(0, 1, TOP, TOP, PAGE),
+        (Status::UnknownCore as i32, WT_STORAGE_APART)
+    );
+    // Nowhere to write the verdict.
+    let whole = frame(TOP.as_ptr(), TOP.len());
+    // SAFETY: the frame is live and its texts cover their lengths; a NULL verdict is
+    // refused before anything is written.
+    let status = unsafe { wt_storage_check(handle, &raw const whole, std::ptr::null_mut()) };
+    assert_eq!(status, Status::NullArgument as i32);
+    // A core that has stopped.
+    shell.stop();
+    assert_eq!(
+        storage(handle, 1, TOP, TOP, PAGE),
+        (Status::UnknownCore as i32, WT_STORAGE_APART)
+    );
+}
+
+#[test]
+fn where_guard_is_off_for_the_page_a_frame_has_its_storage_from_the_next_question() {
+    use wt_proto::v1::GuardSwitch::{Off, On, Unspecified};
+    use wt_proto::v1::set_guard::Of;
+    let mut shell = TestShell::fake();
+    let (tab, web_view, space) = a_page_in_a_web_view(&mut shell);
+    let handle = shell.handle;
+    let apart = (0, WT_STORAGE_APART);
+    let own = (0, WT_STORAGE_OWN);
+    let other_top: &[u8] = b"https://www.example.org";
+    let other_page: &[u8] = b"https://www.example.org/";
+    let tracker = |web_view: u64| storage(handle, web_view, TRACKER, TOP, PAGE);
+    let elsewhere = || storage(handle, web_view, TRACKER, other_top, other_page);
+
+    assert_eq!(tracker(web_view), apart);
+    // Off everywhere: the very next frame has its storage, in this web view and in
+    // one that is not known. On again: apart again.
+    set_guard(&mut shell, Of::Everywhere(true), Off);
+    assert_eq!(tracker(web_view), own);
+    assert_eq!(tracker(web_view + 500), own);
+    // A frame in a page the shell does not know is apart whatever the switches.
+    assert_eq!(storage(handle, web_view, TRACKER, other_top, PAGE), apart);
+    set_guard(&mut shell, Of::Everywhere(true), On);
+    assert_eq!(tracker(web_view), apart);
+    // Off for the Space: whatever page the web view shows; a web view that is not
+    // known is under everywhere's switch, which is on.
+    set_guard(&mut shell, Of::SpaceId(space), Off);
+    assert_eq!(tracker(web_view), own);
+    assert_eq!(elsewhere(), own);
+    assert_eq!(tracker(web_view + 500), apart);
+    // On for the site, in a Space that is off: in that site's pages a frame of
+    // another site is apart, and in another site's pages it is not.
+    set_guard(&mut shell, Of::TabId(tab), On);
+    assert_eq!(tracker(web_view), apart);
+    assert_eq!(elsewhere(), own);
+    // The Space says nothing again: everywhere's, which is on.
+    set_guard(&mut shell, Of::SpaceId(space), Unspecified);
+    assert_eq!(elsewhere(), apart);
+    // Off for the site alone. And a frame of the page's own site has its storage
+    // under any switch.
+    set_guard(&mut shell, Of::TabId(tab), Off);
+    assert_eq!(tracker(web_view), own);
+    assert_eq!(elsewhere(), apart);
+    assert_eq!(
+        storage(handle, web_view, other_top, other_top, other_page),
+        own
+    );
+}
+
+#[test]
+fn the_storage_question_is_asked_from_many_threads_while_a_switch_is_turned() {
+    use wt_proto::v1::GuardSwitch::{Off, On};
+    use wt_proto::v1::set_guard::Of;
+    let mut shell = TestShell::fake();
+    let (_, web_view, _) = a_page_in_a_web_view(&mut shell);
+    let handle = shell.handle;
+    let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let threads: Vec<_> = (0..8)
+        .map(|_| {
+            let stop = std::sync::Arc::clone(&stop);
+            std::thread::spawn(move || {
+                let (mut apart, mut own, mut wrong) = (0_u32, 0_u32, 0_u32);
+                while !stop.load(std::sync::atomic::Ordering::Relaxed) {
+                    match storage(handle, web_view, TRACKER, TOP, PAGE) {
+                        (0, WT_STORAGE_APART) => apart += 1,
+                        (0, WT_STORAGE_OWN) => own += 1,
+                        _ => wrong += 1,
+                    }
+                }
+                (apart, own, wrong)
+            })
+        })
+        .collect();
+    for _ in 0..150 {
+        set_guard(&mut shell, Of::Everywhere(true), Off);
+        set_guard(&mut shell, Of::Everywhere(true), On);
+    }
+    stop.store(true, std::sync::atomic::Ordering::Relaxed);
+    let (mut apart, mut own) = (0, 0);
+    for thread in threads {
+        let (was_apart, was_own, wrong) = thread.join().unwrap();
+        assert_eq!(wrong, 0);
+        apart += was_apart;
+        own += was_own;
+    }
+    assert!(apart > 0 && own > 0, "{apart} apart, {own} own");
+    assert_eq!(
+        storage(handle, web_view, TRACKER, TOP, PAGE),
+        (0, WT_STORAGE_APART),
         "the last switch set is the one in force"
     );
 }

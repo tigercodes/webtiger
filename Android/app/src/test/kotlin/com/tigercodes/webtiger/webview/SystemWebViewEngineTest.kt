@@ -2,10 +2,12 @@
 // answers, and what it refuses with which code.
 package com.tigercodes.webtiger.webview
 
+import com.tigercodes.webtiger.core.FrameAsked
 import com.tigercodes.webtiger.core.NavigationVerdict
 import com.tigercodes.webtiger.core.RequestVerdict
 import com.tigercodes.webtiger.core.ResourceType
 import com.tigercodes.webtiger.core.ScriptedCore
+import com.tigercodes.webtiger.core.StorageVerdict
 import com.tigercodes.webtiger.core.v1.EngineEvent
 import com.tigercodes.webtiger.core.v1.EngineKind
 import com.tigercodes.webtiger.core.v1.HostPing
@@ -187,6 +189,8 @@ class SystemWebViewEngineTest {
             host.report(EngineEvent(web_view_id = 4, navigation_finished = NavigationFinished()))
             assertEquals(NavigationVerdict.CANCEL, host.navigationVerdict("https://example.com/", 4, mainFrame = true, userGesture = true))
             assertEquals(RequestVerdict.ALLOW, host.requestVerdict("https://example.com/a.js", "https://example.com/", 4, ResourceType.OTHER))
+            // A frame is kept from its site's storage: nobody has said it may have it (071).
+            assertEquals(StorageVerdict.APART, host.storageVerdict("https://example.com", "https://example.com", "https://example.com/", 4))
         }
 
     @Test
@@ -379,7 +383,61 @@ class SystemWebViewEngineTest {
             assertEquals(NavigationVerdict.EXTERNAL, host.navigationVerdict("tel:+441632960000", 4, mainFrame = true, userGesture = true))
             assertEquals(NavigationVerdict.ALLOW, host.navigationVerdict("https://example.com/", 4, mainFrame = true, userGesture = false))
             assertEquals(RequestVerdict.BLOCK, host.requestVerdict("https://tracker.example.com/pixel.gif", "https://example.com/", 4, ResourceType.OTHER))
+
+            // A frame's storage is the core's to say (071), with all the page said of the frame.
+            core.setStorage { frame -> if (frame.origin == "https://tracker.example.com") StorageVerdict.APART else StorageVerdict.OWN }
+            assertEquals(StorageVerdict.APART, host.storageVerdict("https://tracker.example.com", "https://example.com", "https://example.com/", 4))
+            assertEquals(StorageVerdict.OWN, host.storageVerdict("https://shop.example.com", "https://example.com", "https://example.com/", 4))
+            assertEquals(
+                listOf(
+                    FrameAsked("https://tracker.example.com", "https://example.com", "https://example.com/", 4),
+                    FrameAsked("https://shop.example.com", "https://example.com", "https://example.com/", 4),
+                ),
+                core.frames,
+            )
         }
+
+    @Test
+    fun theQuestionOfAFramesStorageTakesTextAndNothingElse() {
+        val asked = ArrayList<Pair<String, String>>()
+        var says = false
+        val question =
+            ThirdPartyStorage.Question { origin, topOrigin ->
+                asked.add(origin to topOrigin)
+                says
+            }
+        // What the adapter is told is what is answered.
+        assertFalse(question.apart("https://tracker.example.com", "https://example.com"))
+        says = true
+        assertTrue(question.apart("https://tracker.example.com", "https://example.com"))
+        says = false
+        // What is not text, or is too long to be an origin, is kept apart, and nobody is asked.
+        val long = "https://" + "a".repeat(ThirdPartyStorage.LONGEST_ORIGIN)
+        assertTrue(question.apart(null, "https://example.com"))
+        assertTrue(question.apart("https://tracker.example.com", null))
+        assertTrue(question.apart(long, "https://example.com"))
+        assertTrue(question.apart("https://tracker.example.com", long))
+        assertEquals(2, asked.size)
+        // An origin of exactly the longest length is asked about.
+        assertFalse(question.apart("a".repeat(ThirdPartyStorage.LONGEST_ORIGIN), ""))
+        assertEquals(3, asked.size)
+        // An adapter that fails is not an answer: apart.
+        assertTrue(ThirdPartyStorage.Question { _, _ -> error("no core") }.apart("https://tracker.example.com", "https://example.com"))
+    }
+
+    @Test
+    fun theScriptTakesItsQuestionOutOfThePageAndAsksOnlyInAFrame() {
+        val script = ThirdPartyStorage.SCRIPT
+        // The name the question is given is the one the script takes away, first of all.
+        val took = script.indexOf("var ask = window.${ThirdPartyStorage.NAME};")
+        val gone = script.indexOf("delete window.${ThirdPartyStorage.NAME};")
+        val top = script.indexOf("if (window.top === window) { return; }")
+        val asks = script.indexOf("ask.apart(own, top)")
+        assertTrue(took >= 0 && gone > took && top > gone && asks > top)
+        // Kept apart unless told otherwise.
+        assertTrue(script.contains("var apart = true;"))
+        assertTrue(script.contains("apart = ask.apart(own, top) !== false;"))
+    }
 
     @Test
     fun aLoginSetIsNamedByALowerCaseUuid() {

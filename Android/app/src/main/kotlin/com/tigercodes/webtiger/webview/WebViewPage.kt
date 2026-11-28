@@ -44,6 +44,7 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.tigercodes.webtiger.core.NavigationVerdict
 import com.tigercodes.webtiger.core.RequestVerdict
+import com.tigercodes.webtiger.core.StorageVerdict
 import com.tigercodes.webtiger.core.v1.CloseRequested
 import com.tigercodes.webtiger.core.v1.DialogKind
 import com.tigercodes.webtiger.core.v1.EngineEvent
@@ -188,7 +189,7 @@ internal class WebViewPage(
     /** Null once the renderer has died, until the page is loaded again. */
     private var webView: WebView? = create()
 
-    /** The page's address, for Guard's check, which the WebView makes on its own threads. */
+    /** The page's address, for Guard's check and the storage question, which the WebView makes on its own threads. */
     @Volatile private var topUrl = ""
 
     override val view: View? get() = webView
@@ -457,6 +458,10 @@ internal class WebViewPage(
         view.webChromeClient = Chrome()
         listenForDoings(view)
         if (privacySignal) PrivacySignal.tell(view)
+        // A frame of another site than the page's has no storage of its site's own (071): the
+        // WebView does not keep it apart, so a script of the adapter's does, in the frames the
+        // core says. The page is the one whose commit the adapter has heard of.
+        ThirdPartyStorage.keepApart(view) { origin, topOrigin -> host.storageVerdict(origin, topOrigin, topUrl, id) != StorageVerdict.OWN }
         // The WebView does not download: it says one was asked for (013). What it was loading
         // then comes to nothing, and the page stays. The name is what the site suggests, read
         // as the platform reads it; the core makes the name the file is saved under.

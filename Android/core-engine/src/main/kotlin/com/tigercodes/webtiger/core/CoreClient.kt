@@ -50,6 +50,15 @@ enum class RequestVerdict {
     BLOCK,
 }
 
+/** Whether a frame has its site's own storage, in the page it is in (071). */
+enum class StorageVerdict {
+    /** The frame has its site's storage, as the engine gives it. */
+    OWN,
+
+    /** The frame is kept from its site's storage: what it keeps goes with its document. */
+    APART,
+}
+
 /** What a request is for, as far as the engine says (`WT_RESOURCE_*` in webtiger_core.h). */
 enum class ResourceType(val code: Int) {
     OTHER(0),
@@ -99,6 +108,15 @@ interface CoreClient {
      * thread, the engine's own among them. [sourceUrl] is the address of the page that asks.
      */
     fun requestVerdict(url: String, sourceUrl: String, webViewId: Long, resource: ResourceType): RequestVerdict
+
+    /**
+     * The fast path: whether a frame has its site's own storage (071), asked as its document
+     * starts by an engine that does not keep a third party's storage apart itself.
+     * Synchronous, and callable from any thread. [origin] is the frame's origin and
+     * [topOrigin] that of the top frame above it, both as the frame's own document has them;
+     * [pageUrl] is the address of the page as the shell knows it.
+     */
+    fun storageVerdict(origin: String, topOrigin: String, pageUrl: String, webViewId: Long): StorageVerdict
 
     /** Stops the core. Requests still waiting throw [CoreError.Stopped]. */
     fun stop()

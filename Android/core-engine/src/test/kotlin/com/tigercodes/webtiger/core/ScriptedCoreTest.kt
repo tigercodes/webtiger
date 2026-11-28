@@ -80,6 +80,26 @@ class ScriptedCoreTest {
     }
 
     @Test
+    fun aFrameHasItsStorageUntilAScriptSaysOtherwise() {
+        val core = ScriptedCore()
+        val page = "https://news.example.com/story"
+        // As an engine is by itself, until a test says what the core would.
+        assertEquals(StorageVerdict.OWN, core.storageVerdict("https://tracker.example.net", "https://news.example.com", page, webViewId = 1))
+        core.setStorage { frame -> if (frame.origin == "https://tracker.example.net") StorageVerdict.APART else StorageVerdict.OWN }
+        assertEquals(StorageVerdict.APART, core.storageVerdict("https://tracker.example.net", "https://news.example.com", page, webViewId = 1))
+        assertEquals(StorageVerdict.OWN, core.storageVerdict("https://comments.example.com", "https://news.example.com", page, webViewId = 2))
+        // Every frame asked about is kept, in order, with all that was said of it.
+        assertEquals(
+            listOf(
+                FrameAsked("https://tracker.example.net", "https://news.example.com", page, 1),
+                FrameAsked("https://tracker.example.net", "https://news.example.com", page, 1),
+                FrameAsked("https://comments.example.com", "https://news.example.com", page, 2),
+            ),
+            core.frames,
+        )
+    }
+
+    @Test
     fun reportsAreRecorded() {
         val core = ScriptedCore()
         core.report(EngineEvent(web_view_id = 4, navigation_finished = NavigationFinished()))

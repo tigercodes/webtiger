@@ -1,8 +1,8 @@
 // Third-party cookies (070) in the app, on a device, in fake mode: the real core and the real
-// WebView. A site that has kept a name is, in another site's page, asked with nothing. What
-// the WebView does is its adapter's suite's (SystemWebViewThirdPartyCookieTest), with the one
-// thing it does not do: a third party's storage is not kept apart. This is the app as it is
-// put together.
+// WebView. A site that has kept a name is, in another site's page, asked with nothing, and
+// finds nothing stored: the WebView shuts its cookies out, and the adapter keeps its storage
+// apart on the core's word (071, AppThirdPartyStorageTest). What the WebView does is its
+// adapter's suite's (SystemWebViewThirdPartyCookieTest). This is the app as it is put together.
 package com.tigercodes.webtiger
 
 import android.content.Context
@@ -96,9 +96,9 @@ internal class AppThirdPartyCookieTest {
         go("http://localhost:${site.port}/keep?v=grace", "says it has kept the name") { it == "Kept" }
 
         // Then a page of another site holds it in a frame, and a picture of it: its script
-        // there has no cookie and can keep none, and by the site's own record neither was
-        // asked for with a cookie. (Its storage it has: the WebView's own doing.)
-        go(site.url("/holds-another-site"), "says what the frame has") { it == "frame: asked none/none, reads none, writes no, stored grace" }
+        // there has no cookie and can keep none, finds nothing stored (071), and by the
+        // site's own record neither was asked for with a cookie.
+        go(site.url("/holds-another-site"), "says what the frame has") { it == "frame: asked none/none, reads none, writes no, stored none" }
         assertEquals(listOf(emptySet<String>()), cookies("/kept", kept))
         assertEquals(listOf(emptySet<String>()), cookies("/pixel", pictures))
 

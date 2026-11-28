@@ -475,6 +475,49 @@ class NativeCoreTest {
             assertEquals(RequestVerdict.BLOCK, verdict())
         }
 
+    /**
+     * A frame's storage (071), through the core's library: a frame of another site than the
+     * page's is kept apart, and one of the page's own site is not; a frame in a page the shell
+     * does not know is apart; with Guard off everywhere, the very next frame has its storage;
+     * and a core that has stopped keeps every frame apart.
+     */
+    @Test
+    fun aFrameOfAnotherSiteIsKeptFromItsStorageAndGuardsSwitchIsHeeded() =
+        runBlocking {
+            val core = start()
+            val page = "https://news.example.com/story"
+            val top = "https://news.example.com"
+
+            fun verdict(origin: String, topOrigin: String = top, pageUrl: String = page) = core.storageVerdict(origin, topOrigin, pageUrl, webViewId = 1)
+            assertEquals(StorageVerdict.APART, verdict("https://ads.tracker.example.net"))
+            assertEquals(StorageVerdict.APART, verdict("null"))
+            assertEquals(StorageVerdict.OWN, verdict("https://comments.example.com"))
+            assertEquals(StorageVerdict.OWN, verdict(top))
+            // The top frame the frame's document has is not the page the shell knows.
+            assertEquals(StorageVerdict.APART, verdict(top, topOrigin = "https://www.example.org"))
+            assertEquals(StorageVerdict.APART, verdict(top, pageUrl = "about:blank"))
+            // Text that is not an address, and text Java's strings hold that UTF-8 does not.
+            assertEquals(StorageVerdict.APART, verdict("not an address"))
+            assertEquals(StorageVerdict.APART, verdict("https://comments.example.com", topOrigin = "\uD800"))
+
+            core.request(Request(set_guard = SetGuard(everywhere = true, switch = GuardSwitch.GUARD_SWITCH_OFF)))
+            assertEquals(StorageVerdict.OWN, verdict("https://ads.tracker.example.net"))
+            assertEquals(StorageVerdict.APART, verdict("https://ads.tracker.example.net", topOrigin = "https://www.example.org"))
+            core.request(Request(set_guard = SetGuard(everywhere = true, switch = GuardSwitch.GUARD_SWITCH_ON)))
+            assertEquals(StorageVerdict.APART, verdict("https://ads.tracker.example.net"))
+
+            core.stop()
+            assertEquals(StorageVerdict.APART, verdict("https://comments.example.com"))
+        }
+
+    @Test
+    fun onlyTheLibrarysOwnWordLetsAFrameAtItsStorage() {
+        assertEquals(StorageVerdict.OWN, storageVerdictOf(CoreLibrary.STORAGE_OWN))
+        assertEquals(StorageVerdict.APART, storageVerdictOf(CoreLibrary.STORAGE_APART))
+        // A verdict a later library might give, and nonsense: apart.
+        for (unknown in listOf(2, 7, -1, Int.MAX_VALUE)) assertEquals(StorageVerdict.APART, storageVerdictOf(unknown))
+    }
+
     @Test
     fun aHostThatThrowsIsAnsweredWithACodeAndTheNextRequestIsStillAnswered() =
         runBlocking {

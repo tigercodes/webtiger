@@ -2,7 +2,7 @@
 //! `include/webtiger_core.h`; `tests/abi.rs` keeps the two in step.
 //!
 //! Four functions carry protobuf bytes of the contract: start, send, stop
-//! and version. Two more are the fast path: synchronous answers an engine's
+//! and version. Three more are the fast path: synchronous answers an engine's
 //! own threads can wait for. Every entry point runs under `catch_unwind`, so
 //! a panic never crosses into Swift, C++ or the JVM. Cores are named by `u64`
 //! handles rather than pointers, so a stale handle is an error code, not
@@ -32,8 +32,9 @@ use wt_proto::{CONTRACT_MAJOR, CONTRACT_MINOR};
 
 pub use fastpath::{
     WT_NAV_ALLOW, WT_NAV_CANCEL, WT_NAV_EXTERNAL, WT_NAV_MAIN_FRAME, WT_NAV_USER_GESTURE,
-    WT_VERDICT_ALLOW, WT_VERDICT_BLOCK, WtNavVerdict, WtNavigation, WtRequest, WtVerdict,
-    wt_guard_check, wt_nav_check,
+    WT_STORAGE_APART, WT_STORAGE_OWN, WT_VERDICT_ALLOW, WT_VERDICT_BLOCK, WtFrame, WtNavVerdict,
+    WtNavigation, WtRequest, WtStorageVerdict, WtVerdict, wt_guard_check, wt_nav_check,
+    wt_storage_check,
 };
 pub use registry::MAX_CORES;
 
