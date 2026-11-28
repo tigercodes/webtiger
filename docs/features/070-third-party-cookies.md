@@ -115,4 +115,4 @@ As tried, 2026-11-28: WebKit on macOS 27.2 and on the iOS 27 simulator; the Syst
 - [x] Android's setting, and the suite with it broken.
 - [x] In each app.
 - [ ] A third party's storage on Android (§8): the owner's word, and then its own feature.
-- [ ] The gate.
+- [x] The gate: every stage of `Tools/test.sh all` green, and `android-device`, on 2026-11-28: `lint`, `core` (832, and the strings tool's 24), `unit` (420 on the Mac), `build`, the Mac's UI suite (69), `ios` (403 on the iPhone simulator), the iPhone's UI suite (58), `android` (543 and 34 on the JVM) and `android-device` (214 on the emulator).
