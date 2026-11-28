@@ -155,4 +155,4 @@ As tried, 2026-11-28: the System WebView 133 on an Android 16 emulator; WebKit o
 - [x] The WebView tried (step 3).
 - [x] Android's adapter, and its suite.
 - [x] In the app.
-- [ ] The gate.
+- [x] The gate: every stage of `Tools/test.sh all` green, and `android-device`, on 2026-11-28: `lint`, `core` (839, and the strings tool's 24), `unit` (423 on the Mac), `build`, the Mac's UI suite (69), `ios` (406 on the iPhone simulator), the iPhone's UI suite (58), `android` (545 and 37 on the JVM) and `android-device` (222 on the emulator).
