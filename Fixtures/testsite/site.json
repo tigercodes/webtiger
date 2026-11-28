@@ -658,6 +658,61 @@
         "</script>"
       ],
       "note": "Holds /gpc in a frame from another origin (the same server by its other name, localhost): says in its title what the frame read."
+    },
+    {
+      "path": "/keep",
+      "title": "Keep",
+      "headers": [
+        "Set-Cookie: who={query:v|someone}; Path=/; Max-Age=3600",
+        "Set-Cookie: anywhere={query:v|someone}; Path=/; Max-Age=3600; SameSite=None; Secure"
+      ],
+      "body": [
+        "<p><button id=\"use\" onclick=\"document.title = 'Used'\">use</button></p>",
+        "<script>",
+        "try { localStorage.setItem('who', '{query:v|someone}'); } catch (e) {}",
+        "if (window.parent !== window) { window.parent.postMessage('kept', '*'); } else { document.title = 'Kept'; document.write('<p>Kept</p>'); }",
+        "</script>"
+      ],
+      "note": "Keeps ?v= every way a site can (070): in a cookie that says nothing of where it may go, in one that says it may go anywhere (SameSite=None; Secure), and, by its script, in the page's storage. Says 'Kept' in its title and its words when it has; or, in a frame, 'kept' to the page that holds it. Its button says 'Used' in the title: for a site a person has used as itself, which some engines treat otherwise than one they have only passed through."
+    },
+    {
+      "path": "/kept",
+      "title": "What is kept",
+      "body": [
+        "<script>",
+        "var asked = 'asked {cookie:who|none}/{cookie:anywhere|none}';",
+        "var reads = document.cookie === '' ? 'none' : document.cookie.split('; ').map(function (pair) { return pair.split('=')[0]; }).sort().join('+');",
+        "document.cookie = 'script=yes; Path=/';",
+        "document.cookie = 'scripted=yes; Path=/; SameSite=None; Secure';",
+        "var writes = /(^|; )script(ed)?=yes/.test(document.cookie) ? 'yes' : 'no';",
+        "document.cookie = 'script=; Path=/; Max-Age=0';",
+        "document.cookie = 'scripted=; Path=/; Max-Age=0; SameSite=None; Secure';",
+        "var stored; try { stored = localStorage.getItem('who') || 'none'; } catch (e) { stored = 'refused'; }",
+        "var said = asked + ', reads ' + reads + ', writes ' + writes + ', stored ' + stored;",
+        "if (window.parent !== window) { window.parent.postMessage(said, '*'); } else { document.title = said; document.write('<p>' + said + '</p>'); }",
+        "</script>"
+      ],
+      "note": "Says what a site has of whoever asks (070): the two cookies of /keep that the request came with; the names of the cookies its script reads; whether its script can write one (of either kind) and read it back; and what the page's storage has ('refused' where the engine will not let it look). In its title and its words; or, in a frame, to the page that holds it."
+    },
+    {
+      "path": "/holds-another-site",
+      "title": "Holds another site",
+      "body": [
+        "<iframe id=\"frame\" width=\"320\" height=\"60\"></iframe>",
+        "<img id=\"picture\" alt=\"\" width=\"1\" height=\"1\">",
+        "<p id=\"said\"></p>",
+        "<script>",
+        "var heard = null, drawn = false;",
+        "function tell() { if (heard === null || !drawn) { return; } var all = 'frame: ' + heard; document.title = all; document.getElementById('said').textContent = all; }",
+        "addEventListener('message', function (said) { heard = said.data; tell(); });",
+        "var other = 'http://{query:at|localhost}:' + location.port;",
+        "var picture = document.getElementById('picture');",
+        "picture.onload = picture.onerror = function () { drawn = true; tell(); };",
+        "picture.src = other + '/{query:picture|pixel}?v=eve';",
+        "document.getElementById('frame').src = other + '/{query:frame|kept}?v=eve';",
+        "</script>"
+      ],
+      "note": "Holds another site (070): the same server by its other name, localhost (or the host ?at= names), in a frame (/kept, or the path ?frame= names) and as a picture (/pixel, or the path ?picture= names), each asked for with ?v=eve. Says in its title and its words what the frame said, once the picture has been answered too. Asked for at 127.0.0.1 it holds a third party; with ?at=127.0.0.1, its own site."
     }
   ],
   "not_found": {

@@ -24,6 +24,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
+import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
 import android.webkit.HttpAuthHandler
 import android.webkit.JsPromptResult
@@ -447,6 +448,10 @@ internal class WebViewPage(
             setSupportMultipleWindows(true)
             javaScriptCanOpenWindowsAutomatically = false
         }
+        // A site in another site's page is not sent its cookies, and what it sets there is
+        // not kept (070). It is the WebView's own habit for an app built for a recent
+        // Android: said outright all the same, so that it does not hang on a habit.
+        CookieManager.getInstance().setAcceptThirdPartyCookies(view, false)
         view.settings.textZoom = zoomPercent
         view.webViewClient = Client()
         view.webChromeClient = Chrome()

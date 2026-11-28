@@ -695,6 +695,36 @@ internal object TestSitePages {
                 delayMilliseconds = 0,
                 authorization = "",
             ),
+            TestSitePage(
+                path = "/keep",
+                status = "200 OK",
+                type = "text/html",
+                headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store")), listOf(TestSitePiece.Text("Set-Cookie: who="), TestSitePiece.Query("v", or = "someone"), TestSitePiece.Text("; Path=/; Max-Age=3600")), listOf(TestSitePiece.Text("Set-Cookie: anywhere="), TestSitePiece.Query("v", or = "someone"), TestSitePiece.Text("; Path=/; Max-Age=3600; SameSite=None; Secure"))),
+                body = listOf(TestSitePiece.Text("<!doctype html><title>Keep</title><h1>Keep</h1><p><button id=\"use\" onclick=\"document.title = 'Used'\">use</button></p>\n<script>\ntry { localStorage.setItem('who', '"), TestSitePiece.Query("v", or = "someone"), TestSitePiece.Text("'); } catch (e) {}\nif (window.parent !== window) { window.parent.postMessage('kept', '*'); } else { document.title = 'Kept'; document.write('<p>Kept</p>'); }\n</script>")),
+                bytes = "",
+                delayMilliseconds = 0,
+                authorization = "",
+            ),
+            TestSitePage(
+                path = "/kept",
+                status = "200 OK",
+                type = "text/html",
+                headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
+                body = listOf(TestSitePiece.Text("<!doctype html><title>What is kept</title><h1>What is kept</h1><script>\nvar asked = 'asked "), TestSitePiece.Cookie("who", or = "none"), TestSitePiece.Text("/"), TestSitePiece.Cookie("anywhere", or = "none"), TestSitePiece.Text("';\nvar reads = document.cookie === '' ? 'none' : document.cookie.split('; ').map(function (pair) { return pair.split('=')[0]; }).sort().join('+');\ndocument.cookie = 'script=yes; Path=/';\ndocument.cookie = 'scripted=yes; Path=/; SameSite=None; Secure';\nvar writes = /(^|; )script(ed)?=yes/.test(document.cookie) ? 'yes' : 'no';\ndocument.cookie = 'script=; Path=/; Max-Age=0';\ndocument.cookie = 'scripted=; Path=/; Max-Age=0; SameSite=None; Secure';\nvar stored; try { stored = localStorage.getItem('who') || 'none'; } catch (e) { stored = 'refused'; }\nvar said = asked + ', reads ' + reads + ', writes ' + writes + ', stored ' + stored;\nif (window.parent !== window) { window.parent.postMessage(said, '*'); } else { document.title = said; document.write('<p>' + said + '</p>'); }\n</script>")),
+                bytes = "",
+                delayMilliseconds = 0,
+                authorization = "",
+            ),
+            TestSitePage(
+                path = "/holds-another-site",
+                status = "200 OK",
+                type = "text/html",
+                headers = listOf(listOf(TestSitePiece.Text("Cache-Control: no-store"))),
+                body = listOf(TestSitePiece.Text("<!doctype html><title>Holds another site</title><h1>Holds another site</h1><iframe id=\"frame\" width=\"320\" height=\"60\"></iframe>\n<img id=\"picture\" alt=\"\" width=\"1\" height=\"1\">\n<p id=\"said\"></p>\n<script>\nvar heard = null, drawn = false;\nfunction tell() { if (heard === null || !drawn) { return; } var all = 'frame: ' + heard; document.title = all; document.getElementById('said').textContent = all; }\naddEventListener('message', function (said) { heard = said.data; tell(); });\nvar other = 'http://"), TestSitePiece.Query("at", or = "localhost"), TestSitePiece.Text(":' + location.port;\nvar picture = document.getElementById('picture');\npicture.onload = picture.onerror = function () { drawn = true; tell(); };\npicture.src = other + '/"), TestSitePiece.Query("picture", or = "pixel"), TestSitePiece.Text("?v=eve';\ndocument.getElementById('frame').src = other + '/"), TestSitePiece.Query("frame", or = "kept"), TestSitePiece.Text("?v=eve';\n</script>")),
+                bytes = "",
+                delayMilliseconds = 0,
+                authorization = "",
+            ),
         )
 
     /** What every other path is answered with. */
