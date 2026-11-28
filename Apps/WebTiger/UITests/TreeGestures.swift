@@ -84,11 +84,26 @@ extension AppTestCase {
         }
     }
 
+    /// Whether an item of that name is on the screen now, in a menu of the app's.
+    private func item(named words: String, isShownIn app: XCUIApplication) -> Bool {
+        #if os(macOS)
+            let named = app.menuItems.matching(NSPredicate(format: "title == %@", words))
+        #else
+            let named = app.buttons.matching(NSPredicate(format: "label == %@", words))
+        #endif
+        return (0 ..< named.count).contains { named.element(boundBy: $0).exists && named.element(boundBy: $0).isHittable }
+    }
+
     /// Makes a Group for a tab by "New Group…", with this name.
     func makeGroup(_ name: String, for tab: XCUIElement, in app: XCUIApplication, line: UInt = #line) {
         moveToGroup("New Group…", tab, in: app, line: line)
         let field = app.textFields["group-name"]
-        XCTAssertTrue(field.waitForExistence(timeout: 30), "the page that makes a Group", line: line)
+        let came = field.waitForExistence(timeout: 30)
+        // Once, on a Mac, the page did not come though the item was pressed (041 §9). Whether
+        // the item is still on the screen then tells a click that was lost from a command
+        // that did nothing.
+        let stillOffered = came ? false : item(named: "New Group…", isShownIn: app)
+        XCTAssertTrue(came, "the page that makes a Group; its item in the menu is \(stillOffered ? "still there" : "gone")", line: line)
         press(field)
         field.typeText(name)
         press(app.buttons["group-done"])

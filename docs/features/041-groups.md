@@ -141,6 +141,7 @@ Codes: `group.unknown` (also a Group of another row); `group.name_empty` (as `sp
 - **The choices of §6** are the recommendations, not the owner's word.
 - **Undo after the last shown tab was closed.** With Sites out of the way in a shut Group and no other tab, closing the tab in front opens an empty tab; bringing the closed tab back (033) then leaves that empty tab beside it. A row with one tab only has its empty stand-in make way.
 - **Many Groups.** 64 are made in a test; nothing measures a row of many Groups and many Sites.
+- **A choice in the Mac's "Move to Group" menu that did nothing, once.** Found on 2026-11-28, by the gate over [071](071-a-third-partys-storage-on-android.md), which changes nothing in Apple's app: in the Mac's UI suite, the test of the tree across a quit (`QuitTests`) chose "New Group…" from the File menu's "Move to Group"; the click was made, and the page that makes a Group did not come in thirty seconds. The same test alone then passed four times of four. Whether it was the test's click (an item of a menu within a menu, pressed as it opens) or the app's command is not known: the run left nothing to tell them apart by. The test now says, when it happens, whether the item was still on the screen.
 
 ## 10. Done checklist
 
